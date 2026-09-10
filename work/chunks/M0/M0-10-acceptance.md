@@ -33,7 +33,7 @@ verifies they hold **together**, which is where foundations usually fail.
 
 ## Human verification — the combined session
 
-1. Fresh-clone the repo, open `game/project.godot` in Godot 4.5, run `pwsh scripts/test.ps1`.
+1. Fresh-clone the repo, open `game/project.godot` in Godot 4.7, run `pwsh scripts/test.ps1`.
    → All tests pass, including the singleton check.
 2. Launch **at 1280 × 800**, Steam Deck size and the primary target. Load the `shaft` world.
    Press F3. → Eight depths resident, ≈4 MB, ≈32 × 20 tiles visible, filling the window with no

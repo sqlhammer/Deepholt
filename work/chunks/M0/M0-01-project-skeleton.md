@@ -73,7 +73,7 @@ Any game content. Any art beyond a solid-colour test pattern. CI configuration.
 
 ## Human verification
 
-1. Open `game/project.godot` in Godot 4.5 and press **F5**. → The game window opens, no errors
+1. Open `game/project.godot` in Godot 4.7 and press **F5**. → The game window opens, no errors
    in the Output panel.
 2. Confirm the window opens at **1280 × 800** — Steam Deck size — and that the test pattern
    fills it edge to edge with **no black bars in any direction**.
