@@ -15,12 +15,27 @@ Three numbers were set independently and turn out to constrain each other:
 | Support radius R | up to 8 tiles | [D-014](../design-decisions.md) |
 | Widest timber hall at −1 | 17 tiles | [tuning-appendix §9](../tuning-appendix.md) |
 
-If the camera shows 30 tiles across and dark vision reaches 7, the player sees a 15-tile lit
+If the camera shows ~32 tiles across and dark vision reaches 7, the player sees a 15-tile lit
 circle in a mostly-black frame — atmospheric, and fine for mining. But it makes **planning a
 17-tile hall impossible**, because you cannot see the thing you are designing.
 
 Raising dark vision to match would flatten the mood and undo the light-as-civilisation idea.
 So the answer is a third render state.
+
+### Which way the frame is squeezed
+
+The view is under pressure from both sides, and this is what §3's numbers are protecting:
+
+| Frame | Dark-vision disc covers | Margin around a 17-tile hall |
+|---|---|---|
+| 20 × 12.5 | 71% — claustrophobic | 3 tiles. Unplannable |
+| **32 × 20** — the constant | **28%** | 15 tiles |
+| 40 × 25 | 18% — a lit island in a black screen | 23 tiles |
+
+**Columns are the load-bearing number; rows are mostly arithmetic.** 30–32 columns is what makes
+a 17-tile hall plannable. The row count is whatever the target aspect ratio yields at that width,
+and has never been chosen independently — which is why moving from 16:9 to 16:10 in
+[D-044](../design-decisions.md) was cheap.
 
 ---
 
@@ -52,23 +67,51 @@ light and vision are computed, `remembered` is the only persistent bit alongside
 
 | Property | Value |
 |---|---|
-| **Tiles visible** | **≈30 × 17** — this is the *design constant* |
+| **Tiles visible** | **≈32 × 20** — this is the *design constant* |
+| **Primary target** | **Steam Deck, 1280 × 800, 16:10** ([D-044](../design-decisions.md)) |
 | Base tile art | **16 × 16 px** |
-| Virtual resolution | **480 × 270** |
-| Scaling | Integer where possible (1080p = 4×, 2160p = 8×); `canvas_items` stretch |
+| Virtual resolution | **512 × 320** — 16:10 exactly; ×2.5 fills the Deck |
+| Scaling | `canvas_items` stretch, `keep` aspect, **pixel-art upscale shader** |
 | Zoom | Fixed during play. **No player zoom control** |
+
+**The game is tuned for Steam Deck at 1280 × 800.** That is the display the §1 relationship is
+judged against, the one playtests run on, and the one UI legibility is sized for (§6). At 512 × 320
+the virtual resolution is 16:10 exactly, so the Deck fills edge to edge with **no letterbox and no
+pillarbox**.
 
 **Tile count is the constant, not resolution.** No display may show meaningfully more of the
 world than another — that would be a competitive and design inconsistency, and it would break
-the careful relationship in §1.
+the careful relationship in §1. Every other display keeps ≈32 × 20 tiles and differs only in how
+crisply it renders them, and in how much black border it carries.
 
-Steam Deck (1280×800) does not scale integrally from 480×270. Accept a non-integer scale with a
-pixel-snapped filter, and expose a **pixel-perfect toggle** that letterboxes at 2×. This is a
-graphics-programmer call; the binding constraint from design is only that the tile count stays
-≈30 × 17.
+### The 2.5× problem, and the mandatory shader
+
+2.5× is **not** an integer scale. Plain nearest-neighbour upscaling maps each source pixel to an
+alternating 2 px / 3 px block, and that pattern *shifts* as the camera moves — so tile edges crawl
+and shimmer during a pan. On a 7-inch screen held close, this is the first thing anyone notices.
+
+A **pixel-art upscale shader** is therefore not optional and not polish. Filter only at pixel
+boundaries (edge-antialiased nearest, sometimes called sharp-bilinear) so interiors stay flat and
+edges resolve cleanly at fractional scales. It is built in M0 and verified by panning, not
+by screenshot.
+
+### Display matrix
+
+| Display | Scale | Handling | Priority |
+|---|---|---|---|
+| **Steam Deck 1280 × 800 (16:10)** | **2.5×** | Fills exactly. Upscale shader | **Primary** |
+| 2560 × 1600 (16:10 laptops) | 5× integer | Fills exactly. Pixel-exact | Supported |
+| 1920 × 1080 (16:9) | 3.375× | 1728 × 1080, **~96 px pillarbox each side** | Supported |
+| 2560 × 1440 (16:9) | 4.5× | Pillarboxed | Supported |
+| 3840 × 2160 (16:9) | 6.75× | Pillarboxed | Supported |
+| Ultrawide 21:9 | — | **Pillarbox to 16:10.** Never widen the view | Compatibility |
+
+**16:9 desktops pillarbox, and that is correct.** Filling a wider screen would mean showing more
+world, which §1 forbids outright. Desktop is a supported display, not the tuned one
+([D-044](../design-decisions.md)).
 
 ### Overlay zoom
-Holding the support overlay (`L3`) zooms the camera out to **≈45 × 25 tiles**. This is the one
+Holding the support overlay (`L3`) zooms the camera out by 1.5×, to **≈48 × 30 tiles**. This is the one
 sanctioned zoom change, it exists specifically so a 17-tile hall fits on screen while planning,
 and it is why the overlay is a first-class hotkey rather than a menu
 ([ui-ux-and-controls.md §2.4](../ui-ux-and-controls.md)).

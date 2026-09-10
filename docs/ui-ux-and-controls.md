@@ -11,9 +11,13 @@ Three arguments, in order of weight:
 
 1. **It is proven for this exact shape of game.** Core Keeper — tile-based, dig-and-build,
    inventory-heavy — plays excellently on a pad. We are not pioneering.
-2. **The audience is on handhelds.** Cosy survival-crafting is one of the strongest genres on
-   Steam Deck. Designing for the pad first is the cheapest path to a good Deck experience, and
-   the Deck's screen size also forces UI discipline we want anyway.
+2. **A large part of the audience is on handhelds.** Cosy survival-crafting is one of the
+   strongest genres on Steam Deck. Designing for the pad first is the cheapest path to a good
+   Deck experience, and a small screen forces UI discipline we want anyway.
+
+   The *display* target agrees: **Steam Deck 1280 × 800 is the tuned display**
+   ([D-044](./design-decisions.md)), so UI density and legibility are judged at Deck size and
+   desktop inherits a UI that is comfortably readable rather than the reverse.
 3. **Gamepad constraints make the mouse UI better.** Bigger targets, no hover-only information,
    no click-drags, no pixel precision. Every one of those is a usability win for mouse users
    too. The reverse retrofit — bolting a pad onto a mouse-designed build mode — is a known and

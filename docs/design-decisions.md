@@ -556,3 +556,99 @@ would invalidate the milestones that depend on them.
 *Note:* M3's exit is phrased as a **tester behaviour** — returning to base from an unexplored area
 using only the map, with no verbal hints — because multi-level navigation is the one UX risk in
 this design that cannot be judged by inspection.
+
+---
+
+### D-043 — Primary display target is 1920×1080 desktop; every other display is compatibility
+**Superseded by [D-044](#d-044--steam-deck-is-the-primary-display-target-virtual-resolution-is-512320).**
+Recorded as decided, then reversed the following day in favour of a Steam Deck-native target.
+The reasoning below about *having* one canonical display still holds; only the display changed.
+
+**Decided.** The build is optimised for **desktop play at 1920 × 1080**, the standard 16:9
+desktop resolution. This sharpens [D-034](#d-034--camera-shows-3017-tiles-tile-count-is-the-design-constant)
+rather than reversing it: 480 × 270 × **4 = exactly 1920 × 1080**, so the primary target is the
+clean integer-scale case and costs nothing. Every other display is a compatibility case, tuned so
+the ≈30 × 17 tile constant still holds — and none may show more world than 1080p does.
+
+*Why:* the relationship between visible area, dark vision radius and support radius is load-
+bearing (D-033, D-034) and has to be judged on one canonical display. "Integer scaling where the
+display allows" left it ambiguous which display the design was *right* on. Now there is one
+resolution the game is tuned for, and others are accommodated.
+
+*Consequence:* Steam Deck's 1280 × 800 is no longer a co-equal target. It stays supported — it is
+16:10 and does not scale integrally — through a pixel-snapped non-integer scale plus a
+pixel-perfect toggle that letterboxes at 2×. That is compatibility work, tested after the primary
+target, and it may not constrain the primary target.
+
+*Does not change:* [D-026](#d-026--gamepad-is-a-primary-input-target-not-a-port). Gamepad-first is
+an **input** decision and stands. A desktop-optimised game with a gamepad-first UI is precisely
+Core Keeper's shape, and the pad constraints — no pixel precision, no hover-only information —
+remain usability wins for mouse users. If desktop-first is meant to demote the pad, that is a
+separate decision and needs its own entry.
+
+*Forecloses:* ultrawide (21:9) as a design target — it would show more world laterally and break
+D-034; resolution-dependent UI density; any layout that only reads correctly below 1080p.
+
+---
+
+### D-044 — Steam Deck is the primary display target; virtual resolution is 512×320
+**Decided. Supersedes [D-043](#d-043--primary-display-target-is-19201080-desktop-every-other-display-is-compatibility)
+and amends [D-034](#d-034--camera-shows-3017-tiles-tile-count-is-the-design-constant).**
+
+The build targets **Steam Deck, 1280 × 800, 16:10**. Virtual resolution is **512 × 320**, which
+is 16:10 exactly and scales to the Deck at **2.5×, filling the screen with no bars**. Base tile
+art stays **16 × 16 px**. The design constant becomes **≈32 × 20 tiles**.
+
+*Why the constant moves from ≈30 × 17:* 30 columns is the load-bearing number — it is what makes
+a 17-tile timber hall plannable against a 7-tile dark-vision radius (D-010, D-014, art-and-camera
+§1). 17 rows was never designed; it is simply what 16:9 yields at 30 columns. Moving to 16:10
+changes only the number that was arithmetic. Columns go 30 → 32, comfortably safe; rows go
+17 → 20, which costs some of the lit-circle framing (the dark-vision disc covers ~28% of the
+frame rather than ~35%) and buys hall-planning headroom.
+
+*Why 16 × 16 art is retained, and why it is not merely convenient:* open-source pixel tilesets
+cluster at 16 × 16 and 32 × 32. A 20 × 20 grid — which would have bought integer 2× scaling on the
+Deck — puts every downloaded asset through a ×1.25 resample that doubles every fourth pixel row,
+destroying 1px outlines, dithering and autotile sets. Separately, 16 px is the *right* size for
+this screen: 32 px art needs a 960 px-wide viewport for ~30 columns, which upscales to the Deck at
+a weak 1.33×, while 16 px lands in the healthy 2.5× range.
+
+*The cost, accepted deliberately:* 2.5× is not an integer scale. Plain nearest-neighbour
+alternates 2 px and 3 px blocks that crawl when the camera pans, so a **pixel-art upscale shader**
+(edge-filtered nearest / sharp-bilinear) is mandatory and is built in M0, not discovered later.
+
+*The second cost, accepted deliberately:* 16:9 desktops **pillarbox**. At 1920 × 1080 the game
+renders 1728 × 1080 with ~96 px bars each side. Showing more world on a wider screen is forbidden
+by D-034 and is not an option. Desktop is a supported display, not the tuned one.
+
+*Forecloses:* integer-scale purism as a project value; a 20 px or 32 px base grid; ultrawide as
+anything but a pillarbox; UI density tuned for a desktop monitor — **UI legibility is judged at
+Deck size**, which reverses the note D-043 left in ui-ux-and-controls §1.
+
+*Does not change:* [D-026](#d-026--gamepad-is-a-primary-input-target-not-a-port). Gamepad-first
+was always the input decision, and the display target now agrees with it rather than pulling
+against it.
+
+---
+
+### D-045 — "No player singleton" carves out the presentation layer
+**Clarifies D-004.** The rule is that **simulation** code must take an actor — or a set of actors
+— as a parameter. It is *not* a ban on knowing which actor is locally controlled: camera, HUD and
+input routing legitimately need a `LocalActor` reference, and that is correct.
+
+*Why the clarification was needed:* as originally written, the constraint read as an absolute
+prohibition, from which a developer could reasonably conclude they may not have a camera target.
+
+*Rationale for the underlying rule, now recorded in
+[world-runtime §6](./tech/world-runtime-and-persistence.md):* a singleton is an assumption baked
+into every call site, and it collapses six distinct questions — union of all actors, any actor,
+per actor, nearest actor, one specific actor, N actors — into a single accessor that nothing can
+help you disentangle later. The retrofit cost is not one refactor; it is hundreds of small
+judgement calls spread through gameplay code.
+
+*Specific dependency:* D-007's requirement that worker crafting be immune to Marrow-Ache is only
+cleanly expressible if affliction is a component on an actor. Under a singleton it degrades into
+a special case inside crafting — which is how that guarantee silently stops holding.
+
+*Review smell tests:* a global named `player`; a function needing actor state that takes no actor
+argument; `if actor == player` in gameplay code; any singleton access outside presentation.

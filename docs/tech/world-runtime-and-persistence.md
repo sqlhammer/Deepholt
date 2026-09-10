@@ -180,6 +180,49 @@ that is expensive to retrofit and free to honour now.
 
 The worker layer, when it arrives, should require no changes here at all — that is the test.
 
+### Why this is a hard rule, not a style preference
+
+A singleton is not a variable; it is **an assumption baked into every call site**. Each use of
+`get_player()` silently encodes "there is exactly one of these, and it is the important one".
+When a second actor exists, the fix is not one line — it is every call site, and they do not all
+want the same answer:
+
+| The question being asked | What it actually wants |
+|---|---|
+| Fog of war, tunnel memory | the **union** of all actors' vision |
+| Creature spawn suppression | near **any** actor |
+| Exposure, hunger, Marrow-Ache | **per** actor |
+| Creature targeting | the **nearest** actor |
+| Camera, HUD, input routing | **one specific** actor |
+| Save | **N** actors |
+
+The singleton collapses six different questions into one, and nothing in the compiler helps
+separate them later. That is why the retrofit cost is not a refactor but hundreds of small
+judgement calls spread through gameplay code.
+
+It also has a specific design dependency: [D-007](../design-decisions.md) requires worker
+crafting to be **immune to Marrow-Ache**, which is what makes a good workshop partial insurance
+against death. That is only expressible cleanly if affliction is a *component on an actor*. With
+a player singleton it becomes a special case inside the crafting code — which is exactly how
+"workers are immune" quietly stops being true two refactors later.
+
+### The carve-out: presentation may, simulation may not
+
+The rule is **not** that nothing may know which actor is locally controlled. Camera, HUD and
+input routing legitimately need that.
+
+> **Presentation may resolve the local actor. Simulation must take an actor — or a set of
+> actors — as a parameter.**
+
+A `LocalActor` reference living in the camera/HUD/input layer is correct and expected. The
+violation is a *gameplay* system reaching for it.
+
+**Review smell tests:**
+- A global or autoload named `player`.
+- A function that needs actor state but takes no actor argument.
+- Any `if actor == player` in gameplay code.
+- Any singleton access outside the presentation layer.
+
 ---
 
 ## 7. Save format
