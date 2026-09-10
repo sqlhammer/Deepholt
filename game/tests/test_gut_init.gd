@@ -1,6 +1,6 @@
 extends GutTest
 
 
-func test_harness_runs():
+func test_harness_runs() -> void:
 	assert_true(true, "the test harness itself is running")
 

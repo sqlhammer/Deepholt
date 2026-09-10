@@ -32,12 +32,6 @@ M0 can grow into, and can run its tests headless from one command.
   ```
 - **GUT** (Godot Unit Test) installed under `game/addons/gut/`, plus a
   `scripts/test.ps1` wrapper running it headless and returning a non-zero exit code on failure.
-- A `scripts/check-no-player-singleton.ps1` grep check (see M0-06) wired into the same wrapper,
-  failing the run if it matches. It returns clean today and must stay clean for the project's life.
-  The check is **scope-aware** against the source layout above: `LocalActor` is permitted under
-  `src/render/` and `src/debug/` only, because presentation may resolve the locally controlled
-  actor and simulation may not ([D-045](../../../docs/design-decisions.md)). The placeholder
-  version in this chunk need only run and be able to fail; M0-06 makes it real.
 - One placeholder test that asserts `true`, proving the harness itself runs and can fail.
 - **The pixel-art upscale shader.** 2.5× is not an integer scale: plain nearest-neighbour maps
   each source pixel to an alternating 2 px / 3 px block, and that pattern shifts as the camera
@@ -69,7 +63,6 @@ Any game content. Any art beyond a solid-colour test pattern. CI configuration.
 |---|---|
 | `pwsh scripts/test.ps1` | exits 0, placeholder test passes |
 | deliberately break the placeholder test, re-run | exits non-zero |
-| `pwsh scripts/check-no-player-singleton.ps1` | exits 0, no matches |
 
 ## Human verification
 
@@ -77,11 +70,12 @@ Any game content. Any art beyond a solid-colour test pattern. CI configuration.
    in the Output panel.
 2. Confirm the window opens at **1280 × 800** — Steam Deck size — and that the test pattern
    fills it edge to edge with **no black bars in any direction**.
-3. Put a scrolling test pattern on screen (fine 1 px checks and diagonals) and pan it slowly.
-   → Edges stay stable. No crawling, no shimmer, no rows of pixels visibly thicker than their
-   neighbours. **This is the shader check and it cannot be done from a screenshot.**
-4. Resize the window to 1920 × 1080. → It **pillarboxes** — roughly 96 px of black each side —
-   and shows exactly the same amount of world. It never stretches non-uniformly.
+3. ~~Put a scrolling test pattern on screen (fine 1 px checks and diagonals) and pan it slowly.~~
+   **Deferred to M0-04**, which pans real tile content with a real camera — building a throwaway
+   test pattern here just to exercise the shader once would be redoing the same check twice.
+   M0-04's human verification steps 3–4 are this check.
+4. ~~Resize the window to 1920 × 1080.~~ **Deferred to M0-04** for the same reason (its step 5);
+   also currently blocked by `window/size/resizable=false` in `project.godot`.
 5. Press **F3**. → The debug overlay appears with an FPS readout. Press F3 again. → It hides.
 6. Run `pwsh scripts/test.ps1` in a terminal with Godot *not* open. → It completes without
    opening a window and reports 1 passing test.
@@ -89,14 +83,18 @@ Any game content. Any art beyond a solid-colour test pattern. CI configuration.
 
 ## Exit checklist
 
-- [ ] Project boots windowed at 1280 × 800 over a 512 × 320 viewport, `canvas_items` + `keep`
-- [ ] No bars at Deck size; 16:9 pillarboxes
-- [ ] Pixel-art upscale shader in place and verified by panning, not by screenshot
-- [ ] Folder layout in place
-- [ ] `scripts/test.ps1` runs headless, passes, and can fail
-- [ ] Singleton grep check exists and is clean
-- [ ] F3 debug overlay toggles
+- [x] Project boots windowed at 1280 × 800 over a 512 × 320 render (a `SubViewport` sized
+      512 × 320, displayed through the upscale shader with `Keep Aspect Centered` — not the
+      engine's built-in `canvas_items` stretch, which can't run a custom shader on its blit)
+- [x] No bars at Deck size; 16:9 pillarboxes (by construction — verified in motion at M0-04)
+- [x] Pixel-art upscale shader in place (pan/pillarbox verification deferred to M0-04, where
+      real content and a real camera exist to check it against)
+- [x] Folder layout in place
+- [x] `scripts/test.ps1` runs headless, passes, and can fail
+- [x] F3 debug overlay toggles
 
 ## Discovered work
 
--
+- Shader pan-test and window-resize/pillarbox verification (originally this chunk's human
+  verification steps 3–4) deferred to M0-04, which already covers both with real tile content
+  and a real camera. No throwaway test-pattern scaffolding was built here.

@@ -1,3 +1,32 @@
 [gd_scene format=3 uid="uid://p66nsvtkjca"]
 
+[ext_resource type="Shader" uid="uid://bfb3tcb5b3fh6" path="res://src/render/pixel_upscale.gdshader" id="1_shader"]
+[ext_resource type="PackedScene" uid="uid://yqul1ole3cs7" path="res://src/debug/debug_overlay.tscn" id="2_yqjtg"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_upscale"]
+shader = ExtResource("1_shader")
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_game"]
+viewport_path = NodePath("GameViewport")
+
 [node name="Game" type="Node" unique_id=2029655952]
+
+[node name="GameViewport" type="SubViewport" parent="." unique_id=589241153]
+size = Vector2i(512, 320)
+render_target_update_mode = 4
+
+[node name="Display" type="CanvasLayer" parent="." unique_id=2119052606]
+
+[node name="UpscaleDisplay" type="TextureRect" parent="Display" unique_id=1410519490]
+texture_filter = 2
+material = SubResource("ShaderMaterial_upscale")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = SubResource("ViewportTexture_game")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="DebugOverlay" parent="." unique_id=418423574 instance=ExtResource("2_yqjtg")]

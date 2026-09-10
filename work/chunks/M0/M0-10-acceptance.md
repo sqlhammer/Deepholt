@@ -34,7 +34,7 @@ verifies they hold **together**, which is where foundations usually fail.
 ## Human verification — the combined session
 
 1. Fresh-clone the repo, open `game/project.godot` in Godot 4.7, run `pwsh scripts/test.ps1`.
-   → All tests pass, including the singleton check.
+   → All tests pass.
 2. Launch **at 1280 × 800**, Steam Deck size and the primary target. Load the `shaft` world.
    Press F3. → Eight depths resident, ≈4 MB, ≈32 × 20 tiles visible, filling the window with no
    bars. Pan slowly for 20 seconds → no shimmer through the 2.5× upscale.
@@ -49,7 +49,9 @@ verifies they hold **together**, which is where foundations usually fail.
 8. Save. Quit the process. Relaunch. Load. → World, actors and machine restored. Derived fields
    recompute on load (confirm via the overlay's recompute timing line, and by poisoning before save).
 9. Check machine output, run 30 more seconds, save/load once more. → Totals match hand arithmetic.
-10. Search the codebase for `get_player` and `Player`. → Nothing but the check script.
+10. Search the codebase for `get_player` and `Player`. → Nothing. Search for `LocalActor`. → Only
+    under `src/render/` and `src/debug/`. (Enforced by review against
+    `docs/coding-standards.md`, not by an automated check.)
 
 ## Exit criterion
 

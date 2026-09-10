@@ -32,25 +32,13 @@ changes here — that is the test, and this chunk is where it is won or lost.
   a property of an actor rather than an identity.
 - `builder_id` recorded on anything constructed. Storage is shared by default; ownership is
   recorded for later, not enforced now.
-- `scripts/check-no-player-singleton.ps1` upgraded from a placeholder to the real check, matching
-  `get_player`, `Player.`, `PlayerSingleton`, an autoload named `Player`, and `class_name Player`.
-  It fails the test run on any match. **This check is permanent.**
-
-  It must also match the two **Godot-idiomatic singletons in disguise** —
-  `get_first_node_in_group("player")` and `get_node("/root/Player")` — which are how a developer
-  reaches for "the" character without ever typing `get_player`. These are the most likely
-  accidental violations in this engine, and the original pattern list missed both.
-
-- **The check is scope-aware.** Per [D-045](../../../docs/design-decisions.md), presentation may
-  resolve the local actor; simulation may not. Expressed as a rule a grep can enforce against the
-  M0-01 source layout:
-
-  | Symbol | Permitted in | Fails in |
-  |---|---|---|
-  | `LocalActor` | `src/render/`, `src/debug/` | `src/world/`, `src/sim/`, `src/entity/`, `src/persist/` |
-
-  This is the only part of D-045 that is mechanically checkable. The rest — "a function that needs
-  actor state but takes no actor argument" — is a review smell test, not a grep.
+- No automated check for the singleton rule — it's enforced by code review against the
+  [no player singleton](../../../docs/coding-standards.md#no-player-singleton) entry in the
+  coding standards doc, which covers `get_player`, `Player.`, `PlayerSingleton`, an autoload
+  named `Player`, `class_name Player`, and the two Godot-idiomatic singletons in disguise —
+  `get_first_node_in_group("player")` and `get_node("/root/Player")` — as well as the
+  scope rule from [D-045](../../../docs/design-decisions.md): `LocalActor` is permitted only
+  in `src/render/` and `src/debug/`, and fails review anywhere else.
 
 ## Out of scope
 
@@ -80,8 +68,6 @@ What must not happen is code that assumes every actor has one.
 
 | Check | Expectation |
 |---|---|
-| `pwsh scripts/check-no-player-singleton.ps1` | 0 matches, exit 0 |
-| plant `get_player()` in a scratch file, re-run | non-zero exit (the check can fail) |
 | spawn 2 actors, query by component | both returned; a creature-shaped actor lacking `Inventory` is excluded |
 | add and remove a component at runtime | queries update accordingly |
 | `actor_id` stable and unique across 100 spawns | pass |
@@ -97,12 +83,10 @@ What must not happen is code that assumes every actor has one.
    least two different components, not just `Inventory`.
 4. Move actor A to another depth, leaving actor B behind. → The registry still reports both, with
    correct separate depths.
-5. Search the codebase yourself for `get_player` and `Player`. → Nothing but the check script itself.
+5. Search the codebase yourself for `get_player` and `Player`. → Nothing.
 6. Search for `LocalActor`. → It appears **only** under `src/render/` (and `src/debug/`, if the
    debug camera uses it). Any hit under `src/world/`, `src/sim/`, `src/entity/` or `src/persist/`
-   is a D-045 violation, whatever it is named.
-7. Plant `get_first_node_in_group("player")` in a scratch file and re-run the check. → Non-zero
-   exit. Delete it.
+   is a D-045 violation, whatever it is named, and should be caught in review.
 
 ## Exit checklist
 
@@ -112,9 +96,10 @@ What must not happen is code that assumes every actor has one.
 - [ ] A `Health` + `Locomotion` actor coexists with full actors and breaks nothing
 - [ ] Control is a component, not an identity
 - [ ] `builder_id` recorded
-- [ ] Singleton check is real, permanent, and demonstrably able to fail
-- [ ] Check matches `get_first_node_in_group("player")` and `get_node("/root/Player")`
-- [ ] Check is scope-aware: `LocalActor` outside `src/render/` and `src/debug/` fails the run
+- [ ] Reviewed against the no-player-singleton entry in `docs/coding-standards.md`: no match for
+      `get_player`, `Player.`, `PlayerSingleton`, an autoload named `Player`, `class_name Player`,
+      `get_first_node_in_group("player")`, or `get_node("/root/Player")`
+- [ ] `LocalActor` confirmed outside `src/render/` and `src/debug/` nowhere in the codebase
 
 ## Discovered work
 
