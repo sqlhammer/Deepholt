@@ -1,5 +1,6 @@
 [gd_scene format=3 uid="uid://p66nsvtkjca"]
 
+[ext_resource type="Script" uid="uid://b6vley1i3fg20" path="res://scenes/game.gd" id="1_lnu2h"]
 [ext_resource type="Shader" uid="uid://bfb3tcb5b3fh6" path="res://src/render/pixel_upscale.gdshader" id="1_shader"]
 [ext_resource type="PackedScene" uid="uid://yqul1ole3cs7" path="res://src/debug/debug_overlay.tscn" id="2_yqjtg"]
 
@@ -10,6 +11,7 @@ shader = ExtResource("1_shader")
 viewport_path = NodePath("GameViewport")
 
 [node name="Game" type="Node" unique_id=2029655952]
+script = ExtResource("1_lnu2h")
 
 [node name="GameViewport" type="SubViewport" parent="." unique_id=589241153]
 size = Vector2i(512, 320)

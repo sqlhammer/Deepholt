@@ -6,7 +6,7 @@ var debug_text : Dictionary = {}
 func _ready() -> void:
 	Global.connect("debug_event",set_section)
 	
-	#Global.emit_signal("debug_event","Test","55 FPS") # temp
+	#Global.emit_signal("debug_event","Level",World.dis) # temp
 
 
 func _input(event: InputEvent) -> void:

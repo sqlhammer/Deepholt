@@ -1,0 +1,64 @@
+[gd_resource type="Resource" script_class="LevelBoundTable" format=3 uid="uid://yv5tne3bdg2t"]
+
+[ext_resource type="Script" uid="uid://ccycbmyd1jmc6" path="res://src/world/level_bound.gd" id="1_7m5by"]
+[ext_resource type="Script" uid="uid://ssgjviisbtt6" path="res://src/world/level_bound_table.gd" id="2_ajcov"]
+
+[sub_resource type="Resource" id="Resource_grut4"]
+script = ExtResource("1_7m5by")
+name = "Surface"
+radius = 90
+metadata/_custom_type_script = "uid://ccycbmyd1jmc6"
+
+[sub_resource type="Resource" id="Resource_7m5by"]
+script = ExtResource("1_7m5by")
+depth = 1
+name = "Rootshelf"
+radius = 64
+metadata/_custom_type_script = "uid://ccycbmyd1jmc6"
+
+[sub_resource type="Resource" id="Resource_ajcov"]
+script = ExtResource("1_7m5by")
+depth = 2
+name = "Greyseam"
+radius = 81
+metadata/_custom_type_script = "uid://ccycbmyd1jmc6"
+
+[sub_resource type="Resource" id="Resource_wwk47"]
+script = ExtResource("1_7m5by")
+depth = 3
+name = "Old Terraces"
+radius = 102
+metadata/_custom_type_script = "uid://ccycbmyd1jmc6"
+
+[sub_resource type="Resource" id="Resource_c7qo4"]
+script = ExtResource("1_7m5by")
+depth = 4
+name = "The Works"
+radius = 129
+metadata/_custom_type_script = "uid://ccycbmyd1jmc6"
+
+[sub_resource type="Resource" id="Resource_rj8ng"]
+script = ExtResource("1_7m5by")
+depth = 5
+name = "Drowned"
+radius = 163
+metadata/_custom_type_script = "uid://ccycbmyd1jmc6"
+
+[sub_resource type="Resource" id="Resource_3w45n"]
+script = ExtResource("1_7m5by")
+depth = 6
+name = "The Crush"
+radius = 207
+metadata/_custom_type_script = "uid://ccycbmyd1jmc6"
+
+[sub_resource type="Resource" id="Resource_7y6rm"]
+script = ExtResource("1_7m5by")
+depth = 7
+name = "The End"
+radius = 207
+metadata/_custom_type_script = "uid://ccycbmyd1jmc6"
+
+[resource]
+script = ExtResource("2_ajcov")
+rows = Array[ExtResource("1_7m5by")]([SubResource("Resource_grut4"), SubResource("Resource_7m5by"), SubResource("Resource_ajcov"), SubResource("Resource_wwk47"), SubResource("Resource_c7qo4"), SubResource("Resource_rj8ng"), SubResource("Resource_3w45n"), SubResource("Resource_7y6rm")])
+metadata/_custom_type_script = "uid://ssgjviisbtt6"

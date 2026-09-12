@@ -22,6 +22,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 Global="*uid://dhr1etdbio5wj"
+World="*uid://duqr4368qma7m"
 
 [debug]
 

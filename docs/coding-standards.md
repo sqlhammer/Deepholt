@@ -29,6 +29,8 @@ Begin by complying with the naming standards published [here](https://docs.godot
 - Decorate all classes, scripts, and methods with plain language comments explaining the purpose behind each component
 - When marking spawn locations or important locations, prefer to use Marker2D or Marker3D node types
 - Use AnimationPlayers for animations rather than code-based frame cycling.
+- Always use tabs for indenting
+- Always have two empty lines in between funcs
 
 ## No player singleton
 

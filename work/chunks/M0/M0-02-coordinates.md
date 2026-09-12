@@ -54,11 +54,16 @@ Tile data (M0-03). Any conversion between world coordinates and pixels (M0-04).
 
 ## Exit checklist
 
-- [ ] `WorldPos` in use, no ad-hoc `(x, y, depth)` tuples elsewhere
-- [ ] Exactly one internal↔display mapping function
-- [ ] Bounds are data, not constants; all eight depths present
-- [ ] Seed derivation deterministic
+- [x] `WorldPos` in use, no ad-hoc `(x, y, depth)` tuples elsewhere
+- [x] Exactly one internal↔display mapping function
+- [x] Bounds are data, not constants; all eight depths present
+- [ ] Seed derivation deterministic — deferred, see Discovered work
 
 ## Discovered work
 
--
+- Level seed derivation (`level_seed = hash(world_seed, depth)`) has no natural home yet —
+  there is no level scene/resource to own it. Deferred to whichever M0 chunk introduces the
+  level scene; `World.world_seed` already exists as the input it will need.
+- Depth-stepper debug-overlay verification (human verification steps 2–4) deferred for the
+  same reason: nothing currently tracks "the player's current depth" for the overlay to read.
+  Revisit once an actor/camera-depth concept exists (M0-05/M0-06).
