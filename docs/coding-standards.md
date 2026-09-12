@@ -32,6 +32,27 @@ Begin by complying with the naming standards published [here](https://docs.godot
 - Always use tabs for indenting
 - Always have two empty lines in between funcs
 
+## Source layout
+
+Everything under `game/` follows this layout. The directory a file lives in determines which
+rules bind it — the no-player-singleton rule below is written in terms of these paths.
+
+```
+game/
+  scenes/          .tscn files
+  src/
+    world/         coordinates, tile storage, depths
+    render/        chunk rendering, camera
+    entity/        actors and components
+    sim/           clock, rate machines
+    persist/       save/load, migrations
+    debug/         debug overlay and dev scenes
+  tests/           test scripts, mirroring src/
+```
+
+`src/world/`, `src/sim/`, `src/entity/` and `src/persist/` are **simulation**. `src/render/`
+and `src/debug/` are **presentation**. Simulation must not depend on presentation.
+
 ## No player singleton
 
 **Rule:** Simulation code must take an actor — or a set of actors — as a parameter. No
@@ -39,8 +60,7 @@ global, autoload, or accessor resolves to "the" character.
 
 **Allowed:** presentation-layer code (camera, HUD, input routing) may hold a `LocalActor`
 reference to the locally controlled actor. This is restricted to `game/src/render/` and
-`game/src/debug/` — see the source layout in
-[M0-01](../work/chunks/M0/M0-01-project-skeleton.md).
+`game/src/debug/` — see **Source layout** above.
 
 **Not allowed, anywhere in `game/src/world/`, `game/src/sim/`, `game/src/entity/`, or
 `game/src/persist/`:**
