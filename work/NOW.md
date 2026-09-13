@@ -39,17 +39,30 @@ By hand, in a running game:
 
 Separately, automated: the mutation path is covered by tests that do not need a running scene —
 changing a tile and reading it back, and whatever you decide the rules are for digging something
-that cannot be dug.
+that cannot be dug. Loading a level grid with no origin marker, or with two, fails and is
+tested ([D-050](../docs/design-decisions.md)).
 
 ## What you're deciding
 
 - **What a tile is**, at this stage, and how a level's worth of them is stored.
+  *Partly decided:* a cell has a ground and a top, at minimum
+  ([D-047](../docs/design-decisions.md)). Still open, before building:
+  - ~~Where tile data lives, and in what shape.~~ Decided — [D-048](../docs/design-decisions.md).
+  - ~~Which ground and top kinds exist.~~ Decided — [D-051](../docs/design-decisions.md), amended by [D-052](../docs/design-decisions.md). Still
+    Out-of-data reads decided — [D-057](../docs/design-decisions.md), [D-059](../docs/design-decisions.md). Ore storage decided — [D-054](../docs/design-decisions.md).
+  - ~~How the hand-made level is authored.~~ Decided — [D-049](../docs/design-decisions.md).
 - **How the world reaches the screen.** Godot offers several routes here with very different
   ceilings. The one that gets pixels up fastest is not obviously the one that survives eight
   resident levels and a culling camera later — and you do not have to solve for that yet, but
   you should know which you're choosing.
+  *Decided:* a data texture read by a shader, not `TileMapLayer`
+  ([D-046](../docs/design-decisions.md)). Still open, before building:
+  - How tile data is encoded into textures — format, and whether the layers share a texture.
+  - How an id becomes pixels — finding its atlas region, and combining ground and top.
+  - How much of a level one quad covers.
 - **Who is allowed to change a tile, and how anything else learns that it changed.** This is the
-  decision in this slice with the longest tail.
+  decision in this slice with the longest tail. It also settles how a changed tile reaches the
+  GPU, so it is needed before the dig verb exists, though not before a static level is drawn.
 - **What an actor is** — the thinnest thing that can be one, given that no system may assume there
   is exactly one of them (pillar [P5](../docs/game-overview.md), rule [D-045](../docs/design-decisions.md)).
 - **How input reaches an actor.** The standards permit presentation code to hold a reference to

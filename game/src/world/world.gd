@@ -1,7 +1,11 @@
 extends Node
 
-var world_seed: String = "default_seed"
+var world_seed: int
 var level_bounds: Resource = preload("res://src/world/level_bounds.tres")
+
+
+func _ready() -> void:
+	set_world_seed("Default Seed")
 
 
 func depth_to_display(depth: int) -> String:
@@ -20,4 +24,12 @@ func is_in_bounds(pos: WorldPos) -> bool:
 	if not _bounds: return false
 	var _distance = Vector2(0,0).distance_to(Vector2(pos.x,pos.y))
 	return _distance <= _bounds.radius
+
+
+func set_world_seed(_seed: String) -> void:
+	world_seed = hash(_seed)
+	Global.emit_signal("debug_event",["World Seed",str(world_seed)])
+
+
+
 

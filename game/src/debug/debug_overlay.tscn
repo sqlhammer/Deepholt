@@ -6,7 +6,13 @@
 visible = false
 script = ExtResource("1_ggiji")
 
+[node name="Timer" type="Timer" parent="." unique_id=752520150]
+wait_time = 0.25
+autostart = true
+
 [node name="DebugRichTextLabel" type="RichTextLabel" parent="." unique_id=2118087943]
 offset_right = 197.0
 offset_bottom = 154.0
 bbcode_enabled = true
+
+[connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]

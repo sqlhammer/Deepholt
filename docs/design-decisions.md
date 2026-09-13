@@ -652,3 +652,270 @@ a special case inside crafting — which is how that guarantee silently stops ho
 
 *Review smell tests:* a global named `player`; a function needing actor state that takes no actor
 argument; `if actor == player` in gameplay code; any singleton access outside presentation.
+
+---
+
+### D-046 — Levels reach the screen through a data texture and a shader, not `TileMapLayer`
+**Decided.** A level is drawn as textured quads whose shader reads per-tile data from a texture —
+one texel per tile — and draws tile art out of an atlas. Godot's `TileMapLayer` is not used for
+world terrain.
+
+*Why — two reasons, either weaker alone:*
+1. **The route is the lesson.** The project runs learn-deeply-first
+   ([WORKING-AGREEMENT §7](../work/WORKING-AGREEMENT.md)), and owning the path from tile data to
+   pixels is worth more than having it handed over.
+2. **It is where rendering is headed anyway.** Tunnel memory's four per-tile render states
+   ([D-033](#d-033--tunnel-memory-four-render-states-per-tile)), a per-tile light buffer that
+   chooses each tile's look, and ore identity hidden in the renderer rather than the UI
+   ([art-and-camera §2, §4.1](./tech/art-and-camera.md)) are all a per-tile value reaching a
+   shader. This route carries that natively. `TileMapLayer` has no per-cell shader input and would
+   need a side-channel state texture to get there — the same mechanism this route is built on.
+
+*Considered:* `TileMapLayer`, used either as the tile store or as a mirror of separate tile data —
+fastest to first pixels, with editor painting, quadrant culling and terrain autotiling included.
+It was the initial preference and a close call. Also described and not pursued: a node per tile,
+`_draw()` / `RenderingServer` canvas items, `MultiMeshInstance2D`, and generated chunk meshes.
+
+*Costs accepted deliberately:*
+- **No editor tile painting.** Hand-made levels need their own authoring format, which procgen
+  replaces in M3.
+- **Autotiling is hand-built** when the art calls for it.
+- **Culling is as coarse as the quads.** Nothing batches or culls per region automatically.
+- **Rendering faults live in texture contents and shader maths**, not in inspectable nodes. The
+  debug overlay's job of separating *what the world believes* from *what the screen shows* is how
+  they get diagnosed.
+
+*Forecloses:* `TileSet`-generated collision, navigation and occlusion for terrain — anything that
+needs those derives them from tile data. `TileMapLayer` scene tiles as a way to place structures.
+
+*Open:* how tile data is encoded into textures, how an id finds its atlas region, how much of a
+level one quad covers, and how a changed tile reaches the GPU.
+
+---
+
+### D-047 — A level has at least two tile layers: the ground, and what sits on it
+**Decided.** Every cell on a level has a **ground** — the kind of material underfoot — and a
+**top** — what occupies the space over that ground: minable rock, open space, or something built.
+Building over ground does not replace it. A built floor looks different and has its own
+properties, and the ground it was laid on is still known.
+
+*Why:* what the mountain was made of is information the world keeps. Collapsing "what is here"
+into a single value per cell would make every build destroy it.
+
+*Two is a minimum, not a ceiling.* Known pressure toward more: burial-not-destruction leaves a
+built object and rubble in the same cell ([digging-and-structure §5](./systems/digging-and-structure.md));
+base-building stands walls, doors and props on built floors
+([base-building](./systems/base-building.md)); ore sits inside rock. How those are represented
+is not decided here.
+
+*Open:* where tile data lives and in what shape; which kinds exist; how *open*, *never set* and
+*out of bounds* are told apart.
+
+---
+
+### D-048 — Tile data is flat byte arrays in simulation, and the only truth
+**Decided.** Each level's tiles live in a `RefCounted` under `src/world/` — not a Node. Each
+layer ([D-047](#d-047--a-level-has-at-least-two-tile-layers-the-ground-and-what-sits-on-it)) is
+one flat `PackedByteArray` covering the square around the level's radial bounds, indexed
+`(y + r) * width + (x + r)`. Each byte is a kind id into a table of kind definitions. Everything
+else that shows tiles — including the render textures of
+[D-046](#d-046--levels-reach-the-screen-through-a-data-texture-and-a-shader-not-tilemaplayer) —
+is derived from this data and never read back as truth. Access goes only through small read and
+write functions.
+
+*Why:* simulation must not depend on presentation ([coding-standards](./coding-standards.md)),
+so tile truth cannot live in anything that draws. A plain object lets tests build and mutate a
+level with no scene and no art. Keeping access behind functions means widening ids, adding fields
+or chunking later changes only those functions. A byte per tile per layer is already close to
+what a data texture holds.
+
+*Deferred, not foreclosed:* 32×32 chunking and the fuller per-tile record in
+[world-runtime §3](./tech/world-runtime-and-persistence.md). Nothing in slice 001 reads them, and
+pre-alpha scope rules out stubs for them.
+
+*Open:* which kinds exist, and how *open*, *never set* and *out of bounds* are told apart.
+
+---
+
+### D-049 — Hand-made levels are authored as text grids with a single origin marker
+**Decided.** A hand-made level is a text grid, one character per tile, read through a table that
+maps each character to kinds for the layers of
+[D-047](#d-047--a-level-has-at-least-two-tile-layers-the-ground-and-what-sits-on-it). One
+dedicated character marks an **open tile on rock ground** that is also the level's **`(0, 0)`**.
+It appears **exactly once** per grid; every other tile's coordinates are measured from it.
+
+*Why:* text needs no tooling, reads as the layout it describes, diffs cleanly, and lets tests build
+a level from an inline string. Putting the origin in the grid itself means the file says where it
+sits in world coordinates, rather than that living in a separate offset.
+
+*Binds:* all depths share one origin at the mountain's axis, and each level's bounds are a disc
+around it ([world-runtime §2](./tech/world-runtime-and-persistence.md)). The marker is therefore
+the axis — where it sits in each file is what aligns one level over another.
+
+*Considered:* a PNG painted in an image editor, one pixel per tile. Easier to paint large or
+irregular shapes; harder to diff or write inline in a test.
+
+*Replaced by:* procgen in M3, for generated levels.
+
+*Open:* the actual characters; what the loader does with zero or several markers.
+
+---
+
+### D-050 — A level grid without exactly one origin marker fails to load
+**Decided. Closes one open question in
+[D-049](#d-049--hand-made-levels-are-authored-as-text-grids-with-a-single-origin-marker).** A
+grid with no origin marker, or with more than one, is rejected: the level does not load. Both
+cases are covered by unit tests.
+
+*Why:* every coordinate in the level is measured from the marker, so without exactly one there is
+no correct way to place the level — and guessing would put it somewhere plausible and wrong.
+
+---
+
+### D-051 — Slice 001's tile kinds and grid characters
+**Decided. Closes the open characters question in
+[D-049](#d-049--hand-made-levels-are-authored-as-text-grids-with-a-single-origin-marker).**
+One ground kind and three top kinds:
+
+| Char | Ground | Top |
+|---|---|---|
+| `.` | rock | open |
+| `#` | rock | minable rock |
+| `c` | rock | minable copper node |
+| `0` | rock | open — and the level's `(0, 0)` origin marker ([D-050](#d-050--a-level-grid-without-exactly-one-origin-marker-fails-to-load)) |
+
+*Why:* start very small. Enough to tell open from solid at a glance, and one ore so there is
+something other than rock to dig.
+
+*Retrofit cost named at the time:* copper here is a **top kind of its own**, not rock carrying an
+ore value. The fuller tile record keeps ore separate from terrain
+([world-runtime §3](./tech/world-runtime-and-persistence.md)), and ore identity must be hidden by
+the renderer in the dark ([art-and-camera §4.1](./tech/art-and-camera.md)) — so this is expected
+to be reshaped when either arrives.
+
+*Open:* what a grid character outside this table means, and how *never set* and *out of bounds*
+read.
+
+---
+
+### D-052 — One text grid per tile layer; ore is a value on rock, not a kind
+**Decided. Amends [D-049](#d-049--hand-made-levels-are-authored-as-text-grids-with-a-single-origin-marker)
+and [D-051](#d-051--slice-001s-tile-kinds-and-grid-characters).**
+
+- A hand-made level is authored as **one text grid per tile layer**, not one grid whose characters
+  each encode a combination of layers.
+- **The text grid is a short-term authoring format.** It does not shape the tile data design or
+  any architecture decision; a loader translates it into tile data.
+- **`c` is minable rock carrying a copper ore value** — not a top kind of its own. This replaces
+  D-051's copper row, and the retrofit cost D-051 named no longer applies.
+
+*Why one grid per layer:* in a single grid, characters stand for combinations, and combinations
+multiply with every new ground kind, top kind or ore. Separate grids keep each layer's vocabulary
+small and each layer visible on its own.
+
+*Costs accepted deliberately:* grids must line up cell for cell, and a short or long row in one
+grid shifts only that layer; the loader has more ways to fail and more to validate.
+
+*Open:* whether ore is its own grid or a character in the top grid; the characters each grid
+uses; which grid carries the origin marker (exactly one is still required,
+[D-050](#d-050--a-level-grid-without-exactly-one-origin-marker-fails-to-load)); what grids of
+mismatched dimensions do; and where an ore value lives in tile data, since
+[D-048](#d-048--tile-data-is-flat-byte-arrays-in-simulation-and-the-only-truth) holds one kind
+byte per layer and nothing else.
+
+---
+
+### D-053 — Ore has its own grid; every grid carries the origin marker
+**Decided. Amends [D-050](#d-050--a-level-grid-without-exactly-one-origin-marker-fails-to-load)
+and closes open questions in [D-052](#d-052--one-text-grid-per-tile-layer-ore-is-a-value-on-rock-not-a-kind).**
+
+- **Ore is authored in its own grid**, alongside the ground and top grids.
+- **Every grid carries exactly one origin marker.** The markers are how the grids line up with
+  each other: each grid's coordinates are measured from its own marker. A grid with none, or with
+  more than one, fails to load — so D-050's rule now applies per grid.
+- **The origin marker only ever means empty space.** The origin tile is always open, with no ore.
+
+*Why:* aligning grids by a shared marker, rather than by position in the file, means a grid's
+alignment is stated inside the grid itself.
+
+*Deferred:* what grids of different dimensions or extents do.
+
+*Open:* what the marker means in the ground grid, where there is no empty ground; and where an
+ore value lives in tile data.
+
+---
+
+### D-054 — Ore is a third byte array; the ground grid's origin marker is rock
+**Decided. Amends [D-048](#d-048--tile-data-is-flat-byte-arrays-in-simulation-and-the-only-truth)
+and closes the open questions in [D-053](#d-053--ore-has-its-own-grid-every-grid-carries-the-origin-marker).**
+
+- **Ore lives in a third `PackedByteArray` per level**, the same shape and indexing as the ground
+  and top arrays in D-048. Each byte is an ore id. Like the others, it is the truth; render
+  textures are derived from it.
+- **In the ground grid, the origin marker means rock** — for now. In the top and ore grids it
+  means empty.
+
+*Why a separate array rather than packing ore into the top byte:* it follows the pattern already
+chosen for layers, matches the separate ore grid, and keeps one meaning per byte.
+
+---
+
+### D-055 — Malformed grids are a hard failure
+**Decided.** An unrecognised character or a ragged line in any level grid throws an error and the
+level does not load. There is no partial load, no substitution and no best guess.
+
+---
+
+### D-056 — Grid characters, and ore only inside minable rock
+**Decided. Closes the characters question in
+[D-053](#d-053--ore-has-its-own-grid-every-grid-carries-the-origin-marker).**
+
+| Grid | Char | Means |
+|---|---|---|
+| Ground | `r` | rock |
+| Top | `.` | open |
+| Top | `#` | minable rock |
+| Ore | `.` | no ore |
+| Ore | `c` | copper |
+| All | `0` | origin — rock in the ground grid, empty in top and ore ([D-054](#d-054--ore-is-a-third-byte-array-the-ground-grids-origin-marker-is-rock)) |
+
+`.` means *nothing on this layer*; `#` is solid mass; letters are materials.
+
+**Ore must sit in a `#` tile.** An ore character over anything else in the top grid is a hard
+failure, as [D-055](#d-055--malformed-grids-are-a-hard-failure): the level does not load.
+
+---
+
+### D-057 — Reads outside a level's tile data return a sentinel
+**Decided.** Reading a tile at a coordinate the level's data does not cover returns a reserved
+sentinel value rather than erroring or pretending to be an ordinary kind. Callers check for it
+where it matters.
+
+*Considered:* an error on the read; a default kind such as solid rock; a separate validity check
+callers must make first; a found-or-not result.
+
+*Open:* the sentinel's value; whether *outside the array* and *inside the array but outside the
+level's radial bounds* return the same sentinel or different ones.
+
+---
+
+### D-058 — Sentinel values: 999 outside the array, 998 outside radial bounds
+**Decided. Closes the open questions in
+[D-057](#d-057--reads-outside-a-levels-tile-data-return-a-sentinel).** A tile read at a
+coordinate outside the level's arrays returns **999**. A read inside the arrays but outside the
+level's radial bounds returns **998**. The two cases are distinguishable.
+
+*Note:* both exceed a byte, so they exist only as values a read returns — they are never stored in
+the tile arrays of [D-048](#d-048--tile-data-is-flat-byte-arrays-in-simulation-and-the-only-truth).
+
+---
+
+### D-059 — Sentinel values revised to 255 and 254
+**Decided. Supersedes [D-058](#d-058--sentinel-values-999-outside-the-array-998-outside-radial-bounds).**
+A tile read outside the level's arrays returns **255** (the maximum of a byte). A read inside the
+arrays but outside the level's radial bounds returns **254**.
+
+*Consequence:* both now fit in a byte, so they share the id space of the tile arrays in
+[D-048](#d-048--tile-data-is-flat-byte-arrays-in-simulation-and-the-only-truth) and
+[D-054](#d-054--ore-is-a-third-byte-array-the-ground-grids-origin-marker-is-rock). **254 and 255
+are reserved on every layer** — no ground, top or ore kind may use them.

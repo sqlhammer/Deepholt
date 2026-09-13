@@ -17,4 +17,5 @@ func hash_value() -> int:
 	return hash([x, y, depth])
 
 func equals(other: WorldPos) -> bool:
+	if other == null: return false
 	return x == other.x and y == other.y and depth == other.depth

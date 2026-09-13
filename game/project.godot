@@ -40,6 +40,10 @@ window/size/window_height_override=800
 
 enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
+[global_group]
+
+players="A collection of all players logged into the game."
+
 [input]
 
 toggle_debug={
