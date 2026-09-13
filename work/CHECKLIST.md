@@ -4,14 +4,14 @@ Working list for [NOW.md](./NOW.md). Ordered so something is on screen early, no
 dependency. **Decide** items are forks to talk through before building past them; each outcome
 becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 
-## A. Tile data — no scene
+## A. Tile data — no scene ✅
 
-- [ ] Ore is a third byte array alongside ground and top ([D-054](../docs/design-decisions.md)).
-- [ ] The kinds from [D-051](../docs/design-decisions.md) and [D-052](../docs/design-decisions.md) exist as a table.
-- [ ] A level's tile data can be created, written and read by coordinate, per [D-048](../docs/design-decisions.md).
-- [ ] Test: write a tile on each layer, read it back.
-- [ ] Reads outside the array return 255; inside the array but outside radial bounds return 254. No kind on any layer uses either ([D-057](../docs/design-decisions.md), [D-059](../docs/design-decisions.md)).
-- [ ] Test: reads past each edge of the array return 255, and a read in a corner outside the radius returns 254.
+- [x] Ore is a third byte array alongside ground and top ([D-054](../docs/design-decisions.md)).
+- [x] The kinds from [D-051](../docs/design-decisions.md) and [D-052](../docs/design-decisions.md) exist as a table.
+- [x] A level's tile data can be created, written and read by coordinate, per [D-048](../docs/design-decisions.md).
+- [x] Test: write a tile on each layer, read it back.
+- [x] Reads outside the array return 255; inside the array but outside radial bounds return 254. No kind on any layer uses either ([D-057](../docs/design-decisions.md), [D-059](../docs/design-decisions.md)).
+- [x] Test: reads past each edge of the array return 255, and a read in a corner outside the radius returns 254.
 
 ## B. Loading a grid
 

@@ -9,7 +9,7 @@ extends RefCounted
 const SENTINEL_OUT_OF_ARRAY: int = 255
 const SENTINEL_OUT_OF_BOUNDS: int = 254
 
-var _level_bound: LevelBound
+var level_bound: LevelBound
 
 var ground: PackedByteArray
 var top: PackedByteArray
@@ -17,17 +17,18 @@ var ore: PackedByteArray
 
 
 func _init(p_level_bound: LevelBound) -> void:
-	_level_bound = p_level_bound
+	level_bound = p_level_bound
+	
 	ground = _init_tile_array(ground,TileKind.GROUND.ROCK)
-	top = _init_tile_array(top,TileKind.TOP.OPEN)
+	top = _init_tile_array(top,TileKind.TOP.MINABLE_ROCK)
 	ore = _init_tile_array(ore,TileKind.ORE.NONE)
 
 func _init_tile_array(tiles: PackedByteArray, tile_kind: int) -> PackedByteArray:
-	var max_x = _level_bound.radius
-	var max_y = _level_bound.radius
-	var min_x = 0-_level_bound.radius
-	var min_y = 0-_level_bound.radius
-	var width: int = 2 * _level_bound.radius + 1
+	var max_x = level_bound.radius
+	var max_y = level_bound.radius
+	var min_x = 0-level_bound.radius
+	var min_y = 0-level_bound.radius
+	var width: int = 2 * level_bound.radius + 1
 	tiles.resize(width * width)
 	
 	for x in range(min_x,max_x+1):
@@ -73,6 +74,7 @@ func set_ground(x: int, y: int, kind: int) -> void:
 	var idx: int = get_index(x,y)
 	ground[idx] = kind
 
+
 func set_top(x: int, y: int, kind: int) -> void:
 	var _tile: int = _get_tile(top,x,y)
 	if _tile == SENTINEL_OUT_OF_ARRAY or _tile == SENTINEL_OUT_OF_BOUNDS:
@@ -91,24 +93,26 @@ func set_ore(x: int, y: int, kind: int) -> void:
 
 
 func get_index(x: int, y: int) -> int:
-	if _level_bound == null: return SENTINEL_OUT_OF_ARRAY
-	if _level_bound.radius == null: return SENTINEL_OUT_OF_ARRAY
+	if level_bound == null: return SENTINEL_OUT_OF_ARRAY
+	if level_bound.radius == null: return SENTINEL_OUT_OF_ARRAY
 	
-	var r: int = _level_bound.radius
+	var r: int = level_bound.radius
 	var width: int = (2 * r + 1)
 	var idx: int = (y + r) * width + (x + r)
 	return idx
 
 
 func _is_out_of_array(x: int, y: int) -> int:
-	if x < (0-_level_bound.radius) or x > _level_bound.radius:
+	if x < (0-level_bound.radius) or x > level_bound.radius:
+		print("Out of array (%d,%d). Radius: %d" % [x, y, level_bound.radius])
 		return SENTINEL_OUT_OF_ARRAY
-	if y < (0-_level_bound.radius) or y > _level_bound.radius:
+	if y < (0-level_bound.radius) or y > level_bound.radius:
+		print("Out of array (%d,%d). Radius: %d" % [x, y, level_bound.radius])
 		return SENTINEL_OUT_OF_ARRAY
 	return 0
 
 func _is_out_of_bounds(x: int, y: int) -> int:
-	var pos: WorldPos = WorldPos.new(x,y,_level_bound.depth)
+	var pos: WorldPos = WorldPos.new(x,y,level_bound.depth)
 	if not World.is_in_bounds(pos):
 		return SENTINEL_OUT_OF_BOUNDS
 	return 0
