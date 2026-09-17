@@ -1,11 +1,6 @@
 class_name LevelGridLoader
 extends RefCounted
 
-# Parses a level's three per-layer text grids (D-049, D-052, D-053) and writes them into a
-# LevelTiles, with the origin marker landing at world (0, 0) on every layer. Grid characters
-# per D-056. A malformed grid -- an unrecognised character, a ragged line, a missing or
-# duplicated origin marker, or ore outside minable rock (D-055, D-056) -- fails the whole load
-
 
 const GROUND_CHARS: Dictionary = {
 	"r": TileKind.GROUND.ROCK,
@@ -64,20 +59,39 @@ static func _has_valid_origin(grid: String) -> bool:
 	return true
 
 
+static func _find_origin(grid: String) -> Vector2i:
+	var col: int = 0
+	var row: int = 0
+
+	for tile in grid:
+		if Global.contains_whitespace(tile): # next row
+			row = row + 1
+			col = 0
+			continue
+		if tile == "0":
+			return Vector2i(col, row)
+		col = col + 1
+
+	return Vector2i.ZERO # unreachable; origin is validated before this runs
+
+
 static func _load_tile_layer(tiles: LevelTiles, layer_name: String, grid: String, characters: Dictionary) -> LevelTiles:
-	var negative_radius: int = 0-tiles.level_bound.radius
-	var x: int = negative_radius
-	var y: int = negative_radius
+	var origin: Vector2i = _find_origin(grid)
+	var col: int = 0
+	var row: int = 0
 	
 	for tile in grid:
 		if Global.contains_whitespace(tile): # next row
-			y = y + 1
-			x = negative_radius
+			row = row + 1
+			col = 0
 			continue
-		
-		# calling methods for set_ground, set_top, and set_ore
+	
+		# world coords are relative to this grid's own origin marker,
+		# not the level's corner (D-053)
+		var x: int = col - origin.x
+		var y: int = row - origin.y
 		tiles.call("set_%s" % layer_name,x,y,characters.get(tile))
-		x = x + 1
+		col = col + 1
 	
 	return tiles
 

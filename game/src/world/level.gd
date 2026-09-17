@@ -5,10 +5,16 @@ var _depth: int = -1
 var depth: int:
 	get: return _depth
 var level_seed: int
+var level_tiles: LevelTiles
 
 
-func _ready() -> void:
-	set_depth(0) # debug
+func setup(p_depth: int) -> void:
+	set_depth(p_depth)
+	self.name = "Level%d" % depth
+	
+	level_tiles = LevelTiles.new(World.level_bounds.rows[depth])
+	LevelGridLoader.load(level_tiles, World.debug_levels[depth]["ground"], World.debug_levels[depth]["top"], World.debug_levels[depth]["ore"])
+	pass
 
 
 func set_depth(_d: int) -> void:

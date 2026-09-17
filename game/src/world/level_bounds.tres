@@ -13,7 +13,7 @@ metadata/_custom_type_script = "uid://ccycbmyd1jmc6"
 script = ExtResource("1_7m5by")
 depth = 1
 name = "Rootshelf"
-radius = 64
+radius = 5
 metadata/_custom_type_script = "uid://ccycbmyd1jmc6"
 
 [sub_resource type="Resource" id="Resource_ajcov"]

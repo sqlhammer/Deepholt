@@ -37,7 +37,6 @@ func _init_tile_array(tiles: PackedByteArray, tile_kind: int) -> PackedByteArray
 	
 	return tiles
 
-
 func get_ground(x: int, y: int) -> int:
 	return _get_tile(ground,x,y)
 

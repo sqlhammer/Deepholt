@@ -140,3 +140,31 @@ func test_tiles_beyond_level_bounds_are_discarded_not_failed() -> void:
 	assert_eq(tiles.get_top(1, 0), TileKind.TOP.MINABLE_ROCK, "the edge tile still loads correctly")
 	assert_eq(tiles.get_ground(2, 0), LevelTiles.SENTINEL_OUT_OF_ARRAY,
 		"the column beyond the level's radius is never actually there to read back")
+
+
+# The origin marker isn't always at the grid's geometric center.
+# Tiles must land relative to wherever '0' actually sits, not to an
+# assumed center of a (radius * 2 + 1) square -- regression test for
+# a bug where loading always started at the array's corner instead.
+func test_off_center_origin_places_tiles_relative_to_the_marker() -> void:
+	var level_bounds = LevelBound.new(1, "Unit Test", 2)
+	var tiles: LevelTiles = LevelTiles.new(level_bounds)
+	var ok: bool = LevelGridLoader.load(tiles,
+		"rrrr\nr0rr\nrrrr",
+		"..#.\n.0#.\n..#.",
+		"....\n.0..\n....")
+
+	assert_true(ok, "an off-center origin should still load")
+	assert_eq(tiles.get_top(0, 0), TileKind.TOP.OPEN, "the origin cell itself is open")
+	assert_eq(tiles.get_top(-1, 0), TileKind.TOP.OPEN, "west of the origin is open")
+	assert_eq(tiles.get_top(1, 0), TileKind.TOP.MINABLE_ROCK, "east of the origin is minable rock")
+
+
+
+
+
+
+
+
+
+
