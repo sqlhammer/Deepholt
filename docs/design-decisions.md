@@ -919,3 +919,76 @@ arrays but outside the level's radial bounds returns **254**.
 [D-048](#d-048--tile-data-is-flat-byte-arrays-in-simulation-and-the-only-truth) and
 [D-054](#d-054--ore-is-a-third-byte-array-the-ground-grids-origin-marker-is-rock). **254 and 255
 are reserved on every layer** — no ground, top or ore kind may use them.
+
+---
+
+### D-060 — The authored unit is a placeable prefab, and the marker is its anchor
+**Decided. Amends [D-049](#d-049--hand-made-levels-are-authored-as-text-grids-with-a-single-origin-marker)
+and [D-053](#d-053--ore-has-its-own-grid-every-grid-carries-the-origin-marker).**
+
+- **What a person authors is a prefab, not a level.** A prefab is a block of tiles stamped into a
+  level at a world coordinate. A level is what you get after stamping zero or more of them into
+  the default fill.
+- **The `0` marker is the prefab's own anchor**, not world `(0, 0)`. Stamping supplies the world
+  coordinate the marker lands on. D-053's rule that the markers are how the layer grids line up
+  with each other is unchanged — they still align to each other by marker.
+
+*Why:* authoring does not end at procgen. Generation's fourth step stamps **authored prefab
+chunks** at region centres and junctions ([world-and-generation §4](./world-and-generation.md)),
+the target is roughly **30% authored by area** on ruin strata, and three authored ruin prefabs
+are in pre-alpha scope at M3 with their content at M7
+([pre-alpha-scope](./pre-alpha-scope.md)). A format whose marker means world `(0, 0)` cannot
+express a thing that gets placed somewhere, so that meaning had to go before content exists in it.
+
+*Unchanged:* all depths still share one origin at the mountain's axis
+([world-runtime §2](./tech/world-runtime-and-persistence.md)). This is about what a prefab's
+marker means, not about the coordinate space.
+
+*Deferred:* rotation and variants, both of which `POIPrefab` will need
+([content-schema §3](./tech/content-schema.md)) and neither of which is built. Also deferred,
+deliberately: whether one text grid per layer survives more layers
+([D-047](#d-047--a-level-has-at-least-two-tile-layers-the-ground-and-what-sits-on-it) names the
+pressure). Three grids stand.
+
+---
+
+### D-061 — Authored tile content is a `.tres` resource with a stable id, indexed by a registry
+**Decided. Amends [D-049](#d-049--hand-made-levels-are-authored-as-text-grids-with-a-single-origin-marker).**
+A prefab is a Godot `Resource` at `res://content/tile_prefab/<id>.tres`, carrying a stable
+snake_case `id` and its three layer grids as multi-line text. A registry autoload indexes them by
+id at startup; an unknown id is an error at the lookup.
+
+*Why:* the project already settled that content is authored as custom `Resource` types with a
+registry and stable never-renamed ids, explicitly rejecting bespoke loaders
+([content-schema §1, §6](./tech/content-schema.md)). A loose text file outside that system would
+have been a second content pipeline for no gain. The grids stay plain text **inside** the
+resource, so D-049's reasons for text — diffs cleanly, reads as the layout it describes, states
+itself inline in a test — all survive.
+
+*Consequence:* ids are referenced by saves and are never renamed, only deprecated
+([content-schema §1](./tech/content-schema.md)).
+
+---
+
+### D-062 — A prefab is a partial fill; unmentioned tiles keep the level's default
+**Decided. Supersedes the ragged-line half of
+[D-055](#d-055--malformed-grids-are-a-hard-failure).**
+
+- **A prefab covers only what it was authored to cover.** Any tile it does not mention keeps the
+  level's default — rock ground, minable rock top, no ore. A short or ragged row is therefore
+  legal, not a failure.
+- **The unrecognised-character half of D-055 stands.** An unrecognised character, a grid without
+  exactly one anchor marker, or ore over a stated non-`#` top tile is still a hard,
+  all-or-nothing failure: nothing is written.
+
+*Why:* a prefab is by definition a fragment of a level, so "the grid didn't say" is its normal
+state rather than a malformed one. Requiring a complete grid would mean hand-typing a 181 × 181
+grid three times to author the surface, which is not authoring.
+
+*Consequence:* ore over a tile the **top grid never mentions** is allowed, because that tile
+defaults to minable rock, which is what
+[D-056](#d-056--grid-characters-and-ore-only-inside-minable-rock) requires ore to sit in. Ore
+over a top character that *is* stated and is not `#` still fails.
+
+*Open:* the non-authored remainder of a level is currently solid rock. Everything beyond the
+authored pocket wants generation, not a default fill — that is M3's problem, not this one.

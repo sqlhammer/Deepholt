@@ -15,14 +15,23 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 
 ## B. Loading a grid
 
-- [ ] Grid characters per [D-056](../docs/design-decisions.md).
-- [ ] An unrecognised character or a ragged line fails the load ([D-055](../docs/design-decisions.md)). Mismatched grid dimensions: deferred ([D-053](../docs/design-decisions.md)).
-- [ ] Ore under anything but `#` fails the load ([D-056](../docs/design-decisions.md)).
-- [ ] Test: each of those fails to load.
-- [ ] A level's layer grids load into level data, with the origin marker at `(0, 0)` ([D-049](../docs/design-decisions.md), [D-052](../docs/design-decisions.md)).
-- [ ] Test: a small inline grid loads; spot-check tiles on all four sides of the origin, including negative coordinates.
-- [ ] Test: for each grid, no origin marker fails to load and two fail to load ([D-050](../docs/design-decisions.md), [D-053](../docs/design-decisions.md)).
-- [ ] The slice's hand-made level file exists.
+- [x] Grid characters per [D-056](../docs/design-decisions.md).
+- [x] An unrecognised character fails the load ([D-055](../docs/design-decisions.md)). Ragged
+  lines no longer do: a prefab covers only what it was authored to cover, and unmentioned tiles
+  keep the level's default ([D-062](../docs/design-decisions.md), superseding that half of D-055).
+- [x] Ore under anything but `#` fails the load ([D-056](../docs/design-decisions.md)) — where the
+  top grid states the tile. Over a tile it never mentions, ore is legal, since the default is
+  minable rock ([D-062](../docs/design-decisions.md)).
+- [x] Test: unrecognised-character and ore-over-stated-non-minable each fail to load.
+- [x] A prefab's layer grids stamp into level data, with the marker landing on the anchor rather than world `(0, 0)` ([D-060](../docs/design-decisions.md)).
+- [x] Test: a small inline grid loads; spot-check tiles on all four sides of the anchor, including negative coordinates.
+- [x] Test: for each grid, no anchor marker fails to load and two fail to load ([D-050](../docs/design-decisions.md), [D-053](../docs/design-decisions.md)).
+- [x] Test: a prefab stamps at a non-zero anchor, and layers of different shapes align by their markers.
+- [x] Prefabs are `.tres` resources with stable ids, indexed by a registry autoload ([D-061](../docs/design-decisions.md)).
+- [x] Test: the authored prefab loads from disk by id and stamps into a level.
+- [ ] The slice's hand-made level file **is authored**. `content/tile_prefab/surface_start.tres`
+  exists and is wired end to end, but still holds the 3 × 3 grid carried over from the old
+  `World.debug_levels` — not enough to stand in, dig a corridor through, or judge outcome [1] by.
 
 ## C. Pixels
 
@@ -40,6 +49,9 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 - [ ] A moleperson stands in open space; keyboard and gamepad both move them. [2]
 - [ ] They cannot walk into rock or copper, and blocking is answered from tile data ([D-046](../docs/design-decisions.md)). [2]
 - [ ] `F3` shows the actor's position and the depth the world calls it. [6]
+  The readout itself is built — coordinate, array index, the three layers by name, and an
+  11 × 11 tile window in the prefab's own characters. It reports whatever position the actor
+  has, so this lands the moment the actor stops returning a constant.
 - [ ] **Decide:** what happens at the edge of the level — after looking at a corner of the radial bounds at tile granularity.
 - [ ] Walking to the edge does that, deliberately. [5]
 

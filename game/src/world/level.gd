@@ -8,13 +8,19 @@ var level_seed: int
 var level_tiles: LevelTiles
 
 
-func setup(p_depth: int) -> void:
+func _ready() -> void:
+	add_to_group("levels")
+
+
+# A level with no prefab stamped into it is entirely the default tile: solid
+# minable rock on rock ground, out to its radial bounds.
+func setup(p_depth: int, p_prefab: TilePrefab = null, p_anchor: Vector2i = Vector2i.ZERO) -> void:
 	set_depth(p_depth)
 	self.name = "Level%d" % depth
-	
+
 	level_tiles = LevelTiles.new(World.level_bounds.rows[depth])
-	LevelGridLoader.load(level_tiles, World.debug_levels[depth]["ground"], World.debug_levels[depth]["top"], World.debug_levels[depth]["ore"])
-	pass
+	if p_prefab != null:
+		LevelGridLoader.stamp(level_tiles, p_prefab, p_anchor)
 
 
 func set_depth(_d: int) -> void:
@@ -31,5 +37,16 @@ func clamp_depth(_d: int) -> int:
 func _set_level_seed() -> void:
 	level_seed = hash("%s|%d" % [World.world_seed, _depth])
 	Global.emit_signal("debug_event","Level Seed",str(level_seed))
+
+
+
+
+
+
+
+
+
+
+
 
 

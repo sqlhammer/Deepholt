@@ -1,6 +1,14 @@
 class_name LevelGridLoader
 extends RefCounted
 
+# Stamps an authored TilePrefab into a level's tile data. The prefab's '0'
+# marker lands on the anchor coordinate given, and every tile is placed
+# relative to it -- so the same prefab can be stamped anywhere.
+#
+# A malformed prefab is an all-or-nothing failure: nothing is written unless
+# every check passes. A prefab that simply does not mention a tile is not
+# malformed; that tile keeps the level's default.
+
 
 const GROUND_CHARS: Dictionary = {
 	"r": TileKind.GROUND.ROCK,
@@ -19,81 +27,84 @@ const ORE_CHARS: Dictionary = {
 	"0": TileKind.ORE.NONE,
 }
 
+const ORIGIN_CHAR: String = "0"
+const MINABLE_ROCK_CHAR: String = "#"
 
-static func load(tiles: LevelTiles, ground_grid: String, top_grid: String, ore_grid: String) -> bool:
+
+static func stamp(tiles: LevelTiles, prefab: TilePrefab, anchor: Vector2i) -> bool:
 	# Validate characters in grids
-	if not are_valid_characters(ground_grid,GROUND_CHARS): return false
-	if not are_valid_characters(top_grid,TOP_CHARS): return false
-	if not are_valid_characters(ore_grid,ORE_CHARS): return false
-	
-	# Validate origins
-	if not _has_valid_origin(ground_grid): return false
-	if not _has_valid_origin(top_grid): return false
-	if not _has_valid_origin(ore_grid): return false
-	
-	# Validate that all ore are under minable top layers
-	if _has_ore_outside_of_minable_tiles(top_grid, ore_grid): return false
-	
-	# Load tiles
-	tiles = _load_tile_layer(tiles,"ground",ground_grid,GROUND_CHARS)
-	tiles = _load_tile_layer(tiles,"top",top_grid,TOP_CHARS)
-	tiles = _load_tile_layer(tiles,"ore",ore_grid,ORE_CHARS)
-	
+	if not are_valid_characters(prefab.ground,GROUND_CHARS): return false
+	if not are_valid_characters(prefab.top,TOP_CHARS): return false
+	if not are_valid_characters(prefab.ore,ORE_CHARS): return false
+
+	# Validate anchors
+	if not _has_valid_anchor(prefab.ground): return false
+	if not _has_valid_anchor(prefab.top): return false
+	if not _has_valid_anchor(prefab.ore): return false
+
+	# Grids line up with each other by their anchor markers, so every grid is
+	# read into coordinates measured from its own marker.
+	var ground_tiles: Dictionary = _to_anchored_tiles(prefab.ground)
+	var top_tiles: Dictionary = _to_anchored_tiles(prefab.top)
+	var ore_tiles: Dictionary = _to_anchored_tiles(prefab.ore)
+
+	# Validate that all ore is inside minable rock
+	if _has_ore_outside_of_minable_rock(top_tiles, ore_tiles): return false
+
+	# Stamp tiles
+	_stamp_layer(tiles.set_ground, ground_tiles, GROUND_CHARS, anchor)
+	_stamp_layer(tiles.set_top, top_tiles, TOP_CHARS, anchor)
+	_stamp_layer(tiles.set_ore, ore_tiles, ORE_CHARS, anchor)
+
 	return true
 
 
-static func _has_ore_outside_of_minable_tiles(top_grid: String, ore_grid: String) -> bool:
-	var i: int = -1
-	for key in top_grid:
-		i = i + 1
-		var tile_char: String = ore_grid[i]
-		if Global.contains_whitespace(key): continue # newlines don't compare correctly
-		if key == "0": continue # skip origins
-		if key != "#" and tile_char != ".":
+# Ore may only sit inside minable rock. A coordinate the top grid never
+# mentions defaults to minable rock, so ore there is allowed; ore over a top
+# character that is anything but '#' is not.
+static func _has_ore_outside_of_minable_rock(top_tiles: Dictionary, ore_tiles: Dictionary) -> bool:
+	for coord in ore_tiles:
+		var ore_char: String = ore_tiles[coord]
+		if ORE_CHARS[ore_char] == TileKind.ORE.NONE: continue
+		if not top_tiles.has(coord): continue
+		if top_tiles[coord] != MINABLE_ROCK_CHAR:
 			return true
 	return false
 
 
-static func _has_valid_origin(grid: String) -> bool:
-	if grid.count("0") != 1: return false
+static func _has_valid_anchor(grid: String) -> bool:
+	if grid.count(ORIGIN_CHAR) != 1: return false
 	return true
 
 
-static func _find_origin(grid: String) -> Vector2i:
-	var col: int = 0
-	var row: int = 0
+# Reads a grid into a dictionary of Vector2i -> character, with coordinates
+# measured from the grid's own anchor marker rather than its corner.
+static func _to_anchored_tiles(grid: String) -> Dictionary:
+	var tiles: Dictionary = {}
+	var anchor: Vector2i = Vector2i.ZERO
+	var lines: PackedStringArray = grid.split("\n")
 
-	for tile in grid:
-		if Global.contains_whitespace(tile): # next row
-			row = row + 1
-			col = 0
-			continue
-		if tile == "0":
-			return Vector2i(col, row)
-		col = col + 1
+	for row in lines.size():
+		# trailing whitespace only, so a carriage return is not a column
+		var line: String = lines[row].strip_edges(false, true)
+		for col in line.length():
+			var coord: Vector2i = Vector2i(col, row)
+			var character: String = line[col]
+			if character == ORIGIN_CHAR:
+				anchor = coord
+			tiles[coord] = character
 
-	return Vector2i.ZERO # unreachable; origin is validated before this runs
+	var anchored_tiles: Dictionary = {}
+	for coord in tiles:
+		anchored_tiles[coord - anchor] = tiles[coord]
+	return anchored_tiles
 
 
-static func _load_tile_layer(tiles: LevelTiles, layer_name: String, grid: String, characters: Dictionary) -> LevelTiles:
-	var origin: Vector2i = _find_origin(grid)
-	var col: int = 0
-	var row: int = 0
-	
-	for tile in grid:
-		if Global.contains_whitespace(tile): # next row
-			row = row + 1
-			col = 0
-			continue
-	
-		# world coords are relative to this grid's own origin marker,
-		# not the level's corner (D-053)
-		var x: int = col - origin.x
-		var y: int = row - origin.y
-		tiles.call("set_%s" % layer_name,x,y,characters.get(tile))
-		col = col + 1
-	
-	return tiles
+static func _stamp_layer(setter: Callable, grid_tiles: Dictionary, characters: Dictionary, anchor: Vector2i) -> void:
+	for coord in grid_tiles:
+		var x: int = coord.x + anchor.x
+		var y: int = coord.y + anchor.y
+		setter.call(x, y, characters[grid_tiles[coord]])
 
 
 static func are_valid_characters(grid: String, allowed_chars: Dictionary) -> bool:
@@ -101,15 +112,15 @@ static func are_valid_characters(grid: String, allowed_chars: Dictionary) -> boo
 	for key in allowed_chars:
 		pattern = pattern + key
 	pattern = pattern + "\\s]" # \\s means any type of whitespace, including newlines
-	
+
 	var regex = RegEx.new()
 	regex.compile(pattern)
 	var result = regex.search(grid)
-	
+
 	if result:
 		push_error("Found invalid character: '%s' at index %d" % [result.get_string(), result.get_start()])
 		return false
-	
+
 	return true
 
 
@@ -120,10 +131,3 @@ static func regex_escape(character: String) -> String:
 		"-": return "\\-"
 		"\\": return "\\\\"
 	return character
-
-
-
-
-
-
-

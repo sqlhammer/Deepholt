@@ -103,10 +103,8 @@ func get_index(x: int, y: int) -> int:
 
 func _is_out_of_array(x: int, y: int) -> int:
 	if x < (0-level_bound.radius) or x > level_bound.radius:
-		print("Out of array (%d,%d). Radius: %d" % [x, y, level_bound.radius])
 		return SENTINEL_OUT_OF_ARRAY
 	if y < (0-level_bound.radius) or y > level_bound.radius:
-		print("Out of array (%d,%d). Radius: %d" % [x, y, level_bound.radius])
 		return SENTINEL_OUT_OF_ARRAY
 	return 0
 

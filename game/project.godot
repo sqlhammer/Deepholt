@@ -23,6 +23,7 @@ config/icon="res://icon.svg"
 
 Global="*uid://dhr1etdbio5wj"
 World="*uid://duqr4368qma7m"
+TilePrefabRegistry="*res://src/world/tile_prefab_registry.gd"
 
 [debug]
 
@@ -42,6 +43,7 @@ enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
 [global_group]
 
+levels="Every Level currently resident, one per depth."
 players="A collection of all players logged into the game."
 
 [input]

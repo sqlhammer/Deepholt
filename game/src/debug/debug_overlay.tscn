@@ -1,6 +1,9 @@
-[gd_scene format=3 uid="uid://yqul1ole3cs7"]
+[gd_scene load_steps=3 format=3 uid="uid://yqul1ole3cs7"]
 
 [ext_resource type="Script" uid="uid://cu7sffk7bsyho" path="res://src/debug/debug_overlay.gd" id="1_ggiji"]
+
+[sub_resource type="SystemFont" id="SystemFont_mono"]
+font_names = PackedStringArray("Consolas", "DejaVu Sans Mono", "monospace")
 
 [node name="DebugOverlay" type="CanvasLayer" unique_id=418423574]
 visible = false
@@ -11,8 +14,9 @@ wait_time = 0.25
 autostart = true
 
 [node name="DebugRichTextLabel" type="RichTextLabel" parent="." unique_id=2118087943]
-offset_right = 197.0
-offset_bottom = 154.0
+offset_right = 520.0
+offset_bottom = 500.0
+theme_override_fonts/mono_font = SubResource("SystemFont_mono")
 bbcode_enabled = true
 
 [connection signal="timeout" from="Timer" to="." method="_on_timer_timeout"]
