@@ -1,16 +1,25 @@
-[gd_resource type="Resource" script_class="TilePrefab" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="TilePrefab" format=3 uid="uid://cfkmkqtg1f3o6"]
 
-[ext_resource type="Script" path="res://src/world/tile_prefab.gd" id="1_tile_prefab"]
+[ext_resource type="Script" uid="uid://debs18jdfps77" path="res://src/world/tile_prefab.gd" id="1_tile_prefab"]
 
 [resource]
 script = ExtResource("1_tile_prefab")
 id = &"surface_start"
-ground = "rrr
-r0r
-rrr"
-top = "#..
-#0.
-###"
-ore = "c..
-c0.
-..."
+ground = "rrrrrrrr
+rrrrrrrr
+rrrrrrrr
+r0rrrrrr
+rrrrrrrr
+rrrrrrrr"
+top = "########
+#.......
+#.......
+#0......
+#.......
+########"
+ore = "c.......
+........
+........
+c0.....
+c......
+.cc...."

@@ -29,9 +29,7 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 - [x] Test: a prefab stamps at a non-zero anchor, and layers of different shapes align by their markers.
 - [x] Prefabs are `.tres` resources with stable ids, indexed by a registry autoload ([D-061](../docs/design-decisions.md)).
 - [x] Test: the authored prefab loads from disk by id and stamps into a level.
-- [ ] The slice's hand-made level file **is authored**. `content/tile_prefab/surface_start.tres`
-  exists and is wired end to end, but still holds the 3 × 3 grid carried over from the old
-  `World.debug_levels` — not enough to stand in, dig a corridor through, or judge outcome [1] by.
+- [x] The slice's hand-made level file **is authored**.
 
 ## C. Pixels
 

@@ -18,15 +18,14 @@ func before_each() -> void:
 	add_child_autofree(_overlay)
 
 
-# surface_start's top grid is '#..' / '#0.' / '###' around its anchor, with
-# copper in the two '#' tiles of the left column. Read from the anchor, those
-# nine tiles should appear in the middle of a field of default minable rock.
 func test_window_prints_back_the_authored_grid_around_the_anchor() -> void:
 	var readout: String = _overlay._tile_readout(WorldPos.new(0, 0, 0))
-
-	assert_string_contains(readout, "####c..####", "the row north of the anchor")
-	assert_string_contains(readout, "####c@.####", "the anchor's own row, with the actor on it")
-	assert_string_contains(readout, "###########", "the row south of the anchor is all rock")
+	
+	assert_string_contains(readout, "###########", "five rows should contain this")
+	assert_string_contains(readout, "####c######", "three rows north of the anchor")
+	assert_string_contains(readout, "#####......", "one and two rows north of the anchor")
+	assert_string_contains(readout, "####c@.....", "anchor row")
+	assert_string_contains(readout, "#####cc####", "two rows south of anchor")
 
 
 func test_readout_names_the_tile_under_the_actor() -> void:
