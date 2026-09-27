@@ -1,3 +1,7 @@
+# Teaching scaffolding -- lesson plans for checklist sections. Temporary,
+# thrown away when the section closes. Not design docs.
+work/lesson/
+
 # Godot 4.2+ specific ignores
 ~*.dll
 
