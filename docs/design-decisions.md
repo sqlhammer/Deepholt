@@ -992,3 +992,25 @@ over a top character that *is* stated and is not `#` still fails.
 
 *Open:* the non-authored remainder of a level is currently solid rock. Everything beyond the
 authored pocket wants generation, not a default fill — that is M3's problem, not this one.
+
+---
+
+### D-063 — A render quad covers one whole level, not the camera's view
+**Decided.** One `MeshInstance2D` quad per resident level, sized to that level's own array
+(2896 px square at Surface, 6640 px at the Crush), holding a data texture the same shape as the
+array. The camera pans over it with an ordinary `Camera2D`/`Node2D` transform. Only the current
+depth's quad needs to exist under `GameViewport`; the other seven stay pure data until the player
+changes depth.
+
+*Why:* the alternative — a fixed, viewport-sized quad with a scroll-offset uniform standing in
+for camera position — duplicates a coordinate system Godot already provides for free, and turns
+the C-6 trap (two coordinate systems meeting) into three by adding a shader-only offset alongside
+the array's centred indexing and the texture's top-left origin. A whole-level quad also avoids a
+sliding-window data texture: the texture is built once per level, matches the array 1:1, and a dig
+updates a single texel — no resampling as the camera scrolls. GPU cost is unaffected either way;
+2D rasterization already clips a quad to what's actually on screen, which is what D-046's
+"culling is as coarse as the quads" already accepted.
+
+*Consequence:* per-tile changes reach the render texture as a single-texel update, not a windowed
+re-upload — the mechanism section E's dig verb can rely on. The camera becomes a genuine
+`Camera2D`, not a value pushed to a shader uniform by hand.
