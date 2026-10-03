@@ -41,6 +41,9 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 - [x] Placeholder atlas: rock ground, rock, copper.
 - [x] Launch: the hand-made level is on screen, and rock, copper and open floor are distinguishable at a glance at the intended scale. [1]
 - [ ] Move the view across tiles and watch the edges, not just a still frame.
+  The pan is built: arrow keys or left stick, Shift to hurry
+  ([debug_pan.gd](../game/src/debug/debug_pan.gd), throwaway until section D's actor). Watching the
+  edges is by hand.
 
 ## D. An actor
 
