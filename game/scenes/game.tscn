@@ -31,6 +31,8 @@ material = SubResource("ShaderMaterial_72uqk")
 mesh = SubResource("QuadMesh_oxbm5")
 script = ExtResource("3_rendr")
 
+[node name="ViewCamera" type="Camera2D" parent="GameViewport"]
+
 [node name="Display" type="CanvasLayer" parent="." unique_id=2119052606]
 
 [node name="UpscaleDisplay" type="TextureRect" parent="Display" unique_id=1410519490]

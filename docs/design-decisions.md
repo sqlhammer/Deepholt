@@ -1117,3 +1117,24 @@ by deciding otherwise on purpose.
 
 *Considered:* rules in the shader per pair of kinds (`if top is open, draw the ground`). That
 reads clearly with two layers and becomes a table of special cases at four.
+
+---
+
+### D-067 — Tile (x, y) covers level pixels 16x to 16x + 16; world (0, 0)'s corner is the level's origin
+**Decided** (by Claude, at Derik's request). In a level's own 2D space, tile `(x, y)` covers
+pixels `16x` to `16x + 16` across and `16y` to `16y + 16` down. +y is down the screen, the same
+direction as the arrays' rows and the prefab grids' lines. World `(0, 0)` therefore has its
+**top-left corner** on the level node's origin. Its centre is at `(8, 8)`. A pixel goes back to
+a tile by **floor** division, never by truncating: `int(-5 / 16)` is 0, but the tile is −1.
+
+*Why:* it is the convention Godot's own grids use, so camera, actor and mouse code written later
+will look like the examples in Godot's documentation. Every tile, the origin included, is then
+the same kind of thing: a cell with a corner at a multiple of 16. The alternative is centring
+tile `(0, 0)` on the origin, which is what an untouched `QuadMesh` does with an odd-width level.
+That makes the origin a special case, and every conversion carries a half-tile offset.
+
+*Consequence:* the level quad is shifted half a tile from where a `QuadMesh` puts it by default
+(`center_offset`). Section D's actor turns its position into a `WorldPos` with the floor rule,
+and the place it goes wrong is negative coordinates, which is half of every level. `F3`'s tile
+window is the check: its `0` is the tile drawn at the camera's centre when the camera sits on
+`(8, 8)`.
