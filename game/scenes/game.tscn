@@ -4,11 +4,13 @@
 [ext_resource type="Shader" uid="uid://bfb3tcb5b3fh6" path="res://src/render/pixel_upscale.gdshader" id="1_shader"]
 [ext_resource type="Shader" uid="uid://crs47ucj8gntg" path="res://src/render/level_tiles.gdshader" id="2_lbhrr"]
 [ext_resource type="PackedScene" uid="uid://yqul1ole3cs7" path="res://src/debug/debug_overlay.tscn" id="2_yqjtg"]
+[ext_resource type="Script" uid="uid://d1wibfcu60s88" path="res://src/render/level_renderer.gd" id="3_rendr"]
+[ext_resource type="Texture2D" uid="uid://cettgrfqujiw7" path="res://src/render/tile_atlas.png" id="4_atlas"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_72uqk"]
 shader = ExtResource("2_lbhrr")
 shader_parameter/tiles_across = Vector2(32, 20)
-shader_parameter/rock_colour = Color(0.4, 0.4, 0.45, 1)
+shader_parameter/atlas = ExtResource("4_atlas")
 
 [sub_resource type="QuadMesh" id="QuadMesh_oxbm5"]
 size = Vector2(512, 320)
@@ -27,9 +29,10 @@ script = ExtResource("1_lnu2h")
 size = Vector2i(512, 320)
 render_target_update_mode = 4
 
-[node name="MeshInstance2D" type="MeshInstance2D" parent="GameViewport" unique_id=334171623]
+[node name="LevelRenderer" type="MeshInstance2D" parent="GameViewport" unique_id=334171623]
 material = SubResource("ShaderMaterial_72uqk")
 mesh = SubResource("QuadMesh_oxbm5")
+script = ExtResource("3_rendr")
 
 [node name="Display" type="CanvasLayer" parent="." unique_id=2119052606]
 

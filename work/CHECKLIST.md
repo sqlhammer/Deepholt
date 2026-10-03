@@ -35,8 +35,9 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 
 - [ ] **Decide:** how tile data is encoded into textures.
 - [ ] **Decide:** how an id becomes pixels — atlas lookup, and combining ground and top.
-- [ ] **Decide:** how much of a level one quad covers.
-- [ ] Placeholder atlas: rock ground, rock, copper.
+  Atlas lookup decided ([D-064](../docs/design-decisions.md)); combining ground and top is open.
+- [x] **Decide:** how much of a level one quad covers ([D-063](../docs/design-decisions.md)).
+- [x] Placeholder atlas: rock ground, rock, copper.
 - [ ] Launch: the hand-made level is on screen, and rock, copper and open floor are distinguishable at a glance at the intended scale. [1]
 - [ ] Move the view across tiles and watch the edges, not just a still frame.
 

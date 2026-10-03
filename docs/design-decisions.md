@@ -1014,3 +1014,30 @@ updates a single texel — no resampling as the camera scrolls. GPU cost is unaf
 *Consequence:* per-tile changes reach the render texture as a single-texel update, not a windowed
 re-upload — the mechanism section E's dig verb can rely on. The camera becomes a genuine
 `Camera2D`, not a value pushed to a shader uniform by hand.
+
+---
+
+### D-064 — A tile id finds its art through a per-layer table, not by being an atlas index
+**Decided** (by Claude, at Derik's request — first half of the *how an id becomes pixels*
+fork; combining ground and top is still open). Each layer has a 256-entry table, indexed by the
+byte the layer holds, giving the atlas cell that draws it. The table reaches the shader as a
+`uniform int[256]` built in `src/render/`. Any byte without an entry draws a dedicated, loud
+*missing art* cell. The atlas is read with `texelFetch` at integer texel coordinates.
+
+*Why:* an id is a kind, not a picture. Ids are not guaranteed contiguous, the same number means
+different kinds on different layers, and 254 needs a deliberate look of its own, which the
+atlas-index-equals-id scheme would need a 255-cell atlas to provide
+([D-059](#d-059--sentinel-values-revised-to-255-and-254)). Autotiling will also map one id to
+many cells ([D-046](#d-046--levels-reach-the-screen-through-a-data-texture-and-a-shader-not-tilemaplayer)),
+and ore must draw as a generic lump below a light threshold
+([art-and-camera §4.1](./tech/art-and-camera.md)). Both of those change what the table answers,
+not the shader's arithmetic. `texelFetch` cannot land on a neighbouring cell, so the half-texel
+inset that normalised atlas UVs need does not exist here.
+
+*Considered:* the id used directly as the cell index; a 256 × 1 lookup *texture* instead of a
+uniform array. The texture scales to several tables (§4.1 already speaks of three) and is the
+likely successor once render states arrive; a uniform array is plainer to read today.
+
+*Found while building it:* a `QuadMesh` drawn by a `MeshInstance2D` has its UV.y running
+bottom-to-top, because it is a 3D mesh. C-2's checkerboard is symmetric under that flip and could
+not show it; the first asymmetric atlas cell did. The tile shader flips it explicitly.
