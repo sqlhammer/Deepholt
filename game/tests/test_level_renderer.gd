@@ -1,6 +1,6 @@
 extends GutTest
 
-# LevelRenderer's data texture -- the top layer as a read returns it, one
+# LevelRenderer's data textures -- each layer as a read returns it, one
 # byte per tile, in the arrays' own row-major order (D-065). Encoding bugs
 # render as a plausible level rather than as an error, so they are pinned
 # here instead of trusted to the eye.
@@ -12,16 +12,17 @@ func _surface_with_start() -> LevelTiles:
 	return tiles
 
 
-func test_one_byte_per_tile() -> void:
+func test_one_byte_per_tile_on_every_layer() -> void:
 	var tiles: LevelTiles = _surface_with_start()
-	var bytes: PackedByteArray = LevelRenderer.top_layer_bytes(tiles)
-	assert_eq(bytes.size(), tiles.top.size(),
-		"the texture should hold exactly one byte per tile in the array")
+	var layers: Dictionary = LevelRenderer.layer_bytes(tiles)
+	for layer: String in ["ground", "top", "ore"]:
+		assert_eq(layers[layer].size(), tiles.top.size(),
+			"the %s texture should hold exactly one byte per tile" % layer)
 
 
 func test_texel_order_matches_array_index() -> void:
 	var tiles: LevelTiles = _surface_with_start()
-	var bytes: PackedByteArray = LevelRenderer.top_layer_bytes(tiles)
+	var bytes: PackedByteArray = LevelRenderer.layer_bytes(tiles)["top"]
 	assert_eq(bytes[tiles.get_index(0, 0)], TileKind.TOP.OPEN,
 		"the anchor is open floor, at the same index the arrays use")
 	assert_eq(bytes[tiles.get_index(-1, 0)], TileKind.TOP.MINABLE_ROCK,
@@ -30,12 +31,24 @@ func test_texel_order_matches_array_index() -> void:
 		"the pocket's far bottom-right corner is open")
 
 
-func test_outside_the_disc_is_the_out_of_bounds_sentinel() -> void:
+func test_ore_lands_in_the_same_tile_as_its_rock() -> void:
 	var tiles: LevelTiles = _surface_with_start()
-	var bytes: PackedByteArray = LevelRenderer.top_layer_bytes(tiles)
+	var layers: Dictionary = LevelRenderer.layer_bytes(tiles)
+	var index: int = tiles.get_index(-1, 0)
+	assert_eq(layers["ore"][index], TileKind.ORE.COPPER,
+		"the prefab puts copper in the pocket's left wall")
+	assert_eq(layers["top"][index], TileKind.TOP.MINABLE_ROCK,
+		"and that tile's top is the rock the copper sits in")
+
+
+func test_outside_the_disc_is_the_out_of_bounds_sentinel_on_every_layer() -> void:
+	var tiles: LevelTiles = _surface_with_start()
+	var layers: Dictionary = LevelRenderer.layer_bytes(tiles)
 	var radius: int = tiles.level_bound.radius
-	assert_eq(bytes[tiles.get_index(-radius, -radius)], LevelTiles.SENTINEL_OUT_OF_BOUNDS,
-		"a corner of the square is outside the disc, so it is 254 -- not the rock the array stores")
+	var corner: int = tiles.get_index(-radius, -radius)
+	for layer: String in ["ground", "top", "ore"]:
+		assert_eq(layers[layer][corner], LevelTiles.SENTINEL_OUT_OF_BOUNDS,
+			"a corner of the square is outside the disc, so %s is 254 -- not the default the array stores" % layer)
 
 
 func test_every_byte_survives_the_r8_round_trip() -> void:

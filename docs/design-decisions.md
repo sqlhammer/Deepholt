@@ -1090,3 +1090,30 @@ at one upload per frame at most, and partial uploads wait for a profiler to ask.
 *Considered:* uploading the raw array and masking the disc in the shader (a second copy of the
 radial-bounds rule); RGB8/RGBA8 packing; editing the texture on the GPU (`DrawableTexture`),
 which makes the GPU copy something that could drift from the truth.
+
+---
+
+### D-066 — Layers are painted in order, and each layer's art decides what it covers
+**Decided** (by Claude, at Derik's request — second half of the *how an id becomes pixels*
+fork; [D-064](#d-064--a-tile-id-finds-its-art-through-a-per-layer-table-not-by-being-an-atlas-index)
+is the first). Each layer draws its cell for the tile, and the cells are painted ground first,
+then top, then ore. Each one is laid over what is already there by its own alpha. The shader
+holds no rule about which kinds hide which. "Open" is a fully transparent top cell, so the ground
+shows. Minable rock is opaque and hides the ground. Copper is an overlay that is transparent
+except for its flecks. Outside the radial bounds only the ground draws (its hatched cell), and
+the layers above draw nothing.
+
+*Why:* this is the step that adds the third and fourth layers
+([D-047](#d-047--a-level-has-at-least-two-tile-layers-the-ground-and-what-sits-on-it)
+calls two a minimum, not a ceiling — rubble beside a built object, walls standing on built
+floors). With painting in order, a new layer is one more line of the same thing, and the question
+"does X hide Y" moves out of shader branches and into art, where it can be redrawn. Whether any
+top kind is *partly* transparent is then a drawing decision, not a code change.
+
+*Consequence:* ore draws over whatever the top drew, so the tile data has to keep ore out of
+open floor. [D-056](#d-056--grid-characters-and-ore-only-inside-minable-rock) already enforces
+that at load time. Section E's dig has to keep it true, by clearing ore when it opens a tile or
+by deciding otherwise on purpose.
+
+*Considered:* rules in the shader per pair of kinds (`if top is open, draw the ground`). That
+reads clearly with two layers and becomes a table of special cases at four.

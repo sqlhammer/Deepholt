@@ -3,16 +3,20 @@ shader_type canvas_item;
 // Atlas cells are 16 x 16 px, laid out in a single row.
 const int TILE_PIXELS = 16;
 
-// One texel per tile: the byte a read of the top layer returns there
-// (D-065). No source_color -- these are ids, not colours, and gamma
-// conversion would silently change every one of them.
+// One texture per layer, one texel per tile: the byte a read of that
+// layer returns there (D-065). No source_color -- these are ids, not
+// colours, and gamma conversion would silently change every one.
+uniform sampler2D ground_data : filter_nearest, repeat_disable;
 uniform sampler2D top_data : filter_nearest, repeat_disable;
+uniform sampler2D ore_data : filter_nearest, repeat_disable;
 
 uniform sampler2D atlas : source_color, filter_nearest, repeat_disable;
 
-// Which atlas cell draws each top-layer byte, indexed by the byte
+// Which atlas cell draws each byte of a layer, indexed by the byte
 // (D-064). Filled from GDScript by LevelRenderer.
+uniform int ground_cells[256];
 uniform int top_cells[256];
+uniform int ore_cells[256];
 
 
 // QuadMesh is a 3D mesh: its UV.y runs bottom-to-top, the opposite of
@@ -39,6 +43,13 @@ vec4 atlas_texel(int cell, ivec2 within_tile) {
 }
 
 
+// Paints one layer over what is already there (D-066). A layer's art
+// decides how much of the layer below it covers, through its alpha.
+vec4 paint_over(vec4 under, vec4 over) {
+	return mix(under, over, over.a);
+}
+
+
 void fragment() {
 	ivec2 tiles = textureSize(top_data, 0);
 	ivec2 level_pixels = tiles * TILE_PIXELS;
@@ -48,5 +59,8 @@ void fragment() {
 	ivec2 tile = pixel / TILE_PIXELS;
 	ivec2 within_tile = pixel % TILE_PIXELS;
 
-	COLOR = atlas_texel(top_cells[kind_at(top_data, tile)], within_tile);
+	vec4 colour = atlas_texel(ground_cells[kind_at(ground_data, tile)], within_tile);
+	colour = paint_over(colour, atlas_texel(top_cells[kind_at(top_data, tile)], within_tile));
+	colour = paint_over(colour, atlas_texel(ore_cells[kind_at(ore_data, tile)], within_tile));
+	COLOR = colour;
 }

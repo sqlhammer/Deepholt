@@ -35,11 +35,11 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 
 - [x] **Decide:** how tile data is encoded into textures ([D-065](../docs/design-decisions.md)).
   Includes how a changed tile reaches the screen, which section E's dig verb consumes.
-- [ ] **Decide:** how an id becomes pixels — atlas lookup, and combining ground and top.
-  Atlas lookup decided ([D-064](../docs/design-decisions.md)); combining ground and top is open.
+- [x] **Decide:** how an id becomes pixels — atlas lookup, and combining ground and top.
+  Atlas lookup ([D-064](../docs/design-decisions.md)); combining layers ([D-066](../docs/design-decisions.md)).
 - [x] **Decide:** how much of a level one quad covers ([D-063](../docs/design-decisions.md)).
 - [x] Placeholder atlas: rock ground, rock, copper.
-- [ ] Launch: the hand-made level is on screen, and rock, copper and open floor are distinguishable at a glance at the intended scale. [1]
+- [x] Launch: the hand-made level is on screen, and rock, copper and open floor are distinguishable at a glance at the intended scale. [1]
 - [ ] Move the view across tiles and watch the edges, not just a still frame.
 
 ## D. An actor
