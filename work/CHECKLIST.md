@@ -31,7 +31,7 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 - [x] Test: the authored prefab loads from disk by id and stamps into a level.
 - [x] The slice's hand-made level file **is authored**.
 
-## C. Pixels
+## C. Pixels ✅
 
 - [x] **Decide:** how tile data is encoded into textures ([D-065](../docs/design-decisions.md)).
   Includes how a changed tile reaches the screen, which section E's dig verb consumes.
@@ -40,10 +40,9 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 - [x] **Decide:** how much of a level one quad covers ([D-063](../docs/design-decisions.md)).
 - [x] Placeholder atlas: rock ground, rock, copper.
 - [x] Launch: the hand-made level is on screen, and rock, copper and open floor are distinguishable at a glance at the intended scale. [1]
-- [ ] Move the view across tiles and watch the edges, not just a still frame.
-  The pan is built: arrow keys or left stick, Shift to hurry
-  ([debug_pan.gd](../game/src/debug/debug_pan.gd), throwaway until section D's actor). Watching the
-  edges is by hand.
+- [x] Move the view across tiles and watch the edges, not just a still frame.
+  Pan: arrow keys, WASD or left stick, Shift to hurry
+  ([debug_pan.gd](../game/src/debug/debug_pan.gd), throwaway until section D's actor).
 
 ## D. An actor
 
