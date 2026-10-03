@@ -3,23 +3,16 @@ shader_type canvas_item;
 // Atlas cells are 16 x 16 px, laid out in a single row.
 const int TILE_PIXELS = 16;
 
-uniform vec2 tiles_across = vec2(32, 20);
+// One texel per tile: the byte a read of the top layer returns there
+// (D-065). No source_color -- these are ids, not colours, and gamma
+// conversion would silently change every one of them.
+uniform sampler2D top_data : filter_nearest, repeat_disable;
+
 uniform sampler2D atlas : source_color, filter_nearest, repeat_disable;
 
 // Which atlas cell draws each top-layer byte, indexed by the byte
 // (D-064). Filled from GDScript by LevelRenderer.
 uniform int top_cells[256];
-
-// C-3 only: every tile draws this top kind. Edit and relaunch.
-const int HARD_CODED_KIND = 2;
-
-
-// One texel of one atlas cell. texelFetch reads by integer texel, so
-// it cannot land on a neighbouring cell -- no half-texel inset needed.
-vec4 atlas_texel(int cell, ivec2 within_tile) {
-	ivec2 cell_origin = ivec2(cell * TILE_PIXELS, 0);
-	return texelFetch(atlas, cell_origin + within_tile, 0);
-}
 
 
 // QuadMesh is a 3D mesh: its UV.y runs bottom-to-top, the opposite of
@@ -30,10 +23,30 @@ vec2 top_down_uv(vec2 mesh_uv) {
 }
 
 
+// The byte stored for one tile. R8 hands it back as a float, k / 255,
+// which is rarely exact -- the + 0.5 rounds rather than truncating.
+int kind_at(sampler2D layer_data, ivec2 tile) {
+	float stored = texelFetch(layer_data, tile, 0).r;
+	return int(stored * 255.0 + 0.5);
+}
+
+
+// One texel of one atlas cell. texelFetch reads by integer texel, so
+// it cannot land on a neighbouring cell -- no half-texel inset needed.
+vec4 atlas_texel(int cell, ivec2 within_tile) {
+	ivec2 cell_origin = ivec2(cell * TILE_PIXELS, 0);
+	return texelFetch(atlas, cell_origin + within_tile, 0);
+}
+
+
 void fragment() {
-	vec2 quad_pixels = tiles_across * float(TILE_PIXELS);
-	ivec2 pixel = ivec2(floor(top_down_uv(UV) * quad_pixels));
+	ivec2 tiles = textureSize(top_data, 0);
+	ivec2 level_pixels = tiles * TILE_PIXELS;
+	ivec2 pixel = ivec2(floor(top_down_uv(UV) * vec2(level_pixels)));
+	pixel = clamp(pixel, ivec2(0), level_pixels - 1);
+
+	ivec2 tile = pixel / TILE_PIXELS;
 	ivec2 within_tile = pixel % TILE_PIXELS;
 
-	COLOR = atlas_texel(top_cells[HARD_CODED_KIND], within_tile);
+	COLOR = atlas_texel(top_cells[kind_at(top_data, tile)], within_tile);
 }

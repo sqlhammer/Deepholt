@@ -33,7 +33,8 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 
 ## C. Pixels
 
-- [ ] **Decide:** how tile data is encoded into textures.
+- [x] **Decide:** how tile data is encoded into textures ([D-065](../docs/design-decisions.md)).
+  Includes how a changed tile reaches the screen, which section E's dig verb consumes.
 - [ ] **Decide:** how an id becomes pixels — atlas lookup, and combining ground and top.
   Atlas lookup decided ([D-064](../docs/design-decisions.md)); combining ground and top is open.
 - [x] **Decide:** how much of a level one quad covers ([D-063](../docs/design-decisions.md)).
@@ -57,6 +58,8 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 ## E. Digging
 
 - [ ] **Decide:** who may change a tile, and how anything else learns it changed. Before the dig verb exists.
+  The screen's half is settled: it learns from the tile data, not from the dig verb
+  ([D-065](../docs/design-decisions.md)).
 - [ ] **Decide:** the rules for digging what cannot be dug.
 - [ ] Test: changing a tile through the mutation path and reading it back.
 - [ ] Test: each cannot-dig rule.

@@ -9,12 +9,9 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_72uqk"]
 shader = ExtResource("2_lbhrr")
-shader_parameter/tiles_across = Vector2(32, 20)
 shader_parameter/atlas = ExtResource("4_atlas")
 
 [sub_resource type="QuadMesh" id="QuadMesh_oxbm5"]
-size = Vector2(512, 320)
-center_offset = Vector3(256, 160, 0)
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_upscale"]
 shader = ExtResource("1_shader")

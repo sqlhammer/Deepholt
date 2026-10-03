@@ -1041,3 +1041,52 @@ likely successor once render states arrive; a uniform array is plainer to read t
 *Found while building it:* a `QuadMesh` drawn by a `MeshInstance2D` has its UV.y running
 bottom-to-top, because it is a 3D mesh. C-2's checkerboard is symmetric under that flip and could
 not show it; the first asymmetric atlas cell did. The tile shader flips it explicitly.
+
+---
+
+### D-065 — Each layer is its own R8 data texture, built through the reads; changes reach it from the truth
+**Decided** (by Claude, at Derik's request).
+
+- **Format.** One `Image.FORMAT_R8` texture per layer, the same square as the layer's array, so
+  texel `(column, row)` is array index `row * width + column`. No mipmaps, no `source_color`.
+  The shader reads it with `texelFetch` at the integer tile and decodes `int(r * 255.0 + 0.5)`.
+- **Built through the read functions**, not by copying the array. The array stores the default
+  kind outside the radial bounds; only a read returns 254 there
+  ([D-059](#d-059--sentinel-values-revised-to-255-and-254)). The texture shows what the world
+  answers, so the screen and `F3` can never disagree about where the level ends.
+- **When a tile changes** (not built yet; section E's dig verb consumes this): the renderer for
+  that level hears about it **from the level's tile data**, as a notification naming the tile
+  and nothing about who changed it, and rewrites that texel. Changes within one frame are
+  gathered into one upload. A renderer that is created later, such as on a depth change
+  ([D-063](#d-063--a-render-quad-covers-one-whole-level-not-the-cameras-view)), builds from the
+  truth and needs no history.
+
+*Why the format:* it is the shape the arrays already have
+([D-048](#d-048--tile-data-is-flat-byte-arrays-in-simulation-and-the-only-truth)). A changed
+byte on one layer touches one texture, and none of the others. Packing three layers into one
+RGB8 texel saves two texel reads per pixel, which costs nothing anyway. In exchange it means
+interleaving all three arrays on every build and reading the two untouched layers on every
+change. Integer textures (`usampler2D`) would skip the float decode, but `Image` has no 8-bit
+integer format. R8 plus rounding is the portable route, and the round trip is tested for all
+256 values.
+
+*Why the update path:* the cheap version is for whoever changes a tile to poke the screen as
+well. That works for one actor on the one level being drawn. It fails, silently, the first time
+a tile changes some other way: another actor (no system may assume there is exactly one, pillar
+[P5](./game-overview.md), rule [D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer)), a level that is resident
+but not drawn, or any later system that rewrites tiles. The screen then shows a world that no
+longer exists, which is exactly the disagreement `F3` exists to catch. A notification that
+starts at the truth covers every writer without any of them knowing a renderer exists, and keeps
+simulation independent of presentation.
+
+*Binds:* section E's *how anything else learns a tile changed*: it starts at the tile data,
+not at the dig verb. *Who* may change a tile is still open.
+
+*Costs accepted:* building through reads is one call per tile: 92 ms at Surface, 580 ms at the
+Crush, on every depth change. A bulk read on the tile data is the fix if that hitch is felt. An
+upload re-sends the whole layer texture (32 KB at Surface, 172 KB at the Crush). That is cheap
+at one upload per frame at most, and partial uploads wait for a profiler to ask.
+
+*Considered:* uploading the raw array and masking the disc in the shader (a second copy of the
+radial-bounds rule); RGB8/RGBA8 packing; editing the texture on the GPU (`DrawableTexture`),
+which makes the GPU copy something that could drift from the truth.

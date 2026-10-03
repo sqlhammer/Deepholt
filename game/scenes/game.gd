@@ -11,6 +11,11 @@ func _ready() -> void:
 	var level = level_res.instantiate()
 	level.setup(0, TilePrefabRegistry.get_prefab(&"surface_start"))
 	$GameViewport.add_child(level)
+	$GameViewport/LevelRenderer.show_level(level.level_tiles)
+	# C-4 only: puts the level's centre in the middle of the view, so
+	# the prefab's pocket is on screen. Placing the level properly
+	# against world (0, 0) is CHECKLIST C's "whole level" step.
+	$GameViewport/LevelRenderer.position = Vector2(256, 160)
 	level = level_res.instantiate()
 	level.setup(1)
 	level.visible = false
