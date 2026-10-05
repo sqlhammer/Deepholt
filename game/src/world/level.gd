@@ -23,6 +23,8 @@ func setup(p_depth: int, p_prefab: TilePrefab = null, p_anchor: Vector2i = Vecto
 	level_tiles = LevelTiles.new(World.level_bounds.rows[depth])
 	if p_prefab != null:
 		LevelGridLoader.stamp(level_tiles, p_prefab, p_anchor)
+	
+	add_to_group("levels")
 
 
 func set_depth(_d: int) -> void:

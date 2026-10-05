@@ -26,17 +26,19 @@ func _physics_process(delta: float) -> void:
 	_update_WorldPos()
 
 
-static func create(scene: PackedScene, world_pos: WorldPos) -> Actor:
+static func create(scene: PackedScene, p_name: String, world_pos: WorldPos) -> Actor:
 	var actor: Actor = scene.instantiate() as Actor
-	return actor.setup(world_pos)
+	return actor.setup(p_name, world_pos)
 
 
-func setup(world_pos: WorldPos) -> Actor:
+func setup(p_name: String, world_pos: WorldPos) -> Actor:
 	var old_pos: WorldPos = current_WorldPos
 	depth = world_pos.depth
 	position = TileSpace.tile_center(Vector2i(world_pos.x, world_pos.y))
 	current_WorldPos = get_current_WorldPos()
 	actor_worldpos_changed.emit(self, old_pos, current_WorldPos)
+	actor_name = p_name
+	name = "Player%s" % p_name
 	return self
 
 

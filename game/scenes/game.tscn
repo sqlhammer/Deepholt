@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://yqul1ole3cs7" path="res://src/debug/debug_overlay.tscn" id="2_yqjtg"]
 [ext_resource type="Script" uid="uid://d1wibfcu60s88" path="res://src/render/level_renderer.gd" id="3_rendr"]
 [ext_resource type="Texture2D" uid="uid://cettgrfqujiw7" path="res://src/render/tile_atlas.png" id="4_atlas"]
-[ext_resource type="Script" uid="uid://pmdnx3vjtmb4" path="res://src/debug/view_camera.gd" id="5_dbpan"]
+[ext_resource type="Script" uid="uid://pmdnx3vjtmb4" path="res://src/render/view_camera.gd" id="5_dbpan"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_72uqk"]
 shader = ExtResource("2_lbhrr")
