@@ -8,6 +8,32 @@ func _ready() -> void:
 	set_world_seed("Default Seed")
 
 
+func get_level_tiles_from_depth(_depth: int) -> LevelTiles:
+	var tiles: LevelTiles
+	for lvl in get_tree().get_nodes_in_group("levels"):
+		if lvl is not Level: continue
+		if lvl.depth == _depth:
+			tiles = lvl.level_tiles
+	return tiles
+
+
+func get_level(_depth: int) -> Level:
+	var level: Level
+	for lvl in get_tree().get_nodes_in_group("levels"):
+		if lvl is not Level: continue
+		if lvl.depth == _depth:
+			level = lvl
+	return level
+
+
+func get_worldpos_from_global_position(g_pos: Vector2, level: Level) -> WorldPos:
+	var world_pos: WorldPos
+	var _pos = level.to_local(g_pos)
+	var tile: Vector2i = Vector2i((_pos / TileSpace.TILE_PIXELS).floor())
+	world_pos = WorldPos.new(tile.x, tile.y, level.depth)
+	return world_pos
+
+
 func depth_to_display(depth: int) -> String:
 	if depth == 0: return "Surface"
 	return str(0-depth)

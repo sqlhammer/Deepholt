@@ -10,6 +10,6 @@ func setup(p_actor: Actor) -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	actor.move_intent = Input.get_vector(
-		"move_left", "move_right", "move_up", "move_down")
+	actor.move(Input.get_vector(
+		"move_left", "move_right", "move_up", "move_down"))
 

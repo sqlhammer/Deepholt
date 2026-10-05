@@ -10,3 +10,21 @@ static func tile_center(tile: Vector2i) -> Vector2:
 	var half_tile: float = TileSpace.TILE_PIXELS / 2.0
 	var corner: Vector2 = Vector2(tile * TileSpace.TILE_PIXELS)
 	return corner + Vector2(half_tile, half_tile)
+
+
+static func get_tile_coordinate_from_pixels(pos_coord: float) -> int:
+	return floori(pos_coord / TILE_PIXELS)
+
+
+static func get_tile_coordinates_from_pixels(p_pos: Vector2) -> Vector2i:
+	var pos: Vector2i = Vector2i.ZERO
+	pos.x = floori(p_pos.x / TILE_PIXELS)
+	pos.y = floori(p_pos.y / TILE_PIXELS)
+	return pos
+
+
+
+
+
+
+
