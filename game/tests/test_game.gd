@@ -50,13 +50,13 @@ func test_spawn_level_adds_a_level_at_that_depth() -> void:
 	assert_eq(levels.back().depth, 3, "and it is at the depth asked for")
 
 
-func test_spawn_levels_adds_one_per_depth_given() -> void:
+func test_spawn_levels_adds_one_per_depth() -> void:
 	var before: int = _levels().size()
-	_game._spawn_levels([2, 5])
+	_game._spawn_levels()
 	var levels: Array[Level] = _levels()
-	assert_eq(levels.size(), before + 2, "one level per depth in the list")
-	assert_eq(levels[-2].depth, 2, "in the order given")
-	assert_eq(levels[-1].depth, 5, "in the order given")
+	assert_eq(levels.size(), before + 8, "one level per depth in the list")
+	assert_eq(levels[-2].depth, 6, "in the correct order")
+	assert_eq(levels[-1].depth, 7, "in the correct order")
 
 
 func test_get_level_finds_every_depth() -> void:
@@ -100,14 +100,14 @@ func test_player_spawns_on_the_surface_anchor() -> void:
 
 func test_spawn_player_without_a_level_adds_no_player() -> void:
 	var before: int = _actors().size()
-	_game._spawn_player(99)
+	_game._spawn_player("TestPlayer", 99)
 	assert_push_error("Level (99) not found")
 	assert_eq(_actors().size(), before, "no actor is created")
 
 
 func test_create_player_uses_the_levels_depth_and_anchor() -> void:
 	var level: Level = _game.get_level(2)
-	var actor: Actor = _game._create_player(level)
+	var actor: Actor = _game._create_player("TestPlayer", level)
 	assert_true(actor in _actors(), "the actor is added under Players")
 	assert_true(actor.current_WorldPos.equals(
 		WorldPos.new(level.anchor.x, level.anchor.y, 2)),
@@ -118,7 +118,7 @@ func test_create_player_uses_the_levels_depth_and_anchor() -> void:
 
 func _actor_at_depth(depth: int) -> Actor:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, WorldPos.new(0, 0, depth))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, depth))
 	_game.get_node("GameViewport/Actors/Players").add_child(actor)
 	return actor
 

@@ -22,7 +22,7 @@ func test_the_actor_scene_is_an_actor() -> void:
 
 func test_create_places_the_actor_on_the_tile_center() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, WorldPos.new(3, -2, 1))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1))
 	autofree(actor)
 	assert_eq(actor.position, Vector2(56, -24),
 		"tile (3, -2) is centered at (56, -24)")
@@ -30,7 +30,7 @@ func test_create_places_the_actor_on_the_tile_center() -> void:
 
 func test_create_records_the_world_pos() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, WorldPos.new(3, -2, 1))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1))
 	autofree(actor)
 	assert_true(actor.current_WorldPos.equals(WorldPos.new(3, -2, 1)),
 		"current_WorldPos is the tile it was created on, depth included")
@@ -38,7 +38,7 @@ func test_create_records_the_world_pos() -> void:
 
 func test_setup_returns_the_actor_for_chaining() -> void:
 	var actor: Actor = _actor()
-	assert_eq(actor.setup(WorldPos.new(0, 0, 0)), actor,
+	assert_eq(actor.setup("TestPlayer", WorldPos.new(0, 0, 0)), actor,
 		"setup returns self so instantiate().setup() chains")
 
 
@@ -115,7 +115,7 @@ func test_crossing_a_tile_boundary_emits_old_and_new() -> void:
 # two already agree, so entering the tree must change nothing.
 func test_entering_the_tree_keeps_the_spawn_tile() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, WorldPos.new(3, -2, 1))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1))
 	add_child_autofree(actor)
 	assert_true(actor.current_WorldPos.equals(WorldPos.new(3, -2, 1)),
 		"still on tile (3, -2) at depth 1 after _ready")
@@ -123,7 +123,7 @@ func test_entering_the_tree_keeps_the_spawn_tile() -> void:
 
 func test_entering_the_tree_does_not_move_the_actor() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, WorldPos.new(3, -2, 1))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1))
 	add_child_autofree(actor)
 	assert_eq(actor.position, Vector2(56, -24),
 		"_ready leaves the spawn position alone")

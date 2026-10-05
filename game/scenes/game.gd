@@ -2,17 +2,17 @@ extends Node
 
 
 func _ready() -> void:
-	_spawn_levels(range(World.level_bounds.rows.size()))
-	_spawn_player("Actor", 0)
+	_spawn_levels()
+	_spawn_player("DefaultName", 0)
 
 
 func get_view_camera() -> Camera2D:
 	return $GameViewport/ViewCamera
 
 
-func _spawn_levels(level_depths: Array) -> void:
-	for i in level_depths:
-		_spawn_level(i)
+func _spawn_levels() -> void:
+	for level in World.level_bounds.rows:
+		_spawn_level(level.depth)
 
 
 func _spawn_level(_depth: int) -> void:
