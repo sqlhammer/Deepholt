@@ -46,6 +46,8 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 
 ## D. An actor
 
+*Mode: Self Coded.*
+
 - [ ] **Decide:** what an actor is.
 - [ ] **Decide:** how input reaches an actor.
 - [ ] A moleperson stands in open space; keyboard and gamepad both move them. [2]

@@ -6,7 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://yqul1ole3cs7" path="res://src/debug/debug_overlay.tscn" id="2_yqjtg"]
 [ext_resource type="Script" uid="uid://d1wibfcu60s88" path="res://src/render/level_renderer.gd" id="3_rendr"]
 [ext_resource type="Texture2D" uid="uid://cettgrfqujiw7" path="res://src/render/tile_atlas.png" id="4_atlas"]
-[ext_resource type="Script" uid="uid://pmdnx3vjtmb4" path="res://src/debug/debug_pan.gd" id="5_dbpan"]
+[ext_resource type="Script" uid="uid://pmdnx3vjtmb4" path="res://src/debug/view_camera.gd" id="5_dbpan"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_72uqk"]
 shader = ExtResource("2_lbhrr")
@@ -28,6 +28,8 @@ viewport_path = NodePath("GameViewport")
 [node name="Game" type="Node" unique_id=2029655952]
 script = ExtResource("1_lnu2h")
 
+[node name="Levels" type="Node2D" parent="." unique_id=1399950092]
+
 [node name="GameViewport" type="SubViewport" parent="." unique_id=589241153]
 size = Vector2i(512, 320)
 render_target_update_mode = 4
@@ -36,6 +38,13 @@ render_target_update_mode = 4
 material = SubResource("ShaderMaterial_72uqk")
 mesh = SubResource("QuadMesh_oxbm5")
 script = ExtResource("3_rendr")
+
+[node name="Actors" type="Node2D" parent="GameViewport" unique_id=947800939]
+y_sort_enabled = true
+
+[node name="Players" type="Node2D" parent="GameViewport/Actors" unique_id=1420851656]
+
+[node name="NPCs" type="Node2D" parent="GameViewport/Actors" unique_id=1561873427]
 
 [node name="ViewCamera" type="Camera2D" parent="GameViewport" unique_id=1506070906]
 script = ExtResource("5_dbpan")
@@ -55,3 +64,5 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="DebugOverlay" parent="." unique_id=418423574 instance=ExtResource("2_yqjtg")]
+offset = Vector2(25, 25)
+transform = Transform2D(1, 0, 0, 1, 25, 25)

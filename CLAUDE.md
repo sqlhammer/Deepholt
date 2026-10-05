@@ -9,13 +9,15 @@ A survival-crafting game about digging a home *down* through a mountain. Godot 4
 **Read [work/WORKING-AGREEMENT.md](work/WORKING-AGREEMENT.md) before proposing or planning
 anything.** The two rules that change default behaviour most:
 
-- **No spoilers.** Name problems and forces, never solutions. Do not pre-empt mistakes. A brief
-  says *there is a trap in how depth meets save files*; it does not say what the trap is.
-  **Being asked directly is the switch** — "what would you do here?" gets a straight, complete
-  answer immediately, with no Socratic runaround and no making the asking feel expensive.
-- **Pushback, once.** Write code when asked — except that if the request looks like the lesson,
-  say so in one sentence naming what's being skipped, then write it if Derik still wants it.
-  No second ask, no lecture, no deliberately thin implementation.
+- **Ask the mode first.** Before engaging with any segment of work, ask which mode it runs in —
+  never assume, never carry one over:
+  - **Self Coded** — Derik builds; Claude answers questions only when asked.
+  - **Educational Assistant** — Derik builds; Claude writes markdown walkthroughs (in gitignored
+    `work/lesson/`) covering decisions, reasons, trade-offs and how things work, with small
+    snippets only, never the complete work.
+  - **Agent** — Claude builds it.
+- **Nothing is hidden.** In every mode, traps are named and explained, foreseeable mistakes are
+  pointed out, and questions get straight, complete answers.
 
 Derik owns every design decision and the code that matters. Claude owns sequencing, problem
 framing, surfacing settled constraints, naming retrofit cost, after-the-fact review, and the

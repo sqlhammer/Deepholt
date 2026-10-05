@@ -17,19 +17,20 @@ void fragment() {
 	// Move into texel space, where one unit == one source pixel.
 	vec2 texel_uv = UV / TEXTURE_PIXEL_SIZE;
 
-	// Centre of the texel this screen pixel is nearest to.
-	vec2 nearest_texel = floor(texel_uv) + 0.5;
+	// The texel boundary (seam) this screen pixel is nearest to.
+	vec2 seam = floor(texel_uv + 0.5);
 
 	// How fast texel_uv changes per screen pixel, in each direction — this is
 	// the width of the blend band, sized to exactly one screen pixel so the
 	// blend never spreads into a texel's flat interior.
 	vec2 screen_pixel_in_texels = max(fwidth(texel_uv), vec2(0.0001));
 
-	// Distance from the nearest texel centre, clamped to a half-pixel band
-	// and rescaled back in: 0 in the interior (pure nearest), sliding to the
-	// true bilinear position only right at the boundary.
-	vec2 offset = clamp((texel_uv - nearest_texel) / screen_pixel_in_texels, -0.5, 0.5);
+	// Distance from the seam, in screen pixels, clamped to +-0.5.
+	// More than half a screen pixel away it saturates, landing on
+	// a texel center (pure nearest). Within that band it slides
+	// across the seam, so bilinear blends only right at the edge.
+	vec2 offset = clamp((texel_uv - seam) / screen_pixel_in_texels, -0.5, 0.5);
 
-	vec2 sample_uv = (nearest_texel + offset) * TEXTURE_PIXEL_SIZE;
+	vec2 sample_uv = (seam + offset) * TEXTURE_PIXEL_SIZE;
 	COLOR = texture(TEXTURE, sample_uv);
 }

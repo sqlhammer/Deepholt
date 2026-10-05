@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://bu2js56o3p7nx"]
+
+[ext_resource type="Script" uid="uid://b7ludhw01skbr" path="res://src/entity/actor.gd" id="1_70l2e"]
+[ext_resource type="Texture2D" uid="uid://eoyturvwied" path="res://content/creatures/human_base.png" id="2_1gypc"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_70l2e"]
+radius = 5.0
+height = 14.0
+
+[node name="Player" type="CharacterBody2D" unique_id=514890045 groups=["players"]]
+script = ExtResource("1_70l2e")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=569719171]
+texture = ExtResource("2_1gypc")
+hframes = 9
+vframes = 4
+frame = 19
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." unique_id=516042424]
+position = Vector2(0, 2)
+shape = SubResource("CapsuleShape2D_70l2e")

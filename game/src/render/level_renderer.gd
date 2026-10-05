@@ -7,8 +7,6 @@ extends MeshInstance2D
 # first, then top, then ore (D-066). Presentation only -- nothing in
 # src/world/ may reach back into this.
 
-const TILE_PIXELS: int = 16
-
 # The cells of tile_atlas.png, left to right, 16 x 16 px each.
 enum AtlasCell {
 	FLOOR,
@@ -35,23 +33,14 @@ func show_level(tiles: LevelTiles) -> void:
 		var layer_texture: ImageTexture = _data_texture(tiles, layers[layer])
 		material.set_shader_parameter(layer + "_data", layer_texture)
 
-	# A QuadMesh is centred on its node, and an odd-width level's centre
+	# A QuadMesh is centered on its node, and an odd-width level's center
 	# is the middle of tile (0, 0). Shifting by half a tile puts that
 	# tile's top-left corner on the node's origin instead (D-067).
 	var quad: QuadMesh = mesh as QuadMesh
-	var level_pixels: int = level_width(tiles) * TILE_PIXELS
-	var half_tile: float = TILE_PIXELS / 2.0
+	var level_pixels: int = level_width(tiles) * TileSpace.TILE_PIXELS
+	var half_tile: float = TileSpace.TILE_PIXELS / 2.0
 	quad.size = Vector2(level_pixels, level_pixels)
 	quad.center_offset = Vector3(half_tile, half_tile, 0.0)
-
-
-# Where a tile sits in a level's own pixel space: tile (x, y) covers
-# x * 16 to x * 16 + 16 across and the same down, so world (0, 0)'s
-# top-left corner is the level's origin (D-067). This is its centre.
-static func tile_centre(tile: Vector2i) -> Vector2:
-	var half_tile: float = TILE_PIXELS / 2.0
-	var corner: Vector2 = Vector2(tile * TILE_PIXELS)
-	return corner + Vector2(half_tile, half_tile)
 
 
 # A level's tiles are a square this many tiles on a side.

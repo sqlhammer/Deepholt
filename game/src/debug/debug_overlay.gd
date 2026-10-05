@@ -6,8 +6,18 @@ extends CanvasLayer
 
 var debug_text : Dictionary = {}
 
+# Actors whose tile readout is shown. Polled on the timer rather
+# than fed by events, so the readout is always what the world
+# holds now -- including tiles that change while nobody moves.
+# Keyed by instance id, not by the Actor: a freed object can't be
+# looked up as a key, but instance_from_id just returns null. The
+# title is kept so the section can still be removed after the
+# actor is gone and its name can't be read.
+var watched_actors: Dictionary[int, String] = {}
+
 
 func _ready() -> void:
+	$Timer.timeout.connect(_refresh_watched_actors)
 	Global.connect("debug_event",set_section)
 	set_section("World Seed",str(World.world_seed)) # World emits prior to this being ready. Once we implement a loading screen, World seed will update later and we can remove this.
 
@@ -19,6 +29,7 @@ func _input(event: InputEvent) -> void:
 
 func _toggle_debug_overlay() -> void:
 	self.visible = not self.visible
+	_refresh_watched_actors()
 
 
 func set_section(title: String, text: String, remove: bool = false) -> void:
@@ -50,16 +61,20 @@ func _register_section(title: String, text: String) -> void:
 	debug_text[title] = text
 
 
-func _on_timer_timeout() -> void:
-	set_player_positions()
+func watch(actor: Actor) -> void:
+	watched_actors[actor.get_instance_id()] = actor.actor_name
+	_refresh_watched_actors()
 
 
-func set_player_positions() -> void:
-	var players = get_tree().get_nodes_in_group("players")
-	if not players: return
-
-	for player: Player in players:
-		set_section(player.player_name,_tile_readout(player.current_WorldPos))
+func _refresh_watched_actors() -> void:
+	for id: int in watched_actors.keys():
+		var actor: Actor = instance_from_id(id) as Actor
+		if actor == null:
+			# A freed actor's section goes with it.
+			remove_section(watched_actors[id])
+			watched_actors.erase(id)
+		elif visible:
+			set_section(actor.actor_name, _tile_readout(actor.current_WorldPos))
 
 
 # What the world believes about the tiles around one actor, read straight out

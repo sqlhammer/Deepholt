@@ -28,7 +28,7 @@ func is_in_bounds(pos: WorldPos) -> bool:
 
 func set_world_seed(_seed: String) -> void:
 	world_seed = hash(_seed)
-	Global.emit_signal("debug_event",["World Seed",str(world_seed)])
+	Global.emit_signal("debug_event","World Seed",str(world_seed))
 
 
 

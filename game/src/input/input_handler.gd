@@ -1,0 +1,14 @@
+extends Node
+class_name InputHandler
+
+var actor: Actor
+
+
+func setup(p_actor: Actor) -> void:
+	actor = p_actor
+
+
+func _physics_process(_delta: float) -> void:
+	actor.move_intent = Input.get_vector(
+		"move_left", "move_right", "move_up", "move_down")
+

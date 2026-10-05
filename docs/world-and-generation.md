@@ -97,7 +97,7 @@ going to need pumps."*
 3. **Carve** — cellular-automata cave generation per region, with per-archetype parameters
    (open caverns vs. tight seams vs. orthogonal ruin corridors).
 4. **Stamp POIs** — place authored prefab chunks (with variants and rotation) at region
-   centres and junctions. Some POIs are *guaranteed per stratum*, others are from a pool.
+   centers and junctions. Some POIs are *guaranteed per stratum*, others are from a pool.
 5. **Align verticals** — place ancestral shafts and lift cores at coordinates shared with
    adjacent levels; punch matching floor/ceiling holes.
 6. **Distribute** — ore, fauna spawners, hazards, decoration from the stratum table.

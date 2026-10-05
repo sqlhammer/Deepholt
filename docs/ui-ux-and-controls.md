@@ -41,7 +41,7 @@ An honest look at where a game like this normally breaks on a pad, and the answe
 A single grid cursor, moved by the right stick, **clamped to a radius of ~5 tiles around the
 character**, snapping tile-to-tile with an audible tick and a clear highlight. Mouse drives the
 *same* cursor with the *same* clamp, so both inputs have identical reach and identical rules.
-`R3` recentres the cursor on the character.
+`R3` recenters the cursor on the character.
 
 The clamp is not a limitation — it is what makes the stick feel precise, because the cursor
 never has far to travel.
@@ -94,7 +94,7 @@ late-stage menu.
 | **Y** | Toggle build mode |
 | **LB / RB** | Cycle hotbar |
 | **L3** | Toggle support overlay |
-| **R3** | Recentre cursor on character |
+| **R3** | Recenter cursor on character |
 | **D-pad ↑** | Toggle lantern |
 | **D-pad ↓** | **Place timber prop** (reserved, see §2.5) |
 | **D-pad ←/→** | Quick food / quick heal |
@@ -128,7 +128,7 @@ they are not.
 |---|---|---|
 | **Health** | Bottom-left, small | Below full, or in combat |
 | **Hunger** | Bottom-left | Peckish or worse |
-| **Exposure** | Top-centre, prominent | Only above ground, only above zero. **Never visible underground** |
+| **Exposure** | Top-center, prominent | Only above ground, only above zero. **Never visible underground** |
 | **Lantern fuel** | On the lantern icon | Lantern lit |
 | **Carry weight** | Above the hotbar, always | Always — this is the pillar's meter |
 | **Depth strip** | Screen edge, thin | Always. Which level you are on, at a glance |

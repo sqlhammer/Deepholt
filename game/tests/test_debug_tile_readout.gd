@@ -36,12 +36,12 @@ func test_readout_names_the_tile_under_the_actor() -> void:
 	assert_string_contains(readout, "ore NONE", "and carries no ore")
 
 
-# The array index of world (0, 0) is the centre element, (r * width + r).
-# Surface has radius 90, so width 181 and centre 16380.
+# The array index of world (0, 0) is the center element, (r * width + r).
+# Surface has radius 90, so width 181 and center 16380.
 func test_readout_reports_the_array_index_of_the_origin() -> void:
 	var readout: String = _overlay._tile_readout(WorldPos.new(0, 0, 0))
 
-	assert_string_contains(readout, "origin (0, 0) index 16380", "the origin sits at the array's centre")
+	assert_string_contains(readout, "origin (0, 0) index 16380", "the origin sits at the array's center")
 	assert_string_contains(readout, "index 16380 of 32761", "and that is where the actor is standing")
 
 
@@ -63,3 +63,38 @@ func test_a_depth_with_no_resident_level_says_so() -> void:
 
 	assert_string_contains(readout, "no level resident at depth 5",
 		"a depth nothing is loaded for is reported, not guessed at")
+
+
+# The overlay polls the actors it watches rather than waiting for
+# them to move, so a fresh actor shows up without taking a step.
+func test_a_watched_actor_shows_before_it_moves() -> void:
+	var actor: Actor = Actor.create(
+		Global.actor_packed_scene, WorldPos.new(0, 0, 0))
+	autofree(actor)
+	_overlay.visible = true
+	_overlay.watch(actor)
+	assert_true(_overlay.debug_text.has(actor.actor_name),
+		"watching an actor adds its section straight away")
+
+
+func test_a_hidden_overlay_does_not_build_readouts() -> void:
+	var actor: Actor = Actor.create(
+		Global.actor_packed_scene, WorldPos.new(0, 0, 0))
+	autofree(actor)
+	_overlay.visible = false
+	_overlay.watch(actor)
+	assert_false(_overlay.debug_text.has(actor.actor_name),
+		"nothing is read while F3 is off")
+
+
+func test_a_freed_actor_loses_its_section() -> void:
+	var actor: Actor = Actor.create(
+		Global.actor_packed_scene, WorldPos.new(0, 0, 0))
+	_overlay.visible = true
+	_overlay.watch(actor)
+	actor.free()
+	_overlay._refresh_watched_actors()
+	assert_false(_overlay.debug_text.has("Actor"),
+		"a freed actor's readout is removed, not left stale")
+	assert_eq(_overlay.watched_actors.size(), 0,
+		"and it is no longer watched")

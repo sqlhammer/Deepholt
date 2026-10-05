@@ -6,6 +6,7 @@ var depth: int:
 	get: return _depth
 var level_seed: int
 var level_tiles: LevelTiles
+var anchor: Vector2i = Vector2i.ZERO
 
 
 func _ready() -> void:
@@ -15,6 +16,7 @@ func _ready() -> void:
 # A level with no prefab stamped into it is entirely the default tile: solid
 # minable rock on rock ground, out to its radial bounds.
 func setup(p_depth: int, p_prefab: TilePrefab = null, p_anchor: Vector2i = Vector2i.ZERO) -> void:
+	anchor = p_anchor
 	set_depth(p_depth)
 	self.name = "Level%d" % depth
 
@@ -39,8 +41,14 @@ func _set_level_seed() -> void:
 	Global.emit_signal("debug_event","Level Seed",str(level_seed))
 
 
+func get_anchor_global_position() -> Vector2:
+	var g_pos: Vector2 = Vector2.ZERO
+	g_pos = to_global(TileSpace.tile_center(anchor))
+	return g_pos
 
 
+func get_spawn_global_position() -> Vector2:
+	return to_global(TileSpace.tile_center(anchor))
 
 
 

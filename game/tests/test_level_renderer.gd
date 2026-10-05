@@ -59,12 +59,3 @@ func test_every_byte_survives_the_r8_round_trip() -> void:
 	for value in range(256):
 		var decoded: int = int(image.get_pixel(value, 0).r * 255.0 + 0.5)
 		assert_eq(decoded, value, "byte %d should decode to itself" % value)
-
-
-func test_tile_centres_sit_half_a_tile_into_each_tile() -> void:
-	assert_eq(LevelRenderer.tile_centre(Vector2i(0, 0)), Vector2(8, 8),
-		"tile (0, 0)'s top-left corner is the level's origin")
-	assert_eq(LevelRenderer.tile_centre(Vector2i(2, 1)), Vector2(40, 24),
-		"each tile is 16 px further along")
-	assert_eq(LevelRenderer.tile_centre(Vector2i(-1, -1)), Vector2(-8, -8),
-		"negative tiles sit up and to the left of the origin, not on it")

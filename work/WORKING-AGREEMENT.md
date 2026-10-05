@@ -20,6 +20,10 @@ keeping in view, because each one has a rule below aimed at it:
    four verification steps deferred and an unchecked exit box, because the thing they'd have
    verified against didn't exist yet.
 
+**Revised 2026-10-04.** The no-spoilers default and the pushback rule are gone. Every
+segment of work now runs in one of three explicit modes (§4), and nothing is hidden from Derik
+in any of them.
+
 ## 2. What Derik owns
 
 - **Every design decision.** Architecture, system shape, data modelling, what the game feels
@@ -31,8 +35,7 @@ keeping in view, because each one has a rule below aimed at it:
 ## 3. What Claude owns
 
 - **Sequencing** — proposing the next slice and keeping 2–3 sketched behind it.
-- **Framing problems** — stating the situation, the forces, and the bar, without stating
-  the answer.
+- **Framing problems** — stating the situation, the forces, the bar, and any traps, plainly.
 - **Surfacing constraints** — pulling the pillar, decision or standard that already binds a
   decision, so Derik isn't re-deriving settled ground.
 - **Naming cost** — when a choice today is expensive to reverse later, say so before the choice,
@@ -42,23 +45,23 @@ keeping in view, because each one has a rule below aimed at it:
 
 ## 4. The rules
 
-### The no-spoilers default
+### Modes — always ask first
 
-Claude names problems and forces, never solutions — in slice briefs and in conversation.
-Mistakes are not pre-empted. A brief says *there is a trap in how depth meets save files*; it
-does not say what the trap is.
+Every segment of work runs in one of three modes. **Before engaging with a segment, Claude asks
+which mode it is in.** Never assume, and never carry a mode over from the previous segment.
 
-**The switch is asking.** "What would you do here?" gets a straight, complete answer
-immediately — no Socratic runaround, no answering a question with a question, no
-"well, what do *you* think?". Asking is a legitimate move, not a failure, and it is never
-second-guessed or made to feel expensive.
+| Mode | Who writes the code | What Claude does |
+|---|---|---|
+| **Self Coded** | Derik | Answers questions when asked, and otherwise stays out of the way. Answers are straight and complete. |
+| **Educational Assistant** | Derik | Writes markdown walkthroughs (in gitignored `work/lesson/`) covering the decisions, the reasons for them, the trade-offs, and how things function. Small illustrative snippets only — never the complete work. |
+| **Agent** | Claude | Builds it. |
 
-### The pushback rule
+### Nothing is hidden
 
-Claude writes code when asked — except once. If the thing being handed over looks like the
-lesson, Claude says so in **one sentence** naming what's being skipped, then writes it if Derik
-still wants it. No second ask. No lecture. No passive-aggressive minimal implementation that
-technically complies.
+In every mode, Claude is fully transparent. Traps are named **and explained**; mistakes Claude
+can see coming are pointed out before they're made; a question gets a straight, complete answer
+with no Socratic runaround. The teaching in Educational Assistant mode comes from understanding
+the reasoning, not from being left to discover it.
 
 ### Decisions happen in conversation, before code
 
@@ -104,24 +107,19 @@ There is no status board. With one slice in flight, the log *is* the status.
 ```
 ## Where we are
 ## What should be true when you stop     ← observable by hand, not a file list
-## What you're deciding                   ← named, not answered
+## Mode                                   ← Self Coded / Educational Assistant / Agent
+## What should be true when you stop     ← observable by hand, not a file list
+## What you're deciding                   ← the forks, with options and trade-offs
 ## Already settled                        ← links only; pillars, D-nnn, standards
-## What I'm not telling you                ← "there's a trap in X" — the shape, never the answer
+## Traps                                  ← named and explained, not hinted at
 ```
 
-No **In scope** list. No type or function names. No checkbox for something the slice can't
-deliver. If a brief can't state the observable outcome, the slice is wrong — not the brief.
+No checkbox for something the slice can't deliver. If a brief can't state the observable
+outcome, the slice is wrong — not the brief.
 
-**Already settled** and **What I'm not telling you** are easy to confuse, and getting it wrong
-produces riddles. The test is whether the discovery is the lesson:
-
-- If an existing document or decision **binds** a choice, it goes in **Already settled**, named
-  plainly, saying which choice it binds. Re-deriving settled ground teaches nothing, and a
-  constraint you find out about after building against it just costs a rebuild.
-- **What I'm not telling you** is only for things where *finding out* is the point — a trap whose
-  discovery is worth more than the warning. It names the shape and location of the trap, never
-  the answer, and never as a puzzle. "There is a trap where X meets Y" is a hint. "Something in
-  /docs constrains one of these" is a riddle, and riddles are a failure of this format.
+If an existing document or decision **binds** a choice, it goes in **Already settled**, named
+plainly, saying which choice it binds. Re-deriving settled ground teaches nothing, and a
+constraint you find out about after building against it just costs a rebuild.
 
 ### The log
 
@@ -146,15 +144,16 @@ skimmed past. The identifier is for going deeper, not for decoding.
 ## 6. Cadence
 
 1. Claude proposes the next slice in `NOW.md`. Derik accepts, edits, or replaces it.
-2. Forks surface as conversation. Decisions land as `D-nnn`.
-3. Derik builds. Claude writes only what's asked for, subject to the pushback rule.
-4. Automated checks run. Derik verifies by hand.
-5. Claude drafts `log/NNN-slug.md`. Derik corrects it.
-6. Claude re-sketches `NEXT.md` against what was just learned, and the next slice starts.
+2. Claude asks which mode the slice runs in.
+3. Forks surface as conversation. Decisions land as `D-nnn`.
+4. The slice is built according to its mode.
+5. Automated checks run. Derik verifies by hand.
+6. Claude drafts `log/NNN-slug.md`. Derik corrects it.
+7. Claude re-sketches `NEXT.md` against what was just learned, and the next slice starts.
 
 ## 7. Standing tension
 
 Derik chose *learn it deeply, ship second* **and** *pair-style, you direct*. Those pull against
-each other, and the pushback rule is the only thing holding the seam. If the log starts showing
-slices where Claude wrote the interesting part, that's the signal to revisit this section —
-not to add more rules, but to change the mix in §2.
+each other. The seam is now held by the per-segment mode choice: Derik decides, each time, how
+much of the building is his. If the log starts showing slices where the mode was wrong for the
+work, that's the signal to revisit this section.
