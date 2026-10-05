@@ -31,6 +31,10 @@ func move(_move_intent: Vector2) -> void:
 	move_intent = _move_intent
 
 
+func stop() -> void:
+	move_intent = Vector2.ZERO
+
+
 func _physics_process(delta: float) -> void:
 	var tiles: LevelTiles = current_level.level_tiles
 	var motion = move_intent * speed * delta

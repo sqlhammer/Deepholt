@@ -48,17 +48,43 @@ func remove_section(title: String) -> void:
 
 func _update_section(dict: Dictionary) -> void:
 	if dict == null: return
-	
-	debug_text.sort() # TODO: Change this method of sorting so that information is grouped more logically
 	$DebugRichTextLabel.text = ""
 	
 	for key in debug_text:
 		var _txt = $DebugRichTextLabel.text
-		$DebugRichTextLabel.text = _txt + "[b]%s[/b]: %s\n" % [key, debug_text[key]]
+		$DebugRichTextLabel.text = _txt + "[b]%s[/b]: %s\n\n" % [key, debug_text[key].text]
 
 
 func _register_section(title: String, text: String) -> void:
-	debug_text[title] = text
+	var display_group: int = _get_group(title)
+	debug_text[title] = { "text": text, "group": display_group }
+	_sort_debug_dictionary()
+
+
+func _get_group(title: String) -> int:
+	var group: int = 99
+	
+	# The Player title include the player's name
+	# Strip it out for a proper match for grouping
+	if title.substr(0,8) == "Player: ": title = "Player: "
+	
+	match title:
+		"World Seed": return 0
+		"Level Seed": return 0
+		"Player: ": return 10
+	
+	return group
+
+
+func _sort_debug_dictionary() -> void:
+	var keys: Array = debug_text.keys()
+	keys.sort_custom(func(a, b) -> bool:
+		return debug_text[a].group < debug_text[b].group)
+	
+	var sorted: Dictionary = {}
+	for key in keys:
+		sorted[key] = debug_text[key]
+	debug_text = sorted
 
 
 func watch(actor: Actor) -> void:
@@ -74,7 +100,7 @@ func _refresh_watched_actors() -> void:
 			remove_section(watched_actors[id])
 			watched_actors.erase(id)
 		elif visible:
-			set_section(actor.actor_name, _tile_readout(actor.current_WorldPos))
+			set_section("Player: %s" % actor.actor_name, _tile_readout(actor.current_WorldPos))
 
 
 # What the world believes about the tiles around one actor, read straight out
