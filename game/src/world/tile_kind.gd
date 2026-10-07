@@ -32,8 +32,8 @@ const ORE: Dictionary = {
 }
 
 const MINABLE_DENSITY: Dictionary = {
-	"MINABLE_ROCK": { "id": 2, "density": 5.0 },
-	"MINABLE_DIRT": { "id": 3, "density": 2.0 },
+	"MINABLE_ROCK": { "id": TOP.MINABLE_ROCK, "density": 5.0 },
+	"MINABLE_DIRT": { "id": TOP.MINABLE_DIRT, "density": 2.0 },
 }
 
 

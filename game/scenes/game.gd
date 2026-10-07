@@ -40,6 +40,7 @@ func _create_player(_name: String, _level: Level) -> Actor:
 	# Create player
 	var actor_spawn_world_pos: WorldPos = WorldPos.new(_level.anchor.x, _level.anchor.y, _level.depth)
 	var actor: Actor = Actor.create(Global.actor_packed_scene, _name, actor_spawn_world_pos)
+	actor.add_to_group("players")
 	$GameViewport/Actors/Players.add_child(actor)
 	
 	grant_player_capabilities(actor)

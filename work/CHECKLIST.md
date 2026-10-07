@@ -86,29 +86,30 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 - [ ] **The tile never opens.** On completion `CapabilityDig` emits `World.ore_mined` and resets,
   but nothing sets the top to `OPEN` or clears the ore ([D-066](../docs/design-decisions.md)).
   Blocked on the **Decide: who may change a tile** item above.
-- [ ] **Signal misnamed and missing its argument.** Declared `ore_mined(world_pos)`, emitted with
+- [x] **Signal misnamed and missing its argument.** Declared `ore_mined(world_pos)`, emitted with
   nothing, and fires for plain rock too. Something like `tile_dug.emit(target_tile)`.
 - [ ] **Progress never resets on release or target change**
   ([D-071](../docs/design-decisions.md), [D-072](../docs/design-decisions.md)). `dig()` only runs
   while held, so it never learns of a release. The capability needs to remember its last target
   and get a `stop()` (or "not held this tick") call from the actor.
-- [ ] **`tile_density` keeps its last value.** A kind not in `MINABLE_DENSITY` leaves the previous
+- [x] **`tile_density` keeps its last value.** A kind not in `MINABLE_DENSITY` leaves the previous
   tile's density in place. Return the density instead of storing it.
-- [ ] **Hard-coded `2`/`3` in `_is_diggable`.** Use `TileKind.TOP.MINABLE_ROCK` etc.;
+- [x] **Hard-coded `2`/`3` in `_is_diggable`.** Use `TileKind.TOP.MINABLE_ROCK` etc.;
   `MINABLE_DENSITY` repeats the ids again.
-- [ ] **`print(progress)`** runs every tick.
+- [x] **`print(progress)`** runs every tick.
 - [ ] **Hardness per tile kind conflicts with a settled doc.**
   [tuning-appendix §4](../docs/tuning-appendix.md) makes hardness per stratum
   (`dig_seconds = rock_hardness / tool_power`); the code makes it per tile kind (rock 5,
   dirt 2). Same formula and timing (5 / 10 = 0.5 s). Either record a D-entry for the change or
   follow the doc's numbers.
-- [ ] **`ToolData` + `equipped` is the M1 tools system arriving early** — a stub
+- [x] **`ToolData` + `equipped` is the M1 tools system arriving early** — a stub
   [pre-alpha-scope §4](../docs/pre-alpha-scope.md) rules out. Either record that tools come into
   pre-alpha with this slice, or use a plain dig-speed number on the capability until M1.
-- [ ] `get_node("Capabilities/CapabilityDig")` errors when missing rather than returning `null`,
+  Kept as one fixed tool; tools are not expanded in pre-alpha ([D-077](../docs/design-decisions.md)).
+- [x] `get_node("Capabilities/CapabilityDig")` errors when missing rather than returning `null`,
   so `if capability:` never helps. Use `get_node_or_null`, or look it up once in `_ready`.
-- [ ] `var aim` in `InputHandler` is untyped — add `: Vector2`.
-- [ ] `actor.tscn`'s root node is still in the `players` group.
+- [x] `var aim` in `InputHandler` is untyped — add `: Vector2`.
+- [x] `actor.tscn`'s root node is still in the `players` group.
 - [ ] **Facing ([D-075](../docs/design-decisions.md), [D-076](../docs/design-decisions.md)).**
   `Actor.facing` exists (starts down) but nothing uses it: the target is still worked out from the
   raw aim, so a zero aim targets the actor's own tile. Facing should be updated from aim when aim

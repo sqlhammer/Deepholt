@@ -7,15 +7,22 @@ var current_WorldPos: WorldPos
 var actor_name: String = "Actor"
 var move_intent: Vector2 = Vector2.ZERO
 var action_intent: bool = false
-var aim_direction: Vector2 = Vector2.ZERO
+var aim_vector: Vector2 = Vector2.ZERO
 var current_level: Level
-var facing: Vector2i = Vector2i(0,1) # Down
+var facing: Vector2i = Vector2i(0,1) # Default = Down
 
 @export var speed: float = 85.0
 @export var feet_box: Rect2 = Rect2(-5, 1, 10, 6)
 
 # TODO: Temporary equip. Refactor later.
 var equipped: ToolData = preload("res://src/entity/tools/stone_pickaxe.tres")
+
+var facing_frames: Dictionary = {
+	"UP": 1,
+	"DOWN": 19,
+	"LEFT": 28,
+	"RIGHT": 10,
+}
 
 # Which level the actor is on. Pixels can't say this, so it is
 # stored, and current_WorldPos is computed from it and position.
@@ -24,6 +31,12 @@ var _depth: int = -1
 var depth: int:
 	get: return _depth
 	set(value): set_depth(value)
+
+
+static func create(scene: PackedScene, p_name: String, world_pos: WorldPos) -> Actor:
+	var actor: Actor = scene.instantiate() as Actor
+	return actor.setup(p_name, world_pos)
+
 
 func _ready() -> void:
 	assert(depth >= 0, "actor entered the tree without setup()")
@@ -35,6 +48,7 @@ func _ready() -> void:
 func move(p_move_intent: Vector2) -> void:
 	# The _physics_process will move the actor until the intent is reset
 	move_intent = p_move_intent
+
 
 func _move(_motion: Vector2) -> void:
 	var tiles: LevelTiles = current_level.level_tiles
@@ -50,15 +64,26 @@ func stop() -> void:
 	move_intent = Vector2.ZERO
 
 
-func primary_action(p_action_intent: bool, p_aim_direction: Vector2) -> void:
+func aim(p_aim: Vector2, p_move: Vector2) -> void:
+	aim_vector = p_aim
+	
+	# Set facing based on aim
+	var was_set: bool = _set_facing(p_aim)
+	
+	# If aim is in the deadzone, set facing from move
+	# leave it the same if not moving
+	if not was_set:
+		was_set = _set_facing(p_move)
+
+
+func primary_action(p_action_intent: bool) -> void:
 	# The _physics_process will trigger the actor's action until the intent is reset
 	action_intent = p_action_intent
-	aim_direction = p_aim_direction
 
 
 func _primary_action(delta: float) -> void:
 	if not action_intent: return
-	var target_tile: WorldPos = _get_target_tile(aim_direction)
+	var target_tile: WorldPos = _get_target_tile(aim_vector)
 	var verb: String = equipped.verb
 	match verb:
 		"dig": _dig(delta, target_tile)
@@ -74,18 +99,13 @@ func _get_target_tile(input_vector: Vector2) -> WorldPos:
 
 
 func _dig(delta: float, target_tile: WorldPos) -> void: 
-	var capability: CapabilityDig = get_node("Capabilities/CapabilityDig")
+	var capability: CapabilityDig = get_node_or_null("Capabilities/CapabilityDig")
 	if capability: capability.dig(delta, equipped.speed, target_tile, current_level)
 
 
 func _physics_process(delta: float) -> void:
 	_move(move_intent * speed * delta)
 	_primary_action(delta)
-
-
-static func create(scene: PackedScene, p_name: String, world_pos: WorldPos) -> Actor:
-	var actor: Actor = scene.instantiate() as Actor
-	return actor.setup(p_name, world_pos)
 
 
 func setup(p_name: String, world_pos: WorldPos) -> Actor:
@@ -130,6 +150,40 @@ func set_depth(p_depth: int) -> void:
 	_depth = p_depth
 	current_level = World.get_level(depth)
 	assert(current_level != null, "Actor depth was change/set while current_level was NULL.")
+
+
+func _set_facing(p_vector: Vector2) -> bool:
+	var offset: Vector2i = TileSpace.get_facing_offset(p_vector)
+	
+	if offset == Vector2i(0,0): 
+		return false # wasn't set due to input deadzone
+	
+	facing = offset
+	
+	# Update sprite
+	# TODO: Replace later with walking animation
+	var sprite: Sprite2D = $Sprite2D
+	match facing:
+		Vector2i(0,-1): sprite.frame = facing_frames["UP"]
+		Vector2i(0,1): sprite.frame = facing_frames["DOWN"]
+		Vector2i(-1,0): sprite.frame = facing_frames["LEFT"]
+		Vector2i(1,0): sprite.frame = facing_frames["RIGHT"]
+	
+	return true # Properly set
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

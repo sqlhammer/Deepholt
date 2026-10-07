@@ -22,10 +22,11 @@ func _input(event: InputEvent) -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	actor.move(Input.get_vector(
-		"move_left", "move_right", "move_up", "move_down"))
-	
-	actor.primary_action(Input.is_action_pressed("primary_action"), _get_aim())
+	var move: Vector2 = Input.get_vector(
+		"move_left", "move_right", "move_up", "move_down")
+	actor.move(move)
+	actor.aim(_get_aim(), move)
+	actor.primary_action(Input.is_action_pressed("primary_action"))
 
 
 func _get_aim() -> Vector2:

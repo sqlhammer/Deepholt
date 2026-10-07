@@ -1338,3 +1338,17 @@ input. Down is the direction a top-down character conventionally faces at rest.
 *Consequence:* walking diagonally on a keyboard is exactly 45°, the boundary itself.
 Hysteresis keeps whichever facing the actor already had, so the target doesn't flicker, but it
 does mean a diagonal walk keeps the previous facing rather than choosing one.
+
+---
+
+### D-077 — One fixed tool stays in pre-alpha; tools are not expanded
+**Decided** (by Derik, slice 001 section E). The actor's dig speed comes from a `ToolData`
+resource held in `equipped`, preloaded as a single stone pickaxe. It stays. Pre-alpha does not
+expand tools: no tiers in use, no equipping, no swapping, no further tools.
+
+*Why:* it is already built and works, and it puts dig speed where the M1 tools system will look
+for it.
+
+*Exception recorded:* [pre-alpha-scope §4](./pre-alpha-scope.md) says deferred systems get no
+stubs. This is a deliberate, bounded exception to that rule: one fixed tool and nothing that
+selects between tools. Anything that would select or change tools still waits for M1.

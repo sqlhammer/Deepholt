@@ -31,6 +31,9 @@ func _is_diggable(kind: int) -> bool:
 		TileKind.TOP.MINABLE_ROCK: return true
 		TileKind.TOP.MINABLE_DIRT: return true
 	
+	# Reset if not minable
+	tile_density = 0.0
+	progress = 0.0
 	return false
 
 

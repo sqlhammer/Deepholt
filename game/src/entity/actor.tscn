@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://b7ludhw01skbr" path="res://src/entity/actor.gd" id="1_70l2e"]
 [ext_resource type="Texture2D" uid="uid://eoyturvwied" path="res://content/creatures/human_base.png" id="2_1gypc"]
 
-[node name="Actor" type="Node2D" unique_id=910169004 groups=["players"]]
+[node name="Actor" type="Node2D" unique_id=910169004]
 script = ExtResource("1_70l2e")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=569719171]
