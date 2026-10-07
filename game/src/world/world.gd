@@ -3,9 +3,11 @@ extends Node
 var world_seed: int
 var level_bounds: Resource = preload("res://src/world/level_bounds.tres")
 
+signal tile_dug(tile: WorldPos)
 
 func _ready() -> void:
 	set_world_seed("Default Seed")
+	connect("tile_dug",dig_tile)
 
 
 func get_level_tiles_from_depth(_depth: int) -> LevelTiles:
@@ -55,6 +57,36 @@ func is_in_bounds(pos: WorldPos) -> bool:
 func set_world_seed(_seed: String) -> void:
 	world_seed = hash(_seed)
 	Global.emit_signal("debug_event","World Seed",str(world_seed))
+
+
+func dig_tile(tile: WorldPos) -> void:
+	print("Dug tile: %s" % tile._to_string())
+	
+	# TODO: Code for changing the TOP to OPEN and handling dropped ore
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://cu5rsfpsco5j"]
+
+[ext_resource type="Script" uid="uid://b76im5geqba35" path="res://src/entity/capabilities/capability_dig.gd" id="1_vmvqg"]
+
+[node name="CapabilityDig" type="Node" unique_id=1256893345]
+script = ExtResource("1_vmvqg")

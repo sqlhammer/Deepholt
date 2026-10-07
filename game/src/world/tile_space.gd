@@ -23,7 +23,10 @@ static func get_tile_coordinates_from_pixels(p_pos: Vector2) -> Vector2i:
 	return pos
 
 
-
+static func get_facing_offset(dir: Vector2) -> Vector2i:
+	if absf(dir.x) >= absf(dir.y):
+		return Vector2i(signi(int(signf(dir.x))), 0)
+	return Vector2i(0, int(signf(dir.y)))
 
 
 

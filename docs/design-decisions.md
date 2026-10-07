@@ -1138,3 +1138,203 @@ That makes the origin a special case, and every conversion carries a half-tile o
 and the place it goes wrong is negative coordinates, which is half of every level. `F3`'s tile
 window is the check: its `0` is the tile drawn at the camera's centre when the camera sits on
 `(8, 8)`.
+
+---
+
+### D-068 — An actor is a plain node with a feet box, a stored depth, and an intent
+**Decided** (by Derik, in code during slice 001 section D; recorded by Claude afterwards).
+
+- **A `Node2D`, not a physics body.** Blocking is a function of tile data
+  ([D-046](#d-046--levels-reach-the-screen-through-a-data-texture-and-a-shader-not-tilemaplayer)),
+  so the actor has no `CharacterBody2D`, no collision shape and no `move_and_collide`.
+- **It collides through a feet box.** An exported `Rect2` measured from the actor's origin,
+  narrower than a tile so it fits a one-tile tunnel. `TileCollision.move_box` moves it against
+  the level's tile data one axis at a time, X then Y, and snaps a blocked axis flush to the
+  wall. Only `OPEN` tiles are passable: everything else blocks, including the sentinels outside
+  the level ([D-059](#d-059--sentinel-values-revised-to-255-and-254)).
+- **Depth is stored; the tile is computed.** Pixels can't say which level an actor is on, so
+  `depth` is its own value, and setting it looks up `current_level`. `current_WorldPos` is never
+  set directly. It is worked out from position and depth, using the tile under the **feet box's
+  center** and the floor rule of
+  [D-067](#d-067--tile-x-y-covers-level-pixels-16x-to-16x--16-world-0-0s-corner-is-the-levels-origin).
+  Depth starts at −1, and entering the tree without `setup()` fails an assert.
+- **It moves by intent.** `move(intent)` stores a direction. `_physics_process` applies
+  `intent × speed × delta`. The actor never asks where an intent came from.
+- **It announces tile changes** as `actor_worldpos_changed(actor, old_pos, new_pos)`, emitted
+  after its state is updated.
+
+*Why:* one copy of the world. A physics body would need a second, physics copy of the tiles,
+rebuilt on every dig, which is the drift problem
+[D-065](#d-065--each-layer-is-its-own-r8-data-texture-built-through-the-reads-changes-reach-it-from-the-truth)
+avoided for rendering. Measuring the tile from the feet means collision, `F3` and digging agree
+on where the actor stands. Storing depth instead of a cached `WorldPos` removes the only way to
+compute a position from a missing one. Intent keeps the actor indifferent to whether a keyboard,
+a network peer or a worker's AI is driving it (pillar [P5](./game-overview.md)).
+
+*Costs accepted:* a destination check only, so one tick's movement must stay under 16 px (about
+1.4 px at walking speed). Fixed X-then-Y order gives a slight sideways bias at outer corners.
+No slopes, rotated shapes or actor-against-actor blocking. `current_level` is found once, when
+depth is set, so levels must be in the tree before actors.
+
+*Considered:* `CharacterBody2D` with `move_and_slide` against generated tile colliders; testing
+both axes from the starting box (lets a diagonal clip a corner tile); the tile under the
+actor's origin rather than its feet.
+
+---
+
+### D-069 — Input reaches an actor through an input handler in presentation
+**Decided** (by Derik, in code during slice 001 section D; recorded by Claude afterwards).
+An `InputHandler` in `src/input/` is **presentation**. Whatever spawns the locally controlled
+actor creates one and gives it that actor. Every physics tick it polls held movement with
+`Input.get_vector("move_left", "move_right", "move_up", "move_down")` and passes the result to
+`actor.move()`. Movement actions are the project's own (`move_*`), bound to WASD and the left
+stick, not Godot's `ui_*` actions. The same spawner points the camera at the actor and tells
+the debug overlay to watch it.
+
+*Why:* held movement is state, not an event. Polling every tick gives smooth movement and stops
+on release, where reading key events stutters on OS key repeat. `get_vector` keeps analog
+magnitude, applies the deadzone, and caps diagonals at length 1. Input stays out of the actor
+and out of simulation, as the source layout requires, and a handler is given its actor
+instead of finding one, so nothing resolves to *the* character
+([D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer)). A second local or
+networked player is another handler or another source of intents, not a change to the actor.
+
+*Open:* one-shot actions such as dig arrive in section E and are events, not held state.
+
+*Considered:* `_input` key events setting a one-shot direction that the actor clears each tick
+(stutters, loses analog and diagonals); `ui_*` actions (clash with UI focus navigation once
+menus exist); the camera as a child of the actor (ties it to one actor).
+
+---
+
+### D-070 — The level edge stops an actor like rock; its look is deferred
+**Decided** (by Derik, slice 001 section D). An actor cannot walk past a level's bounds, and
+that is the whole requirement. It holds today because only `OPEN` tiles are passable
+([D-068](#d-068--an-actor-is-a-plain-node-with-a-feet-box-a-stored-depth-and-an-intent)), and
+reads outside the level return sentinels, not `OPEN`
+([D-059](#d-059--sentinel-values-revised-to-255-and-254)). The edge keeps the shape
+`is_in_bounds` gives it at tile granularity, `distance <= radius`: a one-tile spike at north,
+south, east and west, and staircases on the diagonals.
+
+*Why:* the brief asks for the edge to do something deliberate, not to crash or let the actor
+walk into undefined space. A stop does that. Anything more is presentation, and nothing yet
+needs it.
+
+*Deferred:* making the outside of the level **look** like something that can't be dug or
+walked into. Today it shows the hatched outside-level ground cell
+([D-066](#d-066--layers-are-painted-in-order-and-each-layers-art-decides-what-it-covers)).
+Under [pre-alpha-scope §4](./pre-alpha-scope.md) it gets no stub.
+
+*Open:* whether the outermost ring of rock can be dug away, leaving an actor standing directly
+against the edge. That is part of section E's rules for digging what cannot be dug.
+
+*Considered:* a visible boundary tile kind at the rim; feedback on bumping the edge; a rounder
+disc (`distance <= radius + 0.5`), which removes the cardinal spikes.
+
+---
+
+### D-071 — Pre-alpha dig progress belongs to the digging actor and resets on release
+**Decided** (by Derik, slice 001 section E). Digging takes time while the primary action is
+held ([tuning-appendix §4](./tuning-appendix.md)). For pre-alpha, progress is kept **per
+actor**, for the tile it is digging, and **resets to zero when the actor lets go** of the
+button. The tile opens when progress reaches its dig time. Progress is temporary: it is not
+part of the tile data and is not saved.
+
+*Why:* the simplest version that makes digging take time, and progress is also what limits how
+fast tiles can be dug, so no separate cooldown is needed. Keeping progress on each actor still
+honors the rule that no system assumes a single actor (pillar [P5](./game-overview.md)). Two
+actors simply don't combine their effort yet.
+
+*Deferred:* combining effort on one tile in co-op. Whether tiles keep partial progress, which
+would remove the reset on release, will be reconsidered later.
+
+*Open:* what happens when the target tile changes while the button is still held (moving, or
+re-aiming). Reset as on release, or keep digging the original tile.
+
+---
+
+### D-072 — Dig progress also resets when the target tile changes
+**Decided** (by Derik, slice 001 section E). Closes the open question in
+[D-071](#d-071--pre-alpha-dig-progress-belongs-to-the-digging-actor-and-resets-on-release).
+If the tile being dug changes while the button is still held, progress resets to zero and
+starts again on the new tile. Progress never carries from one tile to another.
+
+*Why:* the same reset as letting go, so there is one rule. It also stops progress built up on
+one tile being spent on another.
+
+---
+
+### D-073 — Mining reach is one tile from the actor's current tile
+**Decided** (by Derik, slice 001 section E). An actor can only dig a tile next to the tile it
+is standing on, which is its feet tile
+([D-068](#d-068--an-actor-is-a-plain-node-with-a-feet-box-a-stored-depth-and-an-intent)). This
+holds whatever picks the target: facing direction now, and the grid cursor from milestone M1
+([ui-ux-and-controls §2.1](./ui-ux-and-controls.md)). The cursor's roughly 5-tile clamp sets
+how far the cursor can move, not how far a dig can reach.
+
+*Why:* you dig what you can touch. It keeps mining physical, close to the face you are working.
+
+*Open:* whether "next to" means 4 neighbors or 8. Diagonal digs leave open tiles that touch only
+at a corner, which an actor can't walk between.
+
+---
+
+### D-074 — Mining reach is 4-way; no diagonal digs
+**Decided** (by Derik, slice 001 section E). Closes the open question in
+[D-073](#d-073--mining-reach-is-one-tile-from-the-actors-current-tile). The diggable tiles are
+the four that share an edge with the actor's feet tile: up, down, left and right. An aim
+direction is snapped to whichever axis it leans on more.
+
+*Why:* a diagonal dig can leave two open tiles that touch only at a corner. They look connected,
+but an actor can't walk between them
+([D-068](#d-068--an-actor-is-a-plain-node-with-a-feet-box-a-stored-depth-and-an-intent)
+collides one axis at a time). Systems that count neighbors by shared edges, such as support and
+chamber connectivity, would also have to handle corner-only gaps.
+
+*Consequence:* aiming near a diagonal sits on the boundary between two targets, and under
+[D-072](#d-072--dig-progress-also-resets-when-the-target-tile-changes) every switch resets
+progress. Targeting needs a dead zone or hysteresis so the target doesn't flicker there.
+
+---
+
+### D-075 — Aim targeting uses a dead zone, hysteresis, and keeps facing without input
+**Decided** (by Derik, slice 001 section E). Answers the consequence in
+[D-074](#d-074--mining-reach-is-4-way-no-diagonal-digs). The target tile comes from the
+actor's **facing**, one of the four directions, and facing changes only when aim input clearly
+asks for it:
+
+- **Dead zone.** Aim input too small to trust is ignored: a stick pushed less than about 0.5,
+  or a mouse within about half a tile of the actor, where its direction is mostly noise.
+- **Hysteresis.** Facing switches to a new direction only once the aim is clearly inside it,
+  about 10–15° past the 45° boundary. Between the two, the current facing holds.
+- **No input keeps facing.** With no aim input, or only input inside the dead zone, the
+  actor keeps the facing it had. It does not drop to having no target.
+
+The numbers are starting values, to tune by feel.
+
+*Why:* under [D-072](#d-072--dig-progress-also-resets-when-the-target-tile-changes) every
+change of target resets dig progress. Without these, a wobbling stick or a drifting mouse near a
+diagonal would flip the target between two tiles and make digging feel broken exactly where
+players aim most loosely.
+
+*Open:* whether movement also sets facing when there is no aim input (so a gamepad player with
+the right stick centered digs the way they last walked), and which way a newly spawned actor
+faces.
+
+---
+
+### D-076 — Walking sets facing when there is no aim input; new actors face down
+**Decided** (by Derik, slice 001 section E). Closes the open questions in
+[D-075](#d-075--aim-targeting-uses-a-dead-zone-hysteresis-and-keeps-facing-without-input).
+
+- **Aim outranks movement.** When aim input is outside the dead zone, it sets facing. When it
+  isn't (such as a gamepad's right stick centered), the movement direction sets facing,
+  snapped 4-way with the same dead zone and hysteresis.
+- **A newly spawned actor faces down.**
+
+*Why:* a player who walks towards a wall and presses dig expects to dig that wall, on either
+input. Down is the direction a top-down character conventionally faces at rest.
+
+*Consequence:* walking diagonally on a keyboard is exactly 45°, the boundary itself.
+Hysteresis keeps whichever facing the actor already had, so the target doesn't flicker, but it
+does mean a diagonal walk keeps the previous facing rather than choosing one.

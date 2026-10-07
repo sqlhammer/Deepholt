@@ -9,6 +9,16 @@ const epsilon: float = 0.001
 
 signal debug_event (title: String, text: String, remove: bool)
 
+enum CAPABILITY {
+	NONE,
+	DIG
+}
+
+func get_capability_packedscene(capability: CAPABILITY) -> PackedScene:
+	var scene: PackedScene
+	match capability:
+		CAPABILITY.DIG: scene = load("res://src/entity/capabilities/capability_dig.tscn")
+	return scene
 
 func contains_whitespace(text: String) -> bool:
 	var regex = RegEx.new()

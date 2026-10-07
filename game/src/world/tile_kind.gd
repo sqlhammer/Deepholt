@@ -30,3 +30,15 @@ const ORE: Dictionary = {
 	"NONE": 1,
 	"COPPER": 2,
 }
+
+const MINABLE_DENSITY: Dictionary = {
+	"MINABLE_ROCK": { "id": 2, "density": 5.0 },
+	"MINABLE_DIRT": { "id": 3, "density": 2.0 },
+}
+
+
+
+
+
+
+

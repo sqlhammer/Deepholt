@@ -15,7 +15,6 @@ var debug_text : Dictionary = {}
 # actor is gone and its name can't be read.
 var watched_actors: Dictionary[int, String] = {}
 
-
 func _ready() -> void:
 	$Timer.timeout.connect(_refresh_watched_actors)
 	Global.connect("debug_event",set_section)
@@ -24,10 +23,10 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_debug"):
-		_toggle_debug_overlay()
+		toggle_debug_overlay()
 
 
-func _toggle_debug_overlay() -> void:
+func toggle_debug_overlay() -> void:
 	self.visible = not self.visible
 	_refresh_watched_actors()
 
@@ -56,8 +55,7 @@ func _update_section(dict: Dictionary) -> void:
 
 
 func _register_section(title: String, text: String) -> void:
-	var display_group: int = _get_group(title)
-	debug_text[title] = { "text": text, "group": display_group }
+	debug_text[title] = { "text": text, "group": _get_group(title) }
 	_sort_debug_dictionary()
 
 
@@ -88,8 +86,12 @@ func _sort_debug_dictionary() -> void:
 
 
 func watch(actor: Actor) -> void:
-	watched_actors[actor.get_instance_id()] = actor.actor_name
+	watched_actors[actor.get_instance_id()] = _get_player_debug_title(actor)
 	_refresh_watched_actors()
+
+
+func _get_player_debug_title(actor: Actor) -> String:
+	return "Player: %s" % actor.actor_name
 
 
 func _refresh_watched_actors() -> void:
@@ -100,7 +102,7 @@ func _refresh_watched_actors() -> void:
 			remove_section(watched_actors[id])
 			watched_actors.erase(id)
 		elif visible:
-			set_section("Player: %s" % actor.actor_name, _tile_readout(actor.current_WorldPos))
+			set_section(watched_actors[id], _tile_readout(actor.current_WorldPos))
 
 
 # What the world believes about the tiles around one actor, read straight out

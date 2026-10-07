@@ -43,6 +43,7 @@ game/
   src/
     world/         coordinates, tile storage, depths
     render/        chunk rendering, camera
+    input/         reading devices, routing them to the local actor
     entity/        actors and components
     sim/           clock, rate machines
     persist/       save/load, migrations
@@ -50,8 +51,8 @@ game/
   tests/           test scripts, mirroring src/
 ```
 
-`src/world/`, `src/sim/`, `src/entity/` and `src/persist/` are **simulation**. `src/render/`
-and `src/debug/` are **presentation**. Simulation must not depend on presentation.
+`src/world/`, `src/sim/`, `src/entity/` and `src/persist/` are **simulation**. `src/render/`,
+`src/input/` and `src/debug/` are **presentation**. Simulation must not depend on presentation.
 
 ## No player singleton
 

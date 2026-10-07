@@ -44,22 +44,24 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
   Pan: arrow keys, WASD or left stick, Shift to hurry
   ([debug_pan.gd](../game/src/debug/debug_pan.gd), throwaway until section D's actor).
 
-## D. An actor
+## D. An actor ✅
 
 *Mode: Self Coded.*
 
-- [ ] **Decide:** what an actor is.
-- [ ] **Decide:** how input reaches an actor.
-- [ ] A moleperson stands in open space; keyboard and gamepad both move them. [2]
-- [ ] They cannot walk into rock or copper, and blocking is answered from tile data ([D-046](../docs/design-decisions.md)). [2]
-- [ ] `F3` shows the actor's position and the depth the world calls it. [6]
+- [x] **Decide:** what an actor is ([D-068](../docs/design-decisions.md)).
+- [x] **Decide:** how input reaches an actor ([D-069](../docs/design-decisions.md)).
+- [x] A moleperson stands in open space; keyboard and gamepad both move them. [2]
+- [x] They cannot walk into rock or copper, and blocking is answered from tile data ([D-046](../docs/design-decisions.md)). [2]
+- [x] `F3` shows the actor's position and the depth the world calls it. [6]
   The readout itself is built — coordinate, array index, the three layers by name, and an
   11 × 11 tile window in the prefab's own characters. It reports whatever position the actor
   has, so this lands the moment the actor stops returning a constant.
-- [ ] **Decide:** what happens at the edge of the level — after looking at a corner of the radial bounds at tile granularity.
-- [ ] Walking to the edge does that, deliberately. [5]
+- [x] **Decide:** what happens at the edge of the level — after looking at a corner of the radial bounds at tile granularity.
+  It stops the actor like rock; how the outside looks is deferred ([D-070](../docs/design-decisions.md)).
 
 ## E. Digging
+
+*Mode: Self Coded.*
 
 - [ ] **Decide:** who may change a tile, and how anything else learns it changed. Before the dig verb exists.
   The screen's half is settled: it learns from the tile data, not from the dig verb
@@ -68,8 +70,59 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 - [ ] Test: changing a tile through the mutation path and reading it back.
 - [ ] Test: each cannot-dig rule.
 - [ ] Face rock or copper, press dig, and the tile becomes open floor on screen. [3]
-- [ ] **Decide, by looking:** whether digging is instant.
+- [x] **Decide:** whether digging is instant. No: a tile is dug by holding the button over time.
+  Already settled in [tuning-appendix §4](../docs/tuning-appendix.md) (`dig_seconds = rock_hardness /
+  tool_power`) and [content-schema §5](../docs/tech/content-schema.md) (the right tool digs in
+  0.5–0.7 s). An instant dig is only a stepping stone while building.
+- [ ] **Decide, by looking:** how long a dig takes in this slice, which has no tools yet.
 - [ ] Dig a four-to-five tile corridor and walk down it; it stays dug. [4]
+- [ ] Dig out to the edge of the level and walk to it; it does what section D decided, deliberately. [5]
+  Moved here from D: Surface is solid rock out to its edge, so the edge can't be reached by hand
+  until digging exists.
+
+
+### E. TODOs from review (2026-10-07)
+
+- [ ] **The tile never opens.** On completion `CapabilityDig` emits `World.ore_mined` and resets,
+  but nothing sets the top to `OPEN` or clears the ore ([D-066](../docs/design-decisions.md)).
+  Blocked on the **Decide: who may change a tile** item above.
+- [ ] **Signal misnamed and missing its argument.** Declared `ore_mined(world_pos)`, emitted with
+  nothing, and fires for plain rock too. Something like `tile_dug.emit(target_tile)`.
+- [ ] **Progress never resets on release or target change**
+  ([D-071](../docs/design-decisions.md), [D-072](../docs/design-decisions.md)). `dig()` only runs
+  while held, so it never learns of a release. The capability needs to remember its last target
+  and get a `stop()` (or "not held this tick") call from the actor.
+- [ ] **`tile_density` keeps its last value.** A kind not in `MINABLE_DENSITY` leaves the previous
+  tile's density in place. Return the density instead of storing it.
+- [ ] **Hard-coded `2`/`3` in `_is_diggable`.** Use `TileKind.TOP.MINABLE_ROCK` etc.;
+  `MINABLE_DENSITY` repeats the ids again.
+- [ ] **`print(progress)`** runs every tick.
+- [ ] **Hardness per tile kind conflicts with a settled doc.**
+  [tuning-appendix §4](../docs/tuning-appendix.md) makes hardness per stratum
+  (`dig_seconds = rock_hardness / tool_power`); the code makes it per tile kind (rock 5,
+  dirt 2). Same formula and timing (5 / 10 = 0.5 s). Either record a D-entry for the change or
+  follow the doc's numbers.
+- [ ] **`ToolData` + `equipped` is the M1 tools system arriving early** — a stub
+  [pre-alpha-scope §4](../docs/pre-alpha-scope.md) rules out. Either record that tools come into
+  pre-alpha with this slice, or use a plain dig-speed number on the capability until M1.
+- [ ] `get_node("Capabilities/CapabilityDig")` errors when missing rather than returning `null`,
+  so `if capability:` never helps. Use `get_node_or_null`, or look it up once in `_ready`.
+- [ ] `var aim` in `InputHandler` is untyped — add `: Vector2`.
+- [ ] `actor.tscn`'s root node is still in the `players` group.
+- [ ] **Facing ([D-075](../docs/design-decisions.md), [D-076](../docs/design-decisions.md)).**
+  `Actor.facing` exists (starts down) but nothing uses it: the target is still worked out from the
+  raw aim, so a zero aim targets the actor's own tile. Facing should be updated from aim when aim
+  is outside the dead zone, otherwise from movement, otherwise kept; snapped 4-way with
+  hysteresis (10–15° past 45°). The target tile is then feet tile + facing.
+- [ ] **`_get_target_tile` still doubles depth.** `target_tile.depth += current_WorldPos.depth`
+  adds depth to a `WorldPos` that already has it. Hidden on Surface (0 + 0); wrong from depth 1.
+- [ ] **Mouse aim dead zone ([D-075](../docs/design-decisions.md)).** `_get_aim` returns the
+  feet-to-mouse vector at any length; within about half a tile (8 px) of the feet it should
+  return `Vector2.ZERO` so facing holds.
+- [ ] **`InputHandler` sits inside `GameViewport`, so `game.gd` pushes events into it.** Events
+  are pushed untransformed, so any node in the viewport reading a mouse event's position gets
+  a wrong one. The handler draws nothing; as a child of `Game` (outside the viewport) its
+  `_input` fires directly and the `push_input` workaround can go.
 
 ## F. Done
 

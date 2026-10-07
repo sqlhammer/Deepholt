@@ -73,7 +73,7 @@ func test_a_watched_actor_shows_before_it_moves() -> void:
 	autofree(actor)
 	_overlay.visible = true
 	_overlay.watch(actor)
-	assert_true(_overlay.debug_text.has(actor.actor_name),
+	assert_true(_overlay.debug_text.has("Player: TestPlayer"),
 		"watching an actor adds its section straight away")
 
 
@@ -83,7 +83,7 @@ func test_a_hidden_overlay_does_not_build_readouts() -> void:
 	autofree(actor)
 	_overlay.visible = false
 	_overlay.watch(actor)
-	assert_false(_overlay.debug_text.has(actor.actor_name),
+	assert_false(_overlay.debug_text.has("Player: TestPlayer"),
 		"nothing is read while F3 is off")
 
 
@@ -92,9 +92,11 @@ func test_a_freed_actor_loses_its_section() -> void:
 		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0))
 	_overlay.visible = true
 	_overlay.watch(actor)
+	assert_true(_overlay.debug_text.has("Player: TestPlayer"),
+		"the section exists before the actor is freed")
 	actor.free()
 	_overlay._refresh_watched_actors()
-	assert_false(_overlay.debug_text.has("Actor"),
+	assert_false(_overlay.debug_text.has("Player: TestPlayer"),
 		"a freed actor's readout is removed, not left stale")
 	assert_eq(_overlay.watched_actors.size(), 0,
 		"and it is no longer watched")

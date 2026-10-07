@@ -124,3 +124,37 @@ func test_flush_against_a_right_wall_can_slide_along_it() -> void:
 	var moved: Rect2 = _move(Rect2(22, 4, 10, 6), Vector2(0, 1.4))
 	assert_almost_eq(moved.position, Vector2(22, 5.4), NEAR,
 		"moves along the wall, not stuck to it")
+
+
+# --- the edge of the level ---
+
+# Outside the level a read returns a sentinel, not rock: 255 past the
+# array, 254 inside it but outside the radial bounds (D-059). Neither
+# is OPEN, so both must block. A passability rule written as "blocked
+# if rock" would let the actor walk straight out of the level, and
+# every other test here would still pass.
+#
+# Surface has radius 90. Tile (90, 0) is the disc's single-tile spike
+# on the east: (91, 0) is past the array, and (90, 1) is inside the
+# array but outside the disc, since 90^2 + 1 > 90^2.
+
+func test_the_level_edge_reads_as_sentinels_not_rock() -> void:
+	assert_eq(_tiles.get_top(91, 0), LevelTiles.SENTINEL_OUT_OF_ARRAY,
+		"east of the spike is past the array")
+	assert_eq(_tiles.get_top(90, 1), LevelTiles.SENTINEL_OUT_OF_BOUNDS,
+		"below the spike is outside the radial bounds")
+
+
+func test_the_edge_of_the_array_blocks() -> void:
+	_open(Vector2i(89, 0), Vector2i(90, 0))
+	# Tile 90 spans pixels 1440..1456.
+	var moved: Rect2 = _move(Rect2(1443, 4, 10, 6), Vector2(5, 0))
+	assert_eq(moved.end.x, 1456.0,
+		"stops flush at the array's edge instead of walking off it")
+
+
+func test_the_radial_edge_blocks() -> void:
+	_open(Vector2i(89, 0), Vector2i(90, 0))
+	var moved: Rect2 = _move(Rect2(1443, 8, 10, 6), Vector2(0, 5))
+	assert_eq(moved.end.y, 16.0,
+		"stops flush at the radial bound instead of walking out of it")
