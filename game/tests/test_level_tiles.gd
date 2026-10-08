@@ -91,3 +91,27 @@ func test_sentinels_apply_to_every_layer() -> void:
 func test_out_of_array_and_out_of_bounds_sentinels_are_distinguishable() -> void:
 	assert_ne(LevelTiles.SENTINEL_OUT_OF_ARRAY, LevelTiles.SENTINEL_OUT_OF_BOUNDS,
 		"the two sentinels must not collide")
+
+
+# --- is_minable ---
+
+func test_minable_kinds_are_minable() -> void:
+	var tiles: LevelTiles = LevelTiles.new(World.level_bounds.rows[0])
+	tiles.set_top(1, 0, TileKind.TOP.MINABLE_ROCK)
+	tiles.set_top(2, 0, TileKind.TOP.MINABLE_DIRT)
+	assert_true(tiles.is_minable(WorldPos.new(1, 0, 0)), "rock is minable")
+	assert_true(tiles.is_minable(WorldPos.new(2, 0, 0)), "dirt is minable")
+
+
+func test_open_floor_is_not_minable() -> void:
+	var tiles: LevelTiles = LevelTiles.new(World.level_bounds.rows[0])
+	tiles.set_top(1, 0, TileKind.TOP.OPEN)
+	assert_false(tiles.is_minable(WorldPos.new(1, 0, 0)), "open floor isn't")
+
+
+func test_outside_the_level_is_not_minable() -> void:
+	var tiles: LevelTiles = LevelTiles.new(World.level_bounds.rows[0])
+	assert_false(tiles.is_minable(WorldPos.new(90, 1, 0)),
+		"outside the radial bounds (254) isn't")
+	assert_false(tiles.is_minable(WorldPos.new(91, 0, 0)),
+		"past the array (255) isn't")
