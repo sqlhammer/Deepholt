@@ -92,6 +92,10 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
   ([D-071](../docs/design-decisions.md), [D-072](../docs/design-decisions.md)). `dig()` only runs
   while held, so it never learns of a release. The capability needs to remember its last target
   and get a `stop()` (or "not held this tick") call from the actor.
+- [x] **Target-change reset never fires ([D-072](../docs/design-decisions.md)).** `dig()` resets
+  only when `current_tile != null`, but nothing ever assigns `current_tile`, so it stays `null`.
+  Release resets (via `action_ended`); moving to a new tile while holding doesn't.
+  Fixed: `dig()` now records `current_tile` after the check, so the next tick compares against it.
 - [x] **`tile_density` keeps its last value.** A kind not in `MINABLE_DENSITY` leaves the previous
   tile's density in place. Return the density instead of storing it.
 - [x] **Hard-coded `2`/`3` in `_is_diggable`.** Use `TileKind.TOP.MINABLE_ROCK` etc.;

@@ -5,7 +5,7 @@ const verb: String = "dig"
 
 var progress: float = 0.0
 var tile_density: float = 0.0
-var current_tile: WorldPos
+var current_tile: WorldPos = WorldPos.new(99,99,99)
 var actor: Actor
 
 func _ready() -> void:
@@ -14,9 +14,10 @@ func _ready() -> void:
 
 
 func dig(delta: float, tool_speed: float, target_tile: WorldPos, level: Level) -> void:
-	if current_tile != null and _target_tile_changed(target_tile):
+	if _target_tile_changed(target_tile):
 		_reset_progress()
 	
+	current_tile = target_tile
 	var kind: int = _get_tile_kind(level, target_tile)
 	if not _is_diggable(kind): return
 	
@@ -35,7 +36,7 @@ func _target_tile_changed(target_tile: WorldPos) -> bool:
 
 func _reset_progress() -> void:
 	progress = 0.0
-	print("progress reset")
+	current_tile = WorldPos.new(99,99,99)
 
 
 func action_ended(p_verb: String) -> void:
