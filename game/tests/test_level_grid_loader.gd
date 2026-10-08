@@ -218,3 +218,27 @@ func test_off_center_marker_places_tiles_relative_to_the_marker() -> void:
 	assert_eq(tiles.get_top(0, 0), TileKind.TOP.OPEN, "the anchor cell itself is open")
 	assert_eq(tiles.get_top(-1, 0), TileKind.TOP.OPEN, "west of the anchor is open")
 	assert_eq(tiles.get_top(1, 0), TileKind.TOP.MINABLE_ROCK, "east of the anchor is minable rock")
+
+
+# --- regex_escape ---
+
+# The loader builds a regex character class out of the allowed grid
+# characters. Three characters mean something inside a class and must
+# be escaped; anything else passes through, and only single
+# characters are accepted.
+
+func test_class_special_characters_are_escaped() -> void:
+	assert_eq(LevelGridLoader.regex_escape("]"), "\\]", "] would close the class")
+	assert_eq(LevelGridLoader.regex_escape("-"), "\\-", "- would make a range")
+	assert_eq(LevelGridLoader.regex_escape("\\"), "\\\\",
+		"a backslash would escape the next character")
+
+
+func test_ordinary_characters_pass_through() -> void:
+	for character: String in ["#", ".", "0", "r", "c"]:
+		assert_eq(LevelGridLoader.regex_escape(character), character,
+			"'%s' needs no escaping" % character)
+
+
+func test_more_than_one_character_is_refused() -> void:
+	assert_eq(LevelGridLoader.regex_escape("ab"), "", "only single characters are escaped")
