@@ -17,3 +17,8 @@ func test_hash_value_differs_for_different_depth() -> void:
 
 
 
+
+
+func test_prints_as_x_y_depth() -> void:
+	assert_eq(str(WorldPos.new(3, -5, 2)), "(3, -5, 2)",
+		"a WorldPos prints as (x, y, depth), as the overlay and logs show it")
