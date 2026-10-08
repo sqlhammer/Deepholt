@@ -59,8 +59,8 @@ func set_world_seed(_seed: String) -> void:
 	Global.emit_signal("debug_event","World Seed",str(world_seed))
 
 
-func dig_tile(tile: WorldPos) -> void:
-	print("Dug tile: %s" % tile._to_string())
+func dig_tile(actor: Actor, tile: WorldPos) -> void:
+	print("Dug tile: %s by %s" % [tile._to_string(), actor.actor_name])
 	
 	# TODO: Code for changing the TOP to OPEN and handling dropped ore
 	
