@@ -160,3 +160,52 @@ func test_user_control_puts_the_actor_on_the_overlay() -> void:
 func test_get_view_camera_is_the_view_camera() -> void:
 	assert_eq(_game.get_view_camera(), _game.get_node("GameViewport/ViewCamera"),
 		"returns the camera under GameViewport")
+
+
+# --- mouse_world_position ---
+
+# A headless test can't move the mouse: it sits at the window's
+# top-left corner, which is the display's (0, 0). So these vary the
+# display's size instead. That exercises the part of the mapping
+# that is our own arithmetic (undoing the scale and the letterbox),
+# for 16:10 (exact fit), a wide screen (bars left and right) and a
+# tall one (bars top and bottom).
+#
+# With the mouse at the display's corner, the game-pixel position is
+# minus the letterbox, divided by the scale. The camera's own
+# transform (the built-in part) is then undone to get the world.
+func _mouse_world_with_display(display_size: Vector2) -> Array:
+	var display: TextureRect = _game.get_node("Display/UpscaleDisplay")
+	display.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	display.position = Vector2.ZERO
+	display.size = display_size
+	var view: SubViewport = _game.get_node("GameViewport")
+	var camera: Transform2D = view.get_canvas_transform()
+	return [_game.mouse_world_position(), camera]
+
+
+func _expect_world(view_px: Vector2, camera: Transform2D) -> Vector2:
+	return camera.affine_inverse() * view_px
+
+
+func test_mouse_maps_through_an_exact_16_10_display() -> void:
+	# 1280 x 800 is 2.5 x 512 x 320: no letterbox.
+	var result: Array = _mouse_world_with_display(Vector2(1280, 800))
+	assert_almost_eq(result[0], _expect_world(Vector2(0, 0), result[1]),
+		Vector2(0.01, 0.01), "the display's corner is the game view's corner")
+
+
+func test_mouse_maps_through_side_bars() -> void:
+	# 1920 x 1080: scale 3.375, image 1728 wide, 96 px bars each side.
+	# The corner is 96 px left of the image: -96 / 3.375 game px.
+	var result: Array = _mouse_world_with_display(Vector2(1920, 1080))
+	assert_almost_eq(result[0], _expect_world(Vector2(-96.0 / 3.375, 0), result[1]),
+		Vector2(0.01, 0.01), "side bars shift x, not y")
+
+
+func test_mouse_maps_through_top_and_bottom_bars() -> void:
+	# 1280 x 1024: scale 2.5, image 800 tall, 112 px bars top and
+	# bottom. The corner is 112 px above the image: -112 / 2.5 = -44.8.
+	var result: Array = _mouse_world_with_display(Vector2(1280, 1024))
+	assert_almost_eq(result[0], _expect_world(Vector2(0, -44.8), result[1]),
+		Vector2(0.01, 0.01), "top and bottom bars shift y, not x")
