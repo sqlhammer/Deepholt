@@ -100,3 +100,91 @@ func test_a_freed_actor_loses_its_section() -> void:
 		"a freed actor's readout is removed, not left stale")
 	assert_eq(_overlay.watched_actors.size(), 0,
 		"and it is no longer watched")
+
+
+# --- showing and hiding ---
+
+func test_toggling_flips_visibility() -> void:
+	_overlay.visible = false
+	_overlay.toggle_debug_overlay()
+	assert_true(_overlay.visible, "off becomes on")
+	_overlay.toggle_debug_overlay()
+	assert_false(_overlay.visible, "on becomes off")
+
+
+func test_toggling_on_shows_a_watched_actor_straight_away() -> void:
+	var actor: Actor = Actor.create(
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0))
+	autofree(actor)
+	_overlay.visible = false
+	_overlay.watch(actor)
+	_overlay.toggle_debug_overlay()
+	assert_true(_overlay.debug_text.has("Player: TestPlayer"),
+		"turning F3 on fills the readout without waiting for the timer")
+
+
+func test_the_toggle_action_toggles_the_overlay() -> void:
+	var press: InputEventAction = InputEventAction.new()
+	press.action = &"toggle_debug"
+	press.pressed = true
+	_overlay.visible = false
+	_overlay._input(press)
+	assert_true(_overlay.visible, "pressing toggle_debug shows it")
+
+
+func test_other_input_leaves_the_overlay_alone() -> void:
+	var press: InputEventAction = InputEventAction.new()
+	press.action = &"primary_action"
+	press.pressed = true
+	_overlay.visible = false
+	_overlay._input(press)
+	assert_false(_overlay.visible, "other actions don't toggle it")
+
+
+# --- sections ---
+
+func test_a_section_shows_in_the_label() -> void:
+	_overlay.set_section("Weather", "dry")
+	var label: RichTextLabel = _overlay.get_node("DebugRichTextLabel")
+	assert_string_contains(label.text, "[b]Weather[/b]: dry",
+		"a section is drawn as a bold title and its text")
+
+
+func test_a_section_can_be_removed_through_set_section() -> void:
+	_overlay.set_section("Weather", "dry")
+	_overlay.set_section("Weather", "", true)
+	assert_false(_overlay.debug_text.has("Weather"), "remove = true drops it")
+	var label: RichTextLabel = _overlay.get_node("DebugRichTextLabel")
+	assert_false(label.text.contains("Weather"), "and it leaves the label")
+
+
+func test_sections_are_grouped_seeds_first_then_players_then_the_rest() -> void:
+	_overlay.set_section("Weather", "dry")
+	_overlay.set_section("Player: TestPlayer", "here")
+	_overlay.set_section("Level Seed", "42")
+	var order: Array = _overlay.debug_text.keys()
+	assert_lt(order.find("Level Seed"), order.find("Player: TestPlayer"),
+		"seeds (group 0) before players (group 10)")
+	assert_lt(order.find("Player: TestPlayer"), order.find("Weather"),
+		"players before anything ungrouped (group 99)")
+
+
+func test_an_unknown_title_falls_in_the_last_group() -> void:
+	assert_eq(_overlay._get_group("Weather"), 99, "unrecognised titles sort last")
+
+
+# --- fallbacks for kinds the readout doesn't know ---
+
+const UNKNOWN_KIND: int = 200
+
+
+func test_an_unknown_top_kind_draws_as_a_question_mark() -> void:
+	var tiles: LevelTiles = _overlay._find_level_tiles(0)
+	tiles.set_top(3, 3, UNKNOWN_KIND)
+	assert_eq(_overlay._tile_char(tiles, 3, 3, WorldPos.new(0, 0, 0)), "?",
+		"a kind with no character shows as ?")
+
+
+func test_an_unknown_kind_is_named_with_its_id() -> void:
+	assert_eq(_overlay._kind_name(TileKind.TOP, UNKNOWN_KIND), "UNKNOWN (200)",
+		"a kind missing from the table is named by its number")
