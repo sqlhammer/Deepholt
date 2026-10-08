@@ -248,3 +248,122 @@ func test_target_tile_is_the_feet_tile_plus_facing() -> void:
 		assert_eq(Vector2i(target.x, target.y), expected[facing],
 			"facing %s from (3, -2) targets %s" % [facing, expected[facing]])
 		assert_eq(target.depth, 1, "on the actor's own depth")
+
+
+# --- moving through _physics_process ---
+
+# An actor spawned on tile (0, 0) of Surface, in the tree, with tiles
+# (0, 0) and (1, 0) opened. Everything else is rock, so the room is
+# two tiles wide (pixels 0..32) and one tall.
+func _actor_in_room() -> Actor:
+	var tiles: LevelTiles = World.get_level(0).level_tiles
+	tiles.set_top(0, 0, TileKind.TOP.OPEN)
+	tiles.set_top(1, 0, TileKind.TOP.OPEN)
+	var actor: Actor = Actor.create(
+		Global.actor_packed_scene, "Mover", WorldPos.new(0, 0, 0))
+	add_child_autofree(actor)
+	return actor
+
+
+func test_physics_moves_by_intent_times_speed_and_delta() -> void:
+	var actor: Actor = _actor_in_room()
+	var start: Vector2 = actor.position
+	actor.move(Vector2.RIGHT)
+	actor._physics_process(0.1)
+	assert_almost_eq(actor.position, start + Vector2(actor.speed * 0.1, 0),
+		Vector2(0.001, 0.001), "one tick moves speed x delta along the intent")
+
+
+func test_physics_movement_is_blocked_by_rock() -> void:
+	var actor: Actor = _actor_in_room()
+	actor.move(Vector2.RIGHT)
+	for i in range(10):
+		actor._physics_process(0.1)
+	assert_almost_eq(actor.get_world_box().end.x, 32.0, 0.001,
+		"the feet stop flush against the rock at tile 2")
+
+
+func test_physics_movement_updates_the_world_pos() -> void:
+	var actor: Actor = _actor_in_room()
+	watch_signals(actor)
+	actor.move(Vector2.RIGHT)
+	actor._physics_process(0.1)
+	assert_true(actor.current_WorldPos.equals(WorldPos.new(1, 0, 0)),
+		"crossing into tile 1 moves the actor's tile")
+	assert_signal_emitted(actor, "actor_worldpos_changed", "and announces it")
+
+
+func test_stop_clears_the_move_intent() -> void:
+	var actor: Actor = _actor_in_room()
+	actor.move(Vector2.RIGHT)
+	actor.stop()
+	var start: Vector2 = actor.position
+	actor._physics_process(0.1)
+	assert_eq(actor.move_intent, Vector2.ZERO, "no intent after stop()")
+	assert_eq(actor.position, start, "and no movement")
+
+
+# --- the primary action ---
+
+func test_pressing_primary_begins_the_action_once() -> void:
+	var actor: Actor = _actor_in_room()
+	watch_signals(actor)
+	actor.primary_action(true)
+	actor.primary_action(true)
+	assert_signal_emit_count(actor, "action_begun", 1,
+		"held across ticks, it begins once")
+	assert_eq(get_signal_parameters(actor, "action_begun"), ["dig"],
+		"with the equipped tool's verb")
+
+
+func test_releasing_primary_ends_the_action_once() -> void:
+	var actor: Actor = _actor_in_room()
+	actor.primary_action(true)
+	watch_signals(actor)
+	actor.primary_action(false)
+	actor.primary_action(false)
+	assert_signal_emit_count(actor, "action_ended", 1, "it ends once")
+	assert_signal_not_emitted(actor, "action_begun", "and doesn't begin again")
+
+
+func _give_dig(actor: Actor) -> CapabilityDig:
+	var capability: CapabilityDig = Global.get_capability_packedscene(
+		Global.CAPABILITY.DIG).instantiate()
+	capability.actor = actor
+	actor.get_node("Capabilities").add_child(capability)
+	return capability
+
+
+func test_holding_primary_digs_the_faced_tile() -> void:
+	var actor: Actor = _actor_in_room()
+	var capability: CapabilityDig = _give_dig(actor)
+	actor.primary_action(true)
+	actor._physics_process(0.1)
+	assert_gt(capability.progress, 0.0, "facing down at rock builds progress")
+	assert_true(capability.current_tile.equals(WorldPos.new(0, 1, 0)),
+		"on the tile below, which is the one the actor faces")
+
+
+func test_not_holding_primary_does_not_dig() -> void:
+	var actor: Actor = _actor_in_room()
+	var capability: CapabilityDig = _give_dig(actor)
+	actor._physics_process(0.1)
+	assert_eq(capability.progress, 0.0, "no intent, no digging")
+
+
+func test_primary_digs_where_the_actor_faces_not_a_fixed_tile() -> void:
+	var actor: Actor = _actor_in_room()
+	var capability: CapabilityDig = _give_dig(actor)
+	actor.aim(Vector2.RIGHT, Vector2.ZERO)
+	actor.primary_action(true)
+	actor._physics_process(0.1)
+	assert_eq(capability.progress, 0.0,
+		"facing right at the open tile (1, 0), there is nothing to dig")
+
+
+func test_primary_without_a_dig_capability_does_nothing() -> void:
+	var actor: Actor = _actor_in_room()
+	actor.primary_action(true)
+	actor._physics_process(0.1)
+	assert_true(actor.current_WorldPos.equals(WorldPos.new(0, 0, 0)),
+		"an actor that can't dig just stands there, without an error")
