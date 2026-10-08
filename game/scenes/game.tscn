@@ -64,5 +64,6 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="DebugOverlay" parent="." unique_id=418423574 instance=ExtResource("2_yqjtg")]
+visible = true
 offset = Vector2(25, 25)
 transform = Transform2D(1, 0, 0, 1, 25, 25)
