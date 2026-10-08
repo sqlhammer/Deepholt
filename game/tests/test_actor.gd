@@ -181,3 +181,70 @@ func test_entering_the_tree_does_not_move_the_actor() -> void:
 	add_child_autofree(actor)
 	assert_eq(actor.position, Vector2(56, -24),
 		"_ready leaves the spawn position alone")
+
+
+# --- facing (D-075, D-076) ---
+
+func test_a_new_actor_faces_down() -> void:
+	assert_eq(_actor().facing, Vector2i(0, 1), "spawned actors face down")
+
+
+func test_aim_sets_facing() -> void:
+	var actor: Actor = _actor_with_feet_at(Vector2(8, 8), 0)
+	actor.aim(Vector2.RIGHT, Vector2.ZERO)
+	assert_eq(actor.facing, Vector2i(1, 0), "aiming right faces right")
+
+
+func test_aim_outranks_movement() -> void:
+	var actor: Actor = _actor_with_feet_at(Vector2(8, 8), 0)
+	actor.aim(Vector2.RIGHT, Vector2.UP)
+	assert_eq(actor.facing, Vector2i(1, 0),
+		"aiming right while walking up faces right")
+
+
+func test_movement_sets_facing_when_there_is_no_aim() -> void:
+	var actor: Actor = _actor_with_feet_at(Vector2(8, 8), 0)
+	actor.aim(Vector2.ZERO, Vector2.LEFT)
+	assert_eq(actor.facing, Vector2i(-1, 0),
+		"with no aim, walking left faces left")
+
+
+func test_no_aim_and_no_movement_keeps_facing() -> void:
+	var actor: Actor = _actor_with_feet_at(Vector2(8, 8), 0)
+	actor.aim(Vector2.RIGHT, Vector2.ZERO)
+	actor.aim(Vector2.ZERO, Vector2.ZERO)
+	assert_eq(actor.facing, Vector2i(1, 0), "nothing held keeps facing right")
+
+
+# An aim inside the hysteresis band keeps the current facing, but it
+# is still the aim's choice: movement must not take over just because
+# facing didn't change.
+func test_aim_inside_the_band_is_not_overridden_by_movement() -> void:
+	var actor: Actor = _actor_with_feet_at(Vector2(8, 8), 0)
+	actor.aim(Vector2.RIGHT, Vector2.ZERO)
+	var near_diagonal: Vector2 = Vector2.RIGHT.rotated(deg_to_rad(50))
+	actor.aim(near_diagonal, Vector2.UP)
+	assert_eq(actor.facing, Vector2i(1, 0),
+		"aiming 50° while walking up still faces right, not up")
+
+
+# --- the dig target ---
+
+# The target is the feet tile plus facing, never facing on its own:
+# facing down from (3, -2) digs (3, -1), not tile (0, 1).
+func test_target_tile_is_the_feet_tile_plus_facing() -> void:
+	var actor: Actor = _actor_with_feet_at(
+		TileSpace.tile_center(Vector2i(3, -2)), 1)
+	actor.current_WorldPos = actor.get_current_WorldPos()
+	var expected: Dictionary = {
+		Vector2i(0, 1): Vector2i(3, -1),
+		Vector2i(0, -1): Vector2i(3, -3),
+		Vector2i(-1, 0): Vector2i(2, -2),
+		Vector2i(1, 0): Vector2i(4, -2),
+	}
+	for facing: Vector2i in expected:
+		actor.facing = facing
+		var target: WorldPos = actor._get_target_tile()
+		assert_eq(Vector2i(target.x, target.y), expected[facing],
+			"facing %s from (3, -2) targets %s" % [facing, expected[facing]])
+		assert_eq(target.depth, 1, "on the actor's own depth")

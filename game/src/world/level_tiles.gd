@@ -46,7 +46,6 @@ func get_ore(x: int, y: int) -> int:
 func get_top(x: int, y: int) -> int:
 	return _get_tile(top,x,y)
 
-
 func _get_tile(tiles: PackedByteArray, x: int, y: int) -> int:
 	var idx: int = get_index(x,y)
 	var validation_result: int = 0
@@ -113,6 +112,30 @@ func _is_out_of_bounds(x: int, y: int) -> int:
 	if not World.is_in_bounds(pos):
 		return SENTINEL_OUT_OF_BOUNDS
 	return 0
+
+func is_minable(p_tile: WorldPos) -> bool:
+	var tile = get_top(p_tile.x, p_tile.y)
+	for key in TileKind.MINABLE_DENSITY:
+		if TileKind.MINABLE_DENSITY[key].id == tile:
+			return true
+	return false
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

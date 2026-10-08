@@ -2,6 +2,10 @@ extends Node
 class_name TileSpace
 
 const TILE_PIXELS: int = 16
+# How far past the 45° boundary aim must go before facing switches.
+# Wobble inside the band keeps the current facing (D-075).
+const FACING_HYSTERESIS_DEG: float = 12.0
+
 
 # Where a tile sits in a level's own pixel space: tile (x, y) covers
 # x * 16 to x * 16 + 16 across and the same down, so world (0, 0)'s
@@ -27,6 +31,23 @@ static func get_facing_offset(dir: Vector2) -> Vector2i:
 	if absf(dir.x) >= absf(dir.y):
 		return Vector2i(signi(int(signf(dir.x))), 0)
 	return Vector2i(0, int(signf(dir.y)))
+
+
+static func snap_facing(current: Vector2i, direction: Vector2) -> Vector2i:
+	if direction == Vector2.ZERO:
+		return current
+	var off_current: float = absf(Vector2(current).angle_to(direction))
+	if off_current <= deg_to_rad(45.0 + FACING_HYSTERESIS_DEG):
+		return current
+	return get_facing_offset(direction)
+
+
+
+
+
+
+
+
 
 
 

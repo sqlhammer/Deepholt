@@ -88,7 +88,7 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
   Blocked on the **Decide: who may change a tile** item above.
 - [x] **Signal misnamed and missing its argument.** Declared `ore_mined(world_pos)`, emitted with
   nothing, and fires for plain rock too. Something like `tile_dug.emit(target_tile)`.
-- [ ] **Progress never resets on release or target change**
+- [x] **Progress never resets on release or target change**
   ([D-071](../docs/design-decisions.md), [D-072](../docs/design-decisions.md)). `dig()` only runs
   while held, so it never learns of a release. The capability needs to remember its last target
   and get a `stop()` (or "not held this tick") call from the actor.
@@ -110,17 +110,25 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
   so `if capability:` never helps. Use `get_node_or_null`, or look it up once in `_ready`.
 - [x] `var aim` in `InputHandler` is untyped — add `: Vector2`.
 - [x] `actor.tscn`'s root node is still in the `players` group.
-- [ ] **Facing ([D-075](../docs/design-decisions.md), [D-076](../docs/design-decisions.md)).**
+- [x] **Facing ([D-075](../docs/design-decisions.md), [D-076](../docs/design-decisions.md)).**
   `Actor.facing` exists (starts down) but nothing uses it: the target is still worked out from the
   raw aim, so a zero aim targets the actor's own tile. Facing should be updated from aim when aim
   is outside the dead zone, otherwise from movement, otherwise kept; snapped 4-way with
   hysteresis (10–15° past 45°). The target tile is then feet tile + facing.
-- [ ] **`_get_target_tile` still doubles depth.** `target_tile.depth += current_WorldPos.depth`
+- [x] **Facing, remaining.** Facing state works (aim, else movement, else hold; the sprite
+  follows), but:
+  - `_primary_action` builds the target as `WorldPos.new(facing.x, facing.y, depth)`, which
+    is an absolute tile (facing down always digs tile (0, 1)). Call `_get_target_tile()`,
+    which adds facing to the feet tile;
+  - no hysteresis yet: `_set_facing` switches at exactly 45°, so aiming near a diagonal flips
+    the target and resets progress ([D-072](../docs/design-decisions.md)). Switch only
+    10–15° past the boundary ([D-075](../docs/design-decisions.md)).
+- [x] **`_get_target_tile` still doubles depth.** `target_tile.depth += current_WorldPos.depth`
   adds depth to a `WorldPos` that already has it. Hidden on Surface (0 + 0); wrong from depth 1.
-- [ ] **Mouse aim dead zone ([D-075](../docs/design-decisions.md)).** `_get_aim` returns the
+- [x] **Mouse aim dead zone ([D-075](../docs/design-decisions.md)).** `_get_aim` returns the
   feet-to-mouse vector at any length; within about half a tile (8 px) of the feet it should
   return `Vector2.ZERO` so facing holds.
-- [ ] **`InputHandler` sits inside `GameViewport`, so `game.gd` pushes events into it.** Events
+- [x] **`InputHandler` sits inside `GameViewport`, so `game.gd` pushes events into it.** Events
   are pushed untransformed, so any node in the viewport reading a mouse event's position gets
   a wrong one. The handler draws nothing; as a child of `Game` (outside the viewport) its
   `_input` fires directly and the `push_input` workaround can go.

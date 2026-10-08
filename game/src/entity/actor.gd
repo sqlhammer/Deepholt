@@ -2,6 +2,8 @@ extends Node2D
 class_name Actor
 
 signal actor_worldpos_changed (actor: Actor, old_pos: WorldPos, new_pos: WorldPos)
+signal action_begun(verb: String)
+signal action_ended(verb: String)
 
 var current_WorldPos: WorldPos
 var actor_name: String = "Actor"
@@ -17,7 +19,7 @@ var facing: Vector2i = Vector2i(0,1) # Default = Down
 # TODO: Temporary equip. Refactor later.
 var equipped: ToolData = preload("res://src/entity/tools/stone_pickaxe.tres")
 
-var facing_frames: Dictionary = {
+const facing_frames: Dictionary = {
 	"UP": 1,
 	"DOWN": 19,
 	"LEFT": 28,
@@ -40,6 +42,7 @@ static func create(scene: PackedScene, p_name: String, world_pos: WorldPos) -> A
 
 func _ready() -> void:
 	assert(depth >= 0, "actor entered the tree without setup()")
+	
 	# setup() already did this. Recomputing covers position being
 	# changed between setup() and add_child().
 	current_WorldPos = get_current_WorldPos()
@@ -77,25 +80,28 @@ func aim(p_aim: Vector2, p_move: Vector2) -> void:
 
 
 func primary_action(p_action_intent: bool) -> void:
+	var prior_intent: bool = action_intent
+	
 	# The _physics_process will trigger the actor's action until the intent is reset
 	action_intent = p_action_intent
+	
+	if prior_intent != action_intent:
+		if action_intent: emit_signal("action_begun", equipped.verb)
+		else: emit_signal("action_ended", equipped.verb)
 
 
 func _primary_action(delta: float) -> void:
-	if not action_intent: return
-	var target_tile: WorldPos = _get_target_tile(aim_vector)
+	if not action_intent: 
+		return
+	
 	var verb: String = equipped.verb
 	match verb:
-		"dig": _dig(delta, target_tile)
+		"dig": _dig(delta, _get_target_tile())
 
 
-func _get_target_tile(input_vector: Vector2) -> WorldPos:
-	var target_tile: WorldPos = WorldPos.new(current_WorldPos.x, current_WorldPos.y, current_WorldPos.depth)
-	var offset: Vector2i = TileSpace.get_facing_offset(input_vector)
-	target_tile.x += offset.x
-	target_tile.y += offset.y
-	target_tile.depth += current_WorldPos.depth
-	return target_tile
+func _get_target_tile() -> WorldPos:
+	var here: WorldPos = current_WorldPos
+	return WorldPos.new(here.x + facing.x, here.y + facing.y, here.depth)
 
 
 func _dig(delta: float, target_tile: WorldPos) -> void: 
@@ -153,14 +159,14 @@ func set_depth(p_depth: int) -> void:
 
 
 func _set_facing(p_vector: Vector2) -> bool:
-	var offset: Vector2i = TileSpace.get_facing_offset(p_vector)
-	
-	if offset == Vector2i(0,0): 
-		return false # wasn't set due to input deadzone
-	
-	facing = offset
-	
-	# Update sprite
+	if p_vector == Vector2.ZERO:
+		return false  # no input here: let the next source decide
+	facing = TileSpace.snap_facing(facing, p_vector)
+	_update_facing_sprite()
+	return true  # input present: it owns facing this tick
+
+
+func _update_facing_sprite() -> void:
 	# TODO: Replace later with walking animation
 	var sprite: Sprite2D = $Sprite2D
 	match facing:
@@ -168,13 +174,6 @@ func _set_facing(p_vector: Vector2) -> bool:
 		Vector2i(0,1): sprite.frame = facing_frames["DOWN"]
 		Vector2i(-1,0): sprite.frame = facing_frames["LEFT"]
 		Vector2i(1,0): sprite.frame = facing_frames["RIGHT"]
-	
-	return true # Properly set
-
-
-
-
-
 
 
 

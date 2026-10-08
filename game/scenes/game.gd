@@ -52,6 +52,7 @@ func _create_player(_name: String, _level: Level) -> Actor:
 func grant_player_capabilities(actor: Actor) -> void:
 	var dig_scene: PackedScene = Global.get_capability_packedscene(Global.CAPABILITY.DIG)
 	var dig_capability: CapabilityDig = dig_scene.instantiate()
+	dig_capability.actor = actor
 	actor.get_node("Capabilities").add_child(dig_capability)
 
 
@@ -59,7 +60,7 @@ func set_user_control(actor: Actor) -> void:
 	# Attach input handling to the player
 	var input: InputHandler = InputHandler.new()
 	input.setup(actor, mouse_world_position)
-	$GameViewport/Actors/Players.add_child(input)
+	add_child(input)
 	
 	# Lock camera to player (actor)
 	$GameViewport/LevelRenderer.show_level(get_level(actor.depth).level_tiles)
@@ -92,10 +93,10 @@ func mouse_world_position() -> Vector2:
 	return view.get_canvas_transform().affine_inverse() * view_px
 
 
-# This is needed so that my _input funcs inside the viewport 
-# fire for input that the Game scene owns.
-func _unhandled_input(event: InputEvent) -> void:
-	game_viewport.push_input(event)
+
+
+
+
 
 
 

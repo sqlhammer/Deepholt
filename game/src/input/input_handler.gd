@@ -5,6 +5,11 @@ var actor: Actor
 var mouse_world_position: Callable
 var current_device_scheme: DEVICE_SCHEME = DEVICE_SCHEME.GAMEPAD
 
+# Inside this distance from the feet the mouse's direction is
+# mostly noise, so it counts as no aim and facing holds.
+const MOUSE_DEAD_ZONE_PX: float = TileSpace.TILE_PIXELS / 2.0
+
+
 enum DEVICE_SCHEME {
 	NONE,
 	GAMEPAD,
@@ -40,7 +45,9 @@ func _get_aim() -> Vector2:
 	if current_device_scheme == DEVICE_SCHEME.MOUSE_AND_KEYBOARD:
 		var mouse_pos: Vector2 = mouse_world_position.call()
 		aim = mouse_pos - actor.get_world_box().get_center()
-		return aim
+		if aim.length() < MOUSE_DEAD_ZONE_PX:
+			return Vector2.ZERO
+		return aim.normalized()
 	
 	return aim
 

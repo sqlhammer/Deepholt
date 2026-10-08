@@ -27,8 +27,10 @@ func _actors() -> Array[Actor]:
 	return actors
 
 
+# Input handlers live directly under Game, outside the game viewport,
+# so their _input fires without events being pushed in.
 func _handler_for(actor: Actor) -> InputHandler:
-	for child in _game.get_node("GameViewport/Actors/Players").get_children():
+	for child in _game.get_children():
 		if child is InputHandler and child.actor == actor: return child
 	return null
 
@@ -127,7 +129,7 @@ func test_user_control_gives_the_actor_an_input_handler() -> void:
 	var actor: Actor = _actor_at_depth(3)
 	_game.set_user_control(actor)
 	assert_not_null(_handler_for(actor),
-		"an InputHandler driving this actor is under Players")
+		"an InputHandler driving this actor is under Game")
 
 
 func test_user_control_points_the_camera_at_the_actor() -> void:

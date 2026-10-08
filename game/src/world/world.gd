@@ -3,7 +3,7 @@ extends Node
 var world_seed: int
 var level_bounds: Resource = preload("res://src/world/level_bounds.tres")
 
-signal tile_dug(tile: WorldPos)
+signal tile_dug(actor: Actor, tile: WorldPos)
 
 func _ready() -> void:
 	set_world_seed("Default Seed")
