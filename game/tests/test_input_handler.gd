@@ -147,3 +147,11 @@ func test_opposite_keys_cancel() -> void:
 	Input.action_press(&"move_right")
 	_handler._physics_process(0.0)
 	assert_eq(_actor.move_intent, Vector2.ZERO, "left and right together go nowhere")
+
+
+func test_no_aim_device_means_no_aim() -> void:
+	# A mouse far enough away to aim, if the mouse were the device.
+	_use_mouse_at(Vector2(40, 0))
+	_handler.current_device_scheme = InputHandler.DEVICE_SCHEME.NONE
+	assert_eq(_handler._get_aim(), Vector2.ZERO,
+		"with no aim device chosen, there is no aim, so facing holds")
