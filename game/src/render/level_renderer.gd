@@ -75,6 +75,14 @@ static func level_width(tiles: LevelTiles) -> int:
 	return 2 * tiles.level_bound.radius + 1
 
 
+# Uploads every layer changed since the last upload, then forgets
+# them. Called once a frame; public so tests can drive it.
+func upload_changed_layers() -> void:
+	for layer_name: String in _dirty_layers:
+		_layer_data_imagetextures[layer_name].update(_layer_data_images[layer_name])
+	_dirty_layers.clear()
+
+
 # Every layer as a read returns it, one byte per tile in the same
 # row-major order as the arrays, so texel (column, row) is the tile at
 # (column - radius, row - radius). Built through the reads rather than by
@@ -192,9 +200,24 @@ func _read(layer: LevelTiles.LAYER, x: int, y: int) -> int:
 	return TileKind.SENTINEL_OUT_OF_ARRAY
 
 
-# Uploads every layer changed since the last upload, then forgets
-# them. Called once a frame; public so tests can drive it.
-func upload_changed_layers() -> void:
-	for layer_name: String in _dirty_layers:
-		_layer_data_imagetextures[layer_name].update(_layer_data_images[layer_name])
-	_dirty_layers.clear()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

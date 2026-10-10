@@ -1,16 +1,124 @@
 [gd_scene format=3 uid="uid://bu2js56o3p7nx"]
 
 [ext_resource type="Script" uid="uid://b7ludhw01skbr" path="res://src/entity/actor.gd" id="1_70l2e"]
-[ext_resource type="Texture2D" uid="uid://eoyturvwied" path="res://content/creatures/human_base.png" id="2_1gypc"]
+
+[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_vdsue"]
+load_path = "res://.godot/imported/human_base.png-a37e4f648b07eb565350810f5b925761.ctex"
+
+[sub_resource type="Animation" id="Animation_70l2e"]
+resource_name = "RESET"
+tracks/0/type = "method"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"values": [{
+"args": [],
+"method": &"_update_facing_sprite"
+}]
+}
+tracks/1/type = "value"
+tracks/1/imported = false
+tracks/1/enabled = true
+tracks/1/path = NodePath("Sprite2D:frame")
+tracks/1/interp = 1
+tracks/1/loop_wrap = true
+tracks/1/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 1,
+"values": [27]
+}
+
+[sub_resource type="Animation" id="Animation_l4a32"]
+resource_name = "WALK_DOWN"
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 0.75, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 1,
+"values": [18, 20, 19, 18, 20]
+}
+
+[sub_resource type="Animation" id="Animation_datpl"]
+resource_name = "WALK_LEFT"
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 0.75, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 1,
+"values": [28, 27, 29, 27, 28]
+}
+
+[sub_resource type="Animation" id="Animation_1gypc"]
+resource_name = "WALK_RIGHT"
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 0.75, 1),
+"transitions": PackedFloat32Array(1, 1, 1, 1, 1),
+"update": 1,
+"values": [10, 11, 9, 11, 10]
+}
+
+[sub_resource type="Animation" id="Animation_34lrw"]
+resource_name = "WALK_UP"
+length = 0.75
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Sprite2D:frame")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.25, 0.5, 0.75),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 1,
+"values": [1, 0, 2, 1]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_1gypc"]
+_data = {
+&"RESET": SubResource("Animation_70l2e"),
+&"WALK_DOWN": SubResource("Animation_l4a32"),
+&"WALK_LEFT": SubResource("Animation_datpl"),
+&"WALK_RIGHT": SubResource("Animation_1gypc"),
+&"WALK_UP": SubResource("Animation_34lrw")
+}
 
 [node name="Actor" type="Node2D" unique_id=910169004]
 script = ExtResource("1_70l2e")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=569719171]
-texture = ExtResource("2_1gypc")
+texture = SubResource("CompressedTexture2D_vdsue")
 offset = Vector2(0, -1)
 hframes = 9
 vframes = 4
-frame = 19
+frame = 27
 
 [node name="Capabilities" type="Node2D" parent="." unique_id=604890557]
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="." unique_id=1423387079]
+libraries/ = SubResource("AnimationLibrary_1gypc")
