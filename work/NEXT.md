@@ -39,3 +39,34 @@ survive, rather than because a checklist said persistence goes here.
 Still unplaced and eventually required: the support rule — excavated space has to be held up or it
 fails (pillar [P4](../docs/game-overview.md)) — the rate machine that lets a hoist
 haul while you are three levels away, procgen. None of them are next.
+
+---
+
+## Carry-forward from 001
+
+Found during slice 001, not recorded anywhere else. Bring into planning; none of it is decided.
+
+- **Dirt is only half added.** `MINABLE_DIRT` is diggable and has a hardness (D-081), but the
+  renderer has no art cell for it (it draws the magenta MISSING cell), the F3 overlay has no
+  character for it (it shows `?`), and there is no grid character to place it in a prefab.
+- **For 002 (Go down): the renderer's `QuadMesh` is a shared resource.** `show_level` resizes it
+  in place. With one renderer that's fine; a second `LevelRenderer` created from the same scene
+  would share it, and showing a level on one would resize the other. Fix when it arrives: tick
+  *Local to Scene* on the mesh, or give each renderer `QuadMesh.new()`.
+- **For 002: changing depth already has its pieces.** Setting `actor.depth` looks up the level
+  (levels must be in the tree first, D-068); the renderer disconnects from the old level and
+  connects to the new one in `show_level`. Rebuilding a level's textures costs about 92 ms at
+  Surface and 580 ms at the Crush (D-065), a hitch that will be felt on each depth change.
+- **Hardness is still called `density` in code** (`TileKind.MINABLE_DENSITY`). Renaming it to
+  match the tuning appendix is an optional tidy-up (D-081).
+- **The appendix's own numbers miss the 0.5–0.7 s band at −5 and −7** (D-081, open). The content
+  validator that would catch this ([content-schema §5](../docs/tech/content-schema.md)) isn't
+  built.
+- **`dig_refused` carries a reason that nothing reads yet.** It's there for feedback (sound, UI)
+  when that arrives.
+- **The test suite is slow because of `test_game.gd`.** Each of its tests loads `game.tscn`, which
+  builds all eight levels; the read-only tests could share one game in `before_all`.
+- **Coverage was measured by instrumenting a scratch copy** (a probe before every executable line
+  in `src/`, `scenes/`, `singletons/`, then the GUT run). It ended at 99.5%. The script lived in
+  a temporary folder and is gone unless it's added to `scripts/`.
+- **`work/lesson/E-open-a-dug-tile.md`** is finished teaching content and can be deleted.

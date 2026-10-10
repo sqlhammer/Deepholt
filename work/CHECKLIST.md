@@ -155,7 +155,7 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 - [x] Quit and relaunch: the level is back to its hand-made state. [7]
 - [x] `scripts/test.ps1` passes.
 - [x] By hand: outcomes 1–7 walked through in one sitting.
-- [ ] Claude drafts `log/001-dig-one-tile.md`; Derik corrects it.
+- [x] Claude drafts `log/001-dig-one-tile.md`; Derik corrects it.
 
 ## Later: known bugs
 
