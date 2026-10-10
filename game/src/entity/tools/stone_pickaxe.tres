@@ -6,4 +6,4 @@
 script = ExtResource("1_4qgne")
 tool_name = "Stone Pickaxe"
 verb = "dig"
-speed = 2.0
+speed = 20.0

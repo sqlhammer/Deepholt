@@ -217,3 +217,15 @@ func test_a_refused_dig_announces_nothing() -> void:
 	watch_signals(_tiles_at(0))
 	_request(WorldPos.new(1, 0, 0))
 	assert_signal_not_emitted(_tiles_at(0), "tile_changed", "nothing changed, so nothing is said")
+
+
+# Every request ends in exactly one answer. If the level vanished
+# between the check and the change, the dig is refused rather than
+# left unanswered (which would leave the digger asking every tick).
+func test_a_dig_whose_level_is_gone_is_refused() -> void:
+	var actor: Actor = autofree(Actor.new())
+	watch_signals(World)
+	World._dig_tile(actor, WorldPos.new(1, 0, 5))
+	assert_push_error("Cannot complete the dig.", "it is logged")
+	assert_signal_emitted(World, "dig_refused", "and the digger hears no")
+	assert_signal_not_emitted(World, "tile_dug", "and nothing is dug")

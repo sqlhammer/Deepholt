@@ -196,3 +196,13 @@ func test_a_bypassed_write_changes_the_tile_silently() -> void:
 	tiles.set_top(1, 0, TileKind.TOP.OPEN, true)
 	assert_eq(tiles.get_top(1, 0), TileKind.TOP.OPEN, "the tile changed")
 	assert_signal_not_emitted(tiles, "tile_changed", "and nothing was announced")
+
+
+# Trap 6 of the dig lesson: writing an array directly skips the
+# notification, so the screen never hears of it. The arrays are
+# guarded, and replacing one warns.
+func test_replacing_a_layer_array_warns() -> void:
+	var tiles: LevelTiles = _surface()
+	tiles.top = tiles.top
+	assert_push_warning("Use set_top() to modify individual elements.",
+		"go through set_top so the change is announced")

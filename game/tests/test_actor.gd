@@ -367,3 +367,42 @@ func test_primary_without_a_dig_capability_does_nothing() -> void:
 	actor._physics_process(0.1)
 	assert_true(actor.current_WorldPos.equals(WorldPos.new(0, 0, 0)),
 		"an actor that can't dig just stands there, without an error")
+
+
+# --- outcome 3, end to end ---
+
+# Face rock, hold dig, and the tile becomes open floor: in the data,
+# and in what the renderer draws. Nothing is called by hand between
+# the actor and the screen.
+func test_holding_dig_opens_the_faced_tile_on_screen() -> void:
+	var actor: Actor = _actor_in_room()
+	_give_dig(actor)
+	var tiles: LevelTiles = World.get_level_by_depth(0).level_tiles
+	var renderer: LevelRenderer = LevelRenderer.new()
+	renderer.mesh = QuadMesh.new()
+	var shader_material: ShaderMaterial = ShaderMaterial.new()
+	shader_material.shader = load("res://src/render/level_tiles.gdshader")
+	renderer.material = shader_material
+	add_child_autofree(renderer)
+	renderer.show_level(tiles)
+	watch_signals(World)
+
+	# Facing down from (0, 0) at rock (0, 1). Hold until it's dug. The
+	# limit is the dig time from the data plus a margin, so a broken
+	# dig fails instead of looping forever, and retuning the tool or
+	# the rock doesn't break the test.
+	var rock: float = TileKind.get_tile_density(TileKind.TOP.MINABLE_ROCK)
+	var dig_seconds: float = rock / actor.equipped.speed
+	var limit: int = ceili(dig_seconds * 60.0) + 10
+	actor.primary_action(true)
+	var ticks: int = 0
+	while get_signal_emit_count(World, "tile_dug") == 0 and ticks < limit:
+		actor._physics_process(1.0 / 60.0)
+		ticks += 1
+
+	assert_signal_emit_count(World, "tile_dug", 1, "the faced tile is dug, once")
+	assert_eq(tiles.get_top(0, 1), TileKind.TOP.OPEN, "open in the data")
+	var radius: int = tiles.level_bound.radius
+	var image: Image = renderer._layer_data_images["top"]
+	assert_eq(image.get_data()[(1 + radius) * image.get_width() + radius], TileKind.TOP.OPEN,
+		"and open in what the renderer draws")
