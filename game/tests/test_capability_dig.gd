@@ -143,6 +143,20 @@ func test_softer_ground_digs_faster() -> void:
 	assert_signal_emitted(World, "dig_requested", "dirt is done in fewer ticks than rock")
 
 
+# Ore makes a tile 1.5x as hard (D-081): copper in rock takes 9
+# ticks here where plain rock takes 6.
+func test_a_tile_with_ore_takes_one_and_a_half_times_as_long() -> void:
+	_level.level_tiles.set_ore(ROCK_TILE.x, ROCK_TILE.y, TileKind.ORE.COPPER)
+	var rock_ticks: int = ceili(_density("MINABLE_ROCK") / (SPEED * TICK))
+	var ore_ticks: int = ceili(_density("MINABLE_ROCK") * TileKind.ORE_DIG_MULTIPLIER
+		/ (SPEED * TICK))
+	watch_signals(World)
+	_tick(ROCK_TILE, rock_ticks)
+	assert_signal_not_emitted(World, "dig_requested", "not done when plain rock would be")
+	_tick(ROCK_TILE, ore_ticks - rock_ticks)
+	assert_signal_emitted(World, "dig_requested", "done at 1.5x")
+
+
 func test_progress_resets_after_completing_a_dig() -> void:
 	_tick(ROCK_TILE, ceili(_density("MINABLE_ROCK") / (SPEED * TICK)))
 	assert_eq(_dig.progress, 0.0, "the next tile starts from zero")

@@ -20,8 +20,9 @@ func dig(delta: float, tool_speed: float, target_tile: WorldPos, level: Level) -
 	
 	current_tile = target_tile
 	var kind: int = _get_tile_kind(level, target_tile)
+	var ore: int = level.level_tiles.get_ore(target_tile.x, target_tile.y)
 	
-	var is_diggable: bool = _set_tile_density(kind)
+	var is_diggable: bool = _set_tile_density(kind, ore)
 	if not is_diggable:
 		_reset_progress()
 		return
@@ -70,8 +71,9 @@ func _is_dig_complete() -> bool:
 	return false
 
 
-func _set_tile_density(kind: int) -> bool:
-	var density: float = TileKind.get_tile_density(kind)
+# Ore makes a tile harder to dig (TileKind.ORE_DIG_MULTIPLIER).
+func _set_tile_density(kind: int, ore: int = TileKind.ORE.NONE) -> bool:
+	var density: float = TileKind.get_dig_density(kind, ore)
 	if density >= 0.0:
 		tile_density = density
 		return true

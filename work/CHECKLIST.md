@@ -67,17 +67,24 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
   `World`, by request signal; the screen learns from `LevelTiles` ([D-078](../docs/design-decisions.md)).
   The screen's half is settled: it learns from the tile data, not from the dig verb
   ([D-065](../docs/design-decisions.md)).
-- [ ] **Decide:** the rules for digging what cannot be dug.
-- [ ] Test: changing a tile through the mutation path and reading it back.
-- [ ] Test: each cannot-dig rule.
-- [ ] Face rock or copper, press dig, and the tile becomes open floor on screen. [3]
+- [x] **Decide:** the rules for digging what cannot be dug ([D-080](../docs/design-decisions.md)).
+- [x] Test: changing a tile through the mutation path and reading it back.
+  `test_world.gd`: an accepted dig opens the tile, clears its ore, leaves the ground, and only
+  that tile changes; `test_level_tiles.gd`: every setter reads back and announces.
+- [x] Test: each cannot-dig rule.
+  `test_world.gd`: open floor, an unnamed kind, outside the bounds (254), past the array (255),
+  and a missing level are each refused with a reason; `test_tile_kind.gd` pins which kinds dig.
+- [x] Face rock or copper, press dig, and the tile becomes open floor on screen. [3]
+  By hand (Derik, outcomes 1–7 in one sitting); automated end to end in `test_actor.gd`.
 - [x] **Decide:** whether digging is instant. No: a tile is dug by holding the button over time.
   Already settled in [tuning-appendix §4](../docs/tuning-appendix.md) (`dig_seconds = rock_hardness /
   tool_power`) and [content-schema §5](../docs/tech/content-schema.md) (the right tool digs in
   0.5–0.7 s). An instant dig is only a stepping stone while building.
-- [ ] **Decide, by looking:** how long a dig takes in this slice, which has no tools yet.
-- [ ] Dig a four-to-five tile corridor and walk down it; it stays dug. [4]
-- [ ] Dig out to the edge of the level and walk to it; it does what section D decided, deliberately. [5]
+- [x] **Decide, by looking:** how long a dig takes in this slice, which has no tools yet.
+  Flint pickaxe (power 16): Surface stone 0.375 s, dirt 0.25 s, copper 0.56 s ([D-081](../docs/design-decisions.md)).
+- [x] Dig a four-to-five tile corridor and walk down it; it stays dug. [4]
+  By hand (Derik, outcomes 1–7 in one sitting).
+- [x] Dig out to the edge of the level and walk to it; it does what section D decided, deliberately. [5]
   Moved here from D: Surface is solid rock out to its edge, so the edge can't be reached by hand
   until digging exists.
 
@@ -105,11 +112,13 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 - [x] **Hard-coded `2`/`3` in `_is_diggable`.** Use `TileKind.TOP.MINABLE_ROCK` etc.;
   `MINABLE_DENSITY` repeats the ids again.
 - [x] **`print(progress)`** runs every tick.
-- [ ] **Hardness per tile kind conflicts with a settled doc.**
+- [x] **Hardness per tile kind conflicts with a settled doc.**
   [tuning-appendix §4](../docs/tuning-appendix.md) makes hardness per stratum
   (`dig_seconds = rock_hardness / tool_power`); the code makes it per tile kind (rock 5,
   dirt 2). Same formula and timing (5 / 10 = 0.5 s). Either record a D-entry for the change or
   follow the doc's numbers.
+  Resolved the other way: hardness belongs to tile kinds, and the appendix now says so
+  ([D-081](../docs/design-decisions.md)); the numbers follow it (rock 6, dirt 4, ore 1.5×).
 - [x] **`ToolData` + `equipped` is the M1 tools system arriving early** — a stub
   [pre-alpha-scope §4](../docs/pre-alpha-scope.md) rules out. Either record that tools come into
   pre-alpha with this slice, or use a plain dig-speed number on the capability until M1.

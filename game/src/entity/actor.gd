@@ -17,7 +17,7 @@ var facing: Vector2i = Vector2i(0,1) # Default = Down
 @export var feet_box: Rect2 = Rect2(-5, 1, 10, 6)
 
 # TODO: Temporary equip. Refactor later.
-var equipped: ToolData = preload("res://src/entity/tools/stone_pickaxe.tres")
+var equipped: ToolData = preload("res://src/entity/tools/flint_pickaxe.tres")
 
 const facing_frames: Dictionary = {
 	"UP": 1,

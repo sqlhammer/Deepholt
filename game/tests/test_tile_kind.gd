@@ -79,3 +79,26 @@ func test_every_density_entry_is_a_top_kind() -> void:
 		assert_true(id in TileKind.TOP.values(), "%s names a real top kind" % kind_name)
 		assert_eq(TileKind.TOP.get(kind_name, -1), id,
 			"and the entry's name matches that kind's name")
+
+
+# --- hardness (D-081) ---
+
+# Hardness belongs to the tile kind. Surface stone matches the tuning
+# appendix's Surface value; dirt is a bit easier.
+func test_rock_and_dirt_hardness() -> void:
+	assert_eq(TileKind.get_tile_density(TileKind.TOP.MINABLE_ROCK), 6.0, "rock is 6")
+	assert_eq(TileKind.get_tile_density(TileKind.TOP.MINABLE_DIRT), 4.0, "dirt is 4")
+	assert_lt(TileKind.get_tile_density(TileKind.TOP.MINABLE_DIRT),
+		TileKind.get_tile_density(TileKind.TOP.MINABLE_ROCK), "dirt is easier than rock")
+
+
+func test_ore_makes_a_tile_one_and_a_half_times_as_hard() -> void:
+	assert_eq(TileKind.get_dig_density(TileKind.TOP.MINABLE_ROCK, TileKind.ORE.NONE), 6.0,
+		"plain rock")
+	assert_eq(TileKind.get_dig_density(TileKind.TOP.MINABLE_ROCK, TileKind.ORE.COPPER), 9.0,
+		"rock with copper takes 1.5x")
+
+
+func test_ore_does_not_make_an_undiggable_tile_diggable() -> void:
+	assert_lt(TileKind.get_dig_density(TileKind.TOP.OPEN, TileKind.ORE.COPPER), 0.0,
+		"open floor stays undiggable whatever the ore says")

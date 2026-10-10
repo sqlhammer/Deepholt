@@ -122,26 +122,46 @@ tutorialise this.**
 ## 4. Digging
 
 ```
-  dig_seconds = rock_hardness / tool_power
-  breach_seconds = (rock_hardness × 8) / tool_power
-  breach requires tool_power ≥ rock_hardness × 1.2
+  dig_seconds = hardness / tool_power
+  breach_seconds = (hardness × 8) / tool_power
+  breach requires tool_power ≥ hardness × 1.2
 ```
 
-| Stratum | Hardness | | Tool | Power |
-|---|---|---|---|---|
-| Surface soil | 6 | | Flint | 16 |
-| −1 Rootshelf | 10 | | Bronze | 30 |
-| −2 Greyseam | 18 | | Iron | 55 |
-| −3 Old Terraces | 30 | | Steel | 95 |
-| −4 The Works | 48 | | Ancestral | 160 |
-| −5 Drowned | 70 | | | |
-| −6 The Crush | 100 | | | |
-| −7 | 140 | | | |
+**Hardness belongs to tile kinds, not to levels** ([D-081](./design-decisions.md)). A stratum
+chooses which kinds it is made of, and each kind carries its own hardness. A tile holding ore
+takes **1.5×** its kind's hardness.
 
-**A tier-appropriate tool always digs a tile in ~0.6 s at any depth.** That is the invariant the
-tables are built to satisfy. Under-tier tools degrade gracefully rather than hitting a wall —
-flint on −2 is 1.1 s, on −3 is 1.9 s: discouraging, never forbidden, which preserves "you can
-always go look" at the tool level.
+| Stratum | Kind | Hardness |
+|---|---|---|
+| Surface | Dirt | 4 |
+| Surface | Stone (minable rock) | 6 |
+| −1 Rootshelf | main stone | 10 |
+| −2 Greyseam | main stone | 18 |
+| −3 Old Terraces | main stone | 30 |
+| −4 The Works | main stone | 48 |
+| −5 Drowned | main stone | 70 |
+| −6 The Crush | main stone | 100 |
+| −7 | main stone | 140 |
+
+Kinds below the Surface are named when procedural generation introduces them (M3). Until then,
+each number is the target hardness for that stratum's main stone.
+
+| Tool | Power |
+|---|---|
+| Bare hands | 8 (from M1, when tools can be unequipped) |
+| Flint | 16 |
+| Bronze | 30 |
+| Iron | 55 |
+| Steel | 95 |
+| Ancestral | 160 |
+
+**A tier-appropriate tool digs a stratum's main stone in ~0.6 s.** That is the invariant the
+tables are built to satisfy, with three known exceptions: Surface stone with flint is 0.375 s
+(accepted, D-081), and −5 with steel (0.74 s) and −7 with ancestral (0.875 s) fall outside the
+0.5–0.7 s band the content validator checks (open). Under-tier tools degrade gracefully rather
+than hitting a wall — flint on −2 is 1.1 s, on −3 is 1.9 s; bare hands on Surface stone is
+0.75 s: discouraging, never forbidden, which preserves "you can always go look" at the tool
+level.
 
 ### The resulting breach ladder
 

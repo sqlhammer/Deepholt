@@ -1393,3 +1393,57 @@ whatever the top layer shows
 ([D-066](#d-066--layers-are-painted-in-order-and-each-layers-art-decides-what-it-covers)).
 
 *Deferred:* ore dropping as an item when inventory arrives in M1.
+
+---
+
+### D-080 — What can and cannot be dug in pre-alpha
+**Decided** (by Derik, slice 001 section E, recording the rules as built). Closes the open
+question in [D-070](#d-070--the-level-edge-stops-an-actor-like-rock-its-look-is-deferred) about
+the outermost ring.
+
+- **A tile can be dug only if its top kind is listed as diggable in `TileKind`** (today: minable
+  rock and minable dirt). `TileKind` is the one owner of that rule; the dig capability,
+  `LevelTiles` and `World` all ask it.
+- **Refused**, each with a reason from `World`
+  ([D-078](#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime)): open floor,
+  impenetrable rock, any kind not listed as diggable, the outside of the level (both sentinels,
+  [D-059](#d-059--sentinel-values-revised-to-255-and-254)), and a depth with no resident level.
+- **The outermost ring of rock can be dug.** It is inside the level's bounds. Digging it leaves an
+  actor standing against the edge, which still stops it (D-070).
+
+*Why:* these are the rules the code and its tests already enforce; recording them makes them a
+decision rather than a side effect.
+
+---
+
+### D-081 — Hardness belongs to tile kinds; the pre-alpha tool is a flint pickaxe
+**Decided** (by Derik, closing slice 001). Amends
+[tuning-appendix §4](./tuning-appendix.md), whose hardness column was per stratum, and
+[D-077](#d-077--one-fixed-tool-stays-in-pre-alpha-tools-are-not-expanded), whose fixed tool was a
+stone pickaxe.
+
+- **Hardness is a property of the tile kind, not the level.** A level (and later procedural
+  generation) chooses which kinds a stratum is made of; the kind decides how hard it is to dig.
+  Surface stone (minable rock) is **6**, matching the appendix's Surface value; dirt is **4**, a
+  bit easier. Deeper strata get their own, harder kinds when they are introduced, using the
+  appendix's numbers as each stratum's main stone.
+- **A tile holding ore takes 1.5× its kind's hardness**, as the appendix already said.
+- **The fixed pre-alpha tool is a flint pickaxe, power 16**, the lowest tier the appendix
+  defines. It digs Surface stone in 0.375 s, dirt in 0.25 s, and copper in rock in 0.56 s.
+- **Bare hands is power 8** (Surface stone in 0.75 s), recorded now and built in M1 when tools
+  can be unequipped. Pre-alpha builds nothing for it, per
+  [pre-alpha-scope §4](./pre-alpha-scope.md).
+
+*Why:* hardness per stratum would make every tile on a level dig the same, and the game wants
+different materials side by side (dirt and stone at the Surface, harder stone deeper). Taking
+the tool and the numbers from the appendix keeps the slice on the documented tuning instead of a
+placeholder speed.
+
+*Accepted:* 0.375 s at the Surface is below the 0.5–0.7 s band the content validator checks
+([content-schema §5](./tech/content-schema.md)).
+
+*Open:* the appendix's own numbers also miss that band at −5 with steel (0.74 s) and −7 with
+ancestral (0.875 s). To resolve when those strata are built.
+
+*In code:* hardness is still named `density` (`TileKind.MINABLE_DENSITY`); the values are the
+appendix's hardness.

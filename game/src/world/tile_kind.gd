@@ -34,10 +34,18 @@ const ORE: Dictionary = {
 	"COPPER": 2,
 }
 
+# How hard each diggable top kind is: the "hardness" of the tuning
+# appendix (D-081). Hardness belongs to the kind, not the level; a
+# level only chooses which kinds it has. Dig seconds = density /
+# tool power, so flint (16) digs rock (6) in 0.375 s.
 const MINABLE_DENSITY: Dictionary = {
-	"MINABLE_ROCK": { "id": TOP.MINABLE_ROCK, "density": 5.0 },
-	"MINABLE_DIRT": { "id": TOP.MINABLE_DIRT, "density": 2.0 },
+	"MINABLE_ROCK": { "id": TOP.MINABLE_ROCK, "density": 6.0 },
+	"MINABLE_DIRT": { "id": TOP.MINABLE_DIRT, "density": 4.0 },
 }
+
+# A tile holding ore takes this much longer to dig than the same
+# tile without it (tuning appendix, section 4).
+const ORE_DIG_MULTIPLIER: float = 1.5
 
 
 static func is_diggable(kind: int) -> bool:
@@ -52,6 +60,17 @@ static func get_tile_density(kind: int) -> float:
 		if kind == TileKind.MINABLE_DENSITY[key].id:
 			return TileKind.MINABLE_DENSITY[key].density
 	return -1.0 # invalid density
+
+
+# How hard a tile is to dig, counting its ore: the top kind's density,
+# times ORE_DIG_MULTIPLIER when the tile holds ore. Negative when the
+# top kind can't be dug.
+static func get_dig_density(top_kind: int, ore_kind: int) -> float:
+	var density: float = get_tile_density(top_kind)
+	if density < 0.0: return density
+	if ore_kind != ORE.NONE and ore_kind != ORE.NULL:
+		density *= ORE_DIG_MULTIPLIER
+	return density
 
 
 static func is_sentinel(kind: int) -> bool:
