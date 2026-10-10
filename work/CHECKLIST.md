@@ -152,7 +152,7 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 
 Logged to fix later, not part of the current work.
 
-- [ ] **Pixel flickering when moving along the x axis** (reported 2026-10-10, recording:
+- [x] **Pixel flickering when moving along the x axis** (reported 2026-10-10, recording:
   `C:\Users\derik\OneDrive\Documents\Snagit\2026-10-10_07-40-27.mp4`; frames
   `C:\Users\derik\Downloads\bad frame.png` and `good frame.png`).
   **Most likely cause, from the frames:** the bad frame has evenly spaced vertical stripes (a
@@ -161,7 +161,11 @@ Logged to fix later, not part of the current work.
   viewport's pixel centers exactly on world-pixel boundaries where nearest sampling is a coin
   flip. Only x because walking horizontally leaves y whole. **Likely fix:** keep the camera on
   whole pixels (`position = actor.position.round()`, or *Snap 2D Transforms to Pixel*), and
-  snap the actor's sprite too. Not yet confirmed.
+  snap the actor's sprite too. **Confirmed and fixed (Agent mode):** captured the game viewport
+  with the actor at x + 0, 0.25, 0.5 and 0.75: only the half-pixel offset broke the 16 px tile
+  repeat (66 columns). `ViewCamera` now follows `actor.position.round()`, and `GameViewport`
+  has `snap_2d_transforms_to_pixel` on; the same capture then shows 0 broken columns at every
+  offset. Pinned by tests in `test_view_camera.gd`.
   Other places to look if that isn't it:
   - the actor moves in fractional pixels (85 px/s × delta), and the camera follows its exact
     position, so the whole world sits at a fractional offset inside the 512 × 320 viewport and

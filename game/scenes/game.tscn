@@ -31,6 +31,7 @@ script = ExtResource("1_lnu2h")
 [node name="Levels" type="Node2D" parent="." unique_id=1399950092]
 
 [node name="GameViewport" type="SubViewport" parent="." unique_id=589241153]
+snap_2d_transforms_to_pixel = true
 size = Vector2i(512, 320)
 render_target_update_mode = 4
 
