@@ -209,7 +209,7 @@ func test_digging_plain_rock_announces_only_the_top() -> void:
 	assert_signal_emit_count(_tiles_at(0), "tile_changed", 1,
 		"there was no ore to clear, so only the top changed")
 	assert_eq(get_signal_parameters(_tiles_at(0), "tile_changed"),
-		[1, 0, LevelTiles.LAYER.TOP], "and it names the top layer")
+		[1, 0, LevelTiles.LAYER.TOP, _tiles_at(0)], "and it names the top layer")
 
 
 func test_a_refused_dig_announces_nothing() -> void:

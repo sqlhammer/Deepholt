@@ -84,10 +84,12 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 
 ### E. TODOs from review (2026-10-07)
 
-- [ ] **The tile never opens.** On completion `CapabilityDig` emits `World.ore_mined` and resets,
+- [x] **The tile never opens.** On completion `CapabilityDig` emits `World.ore_mined` and resets,
   but nothing sets the top to `OPEN` or clears the ore ([D-066](../docs/design-decisions.md)).
   Unblocked by [D-078](../docs/design-decisions.md); dug ore is discarded until M1 ([D-079](../docs/design-decisions.md)).
   *Mode: Educational Assistant* — walkthrough in `work/lesson/E-open-a-dug-tile.md`.
+  Steps 1–4 built by Derik; step 5 (the renderer) in Agent mode. Opens in the data and on
+  screen; checking it by hand is outcome [3] below.
 - [x] **Signal misnamed and missing its argument.** Declared `ore_mined(world_pos)`, emitted with
   nothing, and fires for plain rock too. Something like `tile_dug.emit(target_tile)`.
 - [x] **Progress never resets on release or target change**

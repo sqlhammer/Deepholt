@@ -134,7 +134,8 @@ func test_changing_a_top_tile_announces_it_once() -> void:
 	tiles.set_top(3, -2, TileKind.TOP.OPEN)
 	assert_signal_emit_count(tiles, "tile_changed", 1, "one write, one notice")
 	assert_eq(get_signal_parameters(tiles, "tile_changed"),
-		[3, -2, LevelTiles.LAYER.TOP], "naming the tile and the top layer")
+		[3, -2, LevelTiles.LAYER.TOP, tiles],
+		"naming the tile, the top layer, and the tiles it came from")
 
 
 func test_each_layer_names_itself() -> void:
@@ -172,7 +173,7 @@ func test_writes_outside_the_level_announce_nothing() -> void:
 func test_the_new_value_is_in_place_when_the_notice_arrives() -> void:
 	var tiles: LevelTiles = _surface()
 	var seen: Array = []
-	tiles.tile_changed.connect(func(x: int, y: int, _layer: int) -> void:
+	tiles.tile_changed.connect(func(x: int, y: int, _layer: int, _source: LevelTiles) -> void:
 		seen.append(tiles.get_top(x, y)))
 	tiles.set_top(1, 0, TileKind.TOP.OPEN)
 	assert_eq(seen, [TileKind.TOP.OPEN], "the listener reads the new kind, not the old one")
@@ -184,3 +185,14 @@ func test_changing_a_tile_back_announces_both_changes() -> void:
 	tiles.set_top(1, 0, TileKind.TOP.OPEN)
 	tiles.set_top(1, 0, TileKind.TOP.MINABLE_ROCK)
 	assert_signal_emit_count(tiles, "tile_changed", 2, "open, then rock again")
+
+
+# bypass_signals writes the tile but tells no one: anything mirroring
+# tile data (the renderer) will not see the change. For writes that
+# happen before anything is listening.
+func test_a_bypassed_write_changes_the_tile_silently() -> void:
+	var tiles: LevelTiles = _surface()
+	watch_signals(tiles)
+	tiles.set_top(1, 0, TileKind.TOP.OPEN, true)
+	assert_eq(tiles.get_top(1, 0), TileKind.TOP.OPEN, "the tile changed")
+	assert_signal_not_emitted(tiles, "tile_changed", "and nothing was announced")

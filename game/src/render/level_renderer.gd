@@ -18,19 +18,46 @@ enum AtlasCell {
 }
 
 
+# The data the shader reads, kept so single tiles can be rewritten
+# after the level is shown (D-065). Keyed by layer name: "ground",
+# "top", "ore".
+var _layer_data_imagetextures: Dictionary[String, ImageTexture] = {}
+var _layer_data_images: Dictionary[String, Image] = {}
+
+# The level being shown, and the layers changed since the last
+# upload. Changes within a frame are gathered into one upload per
+# layer, because an upload re-sends the whole layer (D-065).
+var _tiles: LevelTiles
+var _dirty_layers: Dictionary[String, bool] = {}
+
+const LAYER_NAMES: Dictionary = {
+	LevelTiles.LAYER.GROUND: "ground",
+	LevelTiles.LAYER.TOP: "top",
+	LevelTiles.LAYER.ORE: "ore",
+}
+
 func _ready() -> void:
 	material.set_shader_parameter("ground_cells", _ground_cells())
 	material.set_shader_parameter("top_cells", _top_cells())
 	material.set_shader_parameter("ore_cells", _ore_cells())
 
 
+# Sends each layer changed this frame to the GPU, once.
+func _process(_delta: float) -> void:
+	upload_changed_layers()
+
+
 # Builds the level's data textures, one per layer, and sizes the quad to
 # the level. The textures are derived from the tile data and never read
 # back as truth (D-048, D-065).
 func show_level(tiles: LevelTiles) -> void:
+	_listen_to(tiles)
+	_tiles = tiles
+	_dirty_layers.clear()
+	
 	var layers: Dictionary = layer_bytes(tiles)
 	for layer: String in layers:
-		var layer_texture: ImageTexture = _data_texture(tiles, layers[layer])
+		var layer_texture: ImageTexture = _get_and_store_data(layer, tiles, layers[layer])
 		material.set_shader_parameter(layer + "_data", layer_texture)
 
 	# A QuadMesh is centered on its node, and an odd-width level's center
@@ -66,11 +93,27 @@ static func layer_bytes(tiles: LevelTiles) -> Dictionary:
 	return {"ground": ground, "top": top, "ore": ore}
 
 
-func _data_texture(tiles: LevelTiles, bytes: PackedByteArray) -> ImageTexture:
+func _get_and_store_data(layer: String, tiles: LevelTiles, bytes: PackedByteArray) -> ImageTexture:
+	var image: Image = _data_image(tiles, bytes)
+	var layer_texture: ImageTexture = _data_texture(image)
+	
+	# Store for later
+	_layer_data_images[layer] = image
+	_layer_data_imagetextures[layer] = layer_texture
+	
+	return layer_texture
+
+
+func _data_texture(image: Image) -> ImageTexture:
+	var layer_texture: ImageTexture = ImageTexture.create_from_image(image)
+	return layer_texture
+
+
+func _data_image(tiles: LevelTiles, bytes: PackedByteArray) -> Image:
 	var width: int = level_width(tiles)
 	var image: Image = Image.create_from_data(
 		width, width, false, Image.FORMAT_R8, bytes)
-	return ImageTexture.create_from_image(image)
+	return image
 
 
 # Which atlas cell draws each byte of a layer, indexed by the byte itself
@@ -108,3 +151,50 @@ func _ore_cells() -> PackedInt32Array:
 	cells[TileKind.ORE.COPPER] = AtlasCell.COPPER
 	cells[TileKind.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.EMPTY
 	return cells
+
+
+# Listens to the tile data of the level being shown, and stops
+# listening to the one shown before. Without the disconnect, a change
+# on the old level would be drawn onto the new one, at the same
+# coordinates.
+func _listen_to(new_tiles: LevelTiles) -> void:
+	if _tiles == new_tiles: return
+	
+	if _tiles != null and _tiles.tile_changed.is_connected(_on_tile_changed):
+		_tiles.tile_changed.disconnect(_on_tile_changed)
+	
+	new_tiles.tile_changed.connect(_on_tile_changed)
+
+
+# One tile of one layer changed in the data: rewrite its texel. The
+# value written is what a read returns, the same rule the textures
+# are built by (D-065). The upload waits for the end of the frame.
+func _on_tile_changed(x: int, y: int, layer: LevelTiles.LAYER,
+		source: LevelTiles) -> void:
+	# Only the level on screen; the disconnect in _listen_to should
+	# already guarantee it, this keeps it true if that ever slips.
+	if source != _tiles: return
+	var layer_name: String = LAYER_NAMES.get(layer, "")
+	if not _layer_data_images.has(layer_name): return
+	
+	var kind: int = _read(layer, x, y)
+	var radius: int = _tiles.level_bound.radius
+	var texel: Vector2i = Vector2i(x + radius, y + radius)
+	_layer_data_images[layer_name].set_pixelv(texel, Color(kind / 255.0, 0.0, 0.0))
+	_dirty_layers[layer_name] = true
+
+
+func _read(layer: LevelTiles.LAYER, x: int, y: int) -> int:
+	match layer:
+		LevelTiles.LAYER.GROUND: return _tiles.get_ground(x, y)
+		LevelTiles.LAYER.TOP: return _tiles.get_top(x, y)
+		LevelTiles.LAYER.ORE: return _tiles.get_ore(x, y)
+	return TileKind.SENTINEL_OUT_OF_ARRAY
+
+
+# Uploads every layer changed since the last upload, then forgets
+# them. Called once a frame; public so tests can drive it.
+func upload_changed_layers() -> void:
+	for layer_name: String in _dirty_layers:
+		_layer_data_imagetextures[layer_name].update(_layer_data_images[layer_name])
+	_dirty_layers.clear()
