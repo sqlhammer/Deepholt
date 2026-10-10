@@ -52,3 +52,6 @@ static func snap_facing(current: Vector2i, direction: Vector2) -> Vector2i:
 
 
 
+
+
+

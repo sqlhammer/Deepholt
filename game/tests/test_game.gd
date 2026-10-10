@@ -63,13 +63,13 @@ func test_spawn_levels_adds_one_per_depth() -> void:
 
 func test_get_level_finds_every_depth() -> void:
 	for depth in range(8):
-		var level: Level = _game.get_level(depth)
+		var level: Level = World.get_level_by_depth(depth)
 		assert_not_null(level, "depth %d is resident" % depth)
 		if level: assert_eq(level.depth, depth, "and is the right one")
 
 
 func test_get_level_returns_null_for_a_missing_depth() -> void:
-	assert_null(_game.get_level(99), "no level exists at depth 99")
+	assert_null(World.get_level_by_depth(99), "no level exists at depth 99")
 
 
 # --- the player ---
@@ -87,14 +87,14 @@ func test_player_spawns_on_the_surface() -> void:
 # at depth 1, which is solid rock, while Surface was on screen.
 func test_player_spawns_on_open_floor() -> void:
 	var actor: Actor = _actors()[0]
-	var tiles: LevelTiles = _game.get_level(actor.depth).level_tiles
+	var tiles: LevelTiles = World.get_level_by_depth(actor.depth).level_tiles
 	var pos: WorldPos = actor.current_WorldPos
 	assert_eq(tiles.get_top(pos.x, pos.y), TileKind.TOP.OPEN,
 		"the spawn tile is open floor, not inside rock")
 
 
 func test_player_spawns_on_the_surface_anchor() -> void:
-	var anchor: Vector2i = _game.get_level(0).anchor
+	var anchor: Vector2i = World.get_level_by_depth(0).anchor
 	assert_true(_actors()[0].current_WorldPos.equals(
 		WorldPos.new(anchor.x, anchor.y, 0)),
 		"the player stands on Surface's anchor tile")
@@ -108,7 +108,7 @@ func test_spawn_player_without_a_level_adds_no_player() -> void:
 
 
 func test_create_player_uses_the_levels_depth_and_anchor() -> void:
-	var level: Level = _game.get_level(2)
+	var level: Level = World.get_level_by_depth(2)
 	var actor: Actor = _game._create_player("TestPlayer", level)
 	assert_true(actor in _actors(), "the actor is added under Players")
 	assert_true(actor.current_WorldPos.equals(
@@ -144,7 +144,7 @@ func test_user_control_draws_the_actors_level() -> void:
 	_game.set_user_control(actor)
 	var renderer: LevelRenderer = _game.get_node("GameViewport/LevelRenderer")
 	var top: Texture2D = renderer.material.get_shader_parameter("top_data")
-	var expected: int = LevelRenderer.level_width(_game.get_level(3).level_tiles)
+	var expected: int = LevelRenderer.level_width(World.get_level_by_depth(3).level_tiles)
 	assert_eq(top.get_width(), expected,
 		"the renderer shows depth 3, whose texture is %d tiles wide" % expected)
 

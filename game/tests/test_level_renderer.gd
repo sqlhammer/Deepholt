@@ -47,7 +47,7 @@ func test_outside_the_disc_is_the_out_of_bounds_sentinel_on_every_layer() -> voi
 	var radius: int = tiles.level_bound.radius
 	var corner: int = tiles.get_index(-radius, -radius)
 	for layer: String in ["ground", "top", "ore"]:
-		assert_eq(layers[layer][corner], LevelTiles.SENTINEL_OUT_OF_BOUNDS,
+		assert_eq(layers[layer][corner], TileKind.SENTINEL_OUT_OF_BOUNDS,
 			"a corner of the square is outside the disc, so %s is 254 -- not the default the array stores" % layer)
 
 

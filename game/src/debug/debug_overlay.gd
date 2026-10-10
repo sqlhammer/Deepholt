@@ -17,7 +17,7 @@ var watched_actors: Dictionary[int, String] = {}
 
 func _ready() -> void:
 	$Timer.timeout.connect(_refresh_watched_actors)
-	Global.connect("debug_event",set_section)
+	Global.debug_event.connect(set_section)
 	set_section("World Seed",str(World.world_seed)) # World emits prior to this being ready. Once we implement a loading screen, World seed will update later and we can remove this.
 
 
@@ -149,8 +149,8 @@ func _tile_window(tiles: LevelTiles, pos: WorldPos) -> String:
 # to see what a radial bound does at tile granularity before anything draws.
 func _tile_char(tiles: LevelTiles, x: int, y: int, actor_pos: WorldPos) -> String:
 	var top: int = tiles.get_top(x, y)
-	if top == LevelTiles.SENTINEL_OUT_OF_ARRAY: return " "
-	if top == LevelTiles.SENTINEL_OUT_OF_BOUNDS: return "~"
+	if top == TileKind.SENTINEL_OUT_OF_ARRAY: return " "
+	if top == TileKind.SENTINEL_OUT_OF_BOUNDS: return "~"
 	if x == actor_pos.x and y == actor_pos.y: return "@"
 	if x == 0 and y == 0: return "0"
 
@@ -170,8 +170,8 @@ func _find_level_tiles(depth: int) -> LevelTiles:
 
 
 func _kind_name(table: Dictionary, id: int) -> String:
-	if id == LevelTiles.SENTINEL_OUT_OF_ARRAY: return "OUT OF ARRAY"
-	if id == LevelTiles.SENTINEL_OUT_OF_BOUNDS: return "OUT OF BOUNDS"
+	if id == TileKind.SENTINEL_OUT_OF_ARRAY: return "OUT OF ARRAY"
+	if id == TileKind.SENTINEL_OUT_OF_BOUNDS: return "OUT OF BOUNDS"
 
 	for key in table:
 		if table[key] == id: return key

@@ -10,7 +10,7 @@ var anchor: Vector2i = Vector2i.ZERO
 
 
 func _ready() -> void:
-	add_to_group("levels")
+	pass
 
 
 # A level with no prefab stamped into it is entirely the default tile: solid
@@ -23,8 +23,6 @@ func setup(p_depth: int, p_prefab: TilePrefab = null, p_anchor: Vector2i = Vecto
 	level_tiles = LevelTiles.new(World.level_bounds.rows[depth])
 	if p_prefab != null:
 		LevelGridLoader.stamp(level_tiles, p_prefab, p_anchor)
-	
-	add_to_group("levels")
 
 
 func set_depth(_d: int) -> void:

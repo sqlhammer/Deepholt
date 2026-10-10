@@ -154,7 +154,7 @@ func _draw() -> void:
 
 func set_depth(p_depth: int) -> void:
 	_depth = p_depth
-	current_level = World.get_level(depth)
+	current_level = World.get_level_by_depth(depth)
 	assert(current_level != null, "Actor depth was change/set while current_level was NULL.")
 
 

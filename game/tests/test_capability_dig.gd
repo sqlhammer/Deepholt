@@ -34,7 +34,7 @@ func before_each() -> void:
 
 
 # A dig capability on `actor`, in the tree so its _ready connects
-# to the actor's action_ended and to World.tile_dug.
+# to the actor's action_ended and to World.dig_requested.
 func _new_capability(actor: Actor) -> CapabilityDig:
 	var capability: CapabilityDig = Global.get_capability_packedscene(
 		Global.CAPABILITY.DIG).instantiate()
@@ -97,22 +97,22 @@ func test_aiming_at_something_undiggable_drops_progress() -> void:
 	assert_eq(_dig.progress, 0.0, "progress on rock is lost on open floor")
 
 
-# Every kind the capability accepts must have a density, and the
-# level's own minable check must agree. "Minable" is decided in three
-# places; this catches them drifting apart.
-func test_every_place_agrees_on_what_is_minable() -> void:
+# TileKind is the one owner of "diggable" (it reads MINABLE_DENSITY).
+# The capability's density lookup and LevelTiles.is_diggable must
+# agree with it for every top kind, so nothing drifts from the owner.
+func test_every_place_agrees_on_what_is_diggable() -> void:
 	for kind_name: String in TileKind.TOP:
 		var kind: int = TileKind.TOP[kind_name]
 		var probe: CapabilityDig = CapabilityDig.new()
 		autofree(probe)
-		var diggable: bool = probe._is_diggable(kind)
+		var diggable: bool = TileKind.is_diggable(kind)
 		var has_density: bool = probe._set_tile_density(kind)
 		_level.level_tiles.set_top(5, 0, kind)
-		var level_says: bool = _level.level_tiles.is_minable(WorldPos.new(5, 0, 0))
+		var level_says: bool = _level.level_tiles.is_diggable(WorldPos.new(5, 0, 0))
 		assert_eq(has_density, diggable,
 			"%s: diggable and has-a-density agree" % kind_name)
 		assert_eq(level_says, diggable,
-			"%s: LevelTiles.is_minable agrees" % kind_name)
+			"%s: LevelTiles.is_diggable agrees" % kind_name)
 
 
 # --- finishing a dig ---
@@ -121,16 +121,16 @@ func test_a_dig_completes_at_density_over_speed() -> void:
 	var ticks: int = ceili(_density("MINABLE_ROCK") / (SPEED * TICK))
 	watch_signals(World)
 	_tick(ROCK_TILE, ticks - 1)
-	assert_signal_not_emitted(World, "tile_dug", "not done one tick early")
+	assert_signal_not_emitted(World, "dig_requested", "not done one tick early")
 	_tick(ROCK_TILE)
-	assert_signal_emitted(World, "tile_dug", "done on the tick progress reaches density")
+	assert_signal_emitted(World, "dig_requested", "done on the tick progress reaches density")
 
 
 func test_a_completed_dig_names_the_actor_and_the_tile() -> void:
 	watch_signals(World)
 	_tick(ROCK_TILE, ceili(_density("MINABLE_ROCK") / (SPEED * TICK)))
-	var params: Array = get_signal_parameters(World, "tile_dug")
-	assert_eq(params.size(), 2, "tile_dug carries (actor, tile)")
+	var params: Array = get_signal_parameters(World, "dig_requested")
+	assert_eq(params.size(), 2, "dig_requested carries (actor, tile)")
 	if params.size() == 2:
 		assert_eq(params[0], _actor, "the digging actor")
 		assert_true(params[1].equals(_at(ROCK_TILE)), "the dug tile")
@@ -140,7 +140,7 @@ func test_softer_ground_digs_faster() -> void:
 	var dirt_ticks: int = ceili(_density("MINABLE_DIRT") / (SPEED * TICK))
 	watch_signals(World)
 	_tick(DIRT_TILE, dirt_ticks)
-	assert_signal_emitted(World, "tile_dug", "dirt is done in fewer ticks than rock")
+	assert_signal_emitted(World, "dig_requested", "dirt is done in fewer ticks than rock")
 
 
 func test_progress_resets_after_completing_a_dig() -> void:
@@ -152,7 +152,7 @@ func test_another_actors_completed_dig_leaves_progress_alone() -> void:
 	_tick(ROCK_TILE, 2)
 	var other: Actor = Actor.create(Global.actor_packed_scene, "Other", WorldPos.new(0, 0, 0))
 	autofree(other)
-	_dig.complete_tile_dig(other, _at(DIRT_TILE))
+	_dig._on_tile_dug(other, _at(DIRT_TILE))
 	assert_almost_eq(_dig.progress, 2 * SPEED * TICK, 0.0001,
 		"someone else finishing a tile doesn't reset this actor")
 
@@ -185,6 +185,44 @@ func test_after_a_release_the_same_tile_starts_over() -> void:
 	_tick(ROCK_TILE)
 	assert_almost_eq(_dig.progress, SPEED * TICK, 0.0001,
 		"pressing again on the same tile counts from zero")
+
+
+# --- end to end: outcome 3, the data half ---
+
+# Holding dig on rock until it finishes leaves the tile open in the
+# level's data. (The screen half is LevelRenderer's job.)
+func test_digging_rock_to_completion_opens_it() -> void:
+	_tick(ROCK_TILE, ceili(_density("MINABLE_ROCK") / (SPEED * TICK)))
+	assert_eq(_level.level_tiles.get_top(ROCK_TILE.x, ROCK_TILE.y), TileKind.TOP.OPEN,
+		"the rock is gone")
+
+
+func test_digging_on_after_completion_does_nothing_more() -> void:
+	_tick(ROCK_TILE, ceili(_density("MINABLE_ROCK") / (SPEED * TICK)))
+	watch_signals(World)
+	_tick(ROCK_TILE, 3)
+	assert_signal_not_emitted(World, "dig_requested",
+		"the tile is open now, so holding on asks for nothing")
+	assert_eq(_dig.progress, 0.0, "and builds no progress")
+
+
+# --- refusals (D-078) ---
+
+func test_a_refused_dig_resets_progress() -> void:
+	_tick(ROCK_TILE, 3)
+	World.dig_refused.emit(_actor, _at(ROCK_TILE),
+		World.REFUSAL_REASON.TILE_NOT_DIGGABLE)
+	assert_eq(_dig.progress, 0.0,
+		"refused, so it doesn't sit at full progress and ask every tick")
+
+
+func test_another_actors_refusal_leaves_progress_alone() -> void:
+	_tick(ROCK_TILE, 3)
+	var other: Actor = autofree(Actor.new())
+	World.dig_refused.emit(other, _at(ROCK_TILE),
+		World.REFUSAL_REASON.TILE_NOT_DIGGABLE)
+	assert_almost_eq(_dig.progress, 3 * SPEED * TICK, 0.0001,
+		"someone else's refusal is not this actor's")
 
 
 # --- the completion check itself ---

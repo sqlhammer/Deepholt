@@ -256,7 +256,7 @@ func test_target_tile_is_the_feet_tile_plus_facing() -> void:
 # (0, 0) and (1, 0) opened. Everything else is rock, so the room is
 # two tiles wide (pixels 0..32) and one tall.
 func _actor_in_room() -> Actor:
-	var tiles: LevelTiles = World.get_level(0).level_tiles
+	var tiles: LevelTiles = World.get_level_by_depth(0).level_tiles
 	tiles.set_top(0, 0, TileKind.TOP.OPEN)
 	tiles.set_top(1, 0, TileKind.TOP.OPEN)
 	var actor: Actor = Actor.create(

@@ -9,8 +9,9 @@ var current_tile: WorldPos = WorldPos.new(99,99,99)
 var actor: Actor
 
 func _ready() -> void:
-	World.connect("tile_dug",complete_tile_dig)
-	actor.connect("action_ended",action_ended)
+	World.tile_dug.connect(_on_tile_dug)
+	World.dig_refused.connect(_on_dig_refused)
+	actor.action_ended.connect(action_ended)
 
 
 func dig(delta: float, tool_speed: float, target_tile: WorldPos, level: Level) -> void:
@@ -19,23 +20,33 @@ func dig(delta: float, tool_speed: float, target_tile: WorldPos, level: Level) -
 	
 	current_tile = target_tile
 	var kind: int = _get_tile_kind(level, target_tile)
-	if not _is_diggable(kind): return
 	
-	var is_minable: bool = _set_tile_density(kind)
-	if not is_minable:
+	var is_diggable: bool = _set_tile_density(kind)
+	if not is_diggable:
+		_reset_progress()
 		return
 	
 	progress += tool_speed * delta
 	if _is_dig_complete(): 
-		World.emit_signal("tile_dug", actor, target_tile)
+		World.dig_requested.emit(actor, target_tile)
 
 
 func _target_tile_changed(target_tile: WorldPos) -> bool:
 	return not current_tile.equals(target_tile)
 
 
+func _matches_attached_actor(p_actor: Actor) -> bool:
+	return actor == p_actor
+
+
+func _on_dig_refused(p_actor: Actor, _tile: WorldPos, _reason: World.REFUSAL_REASON) -> void:
+	if not _matches_attached_actor(p_actor): return # Event not for this actor
+	_reset_progress()
+
+
 func _reset_progress() -> void:
 	progress = 0.0
+	tile_density = 0.0
 	current_tile = WorldPos.new(99,99,99)
 
 
@@ -44,24 +55,13 @@ func action_ended(p_verb: String) -> void:
 	_reset_progress()
 
 
-func complete_tile_dig(p_actor: Actor, _tile: WorldPos = null) -> void:
-	if not actor == p_actor: return # Event not for this actor
+func _on_tile_dug(p_actor: Actor, _tile: WorldPos = null) -> void:
+	if not _matches_attached_actor(p_actor): return # Event not for this actor
 	_reset_progress()
 
 
 func _get_tile_kind(level: Level, tile: WorldPos) -> int:
 	return level.level_tiles.get_top(tile.x, tile.y)
-
-
-func _is_diggable(kind: int) -> bool:
-	match kind:
-		TileKind.TOP.MINABLE_ROCK: return true
-		TileKind.TOP.MINABLE_DIRT: return true
-	
-	# Reset if not minable
-	tile_density = 0.0
-	progress = 0.0
-	return false
 
 
 func _is_dig_complete() -> bool:
@@ -71,11 +71,11 @@ func _is_dig_complete() -> bool:
 
 
 func _set_tile_density(kind: int) -> bool:
-	for key in TileKind.MINABLE_DENSITY:
-		if kind == TileKind.MINABLE_DENSITY[key].id:
-			tile_density = TileKind.MINABLE_DENSITY[key].density
-			return true
-	return false # not minable
+	var density: float = TileKind.get_tile_density(kind)
+	if density >= 0.0:
+		tile_density = density
+		return true
+	return false # failed to set density (not diggable)
 
 
 

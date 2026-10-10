@@ -198,7 +198,7 @@ func test_tiles_beyond_level_bounds_are_discarded_not_failed() -> void:
 	assert_true(ok, "a grid wider than the level should discard the excess, not fail the load")
 	assert_eq(tiles.get_top(0, 0), TileKind.TOP.OPEN, "the anchor still loads correctly")
 	assert_eq(tiles.get_top(1, 0), TileKind.TOP.MINABLE_ROCK, "the edge tile still loads correctly")
-	assert_eq(tiles.get_ground(2, 0), LevelTiles.SENTINEL_OUT_OF_ARRAY,
+	assert_eq(tiles.get_ground(2, 0), TileKind.SENTINEL_OUT_OF_ARRAY,
 		"the column beyond the level's radius is never actually there to read back")
 
 

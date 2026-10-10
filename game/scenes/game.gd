@@ -28,7 +28,7 @@ func _spawn_level(_depth: int) -> void:
 
 
 func _spawn_player(_name: String, _depth: int = 0) -> void:
-	var level: Level = get_level(_depth)
+	var level: Level = World.get_level_by_depth(_depth)
 	if not level: 
 		push_error("Level (%d) not found. Could not spawn player." % _depth)
 		return
@@ -63,21 +63,13 @@ func set_user_control(actor: Actor) -> void:
 	add_child(input)
 	
 	# Lock camera to player (actor)
-	$GameViewport/LevelRenderer.show_level(get_level(actor.depth).level_tiles)
+	var level: Level = World.get_level_by_depth(actor.depth)
+	$GameViewport/LevelRenderer.show_level(level.level_tiles)
 	var view_camera: ViewCamera = get_view_camera()
 	view_camera.actor = actor
 	
 	# Attach debug overlay
 	$DebugOverlay.watch(actor)
-
-
-func get_level(_depth: int) -> Level:
-	var level: Level = null
-	for lvl in get_tree().get_nodes_in_group("levels"):
-		if lvl.depth == _depth:
-			level = lvl
-			break
-	return level
 
 
 # Where the mouse points in world space (level pixels).

@@ -139,9 +139,9 @@ func test_flush_against_a_right_wall_can_slide_along_it() -> void:
 # array but outside the disc, since 90^2 + 1 > 90^2.
 
 func test_the_level_edge_reads_as_sentinels_not_rock() -> void:
-	assert_eq(_tiles.get_top(91, 0), LevelTiles.SENTINEL_OUT_OF_ARRAY,
+	assert_eq(_tiles.get_top(91, 0), TileKind.SENTINEL_OUT_OF_ARRAY,
 		"east of the spike is past the array")
-	assert_eq(_tiles.get_top(90, 1), LevelTiles.SENTINEL_OUT_OF_BOUNDS,
+	assert_eq(_tiles.get_top(90, 1), TileKind.SENTINEL_OUT_OF_BOUNDS,
 		"below the spike is outside the radial bounds")
 
 

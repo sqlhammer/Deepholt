@@ -1352,3 +1352,44 @@ for it.
 *Exception recorded:* [pre-alpha-scope §4](./pre-alpha-scope.md) says deferred systems get no
 stubs. This is a deliberate, bounded exception to that rule: one fixed tool and nothing that
 selects between tools. Anything that would select or change tools still waits for M1.
+
+---
+
+### D-078 — World is the only thing that changes tiles at runtime
+**Decided** (by Derik, slice 001 section E). `World` is the only thing that changes tiles at
+runtime. Anything wanting a change emits a request signal to `World`. `World` checks the tile's
+current state, changes it through `LevelTiles` (which tells the renderer, per
+[D-065](#d-065--each-layer-is-its-own-r8-data-texture-built-through-the-reads-changes-reach-it-from-the-truth)),
+and then announces the result (`tile_dug`, or a refusal). Prefab loading writes tiles directly,
+before play begins.
+
+For digging: `CapabilityDig` emits `dig_requested(actor, tile)`; `World` refuses with
+`dig_refused(actor, tile)` or opens the tile and emits `tile_dug(actor, tile)`.
+
+*Why:* one gatekeeper for every runtime change. Digging now, building and collapse in M2, water
+and co-op later all pass through it, so rules about changing a tile (support, ore, host
+authority in co-op) live in one place rather than in each system that changes tiles. Diggers
+decide when a dig is finished but never write tiles. The request is a signal, per the
+[coding-standards](./coding-standards.md) preference for signals between nodes, and it is kept
+separate from the announcement so nothing reacts to a change that `World` then refuses.
+
+*Consequences:* `World` re-checks the tile when the request arrives, because it may have changed
+since digging began, and finds the level from the tile's own depth, not the level on screen.
+`tile_dug` is a gameplay event; the renderer listens to `LevelTiles`' own change notification,
+which covers every change, not only digs. `World` never listens to its own announcement.
+
+*Costs accepted:* `LevelTiles`' setters are public, so code can still change a tile without
+passing through `World`. That is held by convention and review, not by the language.
+
+---
+
+### D-079 — Dug ore is discarded until M1
+**Decided** (by Derik, slice 001 section E). When a dig opens a tile, its ore is cleared and
+nothing is given to the actor. Digging copper simply removes it.
+
+*Why:* items and inventory are milestone M1. Under [pre-alpha-scope §4](./pre-alpha-scope.md),
+dropped ore gets no stub before then. Clearing the ore is still required, because ore draws over
+whatever the top layer shows
+([D-066](#d-066--layers-are-painted-in-order-and-each-layers-art-decides-what-it-covers)).
+
+*Deferred:* ore dropping as an item when inventory arrives in M1.

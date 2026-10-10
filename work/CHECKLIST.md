@@ -63,7 +63,8 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 
 *Mode: Self Coded.*
 
-- [ ] **Decide:** who may change a tile, and how anything else learns it changed. Before the dig verb exists.
+- [x] **Decide:** who may change a tile, and how anything else learns it changed. Before the dig verb exists.
+  `World`, by request signal; the screen learns from `LevelTiles` ([D-078](../docs/design-decisions.md)).
   The screen's half is settled: it learns from the tile data, not from the dig verb
   ([D-065](../docs/design-decisions.md)).
 - [ ] **Decide:** the rules for digging what cannot be dug.
@@ -85,7 +86,8 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 
 - [ ] **The tile never opens.** On completion `CapabilityDig` emits `World.ore_mined` and resets,
   but nothing sets the top to `OPEN` or clears the ore ([D-066](../docs/design-decisions.md)).
-  Blocked on the **Decide: who may change a tile** item above.
+  Unblocked by [D-078](../docs/design-decisions.md); dug ore is discarded until M1 ([D-079](../docs/design-decisions.md)).
+  *Mode: Educational Assistant* — walkthrough in `work/lesson/E-open-a-dug-tile.md`.
 - [x] **Signal misnamed and missing its argument.** Declared `ore_mined(world_pos)`, emitted with
   nothing, and fires for plain rock too. Something like `tile_dug.emit(target_tile)`.
 - [x] **Progress never resets on release or target change**
@@ -143,3 +145,28 @@ becomes a `D-nnn`. Numbers in brackets are the brief's by-hand outcomes.
 - [ ] `scripts/test.ps1` passes.
 - [ ] By hand: outcomes 1–7 walked through in one sitting.
 - [ ] Claude drafts `log/001-dig-one-tile.md`; Derik corrects it.
+
+## Later: known bugs
+
+Logged to fix later, not part of the current work.
+
+- [ ] **Pixel flickering when moving along the x axis** (reported 2026-10-10, recording:
+  `C:\Users\derik\OneDrive\Documents\Snagit\2026-10-10_07-40-27.mp4`; frames
+  `C:\Users\derik\Downloads\bad frame.png` and `good frame.png`).
+  **Most likely cause, from the frames:** the bad frame has evenly spaced vertical stripes (a
+  tile's dark border drawn doubled) across the screen; the good frame, at a slightly different
+  camera x, has none. That pattern fits the camera sitting at a fractional x, which puts the
+  viewport's pixel centers exactly on world-pixel boundaries where nearest sampling is a coin
+  flip. Only x because walking horizontally leaves y whole. **Likely fix:** keep the camera on
+  whole pixels (`position = actor.position.round()`, or *Snap 2D Transforms to Pixel*), and
+  snap the actor's sprite too. Not yet confirmed.
+  Other places to look if that isn't it:
+  - the actor moves in fractional pixels (85 px/s × delta), and the camera follows its exact
+    position, so the whole world sits at a fractional offset inside the 512 × 320 viewport and
+    rounds differently frame to frame. The project has no pixel-snap settings
+    (Rendering → 2D → *Snap 2D Transforms to Pixel* / *Snap 2D Vertices to Pixel*);
+  - the camera follows in `_process` while the actor moves in `_physics_process`, so the two
+    can be a frame apart;
+  - the upscale shader's one-screen-pixel blend at texel edges, at the non-integer window scale;
+  - x only: vertical edges in the tile art (tile borders, the actor's outline) would show
+    horizontal sub-pixel movement more than horizontal edges do.

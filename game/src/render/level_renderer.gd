@@ -88,7 +88,7 @@ func _cell_table() -> PackedInt32Array:
 func _ground_cells() -> PackedInt32Array:
 	var cells: PackedInt32Array = _cell_table()
 	cells[TileKind.GROUND.ROCK] = AtlasCell.FLOOR
-	cells[LevelTiles.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.OUTSIDE_LEVEL
+	cells[TileKind.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.OUTSIDE_LEVEL
 	return cells
 
 
@@ -96,7 +96,7 @@ func _top_cells() -> PackedInt32Array:
 	var cells: PackedInt32Array = _cell_table()
 	cells[TileKind.TOP.OPEN] = AtlasCell.EMPTY
 	cells[TileKind.TOP.MINABLE_ROCK] = AtlasCell.MINABLE_ROCK
-	cells[LevelTiles.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.EMPTY
+	cells[TileKind.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.EMPTY
 	return cells
 
 
@@ -106,5 +106,5 @@ func _ore_cells() -> PackedInt32Array:
 	var cells: PackedInt32Array = _cell_table()
 	cells[TileKind.ORE.NONE] = AtlasCell.EMPTY
 	cells[TileKind.ORE.COPPER] = AtlasCell.COPPER
-	cells[LevelTiles.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.EMPTY
+	cells[TileKind.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.EMPTY
 	return cells

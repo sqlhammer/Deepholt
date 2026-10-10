@@ -104,7 +104,7 @@ static func _stamp_layer(setter: Callable, grid_tiles: Dictionary, characters: D
 	for coord in grid_tiles:
 		var x: int = coord.x + anchor.x
 		var y: int = coord.y + anchor.y
-		setter.call(x, y, characters[grid_tiles[coord]])
+		setter.call(x, y, characters[grid_tiles[coord]], true)
 
 
 static func are_valid_characters(grid: String, allowed_chars: Dictionary) -> bool:

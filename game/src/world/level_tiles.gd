@@ -3,25 +3,41 @@ extends RefCounted
 
 # A level's tile truth: flat per-layer byte arrays sized to the square around the level's
 # radial bounds (D-048), with a third array for ore (D-054). Access goes only through the
-# small read/write functions below. NOT YET IMPLEMENTED -- see work/CHECKLIST.md section A.
-# These bodies exist only so the class parses; they do not do the real work yet.
-
-const SENTINEL_OUT_OF_ARRAY: int = 255
-const SENTINEL_OUT_OF_BOUNDS: int = 254
+# small read/write functions below.
 
 var level_bound: LevelBound
+var _ground: PackedByteArray
+var ground: PackedByteArray:
+	get: return _ground
+	set(new_value): _set_ground(new_value)
+var _top: PackedByteArray
+var top: PackedByteArray:
+	get: return _top
+	set(new_value): _set_top(new_value)
+var _ore: PackedByteArray
+var ore: PackedByteArray:
+	get: return _ore
+	set(new_value): _set_ore(new_value)
 
-var ground: PackedByteArray
-var top: PackedByteArray
-var ore: PackedByteArray
+enum LAYER {
+	NONE,
+	GROUND,
+	TOP,
+	ORE,
+}
+
+signal tile_changed(x: int, y: int, layer: LAYER, level_tiles: LevelTiles)
 
 
 func _init(p_level_bound: LevelBound) -> void:
 	level_bound = p_level_bound
 	
-	ground = _init_tile_array(ground,TileKind.GROUND.ROCK)
-	top = _init_tile_array(top,TileKind.TOP.MINABLE_ROCK)
-	ore = _init_tile_array(ore,TileKind.ORE.NONE)
+	# Using the private vars and not using the setters to avoid tens of 
+	# thousands of tile change signal emits during initialization.
+	_ground = _init_tile_array(ground,TileKind.GROUND.ROCK)
+	_top = _init_tile_array(top,TileKind.TOP.MINABLE_ROCK)
+	_ore = _init_tile_array(ore,TileKind.ORE.NONE)
+
 
 func _init_tile_array(tiles: PackedByteArray, tile_kind: int) -> PackedByteArray:
 	var max_x = level_bound.radius
@@ -37,14 +53,90 @@ func _init_tile_array(tiles: PackedByteArray, tile_kind: int) -> PackedByteArray
 	
 	return tiles
 
+
 func get_ground(x: int, y: int) -> int:
 	return _get_tile(ground,x,y)
+
 
 func get_ore(x: int, y: int) -> int:
 	return _get_tile(ore,x,y)
 
+
 func get_top(x: int, y: int) -> int:
 	return _get_tile(top,x,y)
+
+
+func is_diggable(p_tile: WorldPos) -> bool:
+	var kind = get_top(p_tile.x, p_tile.y)
+	return TileKind.is_diggable(kind)
+
+
+func set_ground(x: int, y: int, kind: int, bypass_signals: bool = false) -> void:
+	var _tile: int = _get_tile(ground,x,y)
+	if _tile == TileKind.SENTINEL_OUT_OF_ARRAY or _tile == TileKind.SENTINEL_OUT_OF_BOUNDS:
+		return
+	
+	var idx: int = get_index(x,y)
+	
+	# Only change if there is a real change to make
+	if ground[idx] == kind: return
+	
+	ground[idx] = kind
+	if not bypass_signals: tile_changed.emit(x, y, LAYER.GROUND, self)
+
+
+func set_top(x: int, y: int, kind: int, bypass_signals: bool = false) -> void:
+	var _tile: int = _get_tile(top,x,y)
+	if _tile == TileKind.SENTINEL_OUT_OF_ARRAY or _tile == TileKind.SENTINEL_OUT_OF_BOUNDS:
+		return
+	
+	var idx: int = get_index(x,y)
+	
+	# Only change if there is a real change to make
+	if top[idx] == kind: return
+	
+	top[idx] = kind
+	if not bypass_signals: tile_changed.emit(x, y, LAYER.TOP, self)
+
+
+func set_ore(x: int, y: int, kind: int, bypass_signals: bool = false) -> void:
+	var _tile: int = _get_tile(ore,x,y)
+	if _tile == TileKind.SENTINEL_OUT_OF_ARRAY or _tile == TileKind.SENTINEL_OUT_OF_BOUNDS:
+		return
+	
+	var idx: int = get_index(x,y)
+	
+	# Only change if there is a real change to make
+	if ore[idx] == kind: return
+	
+	ore[idx] = kind
+	if not bypass_signals: tile_changed.emit(x, y, LAYER.ORE, self)
+
+
+func get_index(x: int, y: int) -> int:
+	if level_bound == null: return TileKind.SENTINEL_OUT_OF_ARRAY
+	if level_bound.radius == null: return TileKind.SENTINEL_OUT_OF_ARRAY
+	
+	var r: int = level_bound.radius
+	var width: int = (2 * r + 1)
+	var idx: int = (y + r) * width + (x + r)
+	return idx
+
+
+func _is_out_of_array(x: int, y: int) -> int:
+	if x < (0-level_bound.radius) or x > level_bound.radius:
+		return TileKind.SENTINEL_OUT_OF_ARRAY
+	if y < (0-level_bound.radius) or y > level_bound.radius:
+		return TileKind.SENTINEL_OUT_OF_ARRAY
+	return 0
+
+
+func _is_out_of_bounds(x: int, y: int) -> int:
+	var pos: WorldPos = WorldPos.new(x,y,level_bound.depth)
+	if not World.is_in_bounds(pos):
+		return TileKind.SENTINEL_OUT_OF_BOUNDS
+	return 0
+
 
 func _get_tile(tiles: PackedByteArray, x: int, y: int) -> int:
 	var idx: int = get_index(x,y)
@@ -64,66 +156,19 @@ func _get_tile(tiles: PackedByteArray, x: int, y: int) -> int:
 	return tiles[idx]
 
 
-func set_ground(x: int, y: int, kind: int) -> void:
-	var _tile: int = _get_tile(ground,x,y)
-	if _tile == SENTINEL_OUT_OF_ARRAY or _tile == SENTINEL_OUT_OF_BOUNDS:
-		return
-	
-	var idx: int = get_index(x,y)
-	ground[idx] = kind
+func _set_ground(new_value: PackedByteArray) -> void:
+	push_warning("Use set_ground() to modify individual elements.")
+	_ground = new_value
 
 
-func set_top(x: int, y: int, kind: int) -> void:
-	var _tile: int = _get_tile(top,x,y)
-	if _tile == SENTINEL_OUT_OF_ARRAY or _tile == SENTINEL_OUT_OF_BOUNDS:
-		return
-	
-	var idx: int = get_index(x,y)
-	top[idx] = kind
-
-func set_ore(x: int, y: int, kind: int) -> void:
-	var _tile: int = _get_tile(ore,x,y)
-	if _tile == SENTINEL_OUT_OF_ARRAY or _tile == SENTINEL_OUT_OF_BOUNDS:
-		return
-	
-	var idx: int = get_index(x,y)
-	ore[idx] = kind
+func _set_top(new_value: PackedByteArray) -> void:
+	push_warning("Use set_top() to modify individual elements.")
+	_top = new_value
 
 
-func get_index(x: int, y: int) -> int:
-	if level_bound == null: return SENTINEL_OUT_OF_ARRAY
-	if level_bound.radius == null: return SENTINEL_OUT_OF_ARRAY
-	
-	var r: int = level_bound.radius
-	var width: int = (2 * r + 1)
-	var idx: int = (y + r) * width + (x + r)
-	return idx
-
-
-func _is_out_of_array(x: int, y: int) -> int:
-	if x < (0-level_bound.radius) or x > level_bound.radius:
-		return SENTINEL_OUT_OF_ARRAY
-	if y < (0-level_bound.radius) or y > level_bound.radius:
-		return SENTINEL_OUT_OF_ARRAY
-	return 0
-
-func _is_out_of_bounds(x: int, y: int) -> int:
-	var pos: WorldPos = WorldPos.new(x,y,level_bound.depth)
-	if not World.is_in_bounds(pos):
-		return SENTINEL_OUT_OF_BOUNDS
-	return 0
-
-func is_minable(p_tile: WorldPos) -> bool:
-	var tile = get_top(p_tile.x, p_tile.y)
-	for key in TileKind.MINABLE_DENSITY:
-		if TileKind.MINABLE_DENSITY[key].id == tile:
-			return true
-	return false
-
-
-
-
-
+func _set_ore(new_value: PackedByteArray) -> void:
+	push_warning("Use set_ore() to modify individual elements.")
+	_ore = new_value
 
 
 
