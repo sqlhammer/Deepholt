@@ -1,0 +1,219 @@
+{
+  "exportTimestamp": "2026-10-10T19-09-31",
+  "bodyType": "male",
+  "standardAnimations": {
+    "exported": {
+      "spellcast": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "thrust": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "walk": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "140 pickaxe__ceramic_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "slash": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "shoot": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "hurt": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "climb": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "idle": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "jump": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "sit": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "emote": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "run": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "combat": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "1h_backslash": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ],
+      "1h_halfslash": [
+        "010 body_color__light_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "035 longsleeve__green_.png",
+        "020 long_pants__maroon_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "025 basic_boots__charcoal_.png"
+      ]
+    },
+    "failed": {
+      "spellcast": [],
+      "thrust": [],
+      "walk": [],
+      "slash": [],
+      "shoot": [],
+      "hurt": [],
+      "climb": [],
+      "idle": [],
+      "jump": [],
+      "sit": [],
+      "emote": [],
+      "run": [],
+      "combat": [],
+      "1h_backslash": [],
+      "1h_halfslash": []
+    }
+  },
+  "customAnimations": {
+    "exported": {
+      "tool_axe": [
+        "009 pickaxe__ceramic_.png",
+        "010 body_color__light_.png",
+        "020 long_pants__maroon_.png",
+        "025 basic_boots__charcoal_.png",
+        "035 longsleeve__green_.png",
+        "100 human_male__light_.png",
+        "101 neutral__light_.png",
+        "110 winter_beard__light_brown_.png",
+        "120 spiked2__light_brown_.png",
+        "150 pickaxe__ceramic_.png"
+      ]
+    },
+    "failed": {}
+  },
+  "frameSize": 64,
+  "frameCounts": {},
+  "performance": {
+    "exportKind": "splitItemAnimations",
+    "totalMs": 7728.1,
+    "phasesMs": {
+      "render_imageLoadDecode_renderSingleItemAnimation": 199.2,
+      "render_composite_renderSingleItemAnimation": 7.9,
+      "pngEncode": 7420.1,
+      "zipFile": 16.6,
+      "render_imageLoadDecode_customItemSprite": 0.3,
+      "render_composite_customItemSprite": 18,
+      "drawAndSlice": 39.8,
+      "staticFiles": 2.4
+    },
+    "counters": {
+      "pngEncodeCount": 129,
+      "totalPngBytes": 1427526,
+      "drawAndSliceCount": 10,
+      "zipFileEntryCount": 129,
+      "renderExtractAnimationFromCanvasCalls": 0,
+      "renderSingleItemCalls": 0,
+      "renderSingleItemAnimationCalls": 119,
+      "extractFramesFromAnimationBatchCount": 0,
+      "renderSliceCanvasForCustomAnimCalls": 0
+    },
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"
+  }
+}

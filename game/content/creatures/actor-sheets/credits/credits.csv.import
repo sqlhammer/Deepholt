@@ -1,0 +1,19 @@
+[remap]
+
+importer="csv_translation"
+type="Translation"
+uid="uid://c8nlejnivh0kk"
+
+[deps]
+
+files=["res://content/creatures/actor-sheets/credits/credits.notes.translation", "res://content/creatures/actor-sheets/credits/credits.authors.translation", "res://content/creatures/actor-sheets/credits/credits.licenses.translation", "res://content/creatures/actor-sheets/credits/credits.urls.translation"]
+
+source_file="res://content/creatures/actor-sheets/credits/credits.csv"
+dest_files=["res://content/creatures/actor-sheets/credits/credits.notes.translation", "res://content/creatures/actor-sheets/credits/credits.authors.translation", "res://content/creatures/actor-sheets/credits/credits.licenses.translation", "res://content/creatures/actor-sheets/credits/credits.urls.translation"]
+
+[params]
+
+compress=1
+delimiter=0
+unescape_keys=false
+unescape_translations=true

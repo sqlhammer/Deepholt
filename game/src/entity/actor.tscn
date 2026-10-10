@@ -1,9 +1,7 @@
 [gd_scene format=3 uid="uid://bu2js56o3p7nx"]
 
 [ext_resource type="Script" uid="uid://b7ludhw01skbr" path="res://src/entity/actor.gd" id="1_70l2e"]
-
-[sub_resource type="CompressedTexture2D" id="CompressedTexture2D_vdsue"]
-load_path = "res://.godot/imported/human_base.png-a37e4f648b07eb565350810f5b925761.ctex"
+[ext_resource type="Texture2D" uid="uid://eoyturvwied" path="res://content/creatures/human_base.png" id="2_1gypc"]
 
 [sub_resource type="Animation" id="Animation_70l2e"]
 resource_name = "RESET"
@@ -112,7 +110,7 @@ _data = {
 script = ExtResource("1_70l2e")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=569719171]
-texture = SubResource("CompressedTexture2D_vdsue")
+texture = ExtResource("2_1gypc")
 offset = Vector2(0, -1)
 hframes = 9
 vframes = 4

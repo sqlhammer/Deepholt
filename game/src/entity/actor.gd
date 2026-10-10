@@ -187,7 +187,6 @@ func _set_facing(p_vector: Vector2) -> bool:
 
 
 func _update_facing_sprite() -> void:
-	# TODO: Replace later with walking animation
 	var sprite: Sprite2D = $Sprite2D
 	match facing:
 		Vector2i(0,-1): sprite.frame = facing_frames["UP"]
