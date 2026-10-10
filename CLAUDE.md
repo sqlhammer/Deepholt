@@ -39,3 +39,5 @@ Current slice: [work/NOW.md](work/NOW.md).
 ## Commands
 
 - Tests: `scripts/test.ps1` (GUT, headless, non-zero exit on failure).
+- Coverage: `python scripts/coverage.py` (instruments a temporary copy, runs GUT, reports line
+  coverage per file and every uncovered line; `--keep` leaves the copy for inspection).

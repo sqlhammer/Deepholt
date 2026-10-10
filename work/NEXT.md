@@ -66,7 +66,8 @@ Found during slice 001, not recorded anywhere else. Bring into planning; none of
   when that arrives.
 - **The test suite is slow because of `test_game.gd`.** Each of its tests loads `game.tscn`, which
   builds all eight levels; the read-only tests could share one game in `before_all`.
-- **Coverage was measured by instrumenting a scratch copy** (a probe before every executable line
-  in `src/`, `scenes/`, `singletons/`, then the GUT run). It ended at 99.5%. The script lived in
-  a temporary folder and is gone unless it's added to `scripts/`.
+- **Coverage is measured with `python scripts/coverage.py`.** It instruments a temporary copy (a
+  probe before every executable line in `src/`, `scenes/`, `singletons/`) and runs GUT. At the
+  end of slice 001: 98.9%. Still uncovered: the two array-replacement warnings in `LevelTiles`
+  (ground and ore), the renderer's `_process` upload call and its fallback read, and `_draw`.
 - **`work/lesson/E-open-a-dug-tile.md`** is finished teaching content and can be deleted.
