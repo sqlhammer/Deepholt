@@ -50,8 +50,8 @@ func mouse_world_position() -> Vector2:
 
 
 func _spawn_levels() -> void:
-	for level in World.level_bounds.rows:
-		_spawn_level(level.depth)
+	for recipe: LevelRecipe in World.level_recipes.rows:
+		_spawn_level(recipe.bound.depth)
 
 
 func _spawn_level(_depth: int) -> void:

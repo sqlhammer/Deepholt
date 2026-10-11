@@ -96,7 +96,7 @@ func test_out_of_array_and_out_of_bounds_sentinels_are_distinguishable() -> void
 # --- is_diggable ---
 
 func test_minable_kinds_are_minable() -> void:
-	var tiles: LevelTiles = LevelTiles.new(World.level_bounds.rows[0])
+	var tiles: LevelTiles = LevelTiles.new(World.level_recipes.get_bounds(0))
 	tiles.set_top(1, 0, TileKind.TOP.MINABLE_ROCK)
 	tiles.set_top(2, 0, TileKind.TOP.MINABLE_DIRT)
 	assert_true(tiles.is_diggable(WorldPos.new(1, 0, 0)), "rock is minable")
@@ -104,13 +104,13 @@ func test_minable_kinds_are_minable() -> void:
 
 
 func test_open_floor_is_not_minable() -> void:
-	var tiles: LevelTiles = LevelTiles.new(World.level_bounds.rows[0])
+	var tiles: LevelTiles = LevelTiles.new(World.level_recipes.get_bounds(0))
 	tiles.set_top(1, 0, TileKind.TOP.OPEN)
 	assert_false(tiles.is_diggable(WorldPos.new(1, 0, 0)), "open floor isn't")
 
 
 func test_outside_the_level_is_not_minable() -> void:
-	var tiles: LevelTiles = LevelTiles.new(World.level_bounds.rows[0])
+	var tiles: LevelTiles = LevelTiles.new(World.level_recipes.get_bounds(0))
 	assert_false(tiles.is_diggable(WorldPos.new(90, 1, 0)),
 		"outside the radial bounds (254) isn't")
 	assert_false(tiles.is_diggable(WorldPos.new(91, 0, 0)),
@@ -125,7 +125,7 @@ func test_outside_the_level_is_not_minable() -> void:
 # them knowing it exists.
 
 func _surface() -> LevelTiles:
-	return LevelTiles.new(World.level_bounds.rows[0])
+	return LevelTiles.new(World.level_recipes.get_bounds(0))
 
 
 func test_changing_a_top_tile_announces_it_once() -> void:

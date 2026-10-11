@@ -7,7 +7,7 @@ extends GutTest
 
 
 func _surface_with_start() -> LevelTiles:
-	var tiles: LevelTiles = LevelTiles.new(World.level_bounds.rows[0])
+	var tiles: LevelTiles = LevelTiles.new(World.level_recipes.get_bounds(0))
 	LevelGridLoader.stamp(tiles, TilePrefabRegistry.get_prefab(&"surface_start"), Vector2i.ZERO)
 	return tiles
 

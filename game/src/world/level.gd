@@ -20,7 +20,7 @@ func setup(p_depth: int, p_prefab: TilePrefab = null, p_anchor: Vector2i = Vecto
 	set_depth(p_depth)
 	self.name = "Level%d" % depth
 
-	level_tiles = LevelTiles.new(World.level_bounds.rows[depth])
+	level_tiles = LevelTiles.new(World.level_recipes.get_bounds(depth))
 	if p_prefab != null:
 		LevelGridLoader.stamp(level_tiles, p_prefab, p_anchor)
 
@@ -32,7 +32,7 @@ func set_depth(_d: int) -> void:
 
 func clamp_depth(_d: int) -> int:
 	var _min: int = 0
-	var _max: int = World.level_bounds.rows.size() - 1
+	var _max: int = World.level_recipes.rows.size() - 1
 	return clamp(_d,_min,_max)
 
 

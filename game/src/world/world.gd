@@ -1,7 +1,8 @@
 extends Node
 
 var world_seed: int
-var level_bounds: Resource = preload("res://src/world/level_bounds.tres")
+# One recipe per depth, each holding that level's bounds (D-085).
+var level_recipes: LevelRecipeTable = preload("res://src/world/level_recipes.tres")
 
 signal tile_dug(actor: Actor, tile: WorldPos)
 signal dig_requested(actor: Actor, tile: WorldPos)
@@ -55,7 +56,7 @@ func display_to_depth(depth: String) -> int:
 
 
 func is_in_bounds(pos: WorldPos) -> bool:
-	var _bounds: LevelBound = level_bounds.get_bounds(pos.depth)
+	var _bounds: LevelBound = level_recipes.get_bounds(pos.depth)
 	if not _bounds: return false
 	var _distance = Vector2(0,0).distance_to(Vector2(pos.x,pos.y))
 	return _distance <= _bounds.radius

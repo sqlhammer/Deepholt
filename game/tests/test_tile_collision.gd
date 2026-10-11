@@ -11,7 +11,7 @@ var _tiles: LevelTiles
 
 
 func before_each() -> void:
-	_tiles = LevelTiles.new(World.level_bounds.rows[0])
+	_tiles = LevelTiles.new(World.level_recipes.get_bounds(0))
 
 
 # Opens every tile from `from` to `to`, inclusive.

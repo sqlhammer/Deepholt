@@ -21,9 +21,10 @@ Slice 001's checklist is in git history (last at `29daf8f`).
   type so saves never need a recipe ([D-085](../docs/design-decisions.md)).
 - [x] **Decide:** how recipes are stored and found by depth. One table resource, mirroring
   `LevelBoundTable` ([D-086](../docs/design-decisions.md)).
-- [ ] Test: each recipe row's depth matches its position in the table (D-086).
-- [ ] Recipes replace `level_bounds.tres` as the per-depth list; `World` and `Level` read bounds
-  through them.
+- [x] Test: each recipe row's depth matches its position in the table (D-086).
+  `test_level_recipes.gd`; rows are found by depth ([D-088](../docs/design-decisions.md)).
+- [x] Recipes replace `level_bounds.tres` as the per-depth list; `World` and `Level` read bounds
+  through them. `World.level_recipes` (`level_recipes.tres`); `LevelBoundTable` is gone (Agent mode).
 - [ ] Ramp and ladder kinds get explicit, never-reused ids (trap 8).
 - [ ] The generator draws randomness only from a `RandomNumberGenerator` seeded per level (trap 8).
 - [ ] `LevelGenerator` builds every level from its recipe's fixed placements; `game.gd` calls it.

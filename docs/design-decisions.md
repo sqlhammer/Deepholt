@@ -1602,3 +1602,20 @@ what `LevelTiles` creates, and what a prefab leaves in every tile it doesn't men
 The origin marker `0` is still rock ground
 ([D-054](#d-054--ore-is-a-third-byte-array-the-ground-grids-origin-marker-is-rock)), so the
 spawn tile's floor is grey in a brown room.
+
+---
+
+### D-088 — Recipes are found by their depth, not by their position in the table
+**Decided** (by Derik, in code: the fix to `LevelBoundTable.get_bounds`, carried into
+`LevelRecipeTable`; recorded by Claude). Amends
+[D-086](#d-086--level-recipes-are-stored-in-one-table-resource-like-the-bounds-table), which
+described the lookup as by position.
+
+`LevelRecipeTable.get_recipe(depth)` returns the row whose `bound.depth` matches, or `null` with
+an error. `get_bounds(depth)` is that recipe's bound.
+
+*Why:* a row out of order can't hand back the wrong level. A wrong lookup is an error, not a
+plausible level.
+
+*Still required:* row N is depth N. Spawning walks the rows in order and `Level.clamp_depth` uses
+their count. A test holds the table to that (`test_level_recipes.gd`).

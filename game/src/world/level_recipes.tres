@@ -1,0 +1,89 @@
+[gd_resource type="Resource" script_class="LevelRecipeTable" format=3]
+
+[ext_resource type="Script" uid="uid://ccycbmyd1jmc6" path="res://src/world/level_bound.gd" id="1_bound"]
+[ext_resource type="Script" path="res://src/world/level_recipe.gd" id="2_recipe"]
+[ext_resource type="Script" path="res://src/world/level_recipe_table.gd" id="3_table"]
+
+[sub_resource type="Resource" id="Bound_0"]
+script = ExtResource("1_bound")
+depth = 0
+name = "Surface"
+radius = 90
+
+[sub_resource type="Resource" id="Recipe_0"]
+script = ExtResource("2_recipe")
+bound = SubResource("Bound_0")
+
+[sub_resource type="Resource" id="Bound_1"]
+script = ExtResource("1_bound")
+depth = 1
+name = "Rootshelf"
+radius = 64
+
+[sub_resource type="Resource" id="Recipe_1"]
+script = ExtResource("2_recipe")
+bound = SubResource("Bound_1")
+
+[sub_resource type="Resource" id="Bound_2"]
+script = ExtResource("1_bound")
+depth = 2
+name = "Greyseam"
+radius = 81
+
+[sub_resource type="Resource" id="Recipe_2"]
+script = ExtResource("2_recipe")
+bound = SubResource("Bound_2")
+
+[sub_resource type="Resource" id="Bound_3"]
+script = ExtResource("1_bound")
+depth = 3
+name = "Old Terraces"
+radius = 102
+
+[sub_resource type="Resource" id="Recipe_3"]
+script = ExtResource("2_recipe")
+bound = SubResource("Bound_3")
+
+[sub_resource type="Resource" id="Bound_4"]
+script = ExtResource("1_bound")
+depth = 4
+name = "The Works"
+radius = 129
+
+[sub_resource type="Resource" id="Recipe_4"]
+script = ExtResource("2_recipe")
+bound = SubResource("Bound_4")
+
+[sub_resource type="Resource" id="Bound_5"]
+script = ExtResource("1_bound")
+depth = 5
+name = "Drowned"
+radius = 163
+
+[sub_resource type="Resource" id="Recipe_5"]
+script = ExtResource("2_recipe")
+bound = SubResource("Bound_5")
+
+[sub_resource type="Resource" id="Bound_6"]
+script = ExtResource("1_bound")
+depth = 6
+name = "The Crush"
+radius = 207
+
+[sub_resource type="Resource" id="Recipe_6"]
+script = ExtResource("2_recipe")
+bound = SubResource("Bound_6")
+
+[sub_resource type="Resource" id="Bound_7"]
+script = ExtResource("1_bound")
+depth = 7
+name = "The End"
+radius = 207
+
+[sub_resource type="Resource" id="Recipe_7"]
+script = ExtResource("2_recipe")
+bound = SubResource("Bound_7")
+
+[resource]
+script = ExtResource("3_table")
+rows = Array[ExtResource("2_recipe")]([SubResource("Recipe_0"), SubResource("Recipe_1"), SubResource("Recipe_2"), SubResource("Recipe_3"), SubResource("Recipe_4"), SubResource("Recipe_5"), SubResource("Recipe_6"), SubResource("Recipe_7")])
