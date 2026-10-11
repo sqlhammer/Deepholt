@@ -1,20 +1,13 @@
 # Next
 
-Sketches, not commitments. Slice 002 is the one I'd argue for; past that the order should fall
-out of what slice 001 teaches. Cheap to throw away — expect them to change.
+Sketches, not commitments. Slice 002 is now in [NOW.md](./NOW.md); past that the order should
+fall out of what slices 001 and 002 teach. Cheap to throw away — expect them to change.
 
 ---
 
 ## 002 — Go down
 
-Two hand-made levels, a ladder between them, and level −2 visibly wider than −1. You descend
-and the world changes around you while your `(x, y)` does not.
-
-This is where the shared coordinate origin stops being a claim and starts being load-bearing —
-the thing the old M0 said was expensive to retrofit, finally under weight. It also forces the
-question of what "current depth" means when nothing is allowed to own *the* player, and whether
-levels are resident, loaded, or something else. Expect some of slice 001's answers to be wrong
-here; that's the value.
+In flight: see [NOW.md](./NOW.md).
 
 ## 003 — The dark
 
@@ -36,6 +29,22 @@ survive, rather than because a checklist said persistence goes here.
 
 ---
 
+### Save notes, from the slice 002 level-generation discussion (2026-10-11)
+
+- **Save the result, not the recipe.** Store the tiles (about 3 MB uncompressed for the whole
+  mountain, world-runtime §1). Regenerating from seed + recipe and replaying digs means any later
+  change to a recipe or prefab silently changes old worlds. Recipes matter only at new-game time.
+- **Save each level's `LevelBound` with it,** so loading never needs a recipe (D-085).
+- **Tile kind ids are forever;** a save is bytes of them (slice 002 brief, trap 8).
+- **Save seeds as numbers, not strings.** `hash()` isn't promised stable across Godot versions.
+- **Version the format from the first save,** and record `tuning_profile_id`
+  ([D-037](../docs/design-decisions.md): one swappable resource for every tuning number, named in
+  each save so playtest feedback is traceable). Not built yet; decide here whether to build it.
+- **Don't save derived data** — support, light, chambers are recomputed on load
+  ([world-runtime §3](../docs/tech/world-runtime-and-persistence.md)).
+
+---
+
 Still unplaced and eventually required: the support rule — excavated space has to be held up or it
 fails (pillar [P4](../docs/game-overview.md)) — the rate machine that lets a hoist
 haul while you are three levels away, procgen. None of them are next.
@@ -46,17 +55,9 @@ haul while you are three levels away, procgen. None of them are next.
 
 Found during slice 001, not recorded anywhere else. Bring into planning; none of it is decided.
 
-- **Dirt is only half added.** `MINABLE_DIRT` is diggable and has a hardness (D-081), but the
-  renderer has no art cell for it (it draws the magenta MISSING cell), the F3 overlay has no
-  character for it (it shows `?`), and there is no grid character to place it in a prefab.
-- **For 002 (Go down): the renderer's `QuadMesh` is a shared resource.** `show_level` resizes it
-  in place. With one renderer that's fine; a second `LevelRenderer` created from the same scene
-  would share it, and showing a level on one would resize the other. Fix when it arrives: tick
-  *Local to Scene* on the mesh, or give each renderer `QuadMesh.new()`.
-- **For 002: changing depth already has its pieces.** Setting `actor.depth` looks up the level
-  (levels must be in the tree first, D-068); the renderer disconnects from the old level and
-  connects to the new one in `show_level`. Rebuilding a level's textures costs about 92 ms at
-  Surface and 580 ms at the Crush (D-065), a hitch that will be felt on each depth change.
+- *(Dirt: finished in slice 002, D-087.)*
+- *(The two "for 002" items, the shared `QuadMesh` and the depth-change pieces, moved into
+  [NOW.md](./NOW.md) and the checklist.)*
 - **Hardness is still called `density` in code** (`TileKind.MINABLE_DENSITY`). Renaming it to
   match the tuning appendix is an optional tidy-up (D-081).
 - **The appendix's own numbers miss the 0.5–0.7 s band at −5 and −7** (D-081, open). The content

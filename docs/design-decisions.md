@@ -1447,3 +1447,158 @@ ancestral (0.875 s). To resolve when those strata are built.
 
 *In code:* hardness is still named `density` (`TileKind.MINABLE_DENSITY`); the values are the
 appendix's hardness.
+
+---
+
+### D-082 — Actor art is 16 × 24 px; tiles and the camera stay as they are
+**Decided** (by Derik). Leaves
+[D-044](#d-044--steam-deck-is-the-primary-display-target-virtual-resolution-is-512320)
+unchanged: tiles stay **16 × 16 px**, the view stays **≈32 × 20 tiles** at 512 × 320, and the
+upscale shader stays.
+
+- **Actor sprites are 16 × 24 px**, the same pixel density as the tiles, so an actor stands
+  one and a half tiles tall.
+- **Only the feet collide.** An actor's collision is still its feet box. The extra height is
+  drawn and nothing else: it overlaps the tile north of the actor and blocks nothing.
+- **Height goes up the screen.** The sprite's origin is at the feet, and an actor draws over
+  whatever is north of it.
+
+*Why:* the 16 × 18 actor art did not hold up. A 32 px or 64 px grid was considered and
+rejected: on the Deck, 32 px tiles give either 1.25× (keeps the view, but soft) or a view
+smaller than hall planning needs (20 × 12.5 at 2×), and 64 px would have to be shrunk. Core
+Keeper, the closest comparable game, keeps 16 px art and a fixed ≈30-column view; its look
+comes from tall actors, wall depth and lighting, not from larger tiles. A taller actor at the
+same density gets most of the art gain without touching the grid.
+
+*Deferred, not decided:* wall faces / three-quarter presentation, walls that hide actors behind
+them, and anything 3D. To revisit once the game is further along.
+
+*Accepted:* 64 × 64 LPC sheets do not fit (their figures are about 48 px tall) and cannot be
+scaled down cleanly, so actor art has to be made at 16 × 24. A tall sprite covers the tile north
+of the actor, so clicking an actor's head picks the tile behind it, and an actor digging north
+partly hides the face being dug.
+
+---
+
+### D-083 — Slice 002 starts on the Surface and goes down two levels, by a ramp and then a ladder
+**Decided** (by Derik, slice 002 section A). The actor still starts on the Surface (depth 0).
+Slice 002 has three hand-made levels: the Surface, −1 and −2.
+
+- **Surface to −1 is a ramp, or some other way down that is not an object.** It is part of the
+  terrain, not a thing placed in the world.
+- **−1 to −2 is a ladder.**
+
+*Why:* it keeps the start that slice 001 built and tested, and it puts two different kinds of
+connection side by side. The Surface reaches −1 through the terrain, much as the design's cave
+mouths do ([pre-alpha-scope §2](./pre-alpha-scope.md)); the levels below are connected by
+built things ([vertical-logistics §2](./systems/vertical-logistics-and-power.md)).
+
+*Consequences:* both connections change an actor's depth, so the depth change itself should be
+one path that the ramp and the ladder both ask for; only how each one is triggered and what it
+looks like differ. "−2 is wider than −1" is still the comparison that matters (radii 64 and
+81). The Surface (90) is wider than both, so going down first makes the world smaller, then
+larger again.
+
+*Open:* what a ramp is in the tile data, and how an actor uses it. Whether this ramp becomes a
+cave mouth when the Surface is built out in M4. What a ladder is, and whether it is the same
+kind of thing as a ramp or a different one.
+
+---
+
+### D-084 — A level generator builds each level from a per-depth recipe
+**Decided** (by Derik, slice 002 section A). Replaces `game.gd`'s `if _depth == 0`.
+
+- **`game.gd` asks a level generator for the levels.** The generator creates each level and fills
+  it, seeded from that level's seed, so the same world seed gives the same world.
+- **Each depth has a `LevelRecipe` resource.** It lists the level's **fixed placements** (a prefab
+  and where it goes, such as `surface_start` at the axis) and, later, its **rules** (for example
+  "2–4 prefabs tagged `copper_pocket`", "at least 40% open").
+- **Prefabs stay content.** A `TilePrefab` carries only descriptive tags (size, stratum, what it
+  is), never where it belongs. Where a prefab goes is the recipe's business.
+- **The generator's order:** fixed placements first, then rules, then validation.
+
+*Why:* the goal is RimWorld-style generation: some things are always there, but not in the same
+place and not in the same amounts. Keeping placement in the recipe means a prefab can be used on
+several depths without being edited, and "what is −2 made of" is answered by one file.
+
+*Slice 002 builds* the generator, the recipes, and fixed placements for the Surface, −1 and −2.
+Tags, rules and validation are designed here and built when procedural generation needs them
+(M3, [pre-alpha-scope §3](./pre-alpha-scope.md); guarantees in
+[world-and-generation](./world-and-generation.md) and
+[D-012](#d-012--descent-is-gated-by-supply-capability-and-recovered-tech-at-region-level)).
+
+*Costs accepted:* two things to keep in step, a recipe and the prefabs it names. A recipe naming
+a prefab id that doesn't exist has to fail loudly.
+
+*Considered:* placement tags on the prefab itself (depths, rarity, fixed anchor), so each prefab
+says where it belongs.
+
+---
+
+### D-085 — A level recipe contains its level's bounds; bounds stay their own type
+**Decided** (by Derik, slice 002 section A). Builds on
+[D-084](#d-084--a-level-generator-builds-each-level-from-a-per-depth-recipe).
+
+- **One recipe per depth holds everything about that depth:** its `LevelBound` (depth, name,
+  radius), its fixed placements and, later, its rules. The recipes replace `level_bounds.tres` as
+  the per-depth list.
+- **`LevelBound` stays its own type, held by the recipe** (`recipe.bound`). `LevelTiles` keeps
+  taking only a `LevelBound`, so tile storage knows a level's shape and nothing about how it was
+  generated.
+
+*Why:* saves. A saved level needs its shape to load, but must not need the recipe that generated
+it: if a recipe is retuned between versions, an old save would rebuild with the new shape. A
+bound can be saved with its level; a recipe can't, sensibly. Keeping the bound separate also
+leaves `LevelTiles` and its tests untouched.
+
+*Considered:* merging `LevelBound` into `LevelRecipe` (one type, `recipe.radius`, no question of
+which of the two a per-depth fact belongs on). Rejected for the save reason, and because tile
+storage would then depend on generation data.
+
+*Open:* how the recipes are stored and found by depth (a table resource like today's
+`LevelBoundTable`, or one file per depth found by a registry).
+
+---
+
+### D-086 — Level recipes are stored in one table resource, like the bounds table
+**Decided** (by Derik, slice 002 section A). Closes the open question in
+[D-085](#d-085--a-level-recipe-contains-its-levels-bounds-bounds-stay-their-own-type).
+Recipes are stored the way `LevelBoundTable` stores bounds today: one table resource holding a
+row per depth, with a lookup by depth. It replaces `level_bounds.tres`.
+
+*Why:* it's a pattern the project already has and tests, and every depth's recipe is in one file.
+
+*Costs accepted:* the file holds each recipe, its bound and its placements inline, so it grows as
+rules arrive and is edited through nested inspector entries. `LevelBoundTable.get_bounds` finds a
+row by its **position**, not by its depth, so a row in the wrong order silently gives the wrong
+level. The recipe table keeps that unless it checks: a test that each row's depth matches its
+position.
+
+---
+
+### D-087 — Dirt is finished: `d` and `%` in the grids, its own art, and the Surface start is dirt
+**Decided** (by Derik; characters and art chosen by Claude in Agent mode, slice 002 section A).
+Adds to the grid characters of
+[D-056](#d-056--grid-characters-and-ore-only-inside-minable-rock).
+
+| Grid | Char | Means |
+|---|---|---|
+| Ground | `d` | dirt |
+| Top | `%` | minable dirt |
+
+- **Art:** two new atlas cells, a dirt floor and a minable-dirt block, drawn in the same style as
+  rock's floor and block. `F3` prints minable dirt as `%`.
+- **The Surface start prefab is dirt:** dirt ground, minable-dirt walls.
+- **Ore still sits only in minable rock** (D-056, unchanged). So the start prefab's copper tiles
+  stay `#`, which reads as stone pockets in the dirt.
+
+*Why:* D-056's convention is "`#` is solid mass; letters are materials". `d` follows it on the
+ground grid. On the top grid a letter would read as a material sitting on open floor, so dirt
+gets a second solid-mass symbol.
+
+*Not changed:* the level's default fill, which is still minable rock on rock ground. That is
+what `LevelTiles` creates, and what a prefab leaves in every tile it doesn't mention
+([D-062](#d-062--a-prefab-is-a-partial-fill-unmentioned-tiles-keep-the-levels-default)).
+The origin marker `0` is still rock ground
+([D-054](#d-054--ore-is-a-third-byte-array-the-ground-grids-origin-marker-is-rock)), so the
+spawn tile's floor is grey in a brown room.

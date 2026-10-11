@@ -22,10 +22,11 @@ func test_window_prints_back_the_authored_grid_around_the_anchor() -> void:
 	var readout: String = _overlay._tile_readout(WorldPos.new(0, 0, 0))
 	
 	assert_string_contains(readout, "###########", "five rows should contain this")
-	assert_string_contains(readout, "####c######", "three rows north of the anchor")
-	assert_string_contains(readout, "#####......", "one and two rows north of the anchor")
+	assert_string_contains(readout, "####c%%%%%%", "three rows north of the anchor")
+	assert_string_contains(readout, "####%......", "one and two rows north of the anchor")
 	assert_string_contains(readout, "####c@.....", "anchor row")
-	assert_string_contains(readout, "#####cc####", "two rows south of anchor")
+	assert_string_contains(readout, "####c......", "one row south of anchor")
+	assert_string_contains(readout, "####%cc%%%%", "two rows south of anchor")
 
 
 func test_readout_names_the_tile_under_the_actor() -> void:
@@ -188,3 +189,10 @@ func test_an_unknown_top_kind_draws_as_a_question_mark() -> void:
 func test_an_unknown_kind_is_named_with_its_id() -> void:
 	assert_eq(_overlay._kind_name(TileKind.TOP, UNKNOWN_KIND), "UNKNOWN (200)",
 		"a kind missing from the table is named by its number")
+
+
+func test_minable_dirt_draws_as_a_percent_sign() -> void:
+	var tiles: LevelTiles = _overlay._find_level_tiles(0)
+	tiles.set_top(3, 3, TileKind.TOP.MINABLE_DIRT)
+	assert_eq(_overlay._tile_char(tiles, 3, 3, WorldPos.new(0, 0, 0)), "%",
+		"minable dirt shows in the character it is authored in")

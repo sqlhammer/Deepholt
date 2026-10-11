@@ -170,3 +170,32 @@ func test_a_dig_reaches_the_screen() -> void:
 		"the dug tile is open on screen")
 	assert_eq(_texel(renderer, level.level_tiles, "ore", -1, 0), TileKind.ORE.NONE,
 		"and its copper is gone from screen")
+
+
+# Every kind a prefab can author has art. A kind left out of a cell
+# table draws the magenta MISSING cell, which is how dirt shipped in
+# slice 001.
+func test_every_authorable_kind_has_art() -> void:
+	var renderer: LevelRenderer = _renderer()
+	var tables: Dictionary = {
+		"ground": [renderer._ground_cells(), LevelGridLoader.GROUND_CHARS],
+		"top": [renderer._top_cells(), LevelGridLoader.TOP_CHARS],
+		"ore": [renderer._ore_cells(), LevelGridLoader.ORE_CHARS],
+	}
+	for layer: String in tables:
+		var cells: PackedInt32Array = tables[layer][0]
+		var chars: Dictionary = tables[layer][1]
+		for character: String in chars:
+			var kind: int = chars[character]
+			assert_ne(cells[kind], LevelRenderer.AtlasCell.MISSING,
+				"'%s' on the %s grid has art" % [character, layer])
+
+
+# The atlas is one row of 16 px cells, read by index. A cell named in
+# AtlasCell but missing from the image reads past its edge.
+func test_the_atlas_has_a_cell_for_every_atlas_cell() -> void:
+	var atlas: Texture2D = load("res://src/render/tile_atlas.png")
+	var cell_count: int = LevelRenderer.AtlasCell.size()
+	assert_eq(atlas.get_width(), cell_count * TileSpace.TILE_PIXELS,
+		"one 16 px cell per AtlasCell entry")
+	assert_eq(atlas.get_height(), TileSpace.TILE_PIXELS, "a single row")

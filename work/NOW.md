@@ -1,194 +1,290 @@
-# Slice 001 — Dig one tile
+# Slice 002 — Go down
 
-> The smallest thing that is actually Deepholt. You face a wall, you remove it, and the world
-> is different and stays different.
+> Three hand-made levels: the Surface, a ramp down to −1, a ladder down to −2, and −2 visibly
+> wider than −1. You descend and the world changes around you while your `(x, y)` does not.
 
 ## Mode
 
-Sections A–C ran under the old agreement. Each remaining section's mode is asked before it
-starts, and recorded in the checklist.
+Asked before each checklist section starts, and recorded there. Not carried over from
+slice 001.
 
 ## Where we are
 
-The project boots. `game.tscn` renders a 512 × 320 `SubViewport` through the pixel-upscale
-shader into a full-window `TextureRect`, and `DebugOverlay` toggles on `F3`, fed by the
-`Global.debug_event` signal. `scripts/test.ps1` runs GUT headless.
+Slice 001 is done ([log](./log/001-dig-one-tile.md)). One moleperson walks and digs on a
+hand-made Surface, and keeps starting there ([D-083](../docs/design-decisions.md)). `World` is the only runtime writer of tiles, by request signal
+([D-078](../docs/design-decisions.md)), and the screen learns about changes from the tile data,
+not from the dig ([D-065](../docs/design-decisions.md)).
 
-`World` and `Global` are autoloads. `World` holds the seed, preloads `level_bounds.tres`
-(eight rows, Surface through −7, named and with radii), maps internal depth to display, and
-answers a radial `is_in_bounds`. `WorldPos` is a hashable value type. All of it has tests.
+**All eight levels already exist.** `game.gd` spawns one `Level` per row of
+`level_bounds.tres` under `$Levels`, every one at the scene origin. Only Surface has a prefab.
+The other seven are solid default rock out to their radius. Nothing has ever stood on them.
 
-**None of it has ever been asked for anything.** Nothing has been drawn to that viewport.
-`src/entity/`, `src/sim/` and `src/persist/` are empty directories. The coordinate work was
-built against a specification rather than against a need, which is exactly the problem this
-slice starts correcting: everything below either gets used, gets changed, or gets deleted.
+**Changing depth already has its pieces, and none have been used.**
+- `Actor.depth` is a setter: it looks up the new level and points collision at it. Position is
+  untouched, so `(x, y)` is kept for free.
+- `LevelRenderer.show_level` disconnects from the old level's tiles and builds the new one's
+  textures.
+- `CapabilityDig` resets when the target tile changes, and `WorldPos.equals` compares depth, so a
+  dig in progress should reset on a depth change ([D-072](../docs/design-decisions.md)).
+
+What's missing is everything that *asks* for a depth change, and everything that has to follow
+one: the screen, the camera, `F3`, and whatever else is drawn.
+
+Radii as built (`level_bounds.tres`): Surface 90, −1 Rootshelf 64, −2 Greyseam 81. So −2 is
+already wider than −1 in the data. Nothing on screen shows it.
 
 ## What should be true when you stop
 
-By hand, in a running game:
+By hand, in a running game (levels and start per [D-083](../docs/design-decisions.md)):
 
-1. Launch, and you are looking at a level — a hand-made one — where solid rock and open floor
-   are immediately distinguishable at the intended pixel scale. Placeholder art is fine; being
-   unable to tell at a glance what you can walk into is not.
-2. A moleperson is in the open space. Keyboard and gamepad both move them. They do not walk
-   through rock.
-3. Face a rock tile, press dig, and that tile becomes open floor. You see it change.
-4. Dig a corridor four or five tiles long and walk down it. The tiles you removed stay removed.
-5. Walk to the edge of the level. Something deliberate happens. Not a crash, and not a silent
-   walk into undefined space.
-6. `F3` tells you what the world believes — at minimum where the actor is and what depth it
-   calls that. Enough that when something looks wrong you can tell whether the world is wrong
-   or the screen is.
-7. Quit, relaunch. The level is back to its hand-made starting state and your corridor is gone.
-   Nothing persists yet, and that is correct for this slice.
+1. Launch, and you are on the hand-made Surface, as now. A ramp down is in the level, and you
+   can tell at a glance it's a way down, not rock or floor.
+2. Take the ramp. You are on −1: its hand-made layout, the same `(x, y)` in `F3`, depth −1. Take
+   it back up and you're on the Surface where you left.
+3. On −1, a ladder, recognizable at a glance as a ladder. Use it. You are on −2: −2's hand-made
+   layout, the same `(x, y)`, depth −2.
+4. Dig on −2. The tile opens on −2. Climb back up: the corridor you dug on −1 before going down
+   is still dug, and nothing you dug on −2 shows up on −1. Go up the ramp: a tile you dug on the
+   Surface at the start is still dug too.
+5. Walk out from the ladder in one direction on −1 until the edge stops you. Do the same on −2
+   from the foot of the ladder. On −2 you get noticeably further, and `F3`'s `x` says how much.
+6. Try to use the ladder from where there is no ladder, or from the wrong side of it, and walk
+   at the ramp from the wrong side. Something deliberate happens. Not a crash, and not a silent
+   depth change.
+7. `F3` tells you both what depth the actor is on and what depth the screen is showing. When
+   they disagree you can see it.
+8. Quit, relaunch. All three levels are back to their hand-made state. Nothing persists yet, and
+   that is correct.
 
-Separately, automated: the mutation path is covered by tests that do not need a running scene —
-changing a tile and reading it back, and whatever you decide the rules are for digging something
-that cannot be dug. Loading a level grid with no origin marker, or with two, fails and is
-tested ([D-050](../docs/design-decisions.md)).
+Separately, automated, without a running scene where possible:
+- an actor changing depth keeps its `(x, y)`;
+- a ramp or ladder whose two ends don't line up across the levels fails to load;
+- a dig on one depth changes only that depth's tiles;
+- the screen follows the locally controlled actor's depth, and **not** another actor's;
+- an actor on a depth that isn't being shown is not drawn.
 
 ## What you're deciding
 
-- **What a tile is**, at this stage, and how a level's worth of them is stored.
-  *Partly decided:* a cell has a ground and a top, at minimum
-  ([D-047](../docs/design-decisions.md)). Still open, before building:
-  - ~~Where tile data lives, and in what shape.~~ Decided — [D-048](../docs/design-decisions.md).
-  - ~~Which ground and top kinds exist.~~ Decided — [D-051](../docs/design-decisions.md), amended by [D-052](../docs/design-decisions.md).
-    Out-of-data reads decided — [D-057](../docs/design-decisions.md), [D-059](../docs/design-decisions.md). Ore storage decided — [D-054](../docs/design-decisions.md).
-  - ~~How the hand-made level is authored.~~ Decided — [D-049](../docs/design-decisions.md).
-- **How the world reaches the screen.** Godot offers several routes here with very different
-  ceilings. The one that gets pixels up fastest is not obviously the one that survives eight
-  resident levels and a culling camera later — and you do not have to solve for that yet, but
-  you should know which you're choosing.
-  *Decided:* a data texture read by a shader, not `TileMapLayer`
-  ([D-046](../docs/design-decisions.md)). Still open, before building:
-  - How tile data is encoded into textures — format, and whether the layers share a texture.
-  - How an id becomes pixels — finding its atlas region, and combining ground and top.
-  - How much of a level one quad covers.
-- **Who is allowed to change a tile, and how anything else learns that it changed.** This is the
-  decision in this slice with the longest tail. It also settles how a changed tile reaches the
-  GPU, so it is needed before the dig verb exists, though not before a static level is drawn.
-- **What an actor is** — the thinnest thing that can be one, given that no system may assume there
-  is exactly one of them (pillar [P5](../docs/game-overview.md), rule [D-045](../docs/design-decisions.md)).
-- **How input reaches an actor.** The standards permit presentation code to hold a reference to
-  the locally controlled actor. They do not say where that reference lives or who sets it. That
-  gap is yours.
-- **Whether digging is instant.** A feel question. You can only answer it by looking at it, which
-  is the point of stopping here rather than three systems later.
+- **What a ramp is in the data, and how an actor uses it.** Not an object
+  ([D-083](../docs/design-decisions.md)), so it's part of the terrain: a top kind, or a pair of
+  them (the top end on the Surface, the bottom end on −1). Open questions inside that:
+  - **Does it have a direction?** A top-down ramp you walk *onto* probably goes down when
+    entered from one side and is just floor (or a wall) from the others. A ramp that triggers
+    from any side is simpler and odder.
+  - **Walk-on or interact?** "Not an object" suggests walking: you go down a slope by walking.
+    That's exactly where trap 5's bounce lives.
+  - **Is the ramp more than one tile?** A one-tile ramp is a trapdoor with different art. Wider
+    or longer reads more like a slope, and costs more alignment checking.
+  - **Is it the cave mouth?** The design's Surface reaches −1 through cave mouths, built out in
+    M4 ([pre-alpha-scope §2](../docs/pre-alpha-scope.md)). If it's meant to become a cave
+    mouth, its shape now is the one M4 inherits, so it's worth sketching cave mouths first.
+- **What a ladder is in the data.** With the ramp, one of the first two things in the game that
+  belong to two levels at once, and the first built thing. Decided after the ramp, and the real
+  question is whether it's **the same kind of thing as the ramp** (another terrain kind, used a
+  different way) or a different one. Same: one alignment check, one loader rule, one trigger
+  path with two looks. Different: two mechanisms, but the ladder can be the first built object
+  that chutes and hoists follow.
+  - *A top-layer kind.* The top layer already means "what occupies the space: minable rock,
+    open space, or something built" ([D-047](../docs/design-decisions.md)). It draws through
+    the existing art table ([D-064](../docs/design-decisions.md)), shows in `F3`, and later
+    changes go through `World` like any tile ([D-078](../docs/design-decisions.md)). But the
+    two ends are two tiles on two levels that have to agree, and the one above is really a hole
+    in the floor, which may want its own kind.
+  - *A flag or a fourth layer.* The runtime doc's tile storage already lists a `floor_breached`
+    flag ([world-runtime §3](../docs/tech/world-runtime-and-persistence.md)). A hole is a fact
+    about the floor; a ladder could be a thing standing in it. Another array, and another
+    texture if it's drawn.
+  - *An object, not a tile.* One node or record spanning both depths, so the two ends can't
+    disagree. But nothing in the simulation holds placed objects yet, the renderer only draws
+    tiles, and this is where machines, chutes and hoists will eventually live, so the shape
+    you pick here is the one they inherit.
+  - Whichever you pick: are the ends linked **by alignment** (same `(x, y)`, adjacent depths,
+    found by looking) or **explicitly** (each end names the other)? The shared origin is what
+    makes alignment possible. That's the point of this slice.
+- **How an actor uses a ladder.** Walk onto it, or face it and press interact? On the same tile, or
+  the adjacent one, like dig reach ([D-073](../docs/design-decisions.md))? Gamepad interact is
+  A ([ui-ux §3](../docs/ui-ux-and-controls.md)); the keyboard binding isn't set.
+- **Whether climbing is instant.** A feel question, like digging was. The design says a ladder
+  carries the player "slowly" ([vertical-logistics §2](../docs/systems/vertical-logistics-and-power.md))
+  and the first session has you "trudge back up the ladder twice. Feel it." Instant is a fine
+  stepping stone. Decide the real answer by looking.
+- **Who changes an actor's depth, and how anything else learns it did.** The actor can set its
+  own depth today. The alternative mirrors tiles: a request to `World`, which checks the move is
+  legal (a ramp or ladder here, open floor at the other end) and then announces it. Either way,
+  the ramp and the ladder should both end in the **same** depth-change path
+  ([D-083](../docs/design-decisions.md)); only what triggers it differs. Separately: an
+  announcement on the actor (`depth_changed`) that presentation listens to. Keep *who may* and
+  *who learns* apart, as with tiles.
+- **Where "the depth being shown" lives.** There is no simulation-wide current depth, because
+  nothing may own *the* player ([D-045](../docs/design-decisions.md)). The depth on screen is
+  presentation state that follows the locally controlled actor. What holds it, and what tells
+  the renderer, camera, `F3` and actor drawing to follow, is yours. `game.gd` currently wires
+  the renderer once, at spawn.
+- **Where a depth's prefab is named.** `game.gd` hard-codes `if _depth == 0: surface_start`. With
+  three prefabs that becomes a table: on the `LevelBound` rows, a separate resource, or a
+  dictionary in `game.gd`.
+- **What −1 and −2 are made of.** See *Already settled* on stone kinds. Optional: −1 Rootshelf
+  is soft stone and root mats, and dirt is half added (diggable, with a hardness, but no grid
+  character, no art cell and no `F3` character). Finish it here, or leave it.
 
 ## Already settled
 
-- **The world is a stack of top-down levels, and it is material you remove — what's left behind is
-  the building.** (Pillars P1 and P2, [game-overview.md](../docs/game-overview.md).)
-- **No player singleton** — simulation code takes an actor, or a set of actors, as a parameter;
-  nothing global resolves to *the* character ([coding-standards.md](../docs/coding-standards.md),
-  rationale in [D-045](../docs/design-decisions.md)). This slice is the first real pressure on that
-  rule, and the sim/presentation split in **Source layout** is how it's enforced.
-- [Source layout, naming, tabs, signals over direct calls](../docs/coding-standards.md).
-- [art-and-camera](../docs/tech/art-and-camera.md) — §3's viewport constants are already
-  built. **§2 binds how the world reaches the screen, and probably what a tile is.** You would
-  not guess it from this slice and it is not cheap to retrofit, so read it before you commit to
-  a render route.
-- [digging-and-structure.md](../docs/systems/digging-and-structure.md) — read its **pre-alpha
-  subset** for what the dig verb is and is not.
-- [pre-alpha-scope §4](../docs/pre-alpha-scope.md) — deferred systems get no stubs. No support
-  rule, no light, no tool durability, no procgen. Hand-made level throughout.
+- **The shared origin.** `(x, y)` at depth 3 is directly below `(x, y)` at depth 2, and that is
+  non-negotiable ([world-runtime §2](../docs/tech/world-runtime-and-persistence.md),
+  [world-and-generation §1](../docs/world-and-generation.md)). **Binds what a ladder is**:
+  whatever you pick, its ends sit at the same `(x, y)`.
+- **Residency.** Every level's tile data stays resident for the whole session; there is no
+  streaming ([D-035](../docs/design-decisions.md)). Only the current depth's render quad needs
+  to exist ([D-063](../docs/design-decisions.md)). **Binds** the sketch's "resident, loaded, or
+  something else": resident data, one renderer re-pointed. A level being off screen is not a
+  reason for its data to change or go away.
+- **No player singleton** — simulation takes an actor as a parameter; presentation may hold the
+  locally controlled one ([D-045](../docs/design-decisions.md)). **Binds** where the shown depth
+  lives: not in `World`, not in `Global`.
+- **A built renderer learns from the truth, with no history.** A renderer created or re-pointed
+  on a depth change builds from that level's tile data ([D-065](../docs/design-decisions.md)).
+  Digs that happened while a level was off screen need no replaying.
+- **Deeper stone kinds wait for procgen.** Below the Surface, kinds are named when procedural
+  generation introduces them in M3; until then the appendix's numbers are targets
+  ([tuning-appendix §4](../docs/tuning-appendix.md), [D-081](../docs/design-decisions.md)).
+  **Binds** what −1 and −2 are made of: the kinds that exist. So −2 digs exactly as fast as
+  Surface. If that reads wrong once you're standing on it, it's a new `D-nnn`, not a quiet
+  addition.
+- **Levels and start:** Surface (where the actor starts), a ramp to −1, a ladder to −2. The ramp
+  is not an object ([D-083](../docs/design-decisions.md)). **Binds** how many prefabs, and that
+  the two connections share one depth-change path.
+- **Breaching is not planned for this slice.** Breaching a floor is the M1 verb and the hard tool gate on
+  descent ([digging-and-structure §1](../docs/systems/digging-and-structure.md),
+  [D-012](../docs/design-decisions.md)). Here the ramp, the ladder and its hole are authored. Making a hole
+  yourself, building a ladder, and the "can't climb above 150% load" rule
+  ([D-030](../docs/design-decisions.md)) all need inventory or tools that don't exist yet.
+  Designing ahead for them is welcome; building them is a scope call for this slice.
+- **No rendering of the level below.** Open shafts showing a dimmed view of the level beneath is
+  deferred ([D-011](../docs/design-decisions.md)). The hole draws as whatever its art says.
+- **The edge stops an actor like rock** ([D-070](../docs/design-decisions.md)), and the
+  outermost ring can be dug ([D-080](../docs/design-decisions.md)). Outcome 4 relies on both.
+- [Source layout, naming, tabs, signals over direct calls](../docs/coding-standards.md). From
+  the 001 log: typed `signal.emit(a, b)`, not `emit_signal("name", [a, b])`.
 
 ## Traps
 
-Rewritten 2026-10-04 under the revised [working agreement](./WORKING-AGREEMENT.md): each trap is
-explained in full, along with what's already been dealt with and what's still live.
+### 1. A "current depth" that isn't attached to anyone
 
-### 1. The seam between *the world knows a tile changed* and *the screen knows*
+**The trap.** The quickest version is a `current_depth` on `World` (or `Global`), set when the
+actor climbs and read by the renderer, `F3` and the camera. It works with one actor. It is a
+player singleton with another name: the first time a second actor exists, on another depth,
+"current" means nothing, and every reader has quietly assumed it means "the one I'm
+controlling" ([D-045](../docs/design-decisions.md)'s smell test: "a function needing actor state
+that takes no actor argument").
 
-**The trap.** The cheapest working version is for the dig verb to write the tile and then
-poke the renderer itself. It works with one actor on the one level being drawn. It fails
-silently the first time a tile changes some other way: another actor (no system may assume
-there's exactly one, pillar [P5](../docs/game-overview.md), rule
-[D-045](../docs/design-decisions.md)), a resident level that isn't being drawn, or any later
-system that rewrites tiles. The screen then shows a world that no longer exists.
+The quieter version is in presentation: the renderer listening to *every* actor's depth change.
+Correct with one actor; with two, the screen flips whenever anyone climbs.
 
-**Already dealt with.** [D-065](../docs/design-decisions.md) puts the notification on the
-tile data. Whatever changes a tile, the level's tile data announces it, naming the tile and
-nothing about who changed it, and the renderer rewrites that texel. Changes in one frame
-are batched into one upload.
+**What holds it.** The simulation never asks what depth is shown. Presentation follows one
+specific actor, the one it was given at spawn ([D-069](../docs/design-decisions.md)), and only
+that one. The automated check is a second actor changing depth while the screen stays put.
 
-**Still live, for section E:**
-- **The arrays are public.** `LevelTiles.ground`, `.top` and `.ore` are plain `var`s, so
-  `tiles.top[i] = x` compiles and skips the notification entirely. The guarantee only holds
-  if the setters are the *only* way in. In GDScript that's convention plus review, since
-  there's no `private`. An underscore prefix and a test are how you make it visible.
-- **One dig is several writes.** Opening a tile sets `top` and has to clear `ore` (painting
-  in order means ore would otherwise draw over open floor, per
-  [D-066](../docs/design-decisions.md)). That's two notifications for one change. The
-  per-frame batching in D-065 absorbs that, but only if the renderer actually batches
-  instead of uploading once per signal.
-- **Setters fail silently.** `set_top` outside the bounds just returns. That's fine for
-  the data, but the dig verb needs to know it was refused, or "the rules for digging
-  something that cannot be dug" get decided by accident, as a no-op.
-- **Who may change a tile** is still open, and it's a different question from how others
-  learn about it. Keep them apart when you decide it.
+### 2. Actors on other depths are still drawn
 
-### 2. Where `WorldPos` meets pixels
+**The trap.** Every actor is a child of `GameViewport/Actors`, whatever its depth. Today that's
+one actor, so it's invisible. The moment anything else exists on another level (a test actor,
+later a worker, a co-op partner), it draws on top of whatever level is shown, at its `(x, y)`,
+standing in rock. That's the same failure as trap 1 from the other side: presentation has to
+filter by the shown depth, not assume everyone is here.
 
-**The trap.** Two coordinate systems meet, and off-by-ones live where they meet.
+### 3. Moving a level node breaks the shared origin
 
-**Already dealt with.** [D-067](../docs/design-decisions.md) fixes the convention. Tile
-`(x, y)` covers pixels `16x` to `16x + 16` and the same down, with +y down the screen, and
-world `(0, 0)`'s top-left corner on the level node's origin.
-`LevelRenderer.tile_center` goes from tile to pixel.
+**The trap.** Every level sits at the scene origin, and that is load-bearing:
+`World.get_worldpos_from_global_position` goes through `level.to_local()`, and the actor's
+position is just pixels. Offsetting levels per depth, to stack them visually or to
+lay them out side by side for debugging, makes the same pixel a different `(x, y)` on each
+level. Climbing still "works", and you arrive in the wrong place, off by the offset.
 
-**Still live, for section D** (the actor is the first thing that goes from pixel back to
-tile):
-- **Negative coordinates.** The pixel-to-tile conversion must floor. GDScript's integer `/`
-  truncates toward zero, so `int(-5 / 16)` is `0`, but the tile is `-1`. Use
-  `floori(px / 16.0)`, or `Vector2i((pos / 16.0).floor())`. Truncating puts a row and a
-  column of tiles in the wrong place: everything in `-1` gets reported as `0`. Half of every
-  level has negative coordinates, so you'll see it, but only if you test on that side of
-  the origin.
-- **Which space the position is in.** The conversion is only valid in the level node's own
-  space. If the actor isn't a child of the level, or the level node ever moves, go through
-  `to_local()` first, or the answer will be off by however far the level moved.
-- **A point is not a body.** "They do not walk through rock" checked only against the tile
-  under the actor's center lets half the sprite overlap rock before it's blocked. Blocking
-  has to account for the actor's extent (for example, check the tiles under the corners of
-  its box at the position it's moving *to*), and it's answered from tile data, not physics
-  bodies ([D-046](../docs/design-decisions.md)).
+Keep every `Level` at the origin. The test that catches it: change an actor's depth, and its
+`current_WorldPos` keeps its `x` and `y`.
 
-### 3. `is_in_bounds` is radial, and tiles are square
+### 4. The ramp and ladder line up in the prefab, not in the world
 
-**The trap.** `World.is_in_bounds` is `distance((0, 0), (x, y)) <= radius` on tile
-coordinates. At tile granularity that disc isn't a smooth circle. Here it is at radius 6
-(`#` in bounds):
+**The trap.** A prefab is stamped at an anchor ([D-060](../docs/design-decisions.md)). Two
+prefabs authored so a ramp or ladder sits at the same place relative to each grid's marker only line
+up in the world if both are stamped at the same anchor. Check alignment on **world tiles after
+stamping**, never on grid characters.
 
-```
-......#......
-...#######...
-..#########..
-.###########.
-.###########.
-.###########.
-#############
-.###########.
-...
-```
+Related edges:
+- each connection's `(x, y)` must be inside **both** levels' bounds. −1 is the narrowest of the
+  three (radius 64), so it constrains both: the ramp has to sit within 64 of the axis even
+  though the Surface goes out to 90, and a ladder at `x = 70` is fine on −2 (81) and outside −1;
+- **a new top kind is a wall until passability learns about it.** Only `OPEN` is passable
+  ([D-068](../docs/design-decisions.md)), an allowlist on purpose. Add a ramp or ladder kind and
+  the actor can't step onto it. That's the allowlist working, not a bug; passability and
+  diggability ([D-080](../docs/design-decisions.md)) each need a deliberate answer for every
+  new kind;
+- whatever is at the other end has to be passable. If it's rock, the actor arrives with its feet
+  box inside rock, and `TileCollision.move_box` only checks the destination, so it may not be
+  able to walk out. Fail the load if the landing isn't open, and re-check when the climb is
+  requested, in case it's been changed since (the same reason `World` re-checks a dig,
+  [D-078](../docs/design-decisions.md)).
 
-- **A single-tile spike at each cardinal extreme.** `(r, 0)` is in bounds, but
-  `(r, ±1)` are not, because `r² + 1 > r²`. That's true at every radius, so each level has
-  four one-tile-wide nubs at north, south, east and west. Walking along the edge snags on
-  them, and an actor wider than a tile can't fit into them.
-- **Staircases on the diagonals.** The edge is stair-stepped, so "walk to the edge" looks
-  different depending on direction, and a box-shaped actor touches several tiles at once
-  there.
-- **What's past the edge reads as 254, not as rock.** Outside the disc, `get_top` returns
-  `SENTINEL_OUT_OF_BOUNDS`, which is neither `OPEN` nor `MINABLE_ROCK`. Passability written
-  as a blacklist ("blocked if minable rock") lets the actor walk straight out into 254.
-  Written as an allowlist ("passable only if open") it blocks correctly. The same goes for
-  digging, which must refuse 254 and 255.
-- **The outermost ring is diggable.** The default is minable rock right up to the edge, so
-  once you dig the last ring, the only thing between the actor and the void is whatever
-  passability decides about 254. Section D's edge decision should take that into account,
-  not just the undug edge.
+### 5. Arriving on a ramp can send you straight back
 
-Run the game and look at a cardinal extreme and a diagonal at the Surface radius (90) before
-you decide what happens at the edge. The hatched outside-level art (D-066) makes both visible.
+**The trap.** If walking onto a ramp (or ladder) tile changes depth, you arrive standing on the
+other end, which is also a trigger tile, and go back next tick. You bounce forever. Since the
+ramp is not an object ([D-083](../docs/design-decisions.md)) and probably walk-on, this one is
+live, not hypothetical. The fixes: trigger only on *entering* the tile, with arrival by depth
+change not counting as entering; or arrive *beside* the other end rather than on it, which
+gives up "your `(x, y)` doesn't change" for the ramp; or a direction, so the bottom end only
+triggers when walked into from the downhill side. Interact-to-use doesn't have this problem.
+
+A walk-on ramp has a second edge: the stick is still held on arrival, so the actor keeps
+walking on −1 in the same direction. Fine if −1's layout expects it, a surprise if the landing
+faces a wall.
+
+The same family: interact and dig on the same button, or a dig held across a depth change. The
+dig should reset ([D-072](../docs/design-decisions.md), since `WorldPos.equals` compares depth),
+but `action_intent` stays held, so the actor starts digging the tile it faces on arrival.
+Decide whether that's acceptable.
+
+### 6. The renderer swap
+
+- **The `QuadMesh` is a shared resource.** `show_level` resizes it in place. With one renderer
+  re-pointed that's fine. If you make a second `LevelRenderer` from the same scene, it shares the
+  mesh, and showing a level on one resizes the other. Tick *Local to Scene*, or create a new
+  `QuadMesh` per renderer.
+- **The hitch.** Building a level's textures through the reads costs about 92 ms at Surface
+  (radius 90) and 580 ms at the Crush ([D-065](../docs/design-decisions.md)). At −1 and −2 it
+  should be under 100 ms, but it lands on every climb. Measure it; whether it's felt is the
+  question, and a bulk read is the documented fix.
+- **The camera is fine for free.** It follows actor position, which doesn't change. Worth
+  knowing so nothing gets "fixed" that isn't broken.
+
+### 7. "Visibly wider" isn't visible
+
+**The trap.** The view is about 32 × 20 tiles. −1 is 129 tiles across and −2 is 163, and both
+default to solid rock right to the edge. (The Surface isn't in the comparison: at 90 it's wider
+than both, so the trip down narrows the world before −2 widens it again.) You can't see either edge from the ladder, and you
+can't reach it without digging 60-odd tiles. Outcome 4 only works if the prefabs are
+**authored for it**: an open corridor from the ladder to the edge, in the same direction, on
+both levels. On −2 it carries on past where −1's stopped. That's a content decision as much as a
+code one, and it's cheap to get wrong by making the levels pretty and forgetting the comparison
+they exist for.
+
+### 8. Generation that won't survive a save
+
+Saves are slice 004, but two things built in this slice decide whether they'll work.
+
+- **Tile kind ids are forever.** A save stores `TileKind` values as bytes. Reorder or insert into
+  a GDScript enum and every old save reads as the wrong kinds. The ramp and ladder kinds added in
+  this slice are the first new ones since 001: give kinds explicit numbers, and never renumber or
+  reuse one. Prefab ids are already stable ([D-061](../docs/design-decisions.md)).
+- **Generation must be deterministic.** The generator ([D-084](../docs/design-decisions.md))
+  should take a `RandomNumberGenerator` seeded from the level's seed, never the global `randi()`,
+  and must not depend on node or dictionary iteration order. Also, `hash()`, which makes
+  `world_seed` and `level_seed` today, isn't promised to give the same answer across Godot
+  versions: save the resulting numbers, not the seed string. Fixed placements alone use no
+  randomness, so this is invisible until rules arrive. That's why it's worth getting right now.
+
+### 9. From the 001 log
+
+GUT silently skips a test file that fails to parse. Changing `Actor.setup`'s signature, the
+depth setter, or `show_level` will break callers in tests. Run the whole suite after any
+signature change, and treat an "Ignoring script" warning as a failure.

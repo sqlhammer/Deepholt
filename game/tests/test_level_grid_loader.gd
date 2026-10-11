@@ -242,3 +242,22 @@ func test_ordinary_characters_pass_through() -> void:
 
 func test_more_than_one_character_is_refused() -> void:
 	assert_eq(LevelGridLoader.regex_escape("ab"), "", "only single characters are escaped")
+
+
+# Dirt is authored as 'd' on the ground grid and '%' on the top grid:
+# '#' and '%' are both solid mass, letters are materials (D-056).
+func test_dirt_characters_load_as_dirt() -> void:
+	var level_bounds = LevelBound.new(1, "Unit Test", 1)
+	var tiles: LevelTiles = LevelTiles.new(level_bounds)
+	var ok: bool = _stamp(tiles, "d0", "%0", ".0")
+
+	assert_true(ok, "dirt characters should load")
+	assert_eq(tiles.get_ground(-1, 0), TileKind.GROUND.DIRT, "'d' is dirt ground")
+	assert_eq(tiles.get_top(-1, 0), TileKind.TOP.MINABLE_DIRT, "'%' is minable dirt")
+
+
+func test_ore_in_minable_dirt_fails_to_load() -> void:
+	var level_bounds = LevelBound.new(1, "Unit Test", 1)
+	var tiles: LevelTiles = LevelTiles.new(level_bounds)
+	var ok: bool = _stamp(tiles, "d0", "%0", "c0")
+	assert_false(ok, "ore may only sit in minable rock, not dirt (D-056)")

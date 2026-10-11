@@ -12,12 +12,14 @@ extends RefCounted
 
 const GROUND_CHARS: Dictionary = {
 	"r": TileKind.GROUND.ROCK,
+	"d": TileKind.GROUND.DIRT,
 	"0": TileKind.GROUND.ROCK,
 }
 
 const TOP_CHARS: Dictionary = {
 	".": TileKind.TOP.OPEN,
 	"#": TileKind.TOP.MINABLE_ROCK,
+	"%": TileKind.TOP.MINABLE_DIRT,
 	"0": TileKind.TOP.OPEN,
 }
 

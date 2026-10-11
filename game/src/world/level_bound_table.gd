@@ -5,13 +5,26 @@ class_name LevelBoundTable
 
 
 func get_bounds(depth: int) -> LevelBound:
-	var bounds: LevelBound
+	for row in rows:
+		if not row is LevelBound: 
+			continue
+		if row.depth == depth:
+			return row
 	
-	if depth < 0 or depth >= rows.size():
-		push_error("LevelBound for depth %d was not found." % depth)
-		return
-	
-	bounds = rows[depth]
-	return bounds
+	push_error("LevelBound for depth %d was not found." % depth)
+	return null
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 

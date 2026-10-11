@@ -8,6 +8,10 @@ extends RefCounted
 # Values here are the bytes LevelTiles stores; 254 and 255 are reserved
 # sentinels (D-059) and must never appear in any of these tables.
 
+# Enums and Dictionaries must always have explicit values, never be reordered,
+# and protected against saved games that use TileKind from mutating due to
+# software updates.
+
 const SENTINEL_OUT_OF_ARRAY: int = 255
 const SENTINEL_OUT_OF_BOUNDS: int = 254
 

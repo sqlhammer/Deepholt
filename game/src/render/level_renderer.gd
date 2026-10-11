@@ -15,6 +15,8 @@ enum AtlasCell {
 	OUTSIDE_LEVEL,
 	MISSING,
 	EMPTY,
+	DIRT_FLOOR,
+	MINABLE_DIRT,
 }
 
 
@@ -139,6 +141,7 @@ func _cell_table() -> PackedInt32Array:
 func _ground_cells() -> PackedInt32Array:
 	var cells: PackedInt32Array = _cell_table()
 	cells[TileKind.GROUND.ROCK] = AtlasCell.FLOOR
+	cells[TileKind.GROUND.DIRT] = AtlasCell.DIRT_FLOOR
 	cells[TileKind.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.OUTSIDE_LEVEL
 	return cells
 
@@ -147,6 +150,7 @@ func _top_cells() -> PackedInt32Array:
 	var cells: PackedInt32Array = _cell_table()
 	cells[TileKind.TOP.OPEN] = AtlasCell.EMPTY
 	cells[TileKind.TOP.MINABLE_ROCK] = AtlasCell.MINABLE_ROCK
+	cells[TileKind.TOP.MINABLE_DIRT] = AtlasCell.MINABLE_DIRT
 	cells[TileKind.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.EMPTY
 	return cells
 

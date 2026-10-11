@@ -13,6 +13,42 @@ func get_view_camera() -> Camera2D:
 	return $GameViewport/ViewCamera
 
 
+func grant_player_capabilities(actor: Actor) -> void:
+	var dig_scene: PackedScene = Global.get_capability_packedscene(Global.CAPABILITY.DIG)
+	var dig_capability: CapabilityDig = dig_scene.instantiate()
+	dig_capability.actor = actor
+	actor.get_node("Capabilities").add_child(dig_capability)
+
+
+func set_user_control(actor: Actor) -> void:
+	# Attach input handling to the player
+	var input: InputHandler = InputHandler.new()
+	input.setup(actor, mouse_world_position)
+	add_child(input)
+	
+	# Lock camera to player (actor)
+	var level: Level = World.get_level_by_depth(actor.depth)
+	$GameViewport/LevelRenderer.show_level(level.level_tiles)
+	var view_camera: ViewCamera = get_view_camera()
+	view_camera.actor = actor
+	
+	# Attach debug overlay
+	$DebugOverlay.watch(actor)
+
+
+# Where the mouse points in world space (level pixels).
+# Presentation: it needs the display rect and the game viewport's camera.
+func mouse_world_position() -> Vector2:
+	var display: TextureRect = $Display/UpscaleDisplay
+	var view: SubViewport = $GameViewport
+	var view_size: Vector2 = Vector2(view.size)
+	var scale: float = minf(display.size.x / view_size.x,
+		display.size.y / view_size.y)
+	var letterbox: Vector2 = (display.size - view_size * scale) / 2.0
+	var view_px: Vector2 = (display.get_local_mouse_position() - letterbox) / scale
+	return view.get_canvas_transform().affine_inverse() * view_px
+
+
 func _spawn_levels() -> void:
 	for level in World.level_bounds.rows:
 		_spawn_level(level.depth)
@@ -49,40 +85,7 @@ func _create_player(_name: String, _level: Level) -> Actor:
 	return actor
 
 
-func grant_player_capabilities(actor: Actor) -> void:
-	var dig_scene: PackedScene = Global.get_capability_packedscene(Global.CAPABILITY.DIG)
-	var dig_capability: CapabilityDig = dig_scene.instantiate()
-	dig_capability.actor = actor
-	actor.get_node("Capabilities").add_child(dig_capability)
 
-
-func set_user_control(actor: Actor) -> void:
-	# Attach input handling to the player
-	var input: InputHandler = InputHandler.new()
-	input.setup(actor, mouse_world_position)
-	add_child(input)
-	
-	# Lock camera to player (actor)
-	var level: Level = World.get_level_by_depth(actor.depth)
-	$GameViewport/LevelRenderer.show_level(level.level_tiles)
-	var view_camera: ViewCamera = get_view_camera()
-	view_camera.actor = actor
-	
-	# Attach debug overlay
-	$DebugOverlay.watch(actor)
-
-
-# Where the mouse points in world space (level pixels).
-# Presentation: it needs the display rect and the game viewport's camera.
-func mouse_world_position() -> Vector2:
-	var display: TextureRect = $Display/UpscaleDisplay
-	var view: SubViewport = $GameViewport
-	var view_size: Vector2 = Vector2(view.size)
-	var scale: float = minf(display.size.x / view_size.x,
-		display.size.y / view_size.y)
-	var letterbox: Vector2 = (display.size - view_size * scale) / 2.0
-	var view_px: Vector2 = (display.get_local_mouse_position() - letterbox) / scale
-	return view.get_canvas_transform().affine_inverse() * view_px
 
 
 

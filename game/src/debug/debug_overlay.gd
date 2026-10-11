@@ -160,6 +160,7 @@ func _tile_char(tiles: LevelTiles, x: int, y: int, actor_pos: WorldPos) -> Strin
 
 	if top == TileKind.TOP.OPEN: return "."
 	if top == TileKind.TOP.MINABLE_ROCK: return "#"
+	if top == TileKind.TOP.MINABLE_DIRT: return "%"
 	return "?"
 
 

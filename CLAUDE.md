@@ -33,8 +33,8 @@ Current slice: [work/NOW.md](work/NOW.md).
   [design-decisions.md](docs/design-decisions.md), `D-045`).
 - [docs/design-decisions.md](docs/design-decisions.md) is append-only. Reversals get a new
   `D-nnn`, never an edit.
-- Deferred systems get no stubs, no placeholders, no "just the interface"
-  ([pre-alpha-scope §4](docs/pre-alpha-scope.md)).
+- Design the broader system before building a narrow piece of it. Groundwork for later systems
+  is welcome; build a small slice and iterate. Never cite "no stubs" as a rule.
 
 ## Commands
 
