@@ -102,3 +102,29 @@ func test_ore_makes_a_tile_one_and_a_half_times_as_hard() -> void:
 func test_ore_does_not_make_an_undiggable_tile_diggable() -> void:
 	assert_lt(TileKind.get_dig_density(TileKind.TOP.OPEN, TileKind.ORE.COPPER), 0.0,
 		"open floor stays undiggable whatever the ore says")
+
+
+# --- ids are forever ---
+
+# A save stores these numbers. Renumbering, reordering or reusing one
+# makes every old save read as the wrong kinds, so the table is pinned:
+# a new kind adds a new number, and nothing here ever changes (trap 8).
+func test_existing_kind_ids_never_change() -> void:
+	assert_eq(TileKind.GROUND, {
+		"NULL": 0, "ROCK": 1, "DIRT": 2, "GRASS": 3, "WATER": 4, "HOLE": 5,
+	}, "ground ids")
+	assert_eq(TileKind.TOP, {
+		"NULL": 0, "OPEN": 1, "MINABLE_ROCK": 2, "MINABLE_DIRT": 3, "IMPENETRABLE_ROCK": 4,
+	}, "top ids")
+	assert_eq(TileKind.ORE, {"NULL": 0, "NONE": 1, "COPPER": 2}, "ore ids")
+
+
+func test_no_two_kinds_on_a_layer_share_an_id() -> void:
+	for layer: Dictionary in [TileKind.GROUND, TileKind.TOP, TileKind.ORE]:
+		var ids: Array = layer.values()
+		for id in ids:
+			assert_eq(ids.count(id), 1, "id %d is used once in its layer" % id)
+
+
+func test_object_kind_ids_never_change() -> void:
+	assert_eq(ObjectKind.OBJECT, {"NULL": 0, "LADDER": 1}, "object ids (D-089)")

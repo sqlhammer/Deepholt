@@ -49,18 +49,11 @@ func mouse_world_position() -> Vector2:
 	return view.get_canvas_transform().affine_inverse() * view_px
 
 
+# Every level is built from its depth's recipe (D-084); the scene only
+# decides where they live.
 func _spawn_levels() -> void:
-	for recipe: LevelRecipe in World.level_recipes.rows:
-		_spawn_level(recipe.bound.depth)
-
-
-func _spawn_level(_depth: int) -> void:
-	var level = Global.level_packed_scene.instantiate()
-	var prefab: TilePrefab = null
-	if _depth == 0: 
-		prefab = TilePrefabRegistry.get_prefab(&"surface_start")
-	level.setup(_depth, prefab)
-	$Levels.add_child(level)
+	for level: Level in LevelGenerator.generate_levels(World.level_recipes):
+		$Levels.add_child(level)
 
 
 func _spawn_player(_name: String, _depth: int = 0) -> void:

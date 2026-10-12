@@ -1619,3 +1619,58 @@ plausible level.
 
 *Still required:* row N is depth N. Spawning walks the rows in order and `Level.clamp_depth` uses
 their count. A test holds the table to that (`test_level_recipes.gd`).
+
+---
+
+### D-089 — A ladder is an object on the lower level; a hole is a ground kind; a ramp is a tile kind
+**Decided** (by Derik, slice 002). Settles what a ladder and a ramp are, left open by
+[D-083](#d-083--slice-002-starts-on-the-surface-and-goes-down-two-levels-by-a-ramp-and-then-a-ladder).
+
+- **A ladder is an object, not a tile.** It sits on the **lower** level and connects its own tile
+  to the tile at the same `(x, y)` one level up.
+- **A hole is a ground kind:** the existing `TileKind.GROUND.HOLE`, meaning no floor. The tile
+  above a ladder is a hole.
+- **A hole is dead.** You can't walk over it, and you can't change level through it unless a
+  ladder stands beneath it. A hole with no ladder is legal.
+- **A ramp is a tile kind.**
+
+*Why:* objects can be destroyed. Later effects (collapse, burial, demolition) that remove
+buildings remove ladders the same way, and what's left is the hole. Because the hole is ground,
+it belongs to the tiles and outlives the ladder.
+
+*Consequences:*
+- **Passability must check ground as well as top.** Until now only `OPEN` tops were passable
+  ([D-068](#d-068--an-actor-is-a-plain-node-with-a-feet-box-a-stored-depth-and-an-intent)).
+- **Climbing up arrives beside the hole, not on it**, so a ladder changes the actor's `(x, y)` by
+  one tile on the way up.
+- **Using a ladder from above asks the level below:** is there a ladder at this `(x, y)`, one
+  depth down? Load fails for a ladder with no hole directly above it.
+- **Saves need a stable object type id for ladders**, as tile kinds need stable ids.
+
+*Open:* the ramp's shape (one kind or a top/bottom pair, size, direction) and how an actor uses
+it.
+
+---
+
+### D-090 — Objects get their own gatekeeper, separate from World
+**Decided** (by Derik, slice 002). Placed objects (ladders now, buildings later) are stored per
+level, and changed only through a dedicated gatekeeper of their own, not through `World`
+([D-078](#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime) stays about tiles).
+Anything wanting an object placed or removed asks that gatekeeper, which checks the rules,
+changes the level's object store, and announces the result. The store announces its own changes
+so presentation can follow, as tile data does
+([D-065](#d-065--each-layer-is-its-own-r8-data-texture-built-through-the-reads-changes-reach-it-from-the-truth)).
+
+*Why:* `World` stays focused on tiles, and objects get an owner whose rules (a ladder needs a hole
+above it, buildings can't stand in rock) live in one place.
+
+*Costs accepted:* two front doors. Anything that changes tiles and objects together (a collapse
+that fills tiles with rubble and buries objects, digging out a buried object, building a floor
+and a wall) has to coordinate both gatekeepers, and that seam is where the two can disagree.
+
+*Considered:* `World` as the gatekeeper for both (one front door, collapse in one place, but
+`World` grows toward doing everything); letting anything call the object store directly
+(rejected for the reasons D-078 gives for tiles).
+
+*Open:* the gatekeeper's name and whether it is an autoload; the shape of the per-level store;
+how a change that spans tiles and objects is coordinated.

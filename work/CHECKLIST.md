@@ -25,16 +25,25 @@ Slice 001's checklist is in git history (last at `29daf8f`).
   `test_level_recipes.gd`; rows are found by depth ([D-088](../docs/design-decisions.md)).
 - [x] Recipes replace `level_bounds.tres` as the per-depth list; `World` and `Level` read bounds
   through them. `World.level_recipes` (`level_recipes.tres`); `LevelBoundTable` is gone (Agent mode).
-- [ ] Ramp and ladder kinds get explicit, never-reused ids (trap 8).
-- [ ] The generator draws randomness only from a `RandomNumberGenerator` seeded per level (trap 8).
-- [ ] `LevelGenerator` builds every level from its recipe's fixed placements; `game.gd` calls it.
-- [ ] Test: a recipe naming a missing prefab id fails loudly.
+- [x] Ramp kinds get explicit, never-reused ids; the hole is the existing ground `HOLE` (5), and
+  the ladder is an object, so it gets a stable object type id instead (trap 8,
+  [D-089](../docs/design-decisions.md)). Every existing id is pinned by a test
+  (`test_tile_kind.gd`); `ObjectKind.OBJECT.LADDER` is 1. **Ramp ids wait for section C**,
+  because the ramp's shape (one kind or a pair) is still open.
+- [x] The generator draws randomness only from a `RandomNumberGenerator` seeded per level (trap 8).
+  `LevelGenerator.rng_for(level)`; nothing draws from it until rules exist.
+- [x] `LevelGenerator` builds every level from its recipe's fixed placements; `game.gd` calls it.
+  Placements are `PrefabPlacement` (prefab id + anchor) on `LevelRecipe.fixed_placements`.
+- [x] Test: a recipe naming a missing prefab id fails loudly. (`test_level_generator.gd`)
 - [x] **Decide (optional):** finish dirt — grid character, art cell, `F3` character — or leave it.
   Finished, and the Surface start prefab is dirt (Agent mode, [D-087](../docs/design-decisions.md)).
 - [ ] Author −1's prefab: its hand-made layout, open floor where the ramp will land, and an open
   corridor from where the ladder will be out to the edge in one direction (trap 7).
 - [ ] Author −2's prefab: its own layout, the same corridor direction, reaching further to its
   own edge.
+- [ ] **Decide:** where a level's spawn point comes from. `Level.anchor` is still the old
+  `setup()` parameter, `(0, 0)` for every generated level, and the player spawns there. It
+  matches today only because `surface_start` sits at the axis.
 - [ ] Both load by id through the registry and stamp into their levels; the Surface still does.
 - [ ] The actor still spawns on the Surface; `test_game.gd`'s spawn tests still pass unchanged.
 
@@ -84,26 +93,43 @@ ladder work.
 - [ ] Walk at the ramp from the wrong side: something deliberate happens. [6]
 - [ ] Test: no bounce — arriving by ramp doesn't send the actor straight back.
 
-## D. The ladder in the data
+## D. Holes, objects and the ladder
 
 *Mode: ask before starting.*
 
-- [ ] **Decide:** what a ladder is in the data — the same kind of thing as the ramp, or a
-  different one (an object) — and how its two ends are linked.
-- [ ] The ladder and its hole are authored into the −1 and −2 prefabs, at the same world `(x, y)`.
-- [ ] Art: the ladder (and the hole, if it's its own thing) is distinguishable at a glance. [3]
-- [ ] `F3` names it.
-- [ ] The same load checks as the ramp: ends line up, inside both levels, landing open. Shared
-  with the ramp's if the ladder is the same kind of thing.
-- [ ] Test: each of those load failures.
+- [x] **Decide:** what a ladder is in the data. An object on the lower level, under a hole
+  (ground `HOLE`) on the level above; a hole with no ladder is dead
+  ([D-089](../docs/design-decisions.md)).
+- [x] **Decide:** who may change objects. Their own gatekeeper, not `World`
+  ([D-090](../docs/design-decisions.md)).
+- [ ] Passability reads ground: a `HOLE` can't be walked onto (trap 4).
+- [ ] Test: an actor can't walk onto a hole, from any side.
+- [ ] Art: a hole cell for ground `HOLE`; `F3` names it.
+- [ ] **Decide:** the object gatekeeper's name, and autoload or scene node (D-090, open).
+- [ ] **Decide:** the per-level object store: keyed how, one or many per tile, where it lives.
+- [ ] **Decide:** how a ladder is authored: an object grid or character in the prefab, or
+  placed by the recipe.
+- [ ] **Decide:** which side answers "is this climbable?": the hole tile, the ladder object, or
+  both.
+- [ ] The object store announces changes; presentation draws objects for the shown depth only.
+- [ ] Test: an object on a depth that isn't shown isn't drawn.
+- [ ] Art: the ladder sprite, distinguishable at a glance. [3]
+- [ ] The hole is authored into −1 and the ladder placed on −2, at the same world `(x, y)`.
+- [ ] A ladder with no hole directly above it fails to load; so does one outside either level's
+  bounds.
+- [ ] Test: each of those load failures; and a hole with no ladder loads fine.
 
 ## E. Climbing
 
 *Mode: ask before starting.*
 
-- [ ] **Decide:** how an actor uses a ladder — walk on, or face and interact; same tile or
-  adjacent; keyboard binding (trap 5).
-- [ ] Use the ladder and arrive on −2, same `(x, y)`, `F3` agreeing. [3]
+- [ ] **Decide:** how an actor uses a ladder: from beside the hole above, and from the ladder's
+  tile below; interact or walk into it; keyboard binding (trap 5).
+- [ ] **Decide:** which tile beside the hole climbing up arrives on (D-089).
+- [ ] Use the ladder from beside the hole and arrive on −2 at the hole's `(x, y)`, `F3`
+  agreeing. [3]
+- [ ] Climb up and arrive beside the hole, on open floor. [3]
+- [ ] Test: climbing down needs a ladder beneath the hole; a bare hole refuses.
 - [ ] Climb back up. The corridor dug on −1 before going down is still there; up the ramp, the
   Surface's dig is too. [4]
 - [ ] Using a ladder where there isn't one, or from the wrong side, does something deliberate.

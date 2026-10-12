@@ -1,18 +1,23 @@
-[gd_resource type="Resource" script_class="LevelRecipeTable" format=3]
+[gd_resource type="Resource" script_class="LevelRecipeTable" format=3 uid="uid://c8fvj1q4qof4c"]
 
 [ext_resource type="Script" uid="uid://ccycbmyd1jmc6" path="res://src/world/level_bound.gd" id="1_bound"]
-[ext_resource type="Script" path="res://src/world/level_recipe.gd" id="2_recipe"]
-[ext_resource type="Script" path="res://src/world/level_recipe_table.gd" id="3_table"]
+[ext_resource type="Script" uid="uid://cgpi26ey7ngf2" path="res://src/world/level_recipe.gd" id="2_recipe"]
+[ext_resource type="Script" uid="uid://o34qu1b5es1w" path="res://src/world/level_recipe_table.gd" id="3_table"]
+[ext_resource type="Script" uid="uid://b65encvfu1cw2" path="res://src/world/prefab_placement.gd" id="4_placement"]
 
 [sub_resource type="Resource" id="Bound_0"]
 script = ExtResource("1_bound")
-depth = 0
 name = "Surface"
 radius = 90
+
+[sub_resource type="Resource" id="Placement_surface_start"]
+script = ExtResource("4_placement")
+prefab_id = &"surface_start"
 
 [sub_resource type="Resource" id="Recipe_0"]
 script = ExtResource("2_recipe")
 bound = SubResource("Bound_0")
+fixed_placements = Array[ExtResource("4_placement")]([SubResource("Placement_surface_start")])
 
 [sub_resource type="Resource" id="Bound_1"]
 script = ExtResource("1_bound")

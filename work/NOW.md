@@ -41,8 +41,10 @@ By hand, in a running game (levels and start per [D-083](../docs/design-decision
    can tell at a glance it's a way down, not rock or floor.
 2. Take the ramp. You are on −1: its hand-made layout, the same `(x, y)` in `F3`, depth −1. Take
    it back up and you're on the Surface where you left.
-3. On −1, a ladder, recognizable at a glance as a ladder. Use it. You are on −2: −2's hand-made
-   layout, the same `(x, y)`, depth −2.
+3. On −1, a hole in the floor, which you can't walk onto. A ladder stands beneath it on −2,
+   recognizable at a glance. Use it from beside the hole. You are on −2, standing at the ladder:
+   −2's hand-made layout, the hole's `(x, y)`, depth −2. Climbing back up puts you beside the
+   hole, not in it ([D-089](../docs/design-decisions.md)).
 4. Dig on −2. The tile opens on −2. Climb back up: the corridor you dug on −1 before going down
    is still dug, and nothing you dug on −2 shows up on −1. Go up the ramp: a tile you dug on the
    Surface at the start is still dug too.
@@ -58,7 +60,9 @@ By hand, in a running game (levels and start per [D-083](../docs/design-decision
 
 Separately, automated, without a running scene where possible:
 - an actor changing depth keeps its `(x, y)`;
-- a ramp or ladder whose two ends don't line up across the levels fails to load;
+- a ramp whose two ends don't line up across the levels fails to load, and so does a ladder
+  with no hole directly above it;
+- a hole with no ladder beneath it can't be walked onto or travelled through;
 - a dig on one depth changes only that depth's tiles;
 - the screen follows the locally controlled actor's depth, and **not** another actor's;
 - an actor on a depth that isn't being shown is not drawn.
@@ -78,31 +82,29 @@ Separately, automated, without a running scene where possible:
   - **Is it the cave mouth?** The design's Surface reaches −1 through cave mouths, built out in
     M4 ([pre-alpha-scope §2](../docs/pre-alpha-scope.md)). If it's meant to become a cave
     mouth, its shape now is the one M4 inherits, so it's worth sketching cave mouths first.
-- **What a ladder is in the data.** With the ramp, one of the first two things in the game that
-  belong to two levels at once, and the first built thing. Decided after the ramp, and the real
-  question is whether it's **the same kind of thing as the ramp** (another terrain kind, used a
-  different way) or a different one. Same: one alignment check, one loader rule, one trigger
-  path with two looks. Different: two mechanisms, but the ladder can be the first built object
-  that chutes and hoists follow.
-  - *A top-layer kind.* The top layer already means "what occupies the space: minable rock,
-    open space, or something built" ([D-047](../docs/design-decisions.md)). It draws through
-    the existing art table ([D-064](../docs/design-decisions.md)), shows in `F3`, and later
-    changes go through `World` like any tile ([D-078](../docs/design-decisions.md)). But the
-    two ends are two tiles on two levels that have to agree, and the one above is really a hole
-    in the floor, which may want its own kind.
-  - *A flag or a fourth layer.* The runtime doc's tile storage already lists a `floor_breached`
-    flag ([world-runtime §3](../docs/tech/world-runtime-and-persistence.md)). A hole is a fact
-    about the floor; a ladder could be a thing standing in it. Another array, and another
-    texture if it's drawn.
-  - *An object, not a tile.* One node or record spanning both depths, so the two ends can't
-    disagree. But nothing in the simulation holds placed objects yet, the renderer only draws
-    tiles, and this is where machines, chutes and hoists will eventually live, so the shape
-    you pick here is the one they inherit.
-  - Whichever you pick: are the ends linked **by alignment** (same `(x, y)`, adjacent depths,
-    found by looking) or **explicitly** (each end names the other)? The shared origin is what
-    makes alignment possible. That's the point of this slice.
-- **How an actor uses a ladder.** Walk onto it, or face it and press interact? On the same tile, or
-  the adjacent one, like dig reach ([D-073](../docs/design-decisions.md))? Gamepad interact is
+- ~~**What a ladder is in the data.**~~ Decided: an object on the lower level, under a hole
+  (ground kind `HOLE`) on the level above. A hole with no ladder is a dead tile
+  ([D-089](../docs/design-decisions.md)). Ladders are the first **objects**, so they bring the
+  next fork with them.
+- **Objects on a level.** They go through their own gatekeeper, not `World`
+  ([D-090](../docs/design-decisions.md)). Still open:
+  - **The gatekeeper:** its name, and whether it's an autoload (like `World`) or a node in the
+    game scene.
+  - **The per-level store:** keyed by `WorldPos`? One object per tile, or several? Does it live
+    on `Level` next to `LevelTiles`? Whatever it is, it announces its own changes (D-065's
+    pattern), and presentation draws from it.
+  - **How objects are drawn:** sprites, not the tile shader. Drawn only for the shown depth
+    (trap 2 applies to objects as much as to actors).
+  - **How a ladder is authored:** prefabs are text grids of tiles. A ladder needs either an
+    object grid or character in the prefab, or placement from the recipe
+    ([D-084](../docs/design-decisions.md)).
+  - **The seam:** the hole is a tile (`World`), and the ladder is an object (the new
+    gatekeeper). "Is this climbable?" asks both. Decide which one answers it.
+- **How an actor uses a ladder.** From above, the hole can't be stood on, so it's used from
+  beside it: face it and interact, or walk into it? From below, standing on the ladder's tile, or
+  facing it? Reach like digging ([D-073](../docs/design-decisions.md))? And going up, **which**
+  tile beside the hole do you arrive on: the side you face, a fixed side set on the ladder, or
+  the first open one? Gamepad interact is
   A ([ui-ux §3](../docs/ui-ux-and-controls.md)); the keyboard binding isn't set.
 - **Whether climbing is instant.** A feel question, like digging was. The design says a ladder
   carries the player "slowly" ([vertical-logistics §2](../docs/systems/vertical-logistics-and-power.md))
@@ -214,7 +216,10 @@ Related edges:
 - each connection's `(x, y)` must be inside **both** levels' bounds. −1 is the narrowest of the
   three (radius 64), so it constrains both: the ramp has to sit within 64 of the axis even
   though the Surface goes out to 90, and a ladder at `x = 70` is fine on −2 (81) and outside −1;
-- **a new top kind is a wall until passability learns about it.** Only `OPEN` is passable
+- **passability now reads ground as well as top.** A hole is ground `HOLE` under an open top
+  ([D-089](../docs/design-decisions.md)); checking only the top lets an actor walk straight
+  onto it. And **a new top kind is a wall until passability learns about it.** Only `OPEN` is
+  passable
   ([D-068](../docs/design-decisions.md)), an allowlist on purpose. Add a ramp or ladder kind and
   the actor can't step onto it. That's the allowlist working, not a bug; passability and
   diggability ([D-080](../docs/design-decisions.md)) each need a deliberate answer for every

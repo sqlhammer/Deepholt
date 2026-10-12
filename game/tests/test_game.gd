@@ -44,14 +44,6 @@ func test_ready_spawns_each_depth_once() -> void:
 		assert_eq(count, 1, "exactly one level at depth %d" % depth)
 
 
-func test_spawn_level_adds_a_level_at_that_depth() -> void:
-	var before: int = _levels().size()
-	_game._spawn_level(3)
-	var levels: Array[Level] = _levels()
-	assert_eq(levels.size(), before + 1, "one more level under Levels")
-	assert_eq(levels.back().depth, 3, "and it is at the depth asked for")
-
-
 func test_spawn_levels_adds_one_per_depth() -> void:
 	var before: int = _levels().size()
 	_game._spawn_levels()
