@@ -150,7 +150,8 @@ func test_ore_grid_two_anchor_markers_fails_to_load() -> void:
 # Top and ore grids below are both short on their last row, so (0, 1) and
 # (1, 1) are never written by the loader.
 func test_missing_tiles_default_to_minable_rock_without_ore() -> void:
-	var level_bounds = LevelBound.new(1, "Unit Test", 1)
+	# Radius 2: the 3 x 3 grid's corners, (+-1, +-1), are outside radius 1.
+	var level_bounds = LevelBound.new(1, "Unit Test", 2)
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
 	var ok: bool = _stamp(tiles,
 		"rrr\nr0\nrrr",

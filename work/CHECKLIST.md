@@ -54,28 +54,40 @@ Slice 001's checklist is in git history (last at `29daf8f`).
 
 ## B. Changing depth, before ramps and ladders
 
-*Mode: ask before starting.*
+*Mode: Agent.*
 
 A throwaway debug key (like slice 001's `debug_pan.gd`) moves the locally controlled actor one
 depth up or down. It exists to put a depth change on screen and is deleted once the ramp and
 ladder work.
 
-- [ ] **Decide:** who changes an actor's depth, and how anything else learns it did. One path,
-  which the ramp and the ladder will both ask for (D-083).
-- [ ] **Decide:** where the shown depth lives, and what follows it (trap 1).
-- [ ] Debug key changes the actor's depth; the screen redraws the new level around the same
-  `(x, y)`.
-- [ ] `F3` shows the actor's depth and the shown depth, separately. [7]
-- [ ] Test: changing an actor's depth keeps its `x` and `y` (trap 3).
-- [ ] Test: the screen follows the locally controlled actor's depth, and not another actor's.
-- [ ] Actors not on the shown depth are not drawn (trap 2).
-- [ ] Test: an actor on another depth is hidden, and shown again when the view moves to its depth.
-- [ ] `QuadMesh` made local to the scene, or created per renderer (trap 6).
-- [ ] Measure the hitch on a depth change at Surface, −1 and −2. Record the numbers; decide
-  whether it's felt.
-- [ ] Dig, debug-key down, dig, debug-key back up: each level kept its own dig. [4, without the
-  ramp and ladder]
-- [ ] Test: a dig on one depth changes only that depth's tiles.
+- [x] **Decide:** who changes an actor's depth, and how anything else learns it did. One path,
+  which the ramp and the ladder will both ask for (D-083). The actor, by
+  `change_depth(target)`; announced through `actor_worldpos_changed` ([D-093](../docs/design-decisions.md)).
+- [x] **Decide:** where the shown depth lives, and what follows it (trap 1). A presentation
+  `View` that follows the local actor ([D-094](../docs/design-decisions.md)).
+- [x] Debug key changes the actor's depth; the screen redraws the new level around the same
+  `(x, y)`. `-` down, `=` up (`src/debug/debug_depth.gd`); a blocked landing is refused and says
+  so in `F3`. Working by hand (Derik).
+- [x] `F3` shows the actor's depth and the shown depth, separately. [7] ("Shown depth" section)
+- [x] Test: changing an actor's depth keeps its `x` and `y` (trap 3). (`test_depth_change.gd`)
+- [x] Test: the screen follows the locally controlled actor's depth, and not another actor's.
+- [x] Actors not on the shown depth are not drawn (trap 2). `View.track`.
+- [x] Test: an actor on another depth is hidden, and shown again when the view moves to its depth.
+- [x] `QuadMesh` made local to the scene, or created per renderer (trap 6). Local to scene.
+- [x] Measure the hitch on a depth change at Surface, −1 and −2. Record the numbers; decide
+  whether it's felt. **Headless, `show_level`: Surface ≈ 750 ms, −1 ≈ 400 ms, −2 ≈ 680 ms** —
+  8× D-065's 92 ms. Cause: every tile read builds a `WorldPos` and asks `World.is_in_bounds`,
+  which now searches the recipe table (D-088). Also a latent bug there: `LevelTiles` ignores its
+  own `level_bound` and checks `World`'s radius for its depth.
+- [x] Fix the read path: `LevelTiles` checks bounds against its own `level_bound`, squared, with
+  no allocation and no lookup (Agent mode). **Re-measured: Surface ≈ 90 ms, −1 ≈ 47 ms,
+  −2 ≈ 76 ms, the Crush ≈ 490 ms**, back to D-065's numbers. Fixing it exposed a loader test
+  that read outside its own radius-1 level; it now uses radius 2.
+- [x] **Decide, by hand:** is a 50–90 ms pause on a depth change felt? If so, a bulk read for
+  building textures is D-065's documented fix. Not noticeable (Derik); no bulk read.
+- [x] Dig, debug-key down, dig, debug-key back up: each level kept its own dig. [4, without the
+  ramp and ladder] By hand (Derik).
+- [x] Test: a dig on one depth changes only that depth's tiles.
 
 ## C. The ramp
 

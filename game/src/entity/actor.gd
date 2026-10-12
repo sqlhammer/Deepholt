@@ -168,10 +168,34 @@ func _draw() -> void:
 	pass
 
 
+# A depth change is announced like any other change of tile (D-093):
+# through actor_worldpos_changed, whose WorldPos carries the depth.
+# Before the actor has a first position (during setup) there is no
+# old tile, so nothing is announced.
 func set_depth(p_depth: int) -> void:
 	_depth = p_depth
 	current_level = World.get_level_by_depth(depth)
 	assert(current_level != null, "Actor depth was change/set while current_level was NULL.")
+	_update_WorldPos()
+
+
+# Moves the actor onto a tile on another level (D-093). Whatever sends
+# the actor (a ramp, a ladder) decides the target; the actor only
+# checks it can stand there, with the same test walking uses. Position
+# is set before depth so the change is announced once, with the final
+# tile. Returns false, changing nothing, if there is no level there or
+# the landing is blocked.
+func change_depth(target: WorldPos) -> bool:
+	var level: Level = World.get_level_by_depth(target.depth)
+	if level == null: return false
+
+	var landing: Vector2 = TileSpace.tile_center(Vector2i(target.x, target.y))
+	var landing_box: Rect2 = Rect2(landing + feet_box.position, feet_box.size)
+	if not TileCollision.fits(level.level_tiles, landing_box): return false
+
+	position = landing
+	set_depth(target.depth)
+	return true
 
 
 func _set_facing(p_vector: Vector2) -> bool:

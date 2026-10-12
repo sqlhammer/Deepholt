@@ -21,6 +21,13 @@ static func move_box(tiles: LevelTiles, box: Rect2, motion: Vector2) -> Rect2:
 	return result
 
 
+# Whether a box can stand where it is: every tile under it passable.
+# The same test movement uses, for placing an actor rather than
+# sliding one.
+static func fits(tiles: LevelTiles, box: Rect2) -> bool:
+	return not _overlaps_solid(tiles, box)
+
+
 static func _overlaps_solid(tiles: LevelTiles, box: Rect2) -> bool:
 	var first: Vector2i = TileSpace.get_tile_coordinates_from_pixels(box.position)
 	# The far edges are exclusive: a box whose right edge sits exactly

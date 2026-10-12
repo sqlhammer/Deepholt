@@ -179,9 +179,18 @@ func _kind_name(table: Dictionary, id: int) -> String:
 	return "UNKNOWN (%d)" % id
 
 
+const VIEW_SECTION: String = "Shown depth"
 
 
+# The depth on screen, next to each watched actor's own depth, so a
+# disagreement between the two is visible (outcome 7).
+func watch_view(view: View) -> void:
+	view.shown_depth_changed.connect(_on_shown_depth_changed)
+	_on_shown_depth_changed(View.NO_DEPTH, view.shown_depth)
 
 
-
-
+func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:
+	if new_depth == View.NO_DEPTH:
+		set_section(VIEW_SECTION, "none")
+		return
+	set_section(VIEW_SECTION, "%d [%s]" % [new_depth, World.depth_to_display(new_depth)])

@@ -204,24 +204,17 @@ func _read(layer: LevelTiles.LAYER, x: int, y: int) -> int:
 	return TileKind.SENTINEL_OUT_OF_ARRAY
 
 
+# Shows whichever level the view is showing, now and whenever it
+# changes (D-094). The renderer never decides what depth is shown.
+func watch(view: View) -> void:
+	view.shown_depth_changed.connect(_on_shown_depth_changed)
+	if view.shown_depth != View.NO_DEPTH:
+		_on_shown_depth_changed(View.NO_DEPTH, view.shown_depth)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:
+	var level: Level = World.get_level_by_depth(new_depth)
+	if level == null:
+		push_error("No level at depth %d to show." % new_depth)
+		return
+	show_level(level.level_tiles)

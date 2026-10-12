@@ -3,10 +3,22 @@ extends Node
 
 @onready var game_viewport: SubViewport = $GameViewport
 
+# What is on screen: follows the locally controlled actor (D-094).
+var view: View
+
 
 func _ready() -> void:
 	_spawn_levels()
+	_create_view()
 	_spawn_player("DefaultName", 0)
+
+
+func _create_view() -> void:
+	view = View.new()
+	view.name = "View"
+	add_child(view)
+	$GameViewport/LevelRenderer.watch(view)
+	$DebugOverlay.watch_view(view)
 
 
 func get_view_camera() -> Camera2D:
@@ -26,14 +38,21 @@ func set_user_control(actor: Actor) -> void:
 	input.setup(actor, mouse_world_position)
 	add_child(input)
 	
+	# The screen shows this actor's depth, and follows it (D-094)
+	view.follow(actor)
+
 	# Lock camera to player (actor)
-	var level: Level = World.get_level_by_depth(actor.depth)
-	$GameViewport/LevelRenderer.show_level(level.level_tiles)
 	var view_camera: ViewCamera = get_view_camera()
 	view_camera.actor = actor
 	
 	# Attach debug overlay
 	$DebugOverlay.watch(actor)
+
+	# Throwaway: '-' / '=' change depth until ramps and
+	# ladders do (slice 002, section B)
+	var debug_depth: DebugDepth = DebugDepth.new()
+	debug_depth.setup(actor)
+	add_child(debug_depth)
 
 
 # Where the mouse points in world space (level pixels).
@@ -71,6 +90,7 @@ func _create_player(_name: String, _level: Level) -> Actor:
 	var actor: Actor = Actor.create(Global.actor_packed_scene, _name, actor_spawn_world_pos)
 	actor.add_to_group("players")
 	$GameViewport/Actors/Players.add_child(actor)
+	view.track(actor)
 	
 	grant_player_capabilities(actor)
 	set_user_control(actor)

@@ -206,3 +206,29 @@ func test_replacing_a_layer_array_warns() -> void:
 	tiles.top = tiles.top
 	assert_push_warning("Use set_top() to modify individual elements.",
 		"go through set_top so the change is announced")
+
+
+# A level's bounds come from its own shape, not from looking its
+# depth up in World: tile storage knows its shape and nothing about
+# how it was generated (D-085).
+func test_bounds_come_from_the_tiles_own_shape() -> void:
+	# Depth 1 is radius 64 in the recipes; this shape says 3.
+	var tiles: LevelTiles = LevelTiles.new(LevelBound.new(1, "Unit Test", 3))
+	assert_eq(tiles.get_top(3, 0), TileKind.TOP.MINABLE_ROCK, "(3, 0) is inside radius 3")
+	assert_eq(tiles.get_top(2, 3), TileKind.SENTINEL_OUT_OF_BOUNDS,
+		"(2, 3) is outside radius 3, though well inside 64")
+
+
+# The disc a level reads is the one World.is_in_bounds describes,
+# tile for tile, at every real depth's radius.
+func test_the_disc_matches_world_is_in_bounds() -> void:
+	for depth in [0, 1, 2, 6]:
+		var tiles: LevelTiles = LevelTiles.new(World.level_recipes.get_bounds(depth))
+		var radius: int = tiles.level_bound.radius
+		var mismatches: int = 0
+		for y in range(-radius, radius + 1):
+			for x in range(-radius, radius + 1):
+				var outside: bool = tiles.get_top(x, y) == TileKind.SENTINEL_OUT_OF_BOUNDS
+				if outside == World.is_in_bounds(WorldPos.new(x, y, depth)):
+					mismatches += 1
+		assert_eq(mismatches, 0, "depth %d's disc matches World's" % depth)

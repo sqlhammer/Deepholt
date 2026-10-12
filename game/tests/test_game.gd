@@ -197,3 +197,23 @@ func test_mouse_maps_through_top_and_bottom_bars() -> void:
 	# 1280 x 1024: scale 2.5, image 800 tall, 112 px bars top and bottom.
 	_check_mouse_mapping(Vector2(1280, 1024), 2.5, Vector2(0, 112),
 		"top and bottom bars shift y, not x")
+
+
+# The screen follows the player down (D-094). The Surface spawn sits
+# over -1's home cave, so the landing is open.
+func test_the_screen_follows_the_player_down_a_level() -> void:
+	var actor: Actor = _actors()[0]
+	var here: WorldPos = actor.current_WorldPos
+	assert_true(actor.change_depth(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
+	var renderer: LevelRenderer = _game.get_node("GameViewport/LevelRenderer")
+	var top: Texture2D = renderer.material.get_shader_parameter("top_data")
+	var expected: int = LevelRenderer.level_width(World.get_level_by_depth(1).level_tiles)
+	assert_eq(top.get_width(), expected, "the renderer shows -1, %d tiles wide" % expected)
+	assert_eq(_game.view.shown_depth, 1, "and the view says -1")
+
+
+func test_the_player_has_a_debug_depth_key() -> void:
+	var found: bool = false
+	for child in _game.get_children():
+		if child is DebugDepth and child.actor == _actors()[0]: found = true
+	assert_true(found, "'-' / '=' drive the player's depth")

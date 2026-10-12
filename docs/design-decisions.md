@@ -1740,3 +1740,50 @@ longer uses it.
 silently points at the wrong placement) or by prefab id (ambiguous if one prefab is placed
 twice); the id named `SPAWN_POINT`, shared by any spawn-like object; keeping `setup`'s prefab
 parameter for one-line test setup (two ways to put a prefab into a level).
+
+---
+
+### D-093 — An actor changes its own depth; the change is announced as a tile change
+**Decided** (by Derik, slice 002 section B). Settles *who changes an actor's depth* for
+[D-083](#d-083--slice-002-starts-on-the-surface-and-goes-down-two-levels-by-a-ramp-and-then-a-ladder)'s
+one shared path.
+
+- **A connection decides where you go; the actor makes the move.** A ramp or ladder works out the
+  target `WorldPos` (the ramp's other end, or the tile beside a hole). The actor's own
+  `change_depth(target)` checks the landing is passable, using the same test walking uses, then
+  sets its depth and position.
+- **It is announced through `actor_worldpos_changed`**, which already carries depth inside
+  `WorldPos`. `set_depth` is updated to fire it. Listeners that care only about depth compare
+  `old_pos.depth` with `new_pos.depth`.
+
+*Why:* walking already works this way. The actor moves itself against tile data
+([D-068](#d-068--an-actor-is-a-plain-node-with-a-feet-box-a-stored-depth-and-an-intent)), and a
+depth change is another move. When co-op authority arrives, it applies to all movement in one
+place. One signal for "the actor is somewhere new" means nothing can miss a depth change by
+listening to the wrong one.
+
+*Costs accepted:* nothing checks *why* a depth change was allowed. A buggy caller can move an
+actor anywhere passable. Listeners to `actor_worldpos_changed` that only want depth changes are
+called on every tile step and must filter.
+
+*Considered:* `World` as gatekeeper for depth changes; a dedicated travel gatekeeper asking
+`World` and the object gatekeeper; a separate `depth_changed` signal.
+
+---
+
+### D-094 — A presentation `View` owns the shown depth and follows the local actor
+**Decided** (by Derik, slice 002 section B). Settles *where the shown depth lives* (NOW.md
+trap 1).
+
+A presentation node, `View`, holds the locally controlled actor (the reference
+[D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer) permits presentation to
+have), listens to that actor's `actor_worldpos_changed`, owns `shown_depth`, and emits
+`shown_depth_changed` when it changes. The renderer, the drawing of actors and objects, and
+`F3`'s shown-depth line all follow `View`. The camera is unchanged: it follows the actor's
+position, which a depth change keeps.
+
+*Why:* one owner for "what depth is on screen", in presentation, attached to one specific actor.
+The simulation never asks what is shown, and another actor changing depth can't move the screen.
+
+*Considered:* the renderer following an actor itself (then visibility and `F3` ask the renderer);
+`game.gd` calling each follower in turn.
