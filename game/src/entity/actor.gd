@@ -74,9 +74,22 @@ func _move(_motion: Vector2) -> void:
 	var moved: Rect2 = TileCollision.move_box(tiles, get_world_box(), _motion)
 	
 	# Adjust position to account for the position of the corner of the feet_box
-	position += moved.position - get_world_box().position
+	var actual_motion: Vector2 = moved.position - get_world_box().position
+	position += actual_motion
 	
+	var tile_before: WorldPos = current_WorldPos
 	_update_WorldPos()
+	if tile_before != null and not current_WorldPos.equals(tile_before):
+		_take_ramp(actual_motion)
+
+
+# Stepping onto a ramp in its trigger direction changes depth (D-095,
+# D-097). The ramp decides where to go from how far the actor really
+# moved (D-098); the actor makes the move (D-093).
+func _take_ramp(actual_motion: Vector2) -> void:
+	var target: WorldPos = Ramp.target_for(current_level.level_tiles, current_WorldPos, actual_motion)
+	if target != null:
+		change_depth(target)
 
 
 func stop() -> void:
@@ -189,13 +202,30 @@ func change_depth(target: WorldPos) -> bool:
 	var level: Level = World.get_level_by_depth(target.depth)
 	if level == null: return false
 
-	var landing: Vector2 = TileSpace.tile_center(Vector2i(target.x, target.y))
-	var landing_box: Rect2 = Rect2(landing + feet_box.position, feet_box.size)
-	if not TileCollision.fits(level.level_tiles, landing_box): return false
+	var landing: Variant = _landing_on(level.level_tiles, target)
+	if landing == null: return false
 
 	position = landing
 	set_depth(target.depth)
 	return true
+
+
+# Where the actor stands on arriving at `target`, or null if it can't.
+# Onto the same (x, y) it keeps its exact spot if its feet fit there.
+# Onto a ramp it always stands at the tile's center, so its feet never
+# straddle one of the ramp's closed sides (D-099). Otherwise it stands
+# at the tile's center, which only needs that one tile open.
+func _landing_on(tiles: LevelTiles, target: WorldPos) -> Variant:
+	var same_tile: bool = current_WorldPos != null \
+		and target.x == current_WorldPos.x and target.y == current_WorldPos.y
+	var onto_ramp: bool = TileKind.is_ramp(tiles.get_ground(target.x, target.y))
+	var here_box: Rect2 = Rect2(position + feet_box.position, feet_box.size)
+	if same_tile and not onto_ramp and TileCollision.fits(tiles, here_box):
+		return position
+	var center: Vector2 = TileSpace.tile_center(Vector2i(target.x, target.y))
+	if TileCollision.fits(tiles, Rect2(center + feet_box.position, feet_box.size)):
+		return center
+	return null
 
 
 func _set_facing(p_vector: Vector2) -> bool:

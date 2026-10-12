@@ -91,24 +91,36 @@ ladder work.
 
 ## C. The ramp
 
-*Mode: ask before starting.*
+*Mode: Agent.*
 
-- [ ] **Decide:** what a ramp is in the tile data — one kind or a top/bottom pair, one tile or
-  several, directional or not — and whether it's meant to become a cave mouth.
-- [ ] **Decide:** how an actor uses it — walk-on or interact — and how arrival avoids the bounce
-  (trap 5).
-- [ ] **Decide:** whether a ramp tile is passable and whether it's diggable (trap 4: a new kind
-  is a wall and undiggable until decided otherwise).
-- [ ] The ramp is authored into the Surface and −1 prefabs at the same world `(x, y)`, within −1's
-  radius.
-- [ ] Art: recognizable at a glance as a way down. [1]
-- [ ] `F3` names it.
-- [ ] A ramp whose ends don't line up, that falls outside either level's bounds, or whose landing
+- [x] **Decide:** what a ramp is in the tile data — one kind or a top/bottom pair, one tile or
+  several, directional or not — and whether it's meant to become a cave mouth. A directional pair
+  of ground kinds, one tile each; a cave mouth is a prefab around one ([D-095](../docs/design-decisions.md)).
+- [x] **Decide:** how an actor uses it — walk-on or interact — and how arrival avoids the bounce
+  (trap 5). Walk-on; the direction stops the bounce (D-095).
+- [x] **Decide:** whether a ramp tile is passable and whether it's diggable (trap 4). Passable,
+  not diggable: it's ground under an `OPEN` top (D-095).
+- [x] Eight ground ids, interleaved by pair (`RAMP_DOWN_N` 6, `RAMP_UP_N` 7 … `RAMP_UP_W` 13),
+  pinned by the ids test; grid letters `n e s w` (down) and `N E S W` (up) ([D-096](../docs/design-decisions.md)).
+- [x] **Decide:** exactly when walking onto a ramp counts, and where the Surface ramp goes.
+  Tile changes onto it with the movement's dominant axis downhill (down end) or uphill (up end);
+  facing plays no part ([D-097](../docs/design-decisions.md)); the actual movement this
+  tick, not the intent ([D-098](../docs/design-decisions.md)). Surface ramp at (6, 0), going east (D-096).
+- [x] The ramp is authored into the Surface and −1 prefabs at the same world `(x, y)`, within −1's
+  radius. `e` at (6, 0) in `surface_start`, `E` at (6, 0) in `rootshelf_home`.
+- [x] Art: recognizable at a glance as a way down. [1] Eight cells, shading dark downhill, with a
+  chevron pointing the way the end takes you. Checked in the running game (Derik).
+- [x] `F3` names it: the readout's ground line (`RAMP_DOWN_E`), and its letter in the tile window.
+- [x] A ramp whose ends don't line up, that falls outside either level's bounds, or whose landing
   isn't passable fails to load, checked on world tiles after stamping (trap 4).
-- [ ] Test: each of those load failures.
-- [ ] Take the ramp down: −1's layout, same `(x, y)`, depth −1. Take it back up. [2]
-- [ ] Walk at the ramp from the wrong side: something deliberate happens. [6]
-- [ ] Test: no bounce — arriving by ramp doesn't send the actor straight back.
+- [x] Test: each of those load failures. `LevelGenerator.ramp_problems`, reported with
+  `push_error` after every level is built; the levels still load (`test_ramps.gd`).
+- [x] Take the ramp down: −1's layout, same `(x, y)`, depth −1. Take it back up. [2] By hand (Derik).
+- [x] Walk at the ramp from the wrong side: it stops you like a wall (D-099). [6] By hand (Derik).
+- [x] Test: no bounce — arriving by ramp doesn't send the actor straight back.
+- [x] A ramp end's other three sides stop an actor like a wall; only its one open side can be
+  crossed, in or out ([D-099](../docs/design-decisions.md)). Arriving by ramp stands the actor at
+  the ramp tile's center, so its feet never straddle a closed side.
 
 ## D. Holes, objects and the ladder
 
@@ -175,7 +187,7 @@ object (no sprite, no link across levels), so it settles the store's shape befor
 - [ ] Using a ladder where there isn't one, or from the wrong side, does something deliberate.
   [6]
 - [ ] Test: a ramp or climb is refused when the landing has been closed since load (re-checked at
-  request time).
+  request time). Ramp half done (`test_ramps.gd`); the ladder half remains.
 - [ ] Test: a dig in progress resets on a depth change; decide what a held dig button does on
   arrival.
 - [ ] **Decide, by looking:** whether climbing is instant, and if not, how long it takes. Same

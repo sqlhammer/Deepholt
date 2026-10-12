@@ -112,6 +112,8 @@ func test_ore_does_not_make_an_undiggable_tile_diggable() -> void:
 func test_existing_kind_ids_never_change() -> void:
 	assert_eq(TileKind.GROUND, {
 		"NULL": 0, "ROCK": 1, "DIRT": 2, "GRASS": 3, "WATER": 4, "HOLE": 5,
+		"RAMP_DOWN_N": 6, "RAMP_UP_N": 7, "RAMP_DOWN_E": 8, "RAMP_UP_E": 9,
+		"RAMP_DOWN_S": 10, "RAMP_UP_S": 11, "RAMP_DOWN_W": 12, "RAMP_UP_W": 13,
 	}, "ground ids")
 	assert_eq(TileKind.TOP, {
 		"NULL": 0, "OPEN": 1, "MINABLE_ROCK": 2, "MINABLE_DIRT": 3, "IMPENETRABLE_ROCK": 4,

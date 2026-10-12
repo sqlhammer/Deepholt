@@ -1787,3 +1787,125 @@ The simulation never asks what is shown, and another actor changing depth can't 
 
 *Considered:* the renderer following an actor itself (then visibility and `F3` ask the renderer);
 `game.gd` calling each follower in turn.
+
+---
+
+### D-095 — A ramp is a directional pair of ground kinds, one tile each, used by walking
+**Decided** (by Derik, slice 002 section C). Settles the ramp's shape, left open by
+[D-089](#d-089--a-ladder-is-an-object-on-the-lower-level-a-hole-is-a-ground-kind-a-ramp-is-a-tile-kind).
+
+- **A ramp is a ground kind**, like `HOLE`: a floor that slopes to the next level, with an `OPEN`
+  top. Passable and not diggable follow from the open top. Passability still has to block
+  `HOLE`, and nothing else changes.
+- **It is a pair:** a `RAMP_DOWN` on the upper level and a `RAMP_UP` on the lower, at the same
+  `(x, y)`. The loader checks that both ends exist and line up.
+- **It has a direction:** the way you walk to go down. Walking onto `RAMP_DOWN` heading that
+  way takes you down; walking onto `RAMP_UP` heading the opposite way takes you up. From any
+  other side, either end is plain floor. The direction is part of the kind, so there are eight
+  ground kinds: down and up, times north, east, south and west.
+- **One tile.** A longer slope, and in M4 a cave mouth, is a prefab built from floor around a
+  ramp tile, not a separate mechanism.
+- **Used by walking, not by a button.** The depth change goes through the actor
+  ([D-093](#d-093--an-actor-changes-its-own-depth-the-change-is-announced-as-a-tile-change)) and
+  lands on the paired tile, keeping `(x, y)`.
+
+*Why:* you walk down a slope; you don't press a button for it. The direction is what stops the
+bounce (NOW.md trap 5): you arrive on `RAMP_UP` still moving downhill, and it only triggers
+moving uphill. Putting it on the ground layer makes it a kind of floor, so passability and
+digging need no new rules.
+
+*Costs accepted:* eight new ground ids, each permanent. A direction per tile would have needed a
+new data layer instead.
+
+*Open:* the eight ids and grid characters; exactly when walking "onto" a ramp counts (the
+actor's tile changing onto it with movement in the trigger direction is the likely rule); where
+the Surface ramp goes, inside the start room.
+
+*Considered:* a top kind (passability and digging would each need a rule); one end only (going up
+has nothing to trigger from); triggering from any side (2 kinds, but needs an "arriving doesn't
+count" rule against the bounce); interact to use; a multi-tile slope.
+
+---
+
+### D-096 — Ramp ids, grid letters, and the Surface ramp's place
+**Decided** (by Derik, slice 002 section C). Fills in
+[D-095](#d-095--a-ramp-is-a-directional-pair-of-ground-kinds-one-tile-each-used-by-walking).
+
+- **Ids, interleaved by pair**, so each pair's two ends are adjacent:
+  `RAMP_DOWN_N` 6, `RAMP_UP_N` 7, `RAMP_DOWN_E` 8, `RAMP_UP_E` 9, `RAMP_DOWN_S` 10,
+  `RAMP_UP_S` 11, `RAMP_DOWN_W` 12, `RAMP_UP_W` 13. Permanent, like every kind id.
+- **Ground grid characters are letters:** lowercase `n e s w` for the down ends, uppercase
+  `N E S W` for the up ends, by the ramp's direction. None collides with the existing ground
+  letters (`r`, `d`).
+- **The Surface ramp is at (6, 0)**, the east edge of the start room, in line with the spawn:
+  walking straight east from the spawn takes you down. Its pair on −1 is at (6, 0) in the home
+  cave, which is open to the east of it.
+
+*Open:* what a ramp's direction means, and what triggers it (see the follow-up to D-095).
+
+---
+
+### D-097 — A ramp's direction is the way you move to go down, and movement triggers it
+**Decided** (by Derik, slice 002 section C). Closes the open trigger question in
+[D-095](#d-095--a-ramp-is-a-directional-pair-of-ground-kinds-one-tile-each-used-by-walking) and
+[D-096](#d-096--ramp-ids-grid-letters-and-the-surface-ramps-place).
+
+- **A ramp's direction is downhill:** the way you move to go down. `RAMP_DOWN_E` takes you down
+  when you walk onto it moving east, and its `RAMP_UP_E` takes you up when you walk onto it
+  moving west.
+- **Movement decides, not facing.** An actor can walk backwards: moving west while facing east,
+  it takes a west ramp down. Facing
+  ([D-075](#d-075--aim-targeting-uses-a-dead-zone-hysteresis-and-keeps-facing-without-input),
+  [D-076](#d-076--walking-sets-facing-when-there-is-no-aim-input-new-actors-face-down)) plays no
+  part.
+- **On a diagonal, the dominant axis counts:** the larger component of the movement must be the
+  trigger direction. Mostly-west onto a west ramp goes down; mostly-north passes over it as
+  floor.
+- **It triggers when the actor's tile changes onto the ramp tile.** From any other direction,
+  either end is plain floor.
+
+*Why:* walking backwards should work (it isn't implemented perfectly yet), so the trigger can't
+depend on facing. The dominant axis keeps a diagonal walk past a ramp's corner from taking you
+down by surprise.
+
+*Consequence:* with downhill as the direction, arriving on `RAMP_UP` still moving downhill
+can't trigger it, so there's no bounce (NOW.md trap 5).
+
+*Considered:* facing as the trigger (fails walking backwards); any movement component (a corner
+brush takes you down); cardinal only (a slightly off-axis stick passes over it); direction as the
+side the ramp's mouth opens toward.
+
+---
+
+### D-098 — A ramp reads the actor's actual movement, not its intent
+**Decided** (by Derik, slice 002 section C). Refines
+[D-097](#d-097--a-ramps-direction-is-the-way-you-move-to-go-down-and-movement-triggers-it).
+The movement whose dominant axis triggers a ramp is how far the actor actually moved this tick,
+after collision, not `move_intent` (the stick or keys).
+
+*Why:* pushing into a wall, or sliding along one, doesn't carry you onto a ramp in a direction
+you aren't really going.
+
+---
+
+### D-099 — A ramp end can only be entered and left through one side; the others are walls
+**Decided** (by Derik, slice 002 section C). Replaces the "from any other side, either end is
+plain floor" part of
+[D-095](#d-095--a-ramp-is-a-directional-pair-of-ground-kinds-one-tile-each-used-by-walking) and
+[D-097](#d-097--a-ramps-direction-is-the-way-you-move-to-go-down-and-movement-triggers-it).
+
+- **Each ramp end has one open side.** A down end opens on its **uphill** side, where you walk in
+  to go down. An up end opens on its **downhill** side, where you walk in to go up and leave
+  after arriving. The other three sides of either end stop an actor like a wall.
+- **It is a rule about crossing edges, not whole tiles.** Moving from one tile to the next is
+  blocked if either tile is a ramp whose side facing the other is closed. Everything else about
+  passability is unchanged.
+- **Arriving by ramp puts the actor at the ramp tile's center**, so its feet never straddle a
+  closed side.
+
+*Why:* a ramp is a slope cut into the floor. Its sides are the cut, and you can't walk across
+them.
+
+*Consequences:* the trigger rule (D-097, D-098) still applies, but the only way onto a ramp is
+through its open side. A diagonal that enters through the open side but mostly moves along the
+ramp doesn't take it, and leaves the actor standing on it, free to back out the way it came.

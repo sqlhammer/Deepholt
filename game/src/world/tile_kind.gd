@@ -22,6 +22,31 @@ const GROUND: Dictionary = {
 	"GRASS": 3,
 	"WATER": 4,
 	"HOLE": 5,
+	# Ramps (D-095, D-096): a pair per direction, interleaved so each
+	# pair's two ends are adjacent. The direction is downhill -- the
+	# way you move to go down (D-097).
+	"RAMP_DOWN_N": 6,
+	"RAMP_UP_N": 7,
+	"RAMP_DOWN_E": 8,
+	"RAMP_UP_E": 9,
+	"RAMP_DOWN_S": 10,
+	"RAMP_UP_S": 11,
+	"RAMP_DOWN_W": 12,
+	"RAMP_UP_W": 13,
+}
+
+# Every ramp kind: its downhill direction, and whether it is the end
+# you take down (on the upper level) or up (on the lower). The one
+# owner of what a ramp is; Ramp and the generator's checks read it.
+const RAMPS: Dictionary = {
+	GROUND.RAMP_DOWN_N: { "downhill": Vector2i(0, -1), "down": true },
+	GROUND.RAMP_UP_N: { "downhill": Vector2i(0, -1), "down": false },
+	GROUND.RAMP_DOWN_E: { "downhill": Vector2i(1, 0), "down": true },
+	GROUND.RAMP_UP_E: { "downhill": Vector2i(1, 0), "down": false },
+	GROUND.RAMP_DOWN_S: { "downhill": Vector2i(0, 1), "down": true },
+	GROUND.RAMP_UP_S: { "downhill": Vector2i(0, 1), "down": false },
+	GROUND.RAMP_DOWN_W: { "downhill": Vector2i(-1, 0), "down": true },
+	GROUND.RAMP_UP_W: { "downhill": Vector2i(-1, 0), "down": false },
 }
 
 const TOP: Dictionary = {
@@ -81,14 +106,26 @@ static func is_sentinel(kind: int) -> bool:
 	return kind == SENTINEL_OUT_OF_ARRAY or kind == SENTINEL_OUT_OF_BOUNDS
 
 
+static func is_ramp(ground_kind: int) -> bool:
+	return RAMPS.has(ground_kind)
 
 
+# The other end of a ramp kind: the up end for a down end, and back.
+# -1 for a kind that isn't a ramp.
+static func ramp_pair(ground_kind: int) -> int:
+	if not is_ramp(ground_kind): return -1
+	for kind: int in RAMPS:
+		if kind == ground_kind: continue
+		if RAMPS[kind].downhill == RAMPS[ground_kind].downhill:
+			return kind
+	return -1
 
 
-
-
-
-
-
-
-
+# The one side of a ramp end you can cross (D-099), as a step from the
+# ramp tile to its open neighbor: a down end opens uphill, where you
+# walk in to go down; an up end opens downhill, where you walk in to go
+# up. Zero for a kind that isn't a ramp.
+static func ramp_open_side(ground_kind: int) -> Vector2i:
+	if not is_ramp(ground_kind): return Vector2i.ZERO
+	var ramp: Dictionary = RAMPS[ground_kind]
+	return -ramp.downhill if ramp.down else ramp.downhill

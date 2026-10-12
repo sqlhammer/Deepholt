@@ -17,6 +17,14 @@ enum AtlasCell {
 	EMPTY,
 	DIRT_FLOOR,
 	MINABLE_DIRT,
+	RAMP_DOWN_N,
+	RAMP_UP_N,
+	RAMP_DOWN_E,
+	RAMP_UP_E,
+	RAMP_DOWN_S,
+	RAMP_UP_S,
+	RAMP_DOWN_W,
+	RAMP_UP_W,
 }
 
 
@@ -142,6 +150,14 @@ func _ground_cells() -> PackedInt32Array:
 	var cells: PackedInt32Array = _cell_table()
 	cells[TileKind.GROUND.ROCK] = AtlasCell.FLOOR
 	cells[TileKind.GROUND.DIRT] = AtlasCell.DIRT_FLOOR
+	cells[TileKind.GROUND.RAMP_DOWN_N] = AtlasCell.RAMP_DOWN_N
+	cells[TileKind.GROUND.RAMP_UP_N] = AtlasCell.RAMP_UP_N
+	cells[TileKind.GROUND.RAMP_DOWN_E] = AtlasCell.RAMP_DOWN_E
+	cells[TileKind.GROUND.RAMP_UP_E] = AtlasCell.RAMP_UP_E
+	cells[TileKind.GROUND.RAMP_DOWN_S] = AtlasCell.RAMP_DOWN_S
+	cells[TileKind.GROUND.RAMP_UP_S] = AtlasCell.RAMP_UP_S
+	cells[TileKind.GROUND.RAMP_DOWN_W] = AtlasCell.RAMP_DOWN_W
+	cells[TileKind.GROUND.RAMP_UP_W] = AtlasCell.RAMP_UP_W
 	cells[TileKind.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.OUTSIDE_LEVEL
 	return cells
 

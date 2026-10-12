@@ -14,6 +14,16 @@ const GROUND_CHARS: Dictionary = {
 	"r": TileKind.GROUND.ROCK,
 	"d": TileKind.GROUND.DIRT,
 	"0": TileKind.GROUND.ROCK,
+	# Ramps by downhill direction: lowercase the down end, uppercase
+	# the up end (D-096).
+	"n": TileKind.GROUND.RAMP_DOWN_N,
+	"N": TileKind.GROUND.RAMP_UP_N,
+	"e": TileKind.GROUND.RAMP_DOWN_E,
+	"E": TileKind.GROUND.RAMP_UP_E,
+	"s": TileKind.GROUND.RAMP_DOWN_S,
+	"S": TileKind.GROUND.RAMP_UP_S,
+	"w": TileKind.GROUND.RAMP_DOWN_W,
+	"W": TileKind.GROUND.RAMP_UP_W,
 }
 
 const TOP_CHARS: Dictionary = {

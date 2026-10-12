@@ -158,7 +158,8 @@ func _tile_char(tiles: LevelTiles, x: int, y: int, actor_pos: WorldPos) -> Strin
 	if ore != TileKind.ORE.NONE and ore != TileKind.ORE.NULL:
 		return _kind_name(TileKind.ORE, ore).substr(0, 1).to_lower()
 
-	if top == TileKind.TOP.OPEN: return "."
+	if top == TileKind.TOP.OPEN:
+		return _ramp_char(tiles.get_ground(x, y))
 	if top == TileKind.TOP.MINABLE_ROCK: return "#"
 	if top == TileKind.TOP.MINABLE_DIRT: return "%"
 	return "?"
@@ -194,3 +195,12 @@ func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:
 		set_section(VIEW_SECTION, "none")
 		return
 	set_section(VIEW_SECTION, "%d [%s]" % [new_depth, World.depth_to_display(new_depth)])
+
+
+# Open floor prints '.', unless its ground is a ramp: then the letter
+# it is authored with (D-096), so the window reads like the grid.
+func _ramp_char(ground: int) -> String:
+	for character: String in LevelGridLoader.GROUND_CHARS:
+		if LevelGridLoader.GROUND_CHARS[character] == ground and TileKind.is_ramp(ground):
+			return character
+	return "."
