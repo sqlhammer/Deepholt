@@ -1674,3 +1674,69 @@ and a wall) has to coordinate both gatekeepers, and that seam is where the two c
 
 *Open:* the gatekeeper's name and whether it is an autoload; the shape of the per-level store;
 how a change that spans tiles and objects is coordinated.
+
+---
+
+### D-091 — Spawn points are objects; the new-game spawn is placed at random near the start
+**Decided** (by Derik, slice 002 section A). Replaces `Level.anchor` as where the player spawns.
+
+- **A spawn point is an object** (through the object gatekeeper,
+  [D-090](#d-090--objects-get-their-own-gatekeeper-separate-from-world)), not a property of a
+  level. It sits on a `WorldPos`, so it can be on any depth and can move.
+- **Where an actor spawns is a question about that actor:** its own spawn point (a bed, later;
+  death → respawn at bed, [pre-alpha-scope §3](./pre-alpha-scope.md)) if it has one, otherwise
+  the world's default. Nothing resolves to *the* player's spawn
+  ([D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer)).
+- **The world's default spawn is created at new-game time** by the level generator: an invisible
+  spawn-point object on a random **passable** tile within the recipe's spawn radius (8 for the
+  Surface) of the **start placement's anchor** (`surface_start`), not of the world origin.
+  - *Passable* is the same test actor movement uses, so a spawn can't land on a hole
+    ([D-089](#d-089--a-ladder-is-an-object-on-the-lower-level-a-hole-is-a-ground-kind-a-ramp-is-a-tile-kind))
+    or anything else that blocks.
+  - **Deterministic:** candidates are gathered in a fixed order (row, then column) and one is
+    picked with the level's own generator (`LevelGenerator.rng_for`). Same world seed, same
+    spawn.
+  - **No candidate is a loud failure**, never a spawn in rock.
+- **Actors spawning together spread out.** Starting at the spawn point, search outward ring by
+  ring for a passable tile no actor's feet box is in. Deterministic, no random jitter. Actors
+  don't block each other
+  ([D-068](#d-068--an-actor-is-a-plain-node-with-a-feet-box-a-stored-depth-and-an-intent)), so
+  without this they would stack.
+- **Invisible to players, visible in `F3`.**
+- **Placing a spawn point during generation is like prefab stamping**, exempt from the gatekeeper
+  as loading is ([D-078](#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime)).
+  Placing one once the world exists (building a bed) goes through the gatekeeper.
+
+*Why:* a spawn location only matters when a game is created, or when someone joins or dies. Saves
+will store where actors are. Players joining later, or several joining at once, need somewhere
+sensible that isn't on top of each other, and a spawn that's an object can later be moved into
+the base. Placing it at random near the start room keeps the prefab grids pure terrain and varies
+the start between worlds.
+
+*Not checked:* that the chosen tile is reachable. A passable tile could be a sealed pocket. That
+can't happen in the hand-made start room; with procedural generation, validation has to check it.
+
+*Open:* the recipe field shapes (the spawn radius, and how the start placement is identified);
+the spawn-point object's type id; whether `Level.anchor` is kept for anything once spawning no
+longer uses it.
+
+---
+
+### D-092 — Spawn details: the radius is on the start placement, `WORLD_SPAWN = 2`, `Level.anchor` goes
+**Decided** (by Derik, slice 002 section D). Closes the open details in
+[D-091](#d-091--spawn-points-are-objects-the-new-game-spawn-is-placed-at-random-near-the-start).
+
+- **`PrefabPlacement` gains `spawn_radius: int`, where 0 means no spawn.** The placement that has
+  one is the start placement, so the radius and its center can't come apart. The Surface's
+  `surface_start` placement has 8.
+- **The world's default spawn object is `ObjectKind.OBJECT.WORLD_SPAWN = 2`.** It names its one
+  job. A bed, later, gets its own id and acts as a spawn point by behavior, not by sharing this
+  id.
+- **`Level.anchor` is removed, and so are `Level.setup`'s `prefab` and `anchor` parameters.**
+  The generator stamps prefabs; `setup` takes only a depth. Tests that stamped through `setup`
+  stamp through `LevelGridLoader` or the generator instead.
+
+*Considered:* the radius and start on the recipe, by placement index (reordering the list
+silently points at the wrong placement) or by prefab id (ambiguous if one prefab is placed
+twice); the id named `SPAWN_POINT`, shared by any spawn-like object; keeping `setup`'s prefab
+parameter for one-line test setup (two ways to put a prefab into a level).

@@ -41,9 +41,9 @@ Slice 001's checklist is in git history (last at `29daf8f`).
   corridor from where the ladder will be out to the edge in one direction (trap 7).
 - [ ] Author −2's prefab: its own layout, the same corridor direction, reaching further to its
   own edge.
-- [ ] **Decide:** where a level's spawn point comes from. `Level.anchor` is still the old
-  `setup()` parameter, `(0, 0)` for every generated level, and the player spawns there. It
-  matches today only because `surface_start` sits at the axis.
+- [x] **Decide:** where a level's spawn point comes from. A spawn-point object, placed at new-game
+  time on a random passable tile within the recipe's radius of the start placement
+  ([D-091](../docs/design-decisions.md)).
 - [ ] Both load by id through the registry and stamp into their levels; the Surface still does.
 - [ ] The actor still spawns on the Surface; `test_game.gd`'s spawn tests still pass unchanged.
 
@@ -113,6 +113,29 @@ ladder work.
   both.
 - [ ] The object store announces changes; presentation draws objects for the shown depth only.
 - [ ] Test: an object on a depth that isn't shown isn't drawn.
+
+### D. Spawn points, the first object (D-091)
+
+Built straight after the object store and gatekeeper above: the spawn point is the simplest
+object (no sprite, no link across levels), so it settles the store's shape before the ladder.
+
+- [ ] `PrefabPlacement.spawn_radius` (0 = none; `surface_start` has 8) ([D-092](../docs/design-decisions.md)).
+- [ ] `ObjectKind.OBJECT.WORLD_SPAWN = 2`, pinned by the ids test (D-092).
+- [ ] Remove `Level.anchor` and `setup`'s `prefab`/`anchor` parameters; tests stamp through the
+  loader or the generator (D-092).
+- [ ] The generator places the world's default spawn point: passable tiles within the radius, in
+  row-then-column order, one picked with `rng_for`. No candidate fails loudly.
+- [ ] Test: the same world seed gives the same spawn; the spawn is never on a blocked tile or a
+  hole; an all-rock radius fails loudly.
+- [ ] An actor's spawn is its own spawn point if it has one, else the world default.
+- [ ] Spreading out: a ring search for a passable tile no actor's feet box is in.
+- [ ] Test: two actors spawned together don't overlap.
+- [ ] `F3` shows spawn points.
+- [ ] The player spawns at the world default; `test_game.gd`'s spawn tests follow it (they assume
+  the anchor today).
+
+### D. The ladder
+
 - [ ] Art: the ladder sprite, distinguishable at a glance. [3]
 - [ ] The hole is authored into −1 and the ladder placed on −2, at the same world `(x, y)`.
 - [ ] A ladder with no hole directly above it fails to load; so does one outside either level's
