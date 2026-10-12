@@ -37,15 +37,20 @@ Slice 001's checklist is in git history (last at `29daf8f`).
 - [x] Test: a recipe naming a missing prefab id fails loudly. (`test_level_generator.gd`)
 - [x] **Decide (optional):** finish dirt — grid character, art cell, `F3` character — or leave it.
   Finished, and the Surface start prefab is dirt (Agent mode, [D-087](../docs/design-decisions.md)).
-- [ ] Author −1's prefab: its hand-made layout, open floor where the ramp will land, and an open
+- [x] Author −1's prefab: its hand-made layout, open floor where the ramp will land, and an open
   corridor from where the ladder will be out to the edge in one direction (trap 7).
-- [ ] Author −2's prefab: its own layout, the same corridor direction, reaching further to its
-  own edge.
+  `rootshelf_home` (Agent mode): a dirt cave under the Surface's start room, a ladder room at
+  x 12–16, y −2–2, and a corridor east along y = 0 to the edge at x = 64.
+- [x] Author −2's prefab: its own layout, the same corridor direction, reaching further to its
+  own edge. `greyseam_landing`: the same ladder room, the corridor on to x = 81, a small chamber
+  at x ≈ 64 where −1's corridor ended, and a copper-veined cavern around the origin.
+  **The ladder goes at (14, −2)** on both levels: hole on −1, ladder on −2.
 - [x] **Decide:** where a level's spawn point comes from. A spawn-point object, placed at new-game
   time on a random passable tile within the recipe's radius of the start placement
   ([D-091](../docs/design-decisions.md)).
-- [ ] Both load by id through the registry and stamp into their levels; the Surface still does.
-- [ ] The actor still spawns on the Surface; `test_game.gd`'s spawn tests still pass unchanged.
+- [x] Both load by id through the registry and stamp into their levels; the Surface still does.
+  Placed by the −1 and −2 recipes at anchor (0, 0); pinned in `test_hand_made_levels.gd`.
+- [x] The actor still spawns on the Surface; `test_game.gd`'s spawn tests still pass unchanged.
 
 ## B. Changing depth, before ramps and ladders
 
