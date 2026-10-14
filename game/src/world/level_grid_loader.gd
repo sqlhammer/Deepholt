@@ -24,6 +24,7 @@ const GROUND_CHARS: Dictionary = {
 	"S": TileKind.GROUND.RAMP_UP_S,
 	"w": TileKind.GROUND.RAMP_DOWN_W,
 	"W": TileKind.GROUND.RAMP_UP_W,
+	"h": TileKind.GROUND.HOLE,
 }
 
 const TOP_CHARS: Dictionary = {
@@ -62,6 +63,8 @@ static func stamp(tiles: LevelTiles, prefab: TilePrefab, anchor: Vector2i) -> bo
 
 	# Validate that all ore is inside minable rock
 	if _has_ore_outside_of_minable_rock(top_tiles, ore_tiles): return false
+	# Validate that all holes don't have anything on top of them
+	if _has_invalid_hole_placement(ground_tiles,top_tiles, ore_tiles): return false
 
 	# Stamp tiles
 	_stamp_layer(tiles.set_ground, ground_tiles, GROUND_CHARS, anchor)
@@ -80,7 +83,22 @@ static func _has_ore_outside_of_minable_rock(top_tiles: Dictionary, ore_tiles: D
 		if ORE_CHARS[ore_char] == TileKind.ORE.NONE: continue
 		if not top_tiles.has(coord): continue
 		if top_tiles[coord] != MINABLE_ROCK_CHAR:
+			push_warning("LevelGridLoader Violation: Ore discovered outside of minable rock.")
 			return true
+	return false
+
+
+# A hole may only sit under TileKind.TOP.OPEN and have TileKind.ORE.NULL
+static func _has_invalid_hole_placement(ground_tiles: Dictionary, top_tiles: Dictionary, ore_tiles: Dictionary) -> bool:
+	for coord in ground_tiles:
+		if ground_tiles[coord] != "HOLE": continue
+		var top_char: String = top_tiles[coord]
+		var ore_char: String = ore_tiles[coord]
+		if TOP_CHARS[top_char] == TileKind.TOP.OPEN \
+			and ORE_CHARS[ore_char] == TileKind.ORE.NULL: continue
+		
+		push_warning("LevelGridLoader Violation: Hole discovered with invalid top (%s) or ore (%s)." % [top_char, ore_char])
+		return true
 	return false
 
 

@@ -1909,3 +1909,64 @@ them.
 *Consequences:* the trigger rule (D-097, D-098) still applies, but the only way onto a ramp is
 through its open side. A diagonal that enters through the open side but mostly moves along the
 ramp doesn't take it, and leaves the actor standing on it, free to back out the way it came.
+
+---
+
+### D-100 — Objects: an `Objects` autoload, a per-level store, an object grid, and a `Ladder` rule
+**Decided** (by Derik, slice 002 section D). Closes the open shape of
+[D-090](#d-090--objects-get-their-own-gatekeeper-separate-from-world) and how a ladder is found
+([D-089](#d-089--a-ladder-is-an-object-on-the-lower-level-a-hole-is-a-ground-kind-a-ramp-is-a-tile-kind)).
+
+- **The gatekeeper is an `Objects` autoload**, beside `World`. Anything wanting an object placed
+  or removed sends it a request; it checks the rules, changes the level's store, and announces
+  the result. The name is generic on purpose: spawn points, ladders, later buildings.
+- **Each level stores its own objects** in a `LevelObjects` next to `LevelTiles`, keyed by tile,
+  with **several objects allowed per tile** (an invisible spawn point can share a tile). A placed
+  object is plain data (kind, tile, id), not a node. Presentation draws sprites from the store,
+  as the renderer draws tiles, and the store announces its own changes
+  ([D-065](#d-065--each-layer-is-its-own-r8-data-texture-built-through-the-reads-changes-reach-it-from-the-truth)'s
+  pattern).
+- **Prefabs get a fourth grid, `objects`:** `.` none, `L` ladder, `0` the anchor. The loader
+  validates it like the others. Objects sit in the layout they belong to, and authored ruins
+  can later carry their furniture.
+- **A `Ladder` rule** (`src/world/ladder.gd`), like `Ramp`, answers whether and where an actor
+  climbs. It reads the hole from the tiles and the ladder from the object store. Asking is a
+  read, so neither gatekeeper is involved; gatekeepers are for changes. The actor then moves
+  itself ([D-093](#d-093--an-actor-changes-its-own-depth-the-change-is-announced-as-a-tile-change)).
+
+*Why:* the autoload matches how simulation already reaches `World`. Objects as data, not nodes,
+keeps one copy of the truth, as tiles do. The grid keeps an object's place with its layout.
+
+*Considered:* a `Structures` autoload (the name says buildings); a node in the game scene handed to
+every user; one object per tile; objects as nodes; placing objects from the recipe; `Objects` or
+`World` answering "can I climb here".
+
+---
+
+### D-101 — A ladder is used with interact: facing the hole from above, standing on it from below
+**Decided** (by Derik, slice 002 sections D–E). Settles how a ladder
+([D-089](#d-089--a-ladder-is-an-object-on-the-lower-level-a-hole-is-a-ground-kind-a-ramp-is-a-tile-kind),
+[D-100](#d-100--objects-an-objects-autoload-a-per-level-store-an-object-grid-and-a-ladder-rule))
+is used.
+
+- **The hole's ground grid character is `h`.**
+- **A new `interact` action:** `E` on the keyboard, A on the gamepad
+  ([ui-ux §3](./ui-ux-and-controls.md)). It is a one-shot event, not held state: the first of
+  the one-shot actions [D-069](#d-069--input-reaches-an-actor-through-an-input-handler-in-presentation)
+  left open.
+- **Down:** beside the hole, **facing it, press interact.** The faced tile is the feet tile plus
+  facing, as for digging ([D-073](#d-073--mining-reach-is-one-tile-from-the-actors-current-tile),
+  [D-074](#d-074--mining-reach-is-4-way-no-diagonal-digs)). You arrive standing on the ladder's
+  tile below, at the same `(x, y)`.
+- **The ladder's tile is walkable.** The ladder stands on open floor.
+- **Up:** **standing on the ladder's tile, press interact.** You arrive beside the hole on the
+  level above: on the tile in the direction you face, if you can stand there; otherwise on the
+  first open neighbor in the order north, east, south, west.
+
+*Why:* deliberate, so you never go down a ladder by brushing past a hole, and it matches the
+controls doc, which names ladders under interact. The arrival rule lets you choose which way to
+step off, and is deterministic when you can't.
+
+*Considered:* walking into the hole to climb down; a ladder that blocks like a wall (then `(x, y)`
+would change both ways); a fixed, authored exit side per ladder; always the first open neighbor;
+`F` or Space for interact (Space is likely wanted for dodge).

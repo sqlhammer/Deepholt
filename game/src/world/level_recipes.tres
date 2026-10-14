@@ -14,14 +14,6 @@ radius = 90
 script = ExtResource("4_placement")
 prefab_id = &"surface_start"
 
-[sub_resource type="Resource" id="Placement_rootshelf_home"]
-script = ExtResource("4_placement")
-prefab_id = &"rootshelf_home"
-
-[sub_resource type="Resource" id="Placement_greyseam_landing"]
-script = ExtResource("4_placement")
-prefab_id = &"greyseam_landing"
-
 [sub_resource type="Resource" id="Recipe_0"]
 script = ExtResource("2_recipe")
 bound = SubResource("Bound_0")
@@ -33,6 +25,10 @@ depth = 1
 name = "Rootshelf"
 radius = 64
 
+[sub_resource type="Resource" id="Placement_rootshelf_home"]
+script = ExtResource("4_placement")
+prefab_id = &"rootshelf_home"
+
 [sub_resource type="Resource" id="Recipe_1"]
 script = ExtResource("2_recipe")
 bound = SubResource("Bound_1")
@@ -43,6 +39,10 @@ script = ExtResource("1_bound")
 depth = 2
 name = "Greyseam"
 radius = 81
+
+[sub_resource type="Resource" id="Placement_greyseam_landing"]
+script = ExtResource("4_placement")
+prefab_id = &"greyseam_landing"
 
 [sub_resource type="Resource" id="Recipe_2"]
 script = ExtResource("2_recipe")

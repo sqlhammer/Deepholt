@@ -102,10 +102,6 @@ static func get_dig_density(top_kind: int, ore_kind: int) -> float:
 	return density
 
 
-static func is_sentinel(kind: int) -> bool:
-	return kind == SENTINEL_OUT_OF_ARRAY or kind == SENTINEL_OUT_OF_BOUNDS
-
-
 static func is_ramp(ground_kind: int) -> bool:
 	return RAMPS.has(ground_kind)
 
@@ -129,3 +125,40 @@ static func ramp_open_side(ground_kind: int) -> Vector2i:
 	if not is_ramp(ground_kind): return Vector2i.ZERO
 	var ramp: Dictionary = RAMPS[ground_kind]
 	return -ramp.downhill if ramp.down else ramp.downhill
+
+
+static func is_sentinel(kind: int) -> bool:
+	return kind == SENTINEL_OUT_OF_ARRAY or kind == SENTINEL_OUT_OF_BOUNDS
+
+
+static func is_passable(top_kind: int, ground_kind: int) -> bool:
+	if is_sentinel(top_kind) or is_sentinel(ground_kind):
+		return false
+	
+	match top_kind: # allowlist
+		TileKind.TOP.OPEN: pass
+		_: return false
+	match ground_kind: # blocklist
+		TileKind.GROUND.HOLE: return false
+		_: pass
+	
+	return true
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

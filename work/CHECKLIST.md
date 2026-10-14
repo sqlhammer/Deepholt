@@ -124,7 +124,7 @@ ladder work.
 
 ## D. Holes, objects and the ladder
 
-*Mode: ask before starting.*
+*Mode: Educational Assistant* — lessons in `work/lesson/D-00-index.md` onward.
 
 - [x] **Decide:** what a ladder is in the data. An object on the lower level, under a hole
   (ground `HOLE`) on the level above; a hole with no ladder is dead
@@ -134,12 +134,15 @@ ladder work.
 - [ ] Passability reads ground: a `HOLE` can't be walked onto (trap 4).
 - [ ] Test: an actor can't walk onto a hole, from any side.
 - [ ] Art: a hole cell for ground `HOLE`; `F3` names it.
-- [ ] **Decide:** the object gatekeeper's name, and autoload or scene node (D-090, open).
-- [ ] **Decide:** the per-level object store: keyed how, one or many per tile, where it lives.
-- [ ] **Decide:** how a ladder is authored: an object grid or character in the prefab, or
-  placed by the recipe.
-- [ ] **Decide:** which side answers "is this climbable?": the hole tile, the ladder object, or
-  both.
+- [x] **Decide:** the object gatekeeper's name, and autoload or scene node (D-090, open).
+  An `Objects` autoload ([D-100](../docs/design-decisions.md)).
+- [x] **Decide:** the per-level object store: keyed how, one or many per tile, where it lives.
+  `LevelObjects` on each `Level`, by tile, several per tile; objects are plain data (D-100).
+- [x] **Decide:** how a ladder is authored. A fourth prefab grid, `objects`: `.` none, `L` ladder,
+  `0` anchor (D-100).
+- [x] **Decide:** which side answers "is this climbable?". A `Ladder` rule, like `Ramp`, reading
+  the hole from tiles and the ladder from the object store (D-100).
+- [x] **Decide:** the hole's ground grid character. `h` (Derik, 2026-10-12).
 - [ ] The object store announces changes; presentation draws objects for the shown depth only.
 - [ ] Test: an object on a depth that isn't shown isn't drawn.
 
@@ -173,11 +176,14 @@ object (no sprite, no link across levels), so it settles the store's shape befor
 
 ## E. Climbing
 
-*Mode: ask before starting.*
+*Mode: Educational Assistant* — `work/lesson/E-01-interact-and-climb.md`.
 
-- [ ] **Decide:** how an actor uses a ladder: from beside the hole above, and from the ladder's
-  tile below; interact or walk into it; keyboard binding (trap 5).
-- [ ] **Decide:** which tile beside the hole climbing up arrives on (D-089).
+- [x] **Decide:** how an actor uses a ladder: from beside the hole above, and from the ladder's
+  tile below; interact or walk into it; keyboard binding (trap 5). Interact (`E` / A): facing the
+  hole from above, standing on the ladder below ([D-101](../docs/design-decisions.md)).
+- [x] **Decide:** which tile beside the hole climbing up arrives on (D-089). The faced side if open,
+  else the first open neighbor N, E, S, W (D-101).
+- [ ] An `interact` action (`E`, gamepad A), sent to the actor as a one-shot event.
 - [ ] Use the ladder from beside the hole and arrive on −2 at the hole's `(x, y)`, `F3`
   agreeing. [3]
 - [ ] Climb up and arrive beside the hole, on open floor. [3]
