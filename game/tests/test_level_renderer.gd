@@ -199,3 +199,24 @@ func test_the_atlas_has_a_cell_for_every_atlas_cell() -> void:
 	assert_eq(atlas.get_width(), cell_count * TileSpace.TILE_PIXELS,
 		"one 16 px cell per AtlasCell entry")
 	assert_eq(atlas.get_height(), TileSpace.TILE_PIXELS, "a single row")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

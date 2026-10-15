@@ -81,17 +81,16 @@ func test_ore_under_anything_but_minable_rock_fails_to_load() -> void:
 	assert_false(ok, "ore over anything but minable rock should fail the load")
 
 
-# A tile the top grid never mentions defaults to minable rock, which is what
-# ore requires -- so ore there is legal rather than a failure. Without this,
-# authoring an ore pocket would force the top grid to be filled out around it.
-func test_ore_over_a_tile_the_top_grid_never_mentions_is_allowed() -> void:
+# Every tile a prefab mentions, it mentions on all three layers (D-102).
+# Ore over a tile the top grid leaves out used to be legal, because the
+# default happened to be rock; now the prefab fails to load first.
+func test_ore_over_a_tile_the_top_grid_never_mentions_fails_to_load() -> void:
 	var level_bounds = LevelBound.new(1, "Unit Test", 1)
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
 	var ok: bool = _stamp(tiles, "r0", "0", "c0")
 
-	assert_true(ok, "ore over an unmentioned top tile should load")
-	assert_eq(tiles.get_top(-1, 0), TileKind.TOP.MINABLE_ROCK, "that tile defaulted to minable rock")
-	assert_eq(tiles.get_ore(-1, 0), TileKind.ORE.COPPER, "and it carries the copper")
+	assert_false(ok, "the top grid doesn't cover (-1, 0), so the prefab is rejected")
+	assert_eq(tiles.get_ore(-1, 0), TileKind.ORE.NONE, "and nothing was written")
 
 
 func test_failed_load_does_not_mutate_tiles() -> void:
@@ -145,41 +144,61 @@ func test_ore_grid_two_anchor_markers_fails_to_load() -> void:
 	assert_false(ok, "an ore grid with two anchor markers should fail the load")
 
 
-# A short/ragged row leaves some in-bounds tiles unmentioned by any grid.
-# Those default to minable rock with no ore, rather than failing the load.
-# Top and ore grids below are both short on their last row, so (0, 1) and
-# (1, 1) are never written by the loader.
-func test_missing_tiles_default_to_minable_rock_without_ore() -> void:
+# A prefab may be jagged, as long as all three layers share the shape
+# exactly (D-102). Here every grid's last row is one tile long, so (0, 1)
+# and (1, 1) are mentioned by no grid, and keep the level's default.
+func test_a_jagged_prefab_loads_when_every_layer_shares_its_shape() -> void:
 	# Radius 2: the 3 x 3 grid's corners, (+-1, +-1), are outside radius 1.
 	var level_bounds = LevelBound.new(1, "Unit Test", 2)
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
 	var ok: bool = _stamp(tiles,
-		"rrr\nr0\nrrr",
+		"ddd\nd0d\nd",
 		".#.\n#0#\n.",
 		"...\n.0.\n.")
 
-	assert_true(ok, "a short row should default missing tiles, not fail the load")
-	assert_eq(tiles.get_top(-1, 1), TileKind.TOP.OPEN, "a tile the grid did specify keeps its value")
-	assert_eq(tiles.get_top(0, 1), TileKind.TOP.MINABLE_ROCK, "a missing tile defaults to minable rock")
-	assert_eq(tiles.get_top(1, 1), TileKind.TOP.MINABLE_ROCK, "a missing tile defaults to minable rock")
-	assert_eq(tiles.get_ore(0, 1), TileKind.ORE.NONE, "a missing tile carries no ore")
-	assert_eq(tiles.get_ore(1, 1), TileKind.ORE.NONE, "a missing tile carries no ore")
-	assert_eq(tiles.get_ground(1, 0), TileKind.GROUND.ROCK, "a missing ground tile is a rock")
+	assert_true(ok, "a jagged shape shared by every layer loads")
+	assert_eq(tiles.get_top(-1, 1), TileKind.TOP.OPEN, "a tile the grids specify keeps its value")
+	assert_eq(tiles.get_ground(-1, 1), TileKind.GROUND.DIRT, "on every layer")
 
 
-# Grids are aligned to each other by their markers, not by position in the
-# string -- so layers of different shapes still line up. Here the top grid has
-# a leading column the ore grid does not, putting the same tile at a different
-# raw string index in each.
-func test_layers_of_different_shapes_align_by_their_markers() -> void:
+# Tiles a prefab doesn't mention at all keep the level's default on every
+# layer: a prefab is smaller than the level (D-062, kept by D-102).
+func test_tiles_outside_the_prefab_keep_the_level_default() -> void:
+	var level_bounds = LevelBound.new(1, "Unit Test", 2)
+	var tiles: LevelTiles = LevelTiles.new(level_bounds)
+	_stamp(tiles, "ddd\nd0d\nd", ".#.\n#0#\n.", "...\n.0.\n.")
+
+	for tile: Vector2i in [Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 0), Vector2i(0, -2)]:
+		assert_eq(tiles.get_top(tile.x, tile.y), TileKind.TOP.MINABLE_ROCK, "%s top is the default" % tile)
+		assert_eq(tiles.get_ground(tile.x, tile.y), TileKind.GROUND.ROCK, "%s ground is the default" % tile)
+		assert_eq(tiles.get_ore(tile.x, tile.y), TileKind.ORE.NONE, "%s has no ore" % tile)
+
+
+func test_a_short_row_on_one_layer_fails_to_load() -> void:
 	var level_bounds = LevelBound.new(1, "Unit Test", 2)
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
 	var ok: bool = _stamp(tiles,
 		"rrr\nr0r\nrrr",
-		"..#\n.0#\n..#",
-		"0c")
+		".#.\n#0#\n.",
+		"...\n.0.\n...")
 
-	assert_true(ok, "grids of different shapes should align by marker")
+	assert_false(ok, "the top grid's last row is short, so two tiles are half-described")
+	assert_eq(tiles.get_top(-1, -1), TileKind.TOP.MINABLE_ROCK, "and nothing was written")
+
+
+# Grids are aligned to each other by their markers, not by position in the
+# string. Here every grid covers the same tiles (D-102), but the ore grid is
+# written with a blank first line, so the same tile sits at a different raw
+# string index in each. Measured from the markers, they still line up.
+func test_layers_align_by_their_markers_not_their_strings() -> void:
+	var level_bounds = LevelBound.new(1, "Unit Test", 2)
+	var tiles: LevelTiles = LevelTiles.new(level_bounds)
+	var ok: bool = _stamp(tiles,
+		"rr\n0r",
+		".#\n0#",
+		"\n..\n0c")
+
+	assert_true(ok, "the same tiles, written differently, align by marker")
 	assert_eq(tiles.get_top(1, 0), TileKind.TOP.MINABLE_ROCK, "east of the anchor is minable rock")
 	assert_eq(tiles.get_ore(1, 0), TileKind.ORE.COPPER, "and the ore grid put its copper in that tile")
 	assert_eq(tiles.get_ore(0, 0), TileKind.ORE.NONE, "the anchor itself carries no ore")
@@ -262,3 +281,65 @@ func test_ore_in_minable_dirt_fails_to_load() -> void:
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
 	var ok: bool = _stamp(tiles, "d0", "%0", "c0")
 	assert_false(ok, "ore may only sit in minable rock, not dirt (D-056)")
+
+
+# --- _grid_coords_align_and_are_complete ---
+# True when the three grids, each measured from its own anchor marker,
+# cover exactly the same coordinates. Built from real grid strings so
+# the coordinates are what stamp() would compare.
+
+func _aligned(ground: String, top: String, ore: String) -> bool:
+	return LevelGridLoader._grid_coords_align_and_are_complete(
+		LevelGridLoader._to_anchored_tiles(ground),
+		LevelGridLoader._to_anchored_tiles(top),
+		LevelGridLoader._to_anchored_tiles(ore))
+
+
+func test_grids_of_the_same_shape_align() -> void:
+	assert_true(_aligned("rrr\nr0r\nrrr", ".#.\n#0#\n.#.", "...\n.0c\n..."),
+		"three 3 x 3 grids with the marker in the middle")
+
+
+func test_alignment_ignores_what_the_characters_are() -> void:
+	assert_true(_aligned("dhd\nd0d", "#.#\n%0%", "c.c\n.0."),
+		"only coordinates are compared, not contents")
+
+
+func test_the_same_shape_written_with_different_padding_aligns() -> void:
+	# Trailing whitespace is stripped when a grid is read, so a carriage
+	# return or a trailing space doesn't add a column.
+	assert_true(_aligned("r0\r\nrr", " 0 \n##", ".0\n.."),
+		"trailing whitespace is not a column")
+
+
+func test_a_short_row_in_one_grid_does_not_align() -> void:
+	assert_false(_aligned("rrr\nr0r\nrrr", ".#.\n#0#\n.", "...\n.0.\n..."),
+		"the top grid's last row is short, so it misses two coordinates")
+
+
+func test_an_extra_column_in_one_grid_does_not_align() -> void:
+	assert_false(_aligned("r0r", "#0#", ".0.."),
+		"the ore grid covers one coordinate the others don't")
+
+
+# The size check alone can't catch this: every grid has three tiles,
+# but the top grid's marker is on its left edge, so its tiles are at
+# x 0..2 while ground's are at x -1..1.
+func test_grids_the_same_size_but_shifted_do_not_align() -> void:
+	assert_false(_aligned("r0r", "0##", ".0."),
+		"same count, different coordinates")
+
+
+func test_markers_line_grids_up_even_when_their_strings_differ() -> void:
+	# The top grid has a leading empty line, but measured from its own
+	# marker it covers the same three tiles as the others.
+	assert_true(_aligned("r0r", "\n#0#", ".0."),
+		"coordinates are measured from each grid's marker, not its first line")
+
+
+func test_one_empty_grid_does_not_align() -> void:
+	assert_false(_aligned("r0r", "#0#", ""), "an empty ore grid covers nothing")
+
+
+func test_three_empty_grids_align() -> void:
+	assert_true(_aligned("", "", ""), "nothing against nothing")

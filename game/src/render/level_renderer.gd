@@ -25,6 +25,7 @@ enum AtlasCell {
 	RAMP_UP_S,
 	RAMP_DOWN_W,
 	RAMP_UP_W,
+	HOLE,
 }
 
 
@@ -158,6 +159,7 @@ func _ground_cells() -> PackedInt32Array:
 	cells[TileKind.GROUND.RAMP_UP_S] = AtlasCell.RAMP_UP_S
 	cells[TileKind.GROUND.RAMP_DOWN_W] = AtlasCell.RAMP_DOWN_W
 	cells[TileKind.GROUND.RAMP_UP_W] = AtlasCell.RAMP_UP_W
+	cells[TileKind.GROUND.HOLE] = AtlasCell.HOLE
 	cells[TileKind.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.OUTSIDE_LEVEL
 	return cells
 

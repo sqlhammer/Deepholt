@@ -1970,3 +1970,138 @@ step off, and is deterministic when you can't.
 *Considered:* walking into the hole to climb down; a ladder that blocks like a wall (then `(x, y)`
 would change both ways); a fixed, authored exit side per ladder; always the first open neighbor;
 `F` or Space for interact (Space is likely wanted for dodge).
+
+---
+
+### D-102 — A prefab's ground, top and ore grids must cover exactly the same tiles
+**Decided** (by Derik, slice 002 section D). Supersedes the part of
+[D-062](#d-062--a-prefab-is-a-partial-fill-unmentioned-tiles-keep-the-levels-default) that let a
+prefab's layer grids differ in shape, with a tile mentioned by one grid and not another taking
+the level's default on the layers that don't mention it.
+
+- **Every tile a prefab mentions, it mentions on all three layers.** Measured from each grid's
+  own `0` marker, the ground, top and ore grids must cover the same set of coordinates. If they
+  don't, the prefab fails to load (all or nothing,
+  [D-055](#d-055--malformed-grids-are-a-hard-failure)).
+- **Still allowed:** a prefab smaller than the level, where every tile it doesn't mention keeps
+  the level's default on every layer (D-062's partial fill, unchanged); and a jagged or irregular
+  shape, as long as the three grids share it exactly.
+- **The `objects` grid is not part of this rule.** It is sparse by design
+  ([D-100](#d-100--objects-an-objects-autoload-a-per-level-store-an-object-grid-and-a-ladder-rule)):
+  a tile it doesn't mention has no object.
+
+*Why:* there is no reason to author a tile on one layer and leave its other layers to chance. A
+tile half-described is a tile whose meaning depends on a default the author didn't see, as with
+"ore over a top the grid never mentions", which was legal only because the default happened to
+be rock. Requiring every layer makes each authored tile say what it is, and lets the content
+checks (ore only in rock, holes only under open floor) read all three layers without guessing.
+
+*Consequences:* checks that allowed for an unmentioned top (ore over it was legal; a hole under
+it was rejected) no longer meet that case, since the prefab fails to load first.
+`surface_start`'s ore grid had three short rows and was padded with `.`.
+
+---
+
+### D-103 — Fixtures: names, signals, refusal reasons and the conflict table
+**Decided** (by Derik, slice 002 section D). Names and fills in
+[D-100](#d-100--objects-an-objects-autoload-a-per-level-store-an-object-grid-and-a-ladder-rule).
+
+- **A placed thing is a `Fixture`:** plain data, with a kind (`ObjectKind.OBJECT.*`), a tile
+  (`WorldPos`) and an id.
+- **Each level's store is `LevelFixtures`** (renamed from D-100's `LevelObjects`). It emits
+  `fixture_changed(fixture: Fixture, added: bool)` for every change, in both directions.
+- **The gatekeeper stays the `Objects` autoload**, and `ObjectKind` keeps its name. The container
+  is generic in case non-fixture things go through it later.
+- **Gatekeeper signals:** `place_requested(actor, kind, tile)` and
+  `remove_requested(actor, fixture_id)` in; `fixture_placed(actor, fixture)`,
+  `fixture_removed(actor, fixture)` and `request_refused(actor, verb, tile, reason)` out. `actor`
+  may be `null` when no actor is behind a change (generation, later a collapse).
+- **Refusal reasons:** `NONE`, `LEVEL_NOT_EXISTS`, `TILE_NOT_EXISTS` (outside the level),
+  `TILE_NOT_PASSABLE` (a fixture needs floor an actor could stand on), `NO_HOLE_ABOVE` (a ladder
+  needs a hole above it), `TILE_OCCUPIED` (a conflicting fixture is already there).
+- **Conflicts come from a per-kind table:** each kind lists the kinds it can't share a tile with.
+  Today: a ladder with a ladder, a world spawn with a world spawn, and a ladder with a world spawn.
+  Kinds not in conflict may share a tile.
+
+*Why:* `Fixture` names the thing, `LevelFixtures` says what it holds, and the signals mirror
+`World`'s dig flow ([D-078](#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime)). A
+conflict table puts "what can share a tile" in one place, per kind, ready for buildings.
+
+*Considered:* `PlacedObject`, `WorldObject` or `Placeable` for the data; renaming the gatekeeper
+to `Fixtures` and `ObjectKind` to `FixtureKind`; separate `fixture_added`/`fixture_removed`
+signals; a refusal signal per verb; functions instead of request signals; "same kind only" or
+"visible fixtures exclude each other" as the occupancy rule.
+
+---
+
+### D-104 — Fixture ids, removal misses, and how prefabs stamp fixtures
+**Decided** (by Derik, slice 002 section D). Continues
+[D-103](#d-103--fixtures-names-signals-refusal-reasons-and-the-conflict-table).
+
+- **A seventh refusal reason, `FIXTURE_NOT_EXISTS`:** a removal naming an id no fixture has
+  (already removed, or never existed) is refused, with a `null` tile.
+- **The id counter lives on `Objects`,** handed out by `Objects.next_id()`, counting up from 1.
+  Generation, which writes into stores directly
+  ([D-091](#d-091--spawn-points-are-objects-the-new-game-spawn-is-placed-at-random-near-the-start)),
+  takes its ids from there too. Ids are unique across the world. **The counter is reset when a
+  new world is generated**, at the start of `LevelGenerator.generate_levels`, so the same seed
+  gives the same ids even within one process (tests build many worlds). Saved with the world in
+  slice 004.
+- **`LevelGridLoader.stamp` gains an optional `fixtures: LevelFixtures = null` parameter.**
+  Existing callers keep working; the generator passes the level's store. A prefab with fixtures
+  stamped without a store is an error, not a silent drop.
+- **An empty `objects` grid means no fixtures, and needs no `0` marker.** A non-empty one must
+  have exactly one `0`, like the other grids.
+
+*Why:* one source of ids whichever way a fixture is placed; deterministic ids for the same seed;
+no churn in the many callers of `stamp`; existing prefabs unchanged.
+
+*Considered:* silently ignoring a removal miss (the requester never learns; the gap D-080 closed
+for digs); reusing `TILE_NOT_EXISTS`; the counter on `World` (pulls fixtures back in, against
+[D-090](#d-090--objects-get-their-own-gatekeeper-separate-from-world)); per-level ids;
+`stamp(level, ...)`; a separate `stamp_fixtures` (breaks all-or-nothing); a required objects
+grid.
+
+---
+
+### D-105 — Ladder art, the spawn in F3, and how the world spawn is placed and found
+**Decided** (by Derik, slice 002 section D). Fills in
+[D-091](#d-091--spawn-points-are-objects-the-new-game-spawn-is-placed-at-random-near-the-start)
+and [D-100](#d-100--objects-an-objects-autoload-a-per-level-store-an-object-grid-and-a-ladder-rule).
+
+- **The ladder sprite is 16 × 24**, the same height as actors
+  ([D-082](#d-082--actor-art-is-16--24-px-tiles-and-the-camera-stay-as-they-are)), rising north
+  above its tile toward the hole on the level above.
+- **`F3` shows only the world spawn** among fixtures: where it is. Ladders rely on their sprite.
+- **The spawn radius is a disc:** `dx² + dy² <= r²`, the same rule as the level bounds, so
+  "radius" means one thing across the project.
+- **The world spawn is never placed on a ramp tile.** A ramp is passable, but has walls on three
+  sides ([D-099](#d-099--a-ramp-end-can-only-be-entered-and-left-through-one-side-the-others-are-walls)).
+- **The world spawn is found by searching the levels' stores** for `WORLD_SPAWN`. Exactly one
+  must be found; none, or more than one, is reported as an error.
+
+*Why:* a taller ladder reads as going up; the spawn is the one fixture you can't see; one meaning
+for "radius"; no new player boxed in on a slope; no second copy of where the spawn is.
+
+*Considered:* a 16 × 16 ladder; a "fixtures nearby" line in `F3`, or none at all; a square radius;
+allowing ramp tiles; `Objects` remembering the spawn.
+
+---
+
+### D-106 — Interact is polled on the physics tick
+**Decided** (by Derik, slice 002 section E). Settles how
+[D-101](#d-101--a-ladder-is-used-with-interact-facing-the-hole-from-above-standing-on-it-from-below)'s
+one-shot `interact` reaches the actor. `InputHandler` checks
+`Input.is_action_just_pressed("interact")` in `_physics_process`, beside its other polls, and calls
+`actor.interact()`. It is read only there, never also in `_process`, where one press could count
+twice.
+
+*Why:* the depth change then happens on the physics tick, like movement, collision and digging,
+which all run against `current_level` on that tick. The action is still one-shot: true on exactly
+one physics frame per press.
+
+*Considered:* handling it in `_unhandled_input` (event-driven, but the depth change would land
+between physics ticks).
+
+*Not decided:* which wins when an actor on a ladder faces a hole with another ladder under it. It
+needs two ladders in neighboring shafts, which can't exist until −3 does.

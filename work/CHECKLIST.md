@@ -131,9 +131,14 @@ ladder work.
   ([D-089](../docs/design-decisions.md)).
 - [x] **Decide:** who may change objects. Their own gatekeeper, not `World`
   ([D-090](../docs/design-decisions.md)).
-- [ ] Passability reads ground: a `HOLE` can't be walked onto (trap 4).
-- [ ] Test: an actor can't walk onto a hole, from any side.
-- [ ] Art: a hole cell for ground `HOLE`; `F3` names it.
+- [x] Passability reads ground: a `HOLE` can't be walked onto (trap 4). `TileKind.is_passable`
+  (Derik), used by `TileCollision`.
+- [x] Test: an actor can't walk onto a hole, from any side. (`test_holes.gd`)
+- [x] Art: a hole cell for ground `HOLE`; `F3` names it. The readout says `ground HOLE`; the tile
+  window still prints a hole as `.`.
+- [ ] Fix: `h` under a solid or unmentioned top loads, though `_has_invalid_hole_placement` means
+  to reject it. Two tests in `test_holes.gd` fail until it does.
+- [ ] Remove the temporary `h` from `surface_start` (it breaks `test_debug_tile_readout.gd`).
 - [x] **Decide:** the object gatekeeper's name, and autoload or scene node (D-090, open).
   An `Objects` autoload ([D-100](../docs/design-decisions.md)).
 - [x] **Decide:** the per-level object store: keyed how, one or many per tile, where it lives.

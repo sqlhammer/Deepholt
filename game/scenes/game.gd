@@ -59,13 +59,13 @@ func set_user_control(actor: Actor) -> void:
 # Presentation: it needs the display rect and the game viewport's camera.
 func mouse_world_position() -> Vector2:
 	var display: TextureRect = $Display/UpscaleDisplay
-	var view: SubViewport = $GameViewport
-	var view_size: Vector2 = Vector2(view.size)
+	var _view: SubViewport = $GameViewport
+	var view_size: Vector2 = Vector2(_view.size)
 	var scale: float = minf(display.size.x / view_size.x,
 		display.size.y / view_size.y)
 	var letterbox: Vector2 = (display.size - view_size * scale) / 2.0
 	var view_px: Vector2 = (display.get_local_mouse_position() - letterbox) / scale
-	return view.get_canvas_transform().affine_inverse() * view_px
+	return _view.get_canvas_transform().affine_inverse() * view_px
 
 
 # Every level is built from its depth's recipe (D-084); the scene only

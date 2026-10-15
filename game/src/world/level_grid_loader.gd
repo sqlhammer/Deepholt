@@ -49,28 +49,30 @@ static func stamp(tiles: LevelTiles, prefab: TilePrefab, anchor: Vector2i) -> bo
 	if not are_valid_characters(prefab.ground,GROUND_CHARS): return false
 	if not are_valid_characters(prefab.top,TOP_CHARS): return false
 	if not are_valid_characters(prefab.ore,ORE_CHARS): return false
-
+	
 	# Validate anchors
 	if not _has_valid_anchor(prefab.ground): return false
 	if not _has_valid_anchor(prefab.top): return false
 	if not _has_valid_anchor(prefab.ore): return false
-
+	
 	# Grids line up with each other by their anchor markers, so every grid is
 	# read into coordinates measured from its own marker.
 	var ground_tiles: Dictionary = _to_anchored_tiles(prefab.ground)
 	var top_tiles: Dictionary = _to_anchored_tiles(prefab.top)
 	var ore_tiles: Dictionary = _to_anchored_tiles(prefab.ore)
-
+	
+	# Validate that each grid has all of the same coords
+	if not _grid_coords_align_and_are_complete(ground_tiles, top_tiles, ore_tiles): return false
 	# Validate that all ore is inside minable rock
 	if _has_ore_outside_of_minable_rock(top_tiles, ore_tiles): return false
 	# Validate that all holes don't have anything on top of them
 	if _has_invalid_hole_placement(ground_tiles,top_tiles, ore_tiles): return false
-
+	
 	# Stamp tiles
 	_stamp_layer(tiles.set_ground, ground_tiles, GROUND_CHARS, anchor)
 	_stamp_layer(tiles.set_top, top_tiles, TOP_CHARS, anchor)
 	_stamp_layer(tiles.set_ore, ore_tiles, ORE_CHARS, anchor)
-
+	
 	return true
 
 
@@ -91,11 +93,11 @@ static func _has_ore_outside_of_minable_rock(top_tiles: Dictionary, ore_tiles: D
 # A hole may only sit under TileKind.TOP.OPEN and have TileKind.ORE.NULL
 static func _has_invalid_hole_placement(ground_tiles: Dictionary, top_tiles: Dictionary, ore_tiles: Dictionary) -> bool:
 	for coord in ground_tiles:
-		if ground_tiles[coord] != "HOLE": continue
+		if ground_tiles[coord] != "h": continue # h = HOLE
 		var top_char: String = top_tiles[coord]
 		var ore_char: String = ore_tiles[coord]
 		if TOP_CHARS[top_char] == TileKind.TOP.OPEN \
-			and ORE_CHARS[ore_char] == TileKind.ORE.NULL: continue
+			and ORE_CHARS[ore_char] == TileKind.ORE.NONE: continue
 		
 		push_warning("LevelGridLoader Violation: Hole discovered with invalid top (%s) or ore (%s)." % [top_char, ore_char])
 		return true
@@ -135,6 +137,19 @@ static func _stamp_layer(setter: Callable, grid_tiles: Dictionary, characters: D
 		var x: int = coord.x + anchor.x
 		var y: int = coord.y + anchor.y
 		setter.call(x, y, characters[grid_tiles[coord]], true)
+
+
+static func _grid_coords_align_and_are_complete(ground_tiles: Dictionary, top_tiles: Dictionary, ore_tiles: Dictionary) -> bool:
+	# If sizes match, then we don't need to check each tile map
+	if not (ground_tiles.size() == top_tiles.size() and top_tiles.size() == ore_tiles.size()):
+		return false
+	
+	# Verify that all coords exist in the other grids
+	for g in ground_tiles:
+		if not (top_tiles.has(g) and ore_tiles.has(g)):
+			return false
+	
+	return true
 
 
 static func are_valid_characters(grid: String, allowed_chars: Dictionary) -> bool:

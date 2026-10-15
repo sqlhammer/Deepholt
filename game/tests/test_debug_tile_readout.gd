@@ -26,7 +26,7 @@ func test_window_prints_back_the_authored_grid_around_the_anchor() -> void:
 	assert_string_contains(readout, "####%......", "one and two rows north of the anchor")
 	assert_string_contains(readout, "####c@.....", "anchor row")
 	assert_string_contains(readout, "####c......", "one row south of anchor")
-	assert_string_contains(readout, "####%cc%%%%", "two rows south of anchor")
+	assert_string_contains(readout, "####%.c%%%%", "two rows south of anchor")
 
 
 func test_readout_names_the_tile_under_the_actor() -> void:

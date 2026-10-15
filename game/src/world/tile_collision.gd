@@ -38,7 +38,7 @@ static func _overlaps_solid(tiles: LevelTiles, box: Rect2) -> bool:
 		for x in range(first.x, last.x + 1):
 			var top_kind: int = tiles.get_top(x, y)
 			var ground_kind: int = tiles.get_ground(x, y)
-			if TileKind.is_passable(top_kind, ground_kind):
+			if not TileKind.is_passable(top_kind, ground_kind):
 				return true
 	return false
 
