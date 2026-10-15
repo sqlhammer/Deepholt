@@ -89,3 +89,44 @@ func test_minus_two_has_copper_and_minus_one_has_none() -> void:
 			if value == TileKind.ORE.COPPER: copper[depth] += 1
 	assert_eq(copper[1], 0, "Rootshelf has no copper")
 	assert_gt(copper[2], 0, "Greyseam does")
+
+
+# --- every level of the slice can be reached on foot ---
+
+# Breadth-first over tiles, with the movement rules: a tile an actor can
+# stand on, and an edge it may cross (ramps' closed sides, D-099). The
+# feet box is narrower than a tile, so tile-to-tile is enough here.
+func _reachable(level: Level, from: Vector2i, to: Vector2i) -> bool:
+	var tiles: LevelTiles = level.level_tiles
+	var seen: Dictionary[Vector2i, bool] = {from: true}
+	var queue: Array[Vector2i] = [from]
+	while not queue.is_empty():
+		var tile: Vector2i = queue.pop_front()
+		if tile == to: return true
+		for step: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var next: Vector2i = tile + step
+			if seen.has(next): continue
+			if not TileKind.is_passable(tiles.get_top(next.x, next.y), tiles.get_ground(next.x, next.y)): continue
+			if not TileCollision.edge_open(tiles, tile, next): continue
+			seen[next] = true
+			queue.append(next)
+	return false
+
+
+func test_from_the_spawn_you_can_walk_to_the_ramp() -> void:
+	var levels: Array[Level] = LevelGenerator.generate_levels(World.level_recipes)
+	for level in levels: autofree(level)
+	var spawn: Fixture = Spawning.world_spawn(levels)
+	assert_true(_reachable(levels[0], Vector2i(spawn.tile.x, spawn.tile.y), Vector2i(6, 0)),
+		"the Surface ramp (6, 0) is reachable from the spawn %s" % spawn.tile)
+
+
+func test_from_the_ramp_on_minus_one_you_can_walk_beside_the_hole() -> void:
+	var level: Level = _level(1)
+	assert_true(_reachable(level, Vector2i(6, 0), LADDER + Vector2i(0, 1)),
+		"from the up end of the ramp to (14, -1), beside the hole")
+
+
+func test_from_the_ladder_on_minus_two_you_can_walk_to_its_edge() -> void:
+	var level: Level = _level(2)
+	assert_true(_reachable(level, LADDER, Vector2i(81, 0)), "from the ladder to the end of the corridor")
