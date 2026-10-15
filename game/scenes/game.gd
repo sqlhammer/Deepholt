@@ -10,7 +10,7 @@ var view: View
 func _ready() -> void:
 	_spawn_levels()
 	_create_view()
-	_spawn_player("DefaultName", 0)
+	_spawn_player("DefaultName")
 
 
 func _create_view() -> void:
@@ -76,19 +76,35 @@ func _spawn_levels() -> void:
 		$Levels.add_child(level)
 
 
-func _spawn_player(_name: String, _depth: int = 0) -> void:
-	var level: Level = World.get_level_by_depth(_depth)
-	if not level: 
-		push_error("Level (%d) not found. Could not spawn player." % _depth)
+# A new player appears at the world's default spawn, or the nearest
+# free tile to it (D-091). Players have no spawn points of their own
+# yet; beds bring them.
+func _spawn_player(_name: String) -> void:
+	var tile: WorldPos = Spawning.spawn_tile_for(null, _levels(), _players())
+	if tile == null:
+		push_error("Nowhere to spawn %s." % _name)
 		return
-	
-	_create_player(_name, level)
+
+	_create_player(_name, tile)
 
 
-func _create_player(_name: String, _level: Level) -> Actor:
+func _levels() -> Array[Level]:
+	var levels: Array[Level] = []
+	for child in $Levels.get_children():
+		if child is Level: levels.append(child)
+	return levels
+
+
+func _players() -> Array[Actor]:
+	var actors: Array[Actor] = []
+	for child in $GameViewport/Actors/Players.get_children():
+		if child is Actor: actors.append(child)
+	return actors
+
+
+func _create_player(_name: String, tile: WorldPos) -> Actor:
 	# Create player
-	var actor_spawn_world_pos: WorldPos = WorldPos.new(_level.anchor.x, _level.anchor.y, _level.depth)
-	var actor: Actor = Actor.create(Global.actor_packed_scene, _name, actor_spawn_world_pos)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, _name, tile)
 	actor.add_to_group("players")
 	$GameViewport/Actors/Players.add_child(actor)
 	view.track(actor)
