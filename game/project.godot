@@ -24,6 +24,7 @@ config/icon="res://icon.svg"
 Global="*uid://dhr1etdbio5wj"
 World="*uid://duqr4368qma7m"
 TilePrefabRegistry="*res://src/world/tile_prefab_registry.gd"
+Objects="*res://src/world/objects.gd"
 
 [debug]
 

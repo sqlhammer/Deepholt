@@ -6,6 +6,7 @@ var depth: int:
 	get: return _depth
 var level_seed: int
 var level_tiles: LevelTiles
+var level_fixtures: LevelFixtures
 var anchor: Vector2i = Vector2i.ZERO
 
 
@@ -21,6 +22,7 @@ func setup(p_depth: int, p_prefab: TilePrefab = null, p_anchor: Vector2i = Vecto
 	self.name = "Level%d" % depth
 
 	level_tiles = LevelTiles.new(World.level_recipes.get_bounds(depth))
+	level_fixtures = LevelFixtures.new()
 	if p_prefab != null:
 		LevelGridLoader.stamp(level_tiles, p_prefab, p_anchor)
 
