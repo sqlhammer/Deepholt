@@ -49,12 +49,6 @@ func set_user_control(actor: Actor) -> void:
 	# Attach debug overlay
 	$DebugOverlay.watch(actor)
 
-	# Throwaway: '-' / '=' change depth until ramps and
-	# ladders do (slice 002, section B)
-	var debug_depth: DebugDepth = DebugDepth.new()
-	debug_depth.setup(actor)
-	add_child(debug_depth)
-
 
 # Where the mouse points in world space (level pixels).
 # Presentation: it needs the display rect and the game viewport's camera.

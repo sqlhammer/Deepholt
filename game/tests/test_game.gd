@@ -221,10 +221,3 @@ func test_the_screen_follows_the_player_down_a_level() -> void:
 	var expected: int = LevelRenderer.level_width(World.get_level_by_depth(1).level_tiles)
 	assert_eq(top.get_width(), expected, "the renderer shows -1, %d tiles wide" % expected)
 	assert_eq(_game.view.shown_depth, 1, "and the view says -1")
-
-
-func test_the_player_has_a_debug_depth_key() -> void:
-	var found: bool = false
-	for child in _game.get_children():
-		if child is DebugDepth and child.actor == _actors()[0]: found = true
-	assert_true(found, "'-' / '=' drive the player's depth")

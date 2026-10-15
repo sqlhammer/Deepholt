@@ -146,26 +146,3 @@ func test_a_dig_on_one_depth_changes_only_that_depth() -> void:
 	for depth in [0, 2]:
 		assert_eq(World.get_level_by_depth(depth).level_tiles.get_top(tile.x, tile.y),
 			TileKind.TOP.MINABLE_ROCK, "untouched at depth %d" % depth)
-
-
-# --- the debug key ---
-
-func test_the_debug_key_steps_down_and_up() -> void:
-	var actor: Actor = _actor_at(OPEN_TILE, 0)
-	var debug_depth: DebugDepth = DebugDepth.new()
-	add_child_autofree(debug_depth)
-	debug_depth.setup(actor)
-	assert_true(debug_depth.step(1), "down to -1")
-	assert_eq(actor.depth, 1, "on -1")
-	assert_true(debug_depth.step(-1), "back up")
-	assert_eq(actor.depth, 0, "on the Surface")
-
-
-func test_the_debug_key_refuses_a_blocked_landing() -> void:
-	var actor: Actor = _actor_at(OPEN_TILE, 0)
-	World.get_level_by_depth(1).level_tiles.set_top(OPEN_TILE.x, OPEN_TILE.y, TileKind.TOP.MINABLE_ROCK)
-	var debug_depth: DebugDepth = DebugDepth.new()
-	add_child_autofree(debug_depth)
-	debug_depth.setup(actor)
-	assert_false(debug_depth.step(1), "refused")
-	assert_eq(actor.depth, 0, "still on the Surface")
