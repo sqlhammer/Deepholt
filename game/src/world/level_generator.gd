@@ -93,11 +93,52 @@ static func _tiles_with_ground(tiles: LevelTiles, kind: int) -> Array[Vector2i]:
 	return found
 
 
+# The level's one source of randomness is made here, once, and handed
+# to each step that needs it in a fixed order. Two steps each calling
+# rng_for() would get the same sequence and correlated results.
 static func generate_level(recipe: LevelRecipe) -> Level:
 	var level: Level = Global.level_packed_scene.instantiate()
 	level.setup(recipe.bound.depth)
+	var rng: RandomNumberGenerator = rng_for(level)
 	apply_fixed_placements(level, recipe)
+	place_world_spawns(level, recipe, rng)
 	return level
+
+
+# For a placement with a spawn radius, places the world's default spawn
+# (D-091, D-105): a random tile within the radius (a disc, like the
+# level bounds) of the placement's anchor, where an actor could stand,
+# that isn't a ramp, and that the fixture rules allow. Candidates are
+# gathered row by row, then column, so the same seed picks the same
+# tile. No candidate is reported, and nothing is placed.
+static func place_world_spawns(level: Level, recipe: LevelRecipe, rng: RandomNumberGenerator) -> void:
+	for placement: PrefabPlacement in recipe.fixed_placements:
+		if placement.spawn_radius <= 0: continue
+		var candidates: Array[Vector2i] = spawn_candidates(level, placement.anchor, placement.spawn_radius)
+		if candidates.is_empty():
+			push_error("No tile for the world spawn within %d of %s at depth %d." % [
+				placement.spawn_radius, placement.anchor, level.depth])
+			continue
+		var tile: Vector2i = candidates[rng.randi_range(0, candidates.size() - 1)]
+		level.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.WORLD_SPAWN,
+			WorldPos.new(tile.x, tile.y, level.depth), Objects.next_id()))
+
+
+static func spawn_candidates(level: Level, center: Vector2i, radius: int) -> Array[Vector2i]:
+	var candidates: Array[Vector2i] = []
+	var tiles: LevelTiles = level.level_tiles
+	for dy in range(-radius, radius + 1):
+		for dx in range(-radius, radius + 1):
+			if dx * dx + dy * dy > radius * radius: continue
+			var tile: Vector2i = center + Vector2i(dx, dy)
+			if TileKind.is_ramp(tiles.get_ground(tile.x, tile.y)): continue
+			# Generation has no level above at hand; a world spawn
+			# doesn't need one.
+			var problem: int = Objects.placement_problem(ObjectKind.OBJECT.WORLD_SPAWN,
+				tile, tiles, level.level_fixtures, null)
+			if problem == Objects.REFUSAL_REASON.NONE:
+				candidates.append(tile)
+	return candidates
 
 
 # Stamps each of the recipe's fixed prefabs. A recipe naming a prefab
