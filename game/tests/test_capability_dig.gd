@@ -247,3 +247,17 @@ func test_dig_is_complete_exactly_at_density() -> void:
 	assert_false(_dig._is_dig_complete(), "just under is not done")
 	_dig.progress = 5.0
 	assert_true(_dig._is_dig_complete(), "reaching density is done")
+
+
+# A depth change mid-dig: the same (x, y) on another level is a
+# different target (WorldPos compares depth), so progress starts over
+# rather than carrying a half-dug tile across levels (D-072).
+func test_a_depth_change_mid_dig_resets_progress() -> void:
+	var below: Level = Global.level_packed_scene.instantiate()
+	below.setup(1)
+	add_child_autofree(below)
+	_dig.dig(TICK, SPEED, WorldPos.new(ROCK_TILE.x, ROCK_TILE.y, 0), _level)
+	_dig.dig(TICK, SPEED, WorldPos.new(ROCK_TILE.x, ROCK_TILE.y, 0), _level)
+	assert_almost_eq(_dig.progress, 2.0, 0.001, "two ticks on the Surface")
+	_dig.dig(TICK, SPEED, WorldPos.new(ROCK_TILE.x, ROCK_TILE.y, 1), below)
+	assert_almost_eq(_dig.progress, 1.0, 0.001, "one tick on -1: started over")
