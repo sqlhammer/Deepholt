@@ -11,7 +11,8 @@ var _overlay: CanvasLayer
 
 func before_each() -> void:
 	var level: Level = preload("res://src/world/level.tscn").instantiate()
-	level.setup(0, TilePrefabRegistry.get_prefab(&"surface_start"))
+	level.setup(0)
+	LevelGridLoader.stamp(level.level_tiles, TilePrefabRegistry.get_prefab(&"surface_start"), Vector2i.ZERO)
 	add_child_autofree(level)
 
 	_overlay = preload("res://src/debug/debug_overlay.tscn").instantiate()
