@@ -104,7 +104,10 @@ def instrument(root):
 							probe_id = "%s:%d" % (rel, number)
 							probes[probe_id] = text
 							out.append("\t" * indent + 'CovProbe.h("%s")' % probe_id)
-						if text.startswith("match ") and text.endswith(":"):
+						# Ignore a trailing comment: `match kind: # note`
+						# is still a match, and its arms are patterns.
+						code = STR_SQ.sub("''", STR_DQ.sub('""', text)).split("#", 1)[0].rstrip()
+						if code.startswith("match ") and code.endswith(":"):
 							match_stack.append(indent)
 					out.append(line)
 					if text:
