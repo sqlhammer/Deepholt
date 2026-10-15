@@ -12,12 +12,37 @@ extends RefCounted
 
 
 static func generate_levels(recipes: LevelRecipeTable) -> Array[Level]:
+	# A new world: fixture ids start again, so the same seed gives the
+	# same ids even when one process builds several worlds (D-104).
+	Objects.reset_ids()
 	var levels: Array[Level] = []
 	for recipe: LevelRecipe in recipes.rows:
 		levels.append(generate_level(recipe))
-	for problem: String in ramp_problems(levels):
+	for problem: String in ramp_problems(levels) + ladder_problems(levels):
 		push_error(problem)
 	return levels
+
+
+# Every ladder needs a hole directly above it, on the level one depth up
+# (D-089). A hole with no ladder is legal. Checked once every level is
+# built, since the two ends are in different prefabs. A ladder outside
+# the upper level's bounds reads a sentinel there, not a hole, so it is
+# reported the same way.
+static func ladder_problems(levels: Array[Level]) -> Array[String]:
+	var by_depth: Dictionary[int, Level] = {}
+	for level: Level in levels:
+		by_depth[level.depth] = level
+
+	var problems: Array[String] = []
+	for level: Level in levels:
+		for ladder: Fixture in level.level_fixtures.of_kind(ObjectKind.OBJECT.LADDER):
+			var where: String = "Ladder at (%d, %d) depth %d" % [ladder.tile.x, ladder.tile.y, level.depth]
+			var above: int = level.depth - 1
+			if not by_depth.has(above):
+				problems.append("%s has no level above it." % where)
+			elif by_depth[above].level_tiles.get_ground(ladder.tile.x, ladder.tile.y) != TileKind.GROUND.HOLE:
+				problems.append("%s has no hole above it at depth %d." % [where, above])
+	return problems
 
 
 # Every ramp end needs its other end at the same (x, y) one level
@@ -88,7 +113,7 @@ static func apply_fixed_placements(level: Level, recipe: LevelRecipe) -> bool:
 				recipe.bound.depth, placement.prefab_id])
 			all_placed = false
 			continue
-		if not LevelGridLoader.stamp(level.level_tiles, prefab, placement.anchor):
+		if not LevelGridLoader.stamp(level.level_tiles, prefab, placement.anchor, level.level_fixtures):
 			push_error("Prefab '%s' failed to stamp at depth %d." % [
 				placement.prefab_id, recipe.bound.depth])
 			all_placed = false
