@@ -8,4 +8,6 @@ extends RefCounted
 const OBJECT: Dictionary = {
 	"NULL": 0,
 	"LADDER": 1,
+	# The world's default spawn point (D-091, D-092). Invisible.
+	"WORLD_SPAWN": 2,
 }
