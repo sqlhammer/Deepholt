@@ -146,3 +146,14 @@ func test_a_dig_on_one_depth_changes_only_that_depth() -> void:
 	for depth in [0, 2]:
 		assert_eq(World.get_level_by_depth(depth).level_tiles.get_top(tile.x, tile.y),
 			TileKind.TOP.MINABLE_ROCK, "untouched at depth %d" % depth)
+
+
+func test_a_freed_actor_is_dropped_from_the_view() -> void:
+	var followed: Actor = _actor_at(OPEN_TILE, 0)
+	var other: Actor = Actor.create(Global.actor_packed_scene, "Gone", WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 0))
+	add_child(other)
+	var view: View = _view_following(followed)
+	view.track(other)
+	other.free()
+	followed.change_depth(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	assert_eq(view._tracked.size(), 1, "only the followed actor is still tracked")

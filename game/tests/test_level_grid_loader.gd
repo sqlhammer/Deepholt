@@ -431,3 +431,7 @@ func test_fixtures_without_a_store_fail_rather_than_vanish() -> void:
 	assert_false(result[0], "refused")
 	assert_push_error("has fixtures, but no fixture store was given")
 	assert_eq(result[1].get_top(2, 0), TileKind.TOP.MINABLE_ROCK, "and no tiles written")
+
+
+func test_an_objects_grid_with_no_fixtures_needs_no_store() -> void:
+	assert_true(_stamp_with_objects("0.\n..", null)[0], "a marker and dots: nothing to place")

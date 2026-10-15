@@ -116,3 +116,19 @@ func test_the_game_draws_fixtures_below_actors() -> void:
 	var viewport: Node = game.get_node("GameViewport")
 	assert_lt(viewport.get_node("FixtureRenderer").get_index(), viewport.get_node("Actors").get_index(),
 		"fixtures draw before actors, so actors stand over a ladder")
+
+
+func test_moving_to_another_level_clears_the_old_levels_sprites() -> void:
+	_levels[0].level_fixtures.add(_ladder(0, 11))
+	var pair: Array = _following_actor_at(0)
+	var renderer: FixtureRenderer = _renderer()
+	renderer.watch(pair[1])
+	assert_not_null(renderer.sprite_for(11), "the Surface's ladder is drawn")
+	pair[0].change_depth(WorldPos.new(SPOT.x, SPOT.y, 1))
+	assert_null(renderer.sprite_for(11), "and gone once -1 is shown")
+
+
+func test_a_shown_depth_with_no_level_is_an_error() -> void:
+	var renderer: FixtureRenderer = _renderer()
+	renderer._on_shown_depth_changed(View.NO_DEPTH, 99)
+	assert_push_error("No level at depth 99 to draw fixtures for.")

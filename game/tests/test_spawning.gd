@@ -92,3 +92,10 @@ func test_nowhere_free_is_an_error() -> void:
 	var level: Level = _open_level(0, [])
 	assert_null(Spawning.free_tile_near(WorldPos.new(0, 0, 0), level.level_tiles, [] as Array[Actor]), "all rock")
 	assert_push_error("No free tile within")
+
+
+func test_a_spawn_point_on_a_depth_with_no_level_is_an_error() -> void:
+	var level: Level = _open_level(0, _square(1))
+	assert_null(Spawning.spawn_tile_for(WorldPos.new(0, 0, 5), [level] as Array[Level], [] as Array[Actor]),
+		"nowhere to put it")
+	assert_push_error("No level at depth 5 to spawn on.")
