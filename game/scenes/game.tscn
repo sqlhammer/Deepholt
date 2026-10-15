@@ -7,6 +7,7 @@
 [ext_resource type="Script" uid="uid://d1wibfcu60s88" path="res://src/render/level_renderer.gd" id="3_rendr"]
 [ext_resource type="Texture2D" uid="uid://cettgrfqujiw7" path="res://src/render/tile_atlas.png" id="4_atlas"]
 [ext_resource type="Script" uid="uid://pmdnx3vjtmb4" path="res://src/render/view_camera.gd" id="5_dbpan"]
+[ext_resource type="Script" path="res://src/render/fixture_renderer.gd" id="6_fixtr"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_72uqk"]
 shader = ExtResource("2_lbhrr")
@@ -40,6 +41,9 @@ render_target_update_mode = 4
 material = SubResource("ShaderMaterial_72uqk")
 mesh = SubResource("QuadMesh_oxbm5")
 script = ExtResource("3_rendr")
+
+[node name="FixtureRenderer" type="Node2D" parent="GameViewport"]
+script = ExtResource("6_fixtr")
 
 [node name="Actors" type="Node2D" parent="GameViewport" unique_id=947800939]
 y_sort_enabled = true

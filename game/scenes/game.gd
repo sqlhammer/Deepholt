@@ -18,6 +18,7 @@ func _create_view() -> void:
 	view.name = "View"
 	add_child(view)
 	$GameViewport/LevelRenderer.watch(view)
+	$GameViewport/FixtureRenderer.watch(view)
 	$DebugOverlay.watch_view(view)
 
 
