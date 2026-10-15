@@ -197,3 +197,32 @@ func test_minable_dirt_draws_as_a_percent_sign() -> void:
 	tiles.set_top(3, 3, TileKind.TOP.MINABLE_DIRT)
 	assert_eq(_overlay._tile_char(tiles, 3, 3, WorldPos.new(0, 0, 0)), "%",
 		"minable dirt shows in the character it is authored in")
+
+
+# --- the world spawn (D-105: the one fixture F3 shows) ---
+
+func _surface() -> Level:
+	return get_tree().get_nodes_in_group("levels").filter(
+		func(level: Level) -> bool: return level.depth == 0)[0]
+
+
+func test_no_world_spawn_reads_none() -> void:
+	assert_eq(_overlay.world_spawn_text(), "none", "this test's Surface has no spawn")
+
+
+func test_the_world_spawn_is_shown_with_its_tile_and_id() -> void:
+	_surface().level_fixtures.add(Fixture.new(ObjectKind.OBJECT.WORLD_SPAWN, WorldPos.new(3, -1, 0), 7))
+	assert_eq(_overlay.world_spawn_text(), "(3, -1) depth 0 [Surface]  #7")
+
+
+func test_two_world_spawns_say_so() -> void:
+	_surface().level_fixtures.add(Fixture.new(ObjectKind.OBJECT.WORLD_SPAWN, WorldPos.new(3, -1, 0), 7))
+	_surface().level_fixtures.add(Fixture.new(ObjectKind.OBJECT.WORLD_SPAWN, WorldPos.new(4, -1, 0), 8))
+	assert_eq(_overlay.world_spawn_text(), "2 of them (expected one)")
+
+
+func test_the_world_spawn_section_appears_when_the_overlay_is_shown() -> void:
+	_surface().level_fixtures.add(Fixture.new(ObjectKind.OBJECT.WORLD_SPAWN, WorldPos.new(3, -1, 0), 7))
+	_overlay.visible = true
+	_overlay._refresh_watched_actors()
+	assert_true(_overlay.debug_text.has("World spawn"), "a World spawn section")

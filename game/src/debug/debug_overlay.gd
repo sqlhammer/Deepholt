@@ -69,6 +69,7 @@ func _get_group(title: String) -> int:
 	match title:
 		"World Seed": return 0
 		"Level Seed": return 0
+		WORLD_SPAWN_SECTION: return 0
 		"Player: ": return 10
 	
 	return group
@@ -103,6 +104,28 @@ func _refresh_watched_actors() -> void:
 			watched_actors.erase(id)
 		elif visible:
 			set_section(watched_actors[id], _tile_readout(actor.current_WorldPos))
+	if visible:
+		set_section(WORLD_SPAWN_SECTION, world_spawn_text())
+
+
+const WORLD_SPAWN_SECTION: String = "World spawn"
+
+
+# Where the world's default spawn is (D-091, D-105): the one fixture
+# players can't see. Read from the levels' stores, as spawning does.
+# Says so plainly when there isn't exactly one, rather than erroring:
+# the overlay is how you'd find that out.
+func world_spawn_text() -> String:
+	var spawns: Array[Fixture] = []
+	for level: Level in get_tree().get_nodes_in_group("levels"):
+		spawns.append_array(level.level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN))
+	if spawns.is_empty():
+		return "none"
+	if spawns.size() > 1:
+		return "%d of them (expected one)" % spawns.size()
+	var tile: WorldPos = spawns[0].tile
+	return "(%d, %d) depth %d [%s]  #%d" % [
+		tile.x, tile.y, tile.depth, World.depth_to_display(tile.depth), spawns[0].id]
 
 
 # What the world believes about the tiles around one actor, read straight out
