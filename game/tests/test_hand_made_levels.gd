@@ -39,9 +39,23 @@ func test_every_open_tile_of_the_surface_start_room_is_open_on_minus_one() -> vo
 	assert_gt(checked, 20, "the start room was actually checked")
 
 
-func test_the_ladder_spot_is_open_on_both_levels() -> void:
-	assert_true(_is_open(_level(1), LADDER), "the hole's tile on -1 is floor for now")
-	assert_true(_is_open(_level(2), LADDER), "the ladder's tile on -2 is floor")
+func test_minus_one_has_a_hole_at_the_ladder_spot() -> void:
+	var tiles: LevelTiles = _level(1).level_tiles
+	assert_eq(tiles.get_ground(LADDER.x, LADDER.y), TileKind.GROUND.HOLE, "a hole on -1")
+	assert_eq(tiles.get_top(LADDER.x, LADDER.y), TileKind.TOP.OPEN, "under an open top")
+
+
+func test_minus_two_has_a_ladder_at_the_ladder_spot() -> void:
+	var level: Level = _level(2)
+	assert_true(_is_open(level, LADDER), "the ladder stands on open floor")
+	assert_true(level.level_fixtures.has_kind_at(LADDER, ObjectKind.OBJECT.LADDER), "a ladder on -2")
+	assert_eq(level.level_fixtures.of_kind(ObjectKind.OBJECT.LADDER).size(), 1, "just the one")
+
+
+func test_the_hand_made_levels_have_no_ladder_problems() -> void:
+	var levels: Array[Level] = LevelGenerator.generate_levels(World.level_recipes)
+	for level in levels: autofree(level)
+	assert_eq(LevelGenerator.ladder_problems(levels), [] as Array[String], "the ladder has its hole")
 
 
 func test_minus_one_corridor_runs_from_the_ladder_room_to_the_edge() -> void:
