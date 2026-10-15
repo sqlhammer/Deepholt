@@ -343,3 +343,91 @@ func test_one_empty_grid_does_not_align() -> void:
 
 func test_three_empty_grids_align() -> void:
 	assert_true(_aligned("", "", ""), "nothing against nothing")
+
+
+# --- the objects grid (D-100, D-102, D-104) ---
+
+# Every tile grid covers x -1..1, y -1..1 around the marker, all open
+# floor except a hole at (1, 1).
+const OPEN_GROUND: String = "rrr\nr0r\nrrh"
+const OPEN_TOP: String = "...\n.0.\n..."
+const OPEN_ORE: String = "...\n.0.\n..."
+
+
+func _stamp_with_objects(objects: String, fixtures: LevelFixtures, top: String = OPEN_TOP) -> Array:
+	var tiles: LevelTiles = LevelTiles.new(LevelBound.new(1, "Unit Test", 4))
+	var prefab: TilePrefab = TilePrefab.from_grids(&"test_objects", OPEN_GROUND, top, OPEN_ORE, objects)
+	Objects.reset_ids()
+	var ok: bool = LevelGridLoader.stamp(tiles, prefab, Vector2i(2, 0), fixtures)
+	return [ok, tiles]
+
+
+func test_an_l_becomes_a_ladder_fixture_at_its_anchored_tile() -> void:
+	var fixtures: LevelFixtures = LevelFixtures.new()
+	var result: Array = _stamp_with_objects("0L", fixtures)
+	assert_true(result[0], "loads")
+	var ladders: Array[Fixture] = fixtures.of_kind(ObjectKind.OBJECT.LADDER)
+	assert_eq(ladders.size(), 1, "one ladder")
+	if ladders.size() == 1:
+		assert_eq(Vector2i(ladders[0].tile.x, ladders[0].tile.y), Vector2i(3, 0),
+			"(1, 0) from the marker, stamped at anchor (2, 0)")
+		assert_eq(ladders[0].tile.depth, 1, "on the level's own depth")
+
+
+func test_a_prefab_with_no_objects_grid_stamps_as_before() -> void:
+	var fixtures: LevelFixtures = LevelFixtures.new()
+	assert_true(_stamp_with_objects("", fixtures)[0], "loads")
+	assert_eq(fixtures.all().size(), 0, "and has no fixtures")
+
+
+func test_an_empty_objects_grid_needs_no_store() -> void:
+	assert_true(_stamp_with_objects("", null)[0], "no fixtures, no store needed")
+
+
+func test_a_small_objects_grid_lines_up_by_its_marker() -> void:
+	# Shaped nothing like the 3 x 3 tile grids: one line above the marker.
+	var fixtures: LevelFixtures = LevelFixtures.new()
+	assert_true(_stamp_with_objects("L\n0", fixtures)[0], "loads")
+	assert_true(fixtures.has_kind_at(Vector2i(2, -1), ObjectKind.OBJECT.LADDER),
+		"(0, -1) from the marker, at anchor (2, 0)")
+
+
+func test_fixtures_get_ids_in_row_then_column_order() -> void:
+	var fixtures: LevelFixtures = LevelFixtures.new()
+	_stamp_with_objects("L.L\n.0.\nL..", fixtures)
+	var ids: Array[int] = []
+	for tile: Vector2i in [Vector2i(1, -1), Vector2i(3, -1), Vector2i(1, 1)]:
+		ids.append(fixtures.at(tile)[0].id)
+	assert_eq(ids, [1, 2, 3] as Array[int], "top row left to right, then the next row")
+
+
+func test_a_fixture_on_a_solid_top_fails_and_writes_nothing() -> void:
+	var fixtures: LevelFixtures = LevelFixtures.new()
+	var result: Array = _stamp_with_objects("0L", fixtures, "...\n.0#\n...")
+	assert_false(result[0], "a ladder inside rock")
+	assert_eq(result[1].get_top(1, 0), TileKind.TOP.MINABLE_ROCK, "no tiles written (the default)")
+	assert_eq(result[1].get_top(2, 0), TileKind.TOP.MINABLE_ROCK, "not even the marker")
+	assert_eq(fixtures.all().size(), 0, "no fixtures")
+
+
+func test_a_fixture_on_a_hole_fails() -> void:
+	assert_false(_stamp_with_objects("0.\n.L", LevelFixtures.new())[0], "(1, 1) is a hole")
+
+
+func test_a_fixture_on_a_tile_the_tile_grids_dont_describe_fails() -> void:
+	assert_false(_stamp_with_objects("0.L", LevelFixtures.new())[0],
+		"(2, 0) is outside the tile grids: default rock")
+
+
+func test_objects_grid_markers_and_characters_are_checked() -> void:
+	assert_false(_stamp_with_objects(".L", LevelFixtures.new())[0], "no marker")
+	assert_false(_stamp_with_objects("0L0", LevelFixtures.new())[0], "two markers")
+	assert_false(_stamp_with_objects("0X", LevelFixtures.new())[0], "an unknown character")
+	assert_push_error("Found invalid character: 'X'")
+
+
+func test_fixtures_without_a_store_fail_rather_than_vanish() -> void:
+	var result: Array = _stamp_with_objects("0L", null)
+	assert_false(result[0], "refused")
+	assert_push_error("has fixtures, but no fixture store was given")
+	assert_eq(result[1].get_top(2, 0), TileKind.TOP.MINABLE_ROCK, "and no tiles written")
