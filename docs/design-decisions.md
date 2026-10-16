@@ -2105,3 +2105,27 @@ between physics ticks).
 
 *Not decided:* which wins when an actor on a ladder faces a hole with another ladder under it. It
 needs two ladders in neighboring shafts, which can't exist until −3 does.
+
+---
+
+### D-107 — A hole with a ladder under it shows the ladder's top
+**Decided** (by Derik, slice 002). Extends
+[D-089](#d-089--a-ladder-is-an-object-on-the-lower-level-a-hole-is-a-ground-kind-a-ramp-is-a-tile-kind)
+and [D-105](#d-105--ladder-art-the-spawn-in-f3-and-how-the-world-spawn-is-placed-and-found).
+
+When a level is shown, the fixture renderer also looks one level down and, for each ladder there,
+draws a **ladder-top sprite** in the hole above it: the top of the ladder showing out of the drop.
+A hole with no ladder under it shows only the hole cell.
+
+*Why:* from above, a usable hole and a dead one looked the same, so a player would take every hole
+for impassable. The ladder lives on the lower level, so its top is drawn from that level's
+fixtures.
+
+*Consequences:* presentation only; no data changes. The renderer listens to the level below's
+fixture changes as well as the shown level's, so placing or removing a ladder updates the top. If a
+ladder is removed later, its top disappears and the hole reads as dead, as D-089 says.
+
+*Considered:* a separate "hole with ladder" ground kind (duplicates the ladder in the tile data,
+and the two can disagree); showing the level below through holes
+([D-011](#d-011--open-shafts-render-the-level-below), still deferred); an interact prompt, which
+only helps once you're standing there (possible later, on top of this).
