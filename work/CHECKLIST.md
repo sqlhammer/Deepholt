@@ -124,81 +124,88 @@ ladder work.
 
 ## D. Holes, objects and the ladder
 
-*Mode: Educational Assistant* — lessons in `work/lesson/D-00-index.md` onward.
+*Mode: Educational Assistant* (holes) — lessons in `work/lesson/D-00-index.md` onward. The rest
+*Agent*, on branch `slice-002-fixtures-and-ladder` (2026-10-15).
 
 - [x] **Decide:** what a ladder is in the data. An object on the lower level, under a hole
   (ground `HOLE`) on the level above; a hole with no ladder is dead
   ([D-089](../docs/design-decisions.md)).
 - [x] **Decide:** who may change objects. Their own gatekeeper, not `World`
   ([D-090](../docs/design-decisions.md)).
-- [ ] Passability reads ground: a `HOLE` can't be walked onto (trap 4).
-- [ ] Test: an actor can't walk onto a hole, from any side.
-- [ ] Art: a hole cell for ground `HOLE`; `F3` names it.
-- [x] **Decide:** the object gatekeeper's name, and autoload or scene node (D-090, open).
-  An `Objects` autoload ([D-100](../docs/design-decisions.md)).
-- [x] **Decide:** the per-level object store: keyed how, one or many per tile, where it lives.
-  `LevelObjects` on each `Level`, by tile, several per tile; objects are plain data (D-100).
-- [x] **Decide:** how a ladder is authored. A fourth prefab grid, `objects`: `.` none, `L` ladder,
-  `0` anchor (D-100).
-- [x] **Decide:** which side answers "is this climbable?". A `Ladder` rule, like `Ramp`, reading
-  the hole from tiles and the ladder from the object store (D-100).
+- [x] Passability reads ground: a `HOLE` can't be walked onto (trap 4). `TileKind.is_passable`
+  (Derik), used by `TileCollision`.
+- [x] Test: an actor can't walk onto a hole, from any side. (`test_holes.gd`)
+- [x] Art: a hole cell for ground `HOLE`; `F3` names it. The readout says `ground HOLE`; the tile
+  window still prints a hole as `.`.
+- [x] Fix: `h` under a solid or unmentioned top is rejected (Derik).
+- [x] The temporary `h` at (0, 2) in `surface_start` is kept on purpose (Derik); the `F3` test
+  expects it.
+- [x] **Decide:** the gatekeeper's name and form. An `Objects` autoload ([D-100](../docs/design-decisions.md)).
+- [x] **Decide:** the per-level store. `LevelFixtures` on each `Level`, by tile, several per tile;
+  a `Fixture` is plain data ([D-103](../docs/design-decisions.md)).
+- [x] **Decide:** how a ladder is authored. A fourth prefab grid, `objects` (D-100), sparse and
+  exempt from the alignment rule ([D-102](../docs/design-decisions.md)).
+- [x] **Decide:** which side answers "is this climbable?". A `Ladder` rule (D-100).
 - [x] **Decide:** the hole's ground grid character. `h` (Derik, 2026-10-12).
-- [ ] The object store announces changes; presentation draws objects for the shown depth only.
-- [ ] Test: an object on a depth that isn't shown isn't drawn.
+- [x] **Decide:** names, signals, refusal reasons, conflicts, ids, how `stamp` reaches the store
+  ([D-103](../docs/design-decisions.md), [D-104](../docs/design-decisions.md)).
+- [x] `Fixture` and `LevelFixtures`; every change announced as `fixture_changed` (`test_level_fixtures.gd`).
+- [x] The `Objects` gatekeeper: request and outcome signals, `placement_problem`, the conflict
+  table, `next_id()` (`test_objects.gd`).
+- [x] Prefabs' `objects` grid; `stamp(..., fixtures)` places fixtures (`test_level_grid_loader.gd`).
+- [x] Presentation draws fixtures for the shown depth only (`FixtureRenderer`, `test_fixture_renderer.gd`).
+- [x] Test: an object on a depth that isn't shown isn't drawn.
 
 ### D. Spawn points, the first object (D-091)
 
-Built straight after the object store and gatekeeper above: the spawn point is the simplest
-object (no sprite, no link across levels), so it settles the store's shape before the ladder.
-
-- [ ] `PrefabPlacement.spawn_radius` (0 = none; `surface_start` has 8) ([D-092](../docs/design-decisions.md)).
-- [ ] `ObjectKind.OBJECT.WORLD_SPAWN = 2`, pinned by the ids test (D-092).
-- [ ] Remove `Level.anchor` and `setup`'s `prefab`/`anchor` parameters; tests stamp through the
+- [x] `PrefabPlacement.spawn_radius` (0 = none; `surface_start` has 8) ([D-092](../docs/design-decisions.md)).
+- [x] `ObjectKind.OBJECT.WORLD_SPAWN = 2`, pinned by the ids test (D-092).
+- [x] Remove `Level.anchor` and `setup`'s `prefab`/`anchor` parameters; tests stamp through the
   loader or the generator (D-092).
-- [ ] The generator places the world's default spawn point: passable tiles within the radius, in
-  row-then-column order, one picked with `rng_for`. No candidate fails loudly.
-- [ ] Test: the same world seed gives the same spawn; the spawn is never on a blocked tile or a
-  hole; an all-rock radius fails loudly.
-- [ ] An actor's spawn is its own spawn point if it has one, else the world default.
-- [ ] Spreading out: a ring search for a passable tile no actor's feet box is in.
-- [ ] Test: two actors spawned together don't overlap.
-- [ ] `F3` shows spawn points.
-- [ ] The player spawns at the world default; `test_game.gd`'s spawn tests follow it (they assume
-  the anchor today).
+- [x] The generator places the world's default spawn: a disc of the radius, passable, not a ramp,
+  allowed by the fixture rules; row-then-column, one RNG per level ([D-105](../docs/design-decisions.md)).
+- [x] Test: the same world seed gives the same spawn; never on a blocked tile, a hole or a ramp;
+  no candidate fails loudly (`test_world_spawn.gd`).
+- [x] An actor's spawn is its own spawn point if it has one, else the world default (`Spawning`).
+- [x] Spreading out: a ring search for a passable tile no actor's feet box is in.
+- [x] Test: two actors spawned together don't overlap (`test_spawning.gd`, `test_game.gd`).
+- [x] `F3` shows the world spawn (D-105: only that one).
+- [x] The player spawns at the world default; `test_game.gd`'s spawn tests follow it.
 
 ### D. The ladder
 
-- [ ] Art: the ladder sprite, distinguishable at a glance. [3]
-- [ ] The hole is authored into −1 and the ladder placed on −2, at the same world `(x, y)`.
-- [ ] A ladder with no hole directly above it fails to load; so does one outside either level's
-  bounds.
-- [ ] Test: each of those load failures; and a hole with no ladder loads fine.
+- [x] Art: the ladder sprite, 16 × 24 (D-105). [3] Not yet seen in the running game.
+- [x] The hole is authored into −1 and the ladder placed on −2, at (14, −2).
+- [x] From above, a hole with a ladder under it shows the ladder's top; a dead hole doesn't
+  ([D-107](../docs/design-decisions.md), `test_fixture_renderer.gd`). Not yet seen in the game.
+- [x] A ladder with no hole directly above it, or outside the upper level's bounds, is reported at
+  load (`LevelGenerator.ladder_problems`).
+- [x] Test: each of those load failures; and a hole with no ladder loads fine.
 
 ## E. Climbing
 
-*Mode: Educational Assistant* — `work/lesson/E-01-interact-and-climb.md`.
+*Mode: Agent*, on branch `slice-002-fixtures-and-ladder`.
 
-- [x] **Decide:** how an actor uses a ladder: from beside the hole above, and from the ladder's
-  tile below; interact or walk into it; keyboard binding (trap 5). Interact (`E` / A): facing the
-  hole from above, standing on the ladder below ([D-101](../docs/design-decisions.md)).
-- [x] **Decide:** which tile beside the hole climbing up arrives on (D-089). The faced side if open,
-  else the first open neighbor N, E, S, W (D-101).
-- [ ] An `interact` action (`E`, gamepad A), sent to the actor as a one-shot event.
-- [ ] Use the ladder from beside the hole and arrive on −2 at the hole's `(x, y)`, `F3`
-  agreeing. [3]
-- [ ] Climb up and arrive beside the hole, on open floor. [3]
-- [ ] Test: climbing down needs a ladder beneath the hole; a bare hole refuses.
-- [ ] Climb back up. The corridor dug on −1 before going down is still there; up the ramp, the
-  Surface's dig is too. [4]
-- [ ] Using a ladder where there isn't one, or from the wrong side, does something deliberate.
-  [6]
-- [ ] Test: a ramp or climb is refused when the landing has been closed since load (re-checked at
-  request time). Ramp half done (`test_ramps.gd`); the ladder half remains.
-- [ ] Test: a dig in progress resets on a depth change; decide what a held dig button does on
-  arrival.
+- [x] **Decide:** how an actor uses a ladder. Interact (`E` / A): facing the hole from above,
+  standing on the ladder below ([D-101](../docs/design-decisions.md)).
+- [x] **Decide:** which tile beside the hole climbing up arrives on. The faced side if open, else
+  the first open neighbor N, E, S, W (D-101).
+- [x] An `interact` action (`E`, gamepad A), polled on the physics tick ([D-106](../docs/design-decisions.md)).
+- [x] Test: climbing down needs a ladder beneath the hole; a bare hole refuses (`test_ladder.gd`).
+- [x] Test: a ramp or climb is refused when the landing has been closed since load
+  (`test_ramps.gd`, `test_climbing.gd`).
+- [x] Test: a dig in progress resets on a depth change (`test_capability_dig.gd`).
+- [x] Test: every level of the slice is reachable on foot (`test_hand_made_levels.gd`).
+- [x] Delete the section B debug key.
+- [ ] By hand: use the ladder from beside the hole and arrive on −2 at (14, −2), `F3` agreeing. [3]
+- [ ] By hand: climb up and arrive beside the hole, on open floor. [3]
+- [ ] By hand: climb back up. The corridor dug on −1 before going down is still there; up the
+  ramp, the Surface's dig is too. [4]
+- [ ] By hand: interact where there's no ladder, or facing away, does nothing. [6]
+- [ ] **Decide, by looking:** what a held dig button does on arrival (the dig restarts, but you
+  start digging what you face).
 - [ ] **Decide, by looking:** whether climbing is instant, and if not, how long it takes. Same
   question for the ramp.
-- [ ] Delete the section B debug key.
 
 ## F. Wider
 

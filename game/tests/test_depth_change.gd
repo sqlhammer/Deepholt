@@ -148,24 +148,12 @@ func test_a_dig_on_one_depth_changes_only_that_depth() -> void:
 			TileKind.TOP.MINABLE_ROCK, "untouched at depth %d" % depth)
 
 
-# --- the debug key ---
-
-func test_the_debug_key_steps_down_and_up() -> void:
-	var actor: Actor = _actor_at(OPEN_TILE, 0)
-	var debug_depth: DebugDepth = DebugDepth.new()
-	add_child_autofree(debug_depth)
-	debug_depth.setup(actor)
-	assert_true(debug_depth.step(1), "down to -1")
-	assert_eq(actor.depth, 1, "on -1")
-	assert_true(debug_depth.step(-1), "back up")
-	assert_eq(actor.depth, 0, "on the Surface")
-
-
-func test_the_debug_key_refuses_a_blocked_landing() -> void:
-	var actor: Actor = _actor_at(OPEN_TILE, 0)
-	World.get_level_by_depth(1).level_tiles.set_top(OPEN_TILE.x, OPEN_TILE.y, TileKind.TOP.MINABLE_ROCK)
-	var debug_depth: DebugDepth = DebugDepth.new()
-	add_child_autofree(debug_depth)
-	debug_depth.setup(actor)
-	assert_false(debug_depth.step(1), "refused")
-	assert_eq(actor.depth, 0, "still on the Surface")
+func test_a_freed_actor_is_dropped_from_the_view() -> void:
+	var followed: Actor = _actor_at(OPEN_TILE, 0)
+	var other: Actor = Actor.create(Global.actor_packed_scene, "Gone", WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 0))
+	add_child(other)
+	var view: View = _view_following(followed)
+	view.track(other)
+	other.free()
+	followed.change_depth(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	assert_eq(view._tracked.size(), 1, "only the followed actor is still tracked")

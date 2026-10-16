@@ -13,6 +13,7 @@ radius = 90
 [sub_resource type="Resource" id="Placement_surface_start"]
 script = ExtResource("4_placement")
 prefab_id = &"surface_start"
+spawn_radius = 8
 
 [sub_resource type="Resource" id="Recipe_0"]
 script = ExtResource("2_recipe")

@@ -119,6 +119,15 @@ func primary_action(p_action_intent: bool) -> void:
 		else: emit_signal("action_ended", equipped.verb)
 
 
+# The interact button (D-101). Today it only uses ladders: the Ladder
+# rule says where, and the actor moves itself (D-093). Returns whether
+# anything happened.
+func interact() -> bool:
+	var target: WorldPos = Ladder.target_for(current_WorldPos, facing)
+	if target == null: return false
+	return change_depth(target)
+
+
 func _primary_action(delta: float) -> void:
 	if not action_intent: 
 		return

@@ -85,27 +85,38 @@ func test_player_spawns_on_open_floor() -> void:
 		"the spawn tile is open floor, not inside rock")
 
 
-func test_player_spawns_on_the_surface_anchor() -> void:
-	var anchor: Vector2i = World.get_level_by_depth(0).anchor
-	assert_true(_actors()[0].current_WorldPos.equals(
-		WorldPos.new(anchor.x, anchor.y, 0)),
-		"the player stands on Surface's anchor tile")
+func _world_spawn() -> Fixture:
+	return World.get_level_by_depth(0).level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN)[0]
 
 
-func test_spawn_player_without_a_level_adds_no_player() -> void:
+func test_player_spawns_on_the_world_spawn() -> void:
+	assert_true(_actors()[0].current_WorldPos.equals(_world_spawn().tile),
+		"the first player stands on the world spawn (D-091)")
+
+
+func test_a_second_player_spawns_beside_the_first() -> void:
+	_game._spawn_player("Second")
+	var actors: Array[Actor] = _actors()
+	assert_eq(actors.size(), 2, "two players")
+	assert_false(actors[0].current_WorldPos.equals(actors[1].current_WorldPos), "on different tiles")
+	assert_false(actors[0].get_world_box().intersects(actors[1].get_world_box()), "not overlapping")
+
+
+func test_spawn_player_with_no_world_spawn_adds_no_player() -> void:
+	var fixtures: LevelFixtures = World.get_level_by_depth(0).level_fixtures
+	fixtures.remove(_world_spawn().id)
 	var before: int = _actors().size()
-	_game._spawn_player("TestPlayer", 99)
-	assert_push_error("Level (99) not found")
+	_game._spawn_player("TestPlayer")
+	assert_push_error("Expected one world spawn, found 0.")
+	assert_push_error("Nowhere to spawn TestPlayer.")
 	assert_eq(_actors().size(), before, "no actor is created")
 
 
-func test_create_player_uses_the_levels_depth_and_anchor() -> void:
-	var level: Level = World.get_level_by_depth(2)
-	var actor: Actor = _game._create_player("TestPlayer", level)
+func test_create_player_stands_on_the_tile_given() -> void:
+	var actor: Actor = _game._create_player("TestPlayer", WorldPos.new(14, -2, 2))
 	assert_true(actor in _actors(), "the actor is added under Players")
-	assert_true(actor.current_WorldPos.equals(
-		WorldPos.new(level.anchor.x, level.anchor.y, 2)),
-		"it stands on that level's anchor, at that level's depth")
+	assert_true(actor.current_WorldPos.equals(WorldPos.new(14, -2, 2)),
+		"on that tile, at that depth")
 
 
 # --- user control ---
@@ -210,10 +221,3 @@ func test_the_screen_follows_the_player_down_a_level() -> void:
 	var expected: int = LevelRenderer.level_width(World.get_level_by_depth(1).level_tiles)
 	assert_eq(top.get_width(), expected, "the renderer shows -1, %d tiles wide" % expected)
 	assert_eq(_game.view.shown_depth, 1, "and the view says -1")
-
-
-func test_the_player_has_a_debug_depth_key() -> void:
-	var found: bool = false
-	for child in _game.get_children():
-		if child is DebugDepth and child.actor == _actors()[0]: found = true
-	assert_true(found, "'-' / '=' drive the player's depth")

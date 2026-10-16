@@ -40,37 +40,97 @@ const ORE_CHARS: Dictionary = {
 	"0": TileKind.ORE.NONE,
 }
 
+# The objects grid is sparse: only what it mentions gets a fixture.
+const OBJECT_CHARS: Dictionary = {
+	".": ObjectKind.OBJECT.NULL,
+	"L": ObjectKind.OBJECT.LADDER,
+	"0": ObjectKind.OBJECT.NULL,
+}
+
 const ORIGIN_CHAR: String = "0"
 const MINABLE_ROCK_CHAR: String = "#"
 
 
-static func stamp(tiles: LevelTiles, prefab: TilePrefab, anchor: Vector2i) -> bool:
+# `fixtures` is the level's fixture store, needed only when the prefab
+# has an objects grid (D-104). A prefab with fixtures and no store to
+# put them in fails to load rather than dropping them.
+static func stamp(tiles: LevelTiles, prefab: TilePrefab, anchor: Vector2i,
+		fixtures: LevelFixtures = null) -> bool:
 	# Validate characters in grids
 	if not are_valid_characters(prefab.ground,GROUND_CHARS): return false
 	if not are_valid_characters(prefab.top,TOP_CHARS): return false
 	if not are_valid_characters(prefab.ore,ORE_CHARS): return false
-
+	
 	# Validate anchors
 	if not _has_valid_anchor(prefab.ground): return false
 	if not _has_valid_anchor(prefab.top): return false
 	if not _has_valid_anchor(prefab.ore): return false
-
+	
 	# Grids line up with each other by their anchor markers, so every grid is
 	# read into coordinates measured from its own marker.
 	var ground_tiles: Dictionary = _to_anchored_tiles(prefab.ground)
 	var top_tiles: Dictionary = _to_anchored_tiles(prefab.top)
 	var ore_tiles: Dictionary = _to_anchored_tiles(prefab.ore)
-
+	
+	# Validate that each grid has all of the same coords
+	if not _grid_coords_align_and_are_complete(ground_tiles, top_tiles, ore_tiles): return false
 	# Validate that all ore is inside minable rock
 	if _has_ore_outside_of_minable_rock(top_tiles, ore_tiles): return false
 	# Validate that all holes don't have anything on top of them
 	if _has_invalid_hole_placement(ground_tiles,top_tiles, ore_tiles): return false
+
+	# Validate fixtures. The objects grid is exempt from the alignment
+	# check (D-102): it only mentions the tiles that hold something.
+	var object_tiles: Dictionary = {}
+	if not prefab.objects.strip_edges().is_empty():
+		if not are_valid_characters(prefab.objects, OBJECT_CHARS): return false
+		if not _has_valid_anchor(prefab.objects): return false
+		object_tiles = _to_anchored_tiles(prefab.objects)
+		if not _fixtures_stand_on_floor(object_tiles, ground_tiles, top_tiles): return false
+		if fixtures == null and _has_fixtures(object_tiles):
+			push_error("Prefab '%s' has fixtures, but no fixture store was given." % prefab.id)
+			return false
 
 	# Stamp tiles
 	_stamp_layer(tiles.set_ground, ground_tiles, GROUND_CHARS, anchor)
 	_stamp_layer(tiles.set_top, top_tiles, TOP_CHARS, anchor)
 	_stamp_layer(tiles.set_ore, ore_tiles, ORE_CHARS, anchor)
 
+	# Stamp fixtures, in the grid's row-then-column order, so the same
+	# prefab hands out ids in the same order every run (trap 8).
+	for coord: Vector2i in object_tiles:
+		var kind: int = OBJECT_CHARS[object_tiles[coord]]
+		if kind == ObjectKind.OBJECT.NULL: continue
+		var tile: WorldPos = WorldPos.new(coord.x + anchor.x, coord.y + anchor.y,
+			tiles.level_bound.depth)
+		fixtures.add(Fixture.new(kind, tile, Objects.next_id()))
+
+	return true
+
+
+static func _has_fixtures(object_tiles: Dictionary) -> bool:
+	for coord: Vector2i in object_tiles:
+		if OBJECT_CHARS[object_tiles[coord]] != ObjectKind.OBJECT.NULL: return true
+	return false
+
+
+# A fixture stands on floor an actor could stand on. A tile the tile
+# grids don't mention keeps the level's default, minable rock, so a
+# fixture there would be inside rock. Cross-level rules (a ladder needs
+# a hole above it) are checked once every level is built.
+static func _fixtures_stand_on_floor(object_tiles: Dictionary, ground_tiles: Dictionary,
+		top_tiles: Dictionary) -> bool:
+	for coord: Vector2i in object_tiles:
+		var character: String = object_tiles[coord]
+		if OBJECT_CHARS[character] == ObjectKind.OBJECT.NULL: continue
+		if not top_tiles.has(coord) or not ground_tiles.has(coord):
+			push_warning("LevelGridLoader Violation: fixture '%s' at %s is on a tile the tile grids don't describe." % [character, coord])
+			return false
+		var top: int = TOP_CHARS[top_tiles[coord]]
+		var ground: int = GROUND_CHARS[ground_tiles[coord]]
+		if not TileKind.is_passable(top, ground):
+			push_warning("LevelGridLoader Violation: fixture '%s' at %s is not on open floor." % [character, coord])
+			return false
 	return true
 
 
@@ -91,11 +151,11 @@ static func _has_ore_outside_of_minable_rock(top_tiles: Dictionary, ore_tiles: D
 # A hole may only sit under TileKind.TOP.OPEN and have TileKind.ORE.NULL
 static func _has_invalid_hole_placement(ground_tiles: Dictionary, top_tiles: Dictionary, ore_tiles: Dictionary) -> bool:
 	for coord in ground_tiles:
-		if ground_tiles[coord] != "HOLE": continue
+		if ground_tiles[coord] != "h": continue # h = HOLE
 		var top_char: String = top_tiles[coord]
 		var ore_char: String = ore_tiles[coord]
 		if TOP_CHARS[top_char] == TileKind.TOP.OPEN \
-			and ORE_CHARS[ore_char] == TileKind.ORE.NULL: continue
+			and ORE_CHARS[ore_char] == TileKind.ORE.NONE: continue
 		
 		push_warning("LevelGridLoader Violation: Hole discovered with invalid top (%s) or ore (%s)." % [top_char, ore_char])
 		return true
@@ -135,6 +195,19 @@ static func _stamp_layer(setter: Callable, grid_tiles: Dictionary, characters: D
 		var x: int = coord.x + anchor.x
 		var y: int = coord.y + anchor.y
 		setter.call(x, y, characters[grid_tiles[coord]], true)
+
+
+static func _grid_coords_align_and_are_complete(ground_tiles: Dictionary, top_tiles: Dictionary, ore_tiles: Dictionary) -> bool:
+	# If sizes match, then we don't need to check each tile map
+	if not (ground_tiles.size() == top_tiles.size() and top_tiles.size() == ore_tiles.size()):
+		return false
+	
+	# Verify that all coords exist in the other grids
+	for g in ground_tiles:
+		if not (top_tiles.has(g) and ore_tiles.has(g)):
+			return false
+	
+	return true
 
 
 static func are_valid_characters(grid: String, allowed_chars: Dictionary) -> bool:

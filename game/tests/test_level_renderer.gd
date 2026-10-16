@@ -160,7 +160,8 @@ func test_every_byte_survives_being_written_as_a_pixel() -> void:
 # with no code in World or the dig knowing a renderer exists.
 func test_a_dig_reaches_the_screen() -> void:
 	var level: Level = Global.level_packed_scene.instantiate()
-	level.setup(0, TilePrefabRegistry.get_prefab(&"surface_start"))
+	level.setup(0)
+	LevelGridLoader.stamp(level.level_tiles, TilePrefabRegistry.get_prefab(&"surface_start"), Vector2i.ZERO)
 	add_child_autofree(level)
 	level.level_tiles.set_ore(-1, 0, TileKind.ORE.COPPER)
 	var renderer: LevelRenderer = _renderer()
@@ -199,3 +200,24 @@ func test_the_atlas_has_a_cell_for_every_atlas_cell() -> void:
 	assert_eq(atlas.get_width(), cell_count * TileSpace.TILE_PIXELS,
 		"one 16 px cell per AtlasCell entry")
 	assert_eq(atlas.get_height(), TileSpace.TILE_PIXELS, "a single row")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

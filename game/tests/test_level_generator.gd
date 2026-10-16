@@ -97,3 +97,78 @@ func test_each_depth_gets_its_own_sequence() -> void:
 	assert_ne(LevelGenerator.rng_for(_bare_level(1)).randi(),
 		LevelGenerator.rng_for(_bare_level(2)).randi(),
 		"depths don't share a sequence")
+
+
+# --- fixtures and ladders (D-089, D-104) ---
+
+func _bare_levels(depths: Array[int]) -> Array[Level]:
+	var levels: Array[Level] = []
+	for depth in depths:
+		levels.append(_bare_level(depth))
+	return levels
+
+
+func _add_ladder(level: Level, tile: Vector2i) -> void:
+	level.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.LADDER,
+		WorldPos.new(tile.x, tile.y, level.depth), Objects.next_id()))
+
+
+func test_a_ladder_under_a_hole_is_fine() -> void:
+	var levels: Array[Level] = _bare_levels([0, 1])
+	levels[0].level_tiles.set_ground(4, 4, TileKind.GROUND.HOLE)
+	_add_ladder(levels[1], Vector2i(4, 4))
+	assert_eq(LevelGenerator.ladder_problems(levels).size(), 0, "no problems")
+
+
+func test_a_ladder_with_no_hole_above_is_reported() -> void:
+	var levels: Array[Level] = _bare_levels([0, 1])
+	_add_ladder(levels[1], Vector2i(4, 4))
+	var problems: Array[String] = LevelGenerator.ladder_problems(levels)
+	assert_eq(problems.size(), 1, "one problem")
+	if problems.size() == 1:
+		assert_eq(problems[0], "Ladder at (4, 4) depth 1 has no hole above it at depth 0.")
+
+
+func test_a_ladder_on_the_top_level_is_reported() -> void:
+	var levels: Array[Level] = _bare_levels([0])
+	_add_ladder(levels[0], Vector2i(4, 4))
+	var problems: Array[String] = LevelGenerator.ladder_problems(levels)
+	assert_eq(problems.size(), 1, "nothing above the Surface")
+	if problems.size() == 1:
+		assert_string_contains(problems[0], "has no level above it")
+
+
+func test_a_ladder_outside_the_upper_levels_bounds_is_reported() -> void:
+	# (70, 0) is inside -2 (radius 81) but outside -1 (radius 64).
+	var levels: Array[Level] = _bare_levels([1, 2])
+	_add_ladder(levels[1], Vector2i(70, 0))
+	assert_eq(LevelGenerator.ladder_problems(levels).size(), 1, "no hole can be there")
+
+
+func test_a_hole_with_no_ladder_is_not_a_problem() -> void:
+	var levels: Array[Level] = _bare_levels([0, 1])
+	levels[0].level_tiles.set_ground(4, 4, TileKind.GROUND.HOLE)
+	assert_eq(LevelGenerator.ladder_problems(levels).size(), 0, "a dead hole is legal")
+
+
+func test_generating_a_world_restarts_fixture_ids() -> void:
+	Objects.next_id()
+	Objects.next_id()
+	var levels: Array[Level] = LevelGenerator.generate_levels(World.level_recipes)
+	for level in levels: autofree(level)
+	assert_eq(Objects.next_id(), 1 + _fixture_count(levels), "ids restarted at 1 for the new world")
+
+
+func _fixture_count(levels: Array[Level]) -> int:
+	var count: int = 0
+	for level in levels: count += level.level_fixtures.all().size()
+	return count
+
+
+func test_the_generator_stamps_a_prefabs_fixtures() -> void:
+	TilePrefabRegistry._prefabs[&"test_with_ladder"] = TilePrefab.from_grids(
+		&"test_with_ladder", "r0", ".0", ".0", "L0")
+	var level: Level = _generate(_recipe_at(1, [PrefabPlacement.new(&"test_with_ladder", Vector2i(10, 10))] as Array[PrefabPlacement]))
+	TilePrefabRegistry._prefabs.erase(&"test_with_ladder")
+	assert_true(level.level_fixtures.has_kind_at(Vector2i(9, 10), ObjectKind.OBJECT.LADDER),
+		"the ladder is in the level's store")
