@@ -176,6 +176,8 @@ ladder work.
 
 - [x] Art: the ladder sprite, 16 × 24 (D-105). [3] Not yet seen in the running game.
 - [x] The hole is authored into −1 and the ladder placed on −2, at (14, −2).
+- [x] From above, a hole with a ladder under it shows the ladder's top; a dead hole doesn't
+  ([D-107](../docs/design-decisions.md), `test_fixture_renderer.gd`). Not yet seen in the game.
 - [x] A ladder with no hole directly above it, or outside the upper level's bounds, is reported at
   load (`LevelGenerator.ladder_problems`).
 - [x] Test: each of those load failures; and a hole with no ladder loads fine.
