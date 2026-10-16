@@ -132,3 +132,76 @@ func test_a_shown_depth_with_no_level_is_an_error() -> void:
 	var renderer: FixtureRenderer = _renderer()
 	renderer._on_shown_depth_changed(View.NO_DEPTH, 99)
 	assert_push_error("No level at depth 99 to draw fixtures for.")
+
+
+# --- ladder tops (D-107): a ladder below shows in the hole above ---
+
+func _hole_over_spot() -> void:
+	_levels[0].level_tiles.set_ground(SPOT.x, SPOT.y, TileKind.GROUND.HOLE)
+
+
+func _surface_view_renderer() -> Array:
+	var pair: Array = _following_actor_at(0)
+	var renderer: FixtureRenderer = _renderer()
+	renderer.watch(pair[1])
+	return [pair[0], renderer]
+
+
+func test_a_hole_with_a_ladder_below_shows_its_top() -> void:
+	_hole_over_spot()
+	_levels[1].level_fixtures.add(_ladder(1, 21))
+	var renderer: FixtureRenderer = _surface_view_renderer()[1]
+	var top: Sprite2D = renderer.top_sprite_for(21)
+	assert_not_null(top, "a ladder top in the hole")
+	if top:
+		assert_eq(top.position, Vector2(32, -48), "on tile (2, -3), not rising")
+		assert_eq(top.texture.get_size(), Vector2(16, 16), "one tile")
+
+
+func test_a_dead_hole_shows_no_top() -> void:
+	_hole_over_spot()
+	var renderer: FixtureRenderer = _surface_view_renderer()[1]
+	assert_eq(renderer._top_sprites.size(), 0, "no ladder below, nothing drawn")
+
+
+func test_a_ladder_placed_below_adds_its_top_and_removing_it_takes_it_away() -> void:
+	_hole_over_spot()
+	var renderer: FixtureRenderer = _surface_view_renderer()[1]
+	_levels[1].level_fixtures.add(_ladder(1, 22))
+	assert_not_null(renderer.top_sprite_for(22), "appears when the ladder is placed")
+	_levels[1].level_fixtures.remove(22)
+	assert_null(renderer.top_sprite_for(22), "and goes when it's removed: the hole reads as dead")
+
+
+func test_a_ladder_below_with_no_hole_over_it_shows_no_top() -> void:
+	_levels[1].level_fixtures.add(_ladder(1, 23))
+	var renderer: FixtureRenderer = _surface_view_renderer()[1]
+	assert_null(renderer.top_sprite_for(23), "no way down drawn on solid floor")
+
+
+func test_tops_are_only_for_the_level_below_the_shown_one() -> void:
+	_hole_over_spot()
+	_levels[1].level_fixtures.add(_ladder(1, 24))
+	var parts: Array = _surface_view_renderer()
+	parts[0].change_depth(WorldPos.new(SPOT.x, SPOT.y, 1))
+	assert_null(parts[1].top_sprite_for(24), "down on -1, the Surface's hole isn't shown")
+	_levels[1].level_fixtures.add(_ladder(1, 25))
+	assert_null(parts[1].top_sprite_for(25), "-1 isn't 'below' any more: its changes draw no tops")
+
+
+func test_the_hand_made_hole_on_minus_one_shows_the_ladder_top() -> void:
+	for level in _levels: level.queue_free()
+	await wait_physics_frames(1)
+	for level: Level in LevelGenerator.generate_levels(World.level_recipes):
+		add_child_autofree(level)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(14, -1, 1))
+	add_child_autofree(actor)
+	var view: View = View.new()
+	add_child_autofree(view)
+	view.follow(actor)
+	var renderer: FixtureRenderer = _renderer()
+	renderer.watch(view)
+	var ladder: Fixture = World.get_level_by_depth(2).level_fixtures.of_kind(ObjectKind.OBJECT.LADDER)[0]
+	var top: Sprite2D = renderer.top_sprite_for(ladder.id)
+	assert_not_null(top, "from -1, the hole at (14, -2) shows its ladder")
+	if top: assert_eq(top.position, Vector2(14, -2) * 16.0, "in the hole")
