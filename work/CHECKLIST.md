@@ -197,33 +197,29 @@ ladder work.
 - [x] Test: a dig in progress resets on a depth change (`test_capability_dig.gd`).
 - [x] Test: every level of the slice is reachable on foot (`test_hand_made_levels.gd`).
 - [x] Delete the section B debug key.
-- [ ] By hand: use the ladder from beside the hole and arrive on −2 at (14, −2), `F3` agreeing. [3]
-- [ ] By hand: climb up and arrive beside the hole, on open floor. [3]
-- [ ] By hand: climb back up. The corridor dug on −1 before going down is still there; up the
+- [x] By hand: use the ladder from beside the hole and arrive on −2 at (14, −2), `F3` agreeing. [3]
+- [x] By hand: climb up and arrive beside the hole, on open floor. [3]
+- [x] By hand: climb back up. The corridor dug on −1 before going down is still there; up the
   ramp, the Surface's dig is too. [4]
-- [ ] By hand: interact where there's no ladder, or facing away, does nothing. [6]
-- [ ] **Decide, by looking:** what a held dig button does on arrival (the dig restarts, but you
-  start digging what you face).
-- [ ] **Decide, by looking:** whether climbing is instant, and if not, how long it takes. Same
-  question for the ramp.
+- [x] By hand: interact where there's no ladder, or facing away, does nothing. [6]
+- [x] **Decide, by looking:** what a held dig button does on arrival. It restarts, and digs what
+  you face on the new level ([D-108](../docs/design-decisions.md)).
+- [x] **Decide, by looking:** whether climbing is instant. Instant for now; a transition time and
+  effects are deferred, for ramps and ladders alike (D-108).
 
 ## F. Wider
 
 *Mode: ask before starting.*
 
-- [ ] Walk the corridor to the edge on −1; note `x`. Climb down; walk the same corridor; you get
+- [x] Walk the corridor to the edge on −1; note `x`. Climb down; walk the same corridor; you get
   further, and `F3`'s `x` says how much. [5]
 
 ## G. Done
 
-- [ ] Quit and relaunch: all three levels are back to their hand-made state. [8]
-- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings.
-- [ ] `python scripts/coverage.py` run; uncovered lines looked at.
-- [ ] By hand: outcomes 1–8 walked through in one sitting.
-- [ ] Claude drafts `log/002-go-down.md`; Derik corrects it.
-- [ ] Claude re-sketches [NEXT.md](./NEXT.md).
-
-## Optional, if it starts to hurt
-
-- [ ] `test_game.gd` loads `game.tscn` per test and builds all eight levels; section B adds more
-  of these. The read-only tests could share one game in `before_all`.
+- [x] Quit and relaunch: all three levels are back to their hand-made state. [8]
+- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings.
+- [x] `python scripts/coverage.py` run; uncovered lines looked at.
+  - TOTAL 1119/1132 = 98.9%
+- [x] By hand: outcomes 1–8 walked through in one sitting.
+- [x] Claude drafts `log/002-go-down.md`; Derik corrects it. (Drafted 2026-10-18; correction pending.)
+- [x] Claude re-sketches [NEXT.md](./NEXT.md). (003 proposed as "It persists", ahead of the dark.)

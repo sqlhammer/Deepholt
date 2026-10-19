@@ -2129,3 +2129,26 @@ ladder is removed later, its top disappears and the hole reads as dead, as D-089
 and the two can disagree); showing the level below through holes
 ([D-011](#d-011--open-shafts-render-the-level-below), still deferred); an interact prompt, which
 only helps once you're standing there (possible later, on top of this).
+
+---
+
+### D-108 — A held dig carries across a level change; level changes are instant for now
+**Decided** (by Derik, slice 002 section E, by looking).
+
+- **A held dig button carries across a level change.** The dig in progress restarts (the target
+  is a different `WorldPos`, so progress resets,
+  [D-072](#d-072--dig-progress-also-resets-when-the-target-tile-changes)), and if the button is
+  still held on arrival the actor starts digging whatever it faces on the new level. Releasing and
+  pressing again is not required.
+- **Taking a ramp or a ladder is instant, for now.** Level changes are meant to have a transition
+  time and visual effects, but that is **deferred**, not decided against.
+
+*Why:* a fresh dig on arrival is what the controls already do, and it is honest: nothing
+half-dug is carried between levels. A transition is wanted, but is polish that can wait for a
+slice about feel.
+
+*When the transition arrives:* it goes between the request and the move, not into the rules. The
+`Ramp` and `Ladder` rules answer *where*; `Actor.change_depth`
+([D-093](#d-093--an-actor-changes-its-own-depth-the-change-is-announced-as-a-tile-change)) makes
+the move. A transition would delay or animate the call to `change_depth`. It also needs to say
+what a held dig does *during* the transition (probably nothing until arrival).
