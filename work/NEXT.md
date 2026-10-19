@@ -101,5 +101,3 @@ decided.
 - **The temporary hole at (0, 2) in `surface_start`** is kept on purpose; take it out when it has
   served its purpose.
 - **Coverage at the end of slice 002: 98.9%** (`python scripts/coverage.py`).
-- **Finished lessons in `work/lesson/`** (`E-open-a-dug-tile.md`, and `D-00` to `E-01` from 002)
-  can be deleted; they're gitignored, so nothing else tracks them.
