@@ -2152,3 +2152,231 @@ slice about feel.
 ([D-093](#d-093--an-actor-changes-its-own-depth-the-change-is-announced-as-a-tile-change)) makes
 the move. A transition would delay or animate the call to `change_depth`. It also needs to say
 what a held dig does *during* the transition (probably nothing until arrival).
+
+---
+
+### D-109 — A save is one store_var file per slot, owned by a static class
+**Decided** (by Derik, slice 003 section A, upfront).
+
+- **A static `SaveGame` class encodes and decodes; the game scene decides when.** `SaveGame` is
+  handed the levels and the actors and a path, like `LevelGenerator` is handed recipes. It saves
+  **every** actor it is given and never picks one (rule
+  [D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer)). `game.gd` owns the
+  timing and hands it `$Levels` and the actors. No autoload.
+- **Encoding: `FileAccess.store_var` of plain `Dictionary`s and `PackedByteArray`s,** read back
+  with `get_var` and `allow_objects` left **off**, so a save can never run code (slice 003
+  trap 3). Ints stay ints. The file is opaque to a text editor; F3 and tests are how it is
+  inspected.
+- **One file per save.** The whole world is written and replaced in one move (write a temporary
+  file, rename it over the old one: slice 003 trap 4).
+- **Compression per tile array, ZSTD** (`PackedByteArray.compress`). The header is readable
+  without decompressing anything, so the version is checked before the body is touched. The
+  decompressed size is the saved bound's side squared, which doubles as the size check of trap 5.
+- **Where it lives: `user://saves/<slot>/world.save`.** A folder per slot, one slot in this slice.
+  The temporary file and the backup ([D-111](#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves))
+  sit beside it in the same folder, because a rename only replaces within one directory.
+  `SaveGame` takes the path as a parameter, so tests write to their own.
+
+*Why:* the least code that cannot run code on load, with nothing global for a gameplay system to
+reach for "the player" through. A folder per slot leaves room for a backup, a screenshot or
+per-level files later without moving anything.
+
+*Considered:* an autoload (reachable from anywhere, which is how globals start); a node in the
+game scene (needs the scene to test); JSON with base64 arrays (every number comes back a float);
+a hand-written byte layout (most code, every field a migration); a `Resource` (can run an
+embedded script); a header plus a file per level (a crash between files leaves levels from two
+moments); whole-file compression (the version can't be read without decompressing);
+`user://saves/<slot>.save` and a fixed `user://world.save`.
+
+*Not decided:* the slot folder's name.
+
+---
+
+### D-110 — When a save happens: quit, level change, a timer and a key
+**Decided** (by Derik, slice 003 section A, upfront).
+
+A save is written:
+- **on quit:** a window close (with `set_auto_accept_quit(false)`, saving, then quitting) and a
+  quit from `Esc`. The editor's stop button is not a quit and saves nothing (slice 003 trap 2);
+- **on every level change,** after the actor arrives;
+- **on a timer,** while playing;
+- **on a debug quicksave key.**
+
+*Why:* a level change is a natural checkpoint and the screen is already cutting there, so a short
+freeze is least noticeable; it also keeps progress across by-hand runs stopped from the editor.
+The timer covers long stretches on one level.
+
+*Consequences:* every save writes all eight levels, on the main thread unless measured
+otherwise. The timer fires mid-play, where a freeze longer than about a frame (16 ms) reads as a
+stutter. Section F measures a full save; if it is felt, the save is split into a main-thread
+snapshot (`PackedByteArray`s copy on write, so cheap) and a compress-and-write on a worker
+thread.
+
+*Not decided:* the timer's interval (a tuning number,
+[D-037](#d-037--one-tuningprofile-resource-holds-every-global-constant)) and the quicksave key.
+
+---
+
+### D-111 — Continue by default, a flag for a new game, backups and broken saves
+**Decided** (by Derik, slice 003 section A, upfront).
+
+- **Launch continues the slot's save if there is one,** and generates a new world if there
+  isn't. A command-line user argument, `--new-game` (after `--`), starts fresh; it can be set in
+  the editor's run arguments for test runs. No title screen yet.
+- **A new game moves the old save aside,** renaming it to `world.<timestamp>.save` in the slot
+  folder before anything is generated. Nothing prunes these yet.
+- **Every write keeps one backup.** Write `world.save.tmp`, rename the current `world.save` to
+  `world.save.bak`, rename the temporary file to `world.save`.
+- **A refused save falls back to the backup, loudly.** A save that is truncated, unreadable or
+  from a newer format version is refused. It is renamed to `world.broken.<timestamp>.save` and
+  kept for troubleshooting, and `world.save.bak` is loaded instead, with a `push_error`, an
+  on-screen message that stays up, and F3 saying it was loaded from the backup.
+- **No `world.save` but a `world.save.bak` is a fallback, not a new game.** A crash between the
+  two renames leaves exactly that, and treating it as "no save" would generate a world over it.
+- **If the backup is refused too, the game refuses to start.** No world, no saving, both files
+  left as they are, and a message naming both reasons and paths. `--new-game` moves them aside.
+
+*Why:* a playtest world is never lost by accident, the broken file survives for bug reports,
+and a fallback can never go unnoticed.
+
+*Considered:* a title screen (the first non-debug UI; more to build than this slice needs);
+overwriting at the first save (quitting before it brings the old world back next launch); refusing
+or deleting on a new game; refusing to start on any broken save; moving a broken save aside and
+starting fresh.
+
+---
+
+### D-112 — Tile layers are saved by name, a byte layer per fact; a saved bound wins
+**Decided** (by Derik, slice 003 section B, upfront).
+
+- **A level's tiles are saved as layers by name:** `"ground"`, `"top"`, `"ore"`, each a compressed
+  `PackedByteArray` ([D-109](#d-109--a-save-is-one-store_var-file-per-slot-owned-by-a-static-class)).
+  A layer missing from a save loads as its default, so adding a layer needs no migration.
+- **The code's layout is the plan, not world-runtime §3's.** Every per-tile fact gets its own byte
+  layer: the dark's `remembered` bit ([D-033](#d-033--tunnel-memory-four-render-states-per-tile))
+  arrives in slice 004 as a fourth layer, and later flags the same way. §3's `terrain_id` u16 was
+  already replaced by separate ground and top layers in slice 001, and its `flags` u16 bitfield
+  is replaced by this. §3 gets a note saying so.
+- **A saved level keeps its saved bound.** A recipe is read only to generate a level; a loaded
+  level's `LevelTiles` is built from the bound in the save, never from
+  `World.level_recipes`, and a mismatch with the recipe is a `push_warning`, not a resize.
+  `World.is_in_bounds` reads the level's own bound rather than the recipe table, so the two can't
+  disagree.
+
+*Why:* every layer works like today's three, with no bit-packing code; the memory cost (about
+135 KB per flag at the Crush, nearly nothing on disk once compressed) is small for eight resident
+levels. A tuned radius showing up only in new worlds is what saving the result means
+([D-085](#d-085--a-recipe-holds-its-levels-bounds-bounds-stay-their-own-type)).
+
+*Considered:* a u16 `flags` bitfield toward §3 (compact; bit code, and one `tile_changed` layer
+standing for eight different facts); three arrays in a fixed order (every new layer a migration);
+growing or shrinking a loaded level to its recipe (can cut off digs and fixtures).
+
+*If memory ever matters:* packing the flag layers into bits is a one-time migration, which the
+format already supports.
+
+---
+
+### D-113 — Loaded fixtures go straight in, then are checked and reported, never dropped
+**Decided** (by Derik, slice 003 section C, upfront).
+
+A load puts each saved fixture straight into its level's `LevelFixtures`, with its saved kind,
+tile and id; it does not go through `Objects`' request signals. Then the same checks generation
+uses run as a report: `Objects.placement_problem` for every fixture, and
+`LevelGenerator.ramp_problems` and `ladder_problems` for the world. Each problem is a
+`push_warning`, and F3 shows how many there were. Nothing is removed or refused.
+
+*Why:* the save is the truth. A rule tightened in a later build would otherwise silently delete
+a player's ladder, possibly their only way back up. The report still makes a corrupt save or rule
+drift visible.
+
+*Consequences:* a rule change that **must** apply to old worlds is written as a migration, on
+purpose, with a version bump.
+
+*Considered:* re-checking and dropping what fails; treating any failure as a broken save (a rule
+change would break every old world); no checks at all.
+
+---
+
+### D-114 — Actors get int ids from a world counter; what an actor saves
+**Decided** (by Derik, slice 003 section D, upfront).
+
+- **Every actor has a stable `actor_id`:** an int from a world-wide counter, assigned when the
+  actor is created and never reused, the same pattern as fixture ids
+  ([D-104](#d-104--fixture-ids-removal-misses-and-how-prefabs-stamp-fixtures)). The counter is
+  saved with the world and restored after anything that could reset it.
+- **An actor saves:** `actor_id`, `kind` (`"player"` is the only kind), name, depth, **tile**
+  position and facing. A loaded actor stands at the center of its saved tile.
+- **Not saved:** capabilities (granted by `game.gd` from the actor's kind), a dig in progress
+  (it resets on any interruption,
+  [D-072](#d-072--dig-progress-also-resets-when-the-target-tile-changes)), and the equipped tool,
+  which is a hard-coded placeholder until inventory gives tools stable ids.
+
+*Why:* the save keys actors by id from the first version, so the next thing that refers to an
+actor (`builder_id`, world-runtime §6) stores an int. `kind` lets a load decide which actors get
+player capabilities without assuming there is one. A tile is smaller and survives a change to an
+actor's collision box.
+
+*Consequences:* outcome 4 of slice 003 matches the tile in F3, not the pixel.
+
+*Considered:* random 64-bit ids (no counter; unreadable, not reproducible from a seed); no ids
+yet (a migration later); pixel position (exact, but tied to the collision box); saving the
+equipped tool by resource path (a path is a name, not a forever id).
+
+---
+
+### D-115 — The save names the local actor; an actor on an impassable tile goes to the spawn
+**Decided** (by Derik, slice 003 section D, upfront).
+
+- **The save records `local_actor_id`.** It is presentation state saved beside the world: the
+  `SaveGame` class stores the id it is handed and never chooses one. On load, `game.gd` gives
+  input, the view, the camera and F3 to that actor
+  ([D-094](#d-094--a-presentation-view-owns-the-shown-depth-and-follows-the-local-actor)). If the
+  id is missing or isn't a player, it falls back to the lowest-id player, with a warning.
+- **A loaded actor whose tile is no longer passable goes to the world spawn,** by the same path a
+  new player takes ([D-091](#d-091--spawn-points-are-objects-the-new-game-spawn-is-placed-at-random-near-the-start)),
+  with a `push_warning` naming the actor and the tile it was on. Nothing between a save and a load
+  can cause this today; a passability change in a later build can.
+
+*Why:* a second saved actor can't silently change who the local player is (slice 003 trap 1). The
+spawn is a place known to be safe, using code that already exists.
+
+*Considered:* the first player in the save, or the lowest player id (both right until there are
+two); for a stuck actor, the nearest free tile on the same depth, or leaving it for collision to
+sort out.
+
+---
+
+### D-116 — The save header, and a placeholder tuning profile id
+**Decided** (by Derik, slice 003 section E, upfront).
+
+The header holds:
+- `format_version`: an integer, with a migration function per step and a no-op first migration
+  (world-runtime §7);
+- `world_seed`, and each level's `level_seed`, saved as numbers and read back without
+  re-hashing anything (slice 003 trap 7);
+- `tuning_profile_id`: written as `"none"` until the tuning profile
+  ([D-037](#d-037--one-tuningprofile-resource-holds-every-global-constant)) exists. The autosave
+  interval ([D-110](#d-110--when-a-save-happens-quit-level-change-a-timer-and-a-key)) is a named
+  constant for now, and the first thing to move into the profile when it's built;
+- `local_actor_id` ([D-115](#d-115--the-save-names-the-local-actor-an-actor-on-an-impassable-tile-goes-to-the-spawn)),
+  and the next fixture id and next actor id;
+- `playtime_seconds`: real seconds played, added up across sessions;
+- `saved_at`: Unix time of the write;
+- `game_version`: the build that wrote it, from the project's `application/config/version`
+  (not set yet).
+
+`game_time` is **left out** until there is a game clock.
+
+*Why:* the tuning field exists from the first save, so building the profile needs no version
+bump. Playtime is the long-run playtest data pre-alpha criterion 5 asks for. The build version
+is what a kept broken save
+([D-111](#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves)) needs in a
+bug report.
+
+*Consequences:* keys are read by name, so a key missing from an older save loads as its default.
+A migration is needed only when the meaning of data already saved changes.
+
+*Considered:* building a minimal tuning profile now (a system shaped on a thin sample); leaving
+the tuning field out (a version bump later); writing `game_time` as real seconds (wrong once game
+time runs at its own rate).

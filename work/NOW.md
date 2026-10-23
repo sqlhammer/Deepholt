@@ -39,13 +39,18 @@ By hand, in a running game:
 1. Dig on the Surface, quit, relaunch: the tile is still dug.
 2. Dig on the Surface, −1 and −2, quit, relaunch: each level has its own digs, and only its own.
 3. The ramp, the hole and the ladder are where they were, and still work, both ways.
-4. Quit standing on −2, facing west: relaunch on −2, at the same `(x, y)` in `F3`, facing west.
-   Not at the world spawn.
-5. Start a new game while a save exists: a fresh, hand-made world, and the old save is either
-   gone or kept, as decided. Never half of each.
-6. Break a save on purpose (truncate it, or bump its version past the game's): something
-   deliberate happens. Not a crash, and not a silent new game over the top of it.
-7. `F3` says whether this session was loaded or new, and from which format version.
+4. Quit standing on −2, facing west: relaunch on −2, on the same tile in `F3`, facing west.
+   Not at the world spawn. (Actors save their tile, not their pixel:
+   [D-114](../docs/design-decisions.md#d-114--actors-get-int-ids-from-a-world-counter-what-an-actor-saves).)
+5. Start a new game (`--new-game`) while a save exists: a fresh, hand-made world, and the old
+   save moved aside beside it, intact. Never half of each
+   ([D-111](../docs/design-decisions.md#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves)).
+6. Break a save on purpose (truncate it, or bump its version past the game's): it's kept as a
+   broken save, the backup loads instead, and the game says so loudly. Break the backup too, and
+   the game refuses to start and says why. Never a crash, and never a silent new game over the
+   top of it (D-111).
+7. `F3` says whether this session was loaded, new or from the backup, and from which format
+   version.
 
 Outcomes 1–7 are walked through at least once with the game launched **outside the editor**
 (trap 2).
@@ -55,10 +60,17 @@ Separately, automated, without a running scene where possible:
 - a load emits no per-tile `tile_changed`;
 - a world with digs on three depths round-trips, each depth only its own;
 - after a load, the next fixture id is greater than every loaded fixture's;
-- two actors on different depths round-trip, each to its own depth and `(x, y)`;
-- a save from a newer format version, and a truncated save, are each refused and left alone.
+- two actors on different depths round-trip, each to its own depth and tile;
+- a save from a newer format version, and a truncated save, are each refused, kept, and the
+  backup loaded in their place.
 
 ## What you're deciding
+
+Every fork below was settled on 2026-10-23, before building, as
+[D-109](../docs/design-decisions.md#d-109--a-save-is-one-store_var-file-per-slot-owned-by-a-static-class)
+to [D-116](../docs/design-decisions.md#d-116--the-save-header-and-a-placeholder-tuning-profile-id).
+The list stays as the record of what was weighed. The one fork left is whether the timer's save
+is felt mid-play, which needs the running game (checklist F).
 
 - **What owns saving and loading.** An autoload beside `World` and `Objects`, or a node in the
   game scene. An autoload is reachable from anywhere, which is convenient and is also how

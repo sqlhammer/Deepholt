@@ -1,42 +1,40 @@
 # Slice 003 checklist
 
 Working list for [NOW.md](./NOW.md). Ordered so something is on screen early, not by code
-dependency: one level's tiles survive a relaunch before fixtures, actors or versioning exist, so *how a save is shaped and when it happens* is settled and
-visible before *everything that goes in it*. **Decide** items are forks to talk through before
-building past them; each outcome becomes a `D-nnn`. **Decide, by looking** items need the
-running game. Numbers in brackets are the brief's by-hand outcomes.
+dependency: one level's tiles survive a relaunch before fixtures, actors or versioning exist.
+Every fork the brief raised was settled upfront on 2026-10-23 as
+[D-109](../docs/design-decisions.md#d-109--a-save-is-one-store_var-file-per-slot-owned-by-a-static-class)
+to [D-116](../docs/design-decisions.md#d-116--the-save-header-and-a-placeholder-tuning-profile-id),
+except one that needs the running game. Items below build what was decided; each names the
+decision it carries out. **Decide, by looking** items need the running game. Numbers in brackets
+are the brief's by-hand outcomes.
 
 Slice 002's checklist is in git history (last at `f0681b2`).
 
 ---
 
-## A. The shape of a save
+## A. Decided upfront
 
-*Mode: ask before starting.*
+*No mode: settled in conversation, 2026-10-23.*
 
-- [ ] **Decide:** what owns saving and loading. An autoload beside `World` and `Objects`, or a
-  node in the game scene. Either way it is simulation, so it takes levels and actors as
-  parameters and saves **N** actors, never *the* player (rule
-  [D-045](../docs/design-decisions.md); the save row of world-runtime §6's table).
-- [ ] **Decide:** the file's encoding. Options: `FileAccess.store_var` of plain dictionaries and
-  `PackedByteArray`s; a hand-written byte layout; JSON with the tile arrays base64'd; a Godot
-  `Resource` (`.tres`/`.res`). Trap 3 in the brief.
-- [ ] **Decide:** one file for the world, or a header plus a file per level. One is atomic and
-  simple; per level writes less on a save once levels get big. About 3 MB uncompressed for the
-  whole mountain either way ([world-runtime §1](../docs/tech/world-runtime-and-persistence.md)).
-- [ ] **Decide:** compression. `PackedByteArray.compress` per array, or
-  `FileAccess.open_compressed` for the whole file. Mostly-solid rock compresses very well.
-- [ ] **Decide:** where it lives (`user://saves/…`), and whether there are slots. One slot is
-  enough for this slice; the path is the part worth deciding.
-- [ ] **Decide:** when a save happens: on quit, on a key, on a timer, on level change, or some
-  mix. Name what a quit is (window close, `Esc`, the editor's stop button).
-- [ ] **Decide:** when a load happens, with no menu. Options: always continue if a save exists;
-  a command-line flag or a key for a new game; a minimal title screen. Feeds outcome 5.
-- [ ] **Decide:** what a new game does to an existing save: overwrite at the first save, move it
-  aside, or refuse until it's deleted.
+- [x] A static `SaveGame` class encodes and decodes whatever levels and actors it's handed;
+  `game.gd` decides when. `store_var` dictionaries, `allow_objects` off; one file per save; ZSTD
+  per tile array; `user://saves/<slot>/world.save` (D-109).
+- [x] Saves happen on quit, on every level change, on a timer, and on a debug key (D-110).
+- [x] Launch continues if a save exists; `--new-game` starts fresh and moves the old save aside;
+  every write keeps a `.bak`; a refused save is kept as `world.broken.<timestamp>.save` and the
+  backup loads, loudly; both refused means the game refuses to start (D-111).
+- [x] Tile layers saved by name, a byte layer per per-tile fact; the code's layout replaces
+  world-runtime §3's; a saved bound wins over the recipe (D-112).
+- [x] Loaded fixtures go straight in, then are checked and reported, never dropped (D-113).
+- [x] Actors get int ids from a world counter, and save id, kind, name, depth, tile and facing
+  (D-114).
+- [x] The save names `local_actor_id`; an actor loaded onto an impassable tile goes to the world
+  spawn, with a warning (D-115).
+- [x] Header fields, `tuning_profile_id` written as `"none"`, no `game_time` (D-116).
 
-Traps 2, 3 and 4 in the brief apply here: the editor's stop button isn't a quit, a
-`Resource` save can run code, and a save written in place can be half a save.
+Still open, small enough to pick while building: the slot folder's name, the autosave interval,
+and the quicksave key (D-109, D-110).
 
 ## B. One level's tiles, round trip
 
@@ -44,47 +42,52 @@ Traps 2, 3 and 4 in the brief apply here: the editor's stop button isn't a quit,
 
 The first thing on screen: a dug tile survives a relaunch.
 
-- [ ] **Decide:** how tile arrays are saved. The code has three byte layers (ground, top, ore);
-  world-runtime §3 describes a different layout (`terrain_id` u16, `flags` u16, `region_id`,
-  `ore_id`). Save layers by name, so the dark's `remembered` bit (tunnel memory,
-  [D-033](../docs/design-decisions.md)) can arrive as a new layer rather than a migration; or
-  save the three arrays positionally. Whichever, note which document is now out of date.
+- [ ] `SaveGame` exists as a static class taking a path, with a save and a load function. Saves
+  write `world.save.tmp` and rename it over `world.save` (trap 4; the `.bak` step arrives in E).
+- [ ] The file is read with `get_var` and `allow_objects` left off (trap 3).
+- [ ] Each tile layer is written by name and compressed with ZSTD; the decompressed size is
+  checked against the saved bound's side squared before it's taken (D-109, D-112, trap 5).
 - [ ] `LevelTiles` gets a bulk load path that neither trips the warning setters nor emits a
-  `tile_changed` per tile (trap 5).
-- [ ] Each level's `LevelBound` is saved with its tiles, so loading never needs a recipe
-  ([D-085](../docs/design-decisions.md)).
-- [ ] **Decide:** what happens when a saved level's radius doesn't match the recipe's. It will,
-  the first time a radius is tuned. The save is the truth (save the result, not the recipe), so
-  probably the saved bound wins; say what `World.is_in_bounds`, which reads the recipe table,
-  does then.
-- [ ] The renderer builds from the loaded tiles, with no replay of digs (a built renderer learns
-  from the truth, [D-065](../docs/design-decisions.md)). Check the load lands before
-  `View` first shows a level, or that the view is re-pointed after it.
+  `tile_changed` per tile (trap 5). A layer missing from the save fills its default (D-112).
+- [ ] A loaded `Level` is built from its **saved** bound. `Level.setup` reads the recipe at
+  [level.gd:24](../game/src/world/level.gd#L24), so loading needs its own path (D-112).
+- [ ] `World.is_in_bounds` reads the level's own bound, not the recipe table (D-112). A bound
+  that differs from the recipe is a `push_warning`.
+- [ ] Save on quit: window close, with `set_auto_accept_quit(false)`, save, then quit; and an
+  `Esc` quit, which doesn't exist yet. Save on a debug quicksave key (D-110, trap 2).
+- [ ] Launch loads the save if there is one, and generates otherwise (D-111). The load lands
+  before `View` first shows a level, or the view is re-pointed after it; the renderers build from
+  the loaded tiles, with no replay ([D-065](../docs/design-decisions.md)).
+- [ ] world-runtime §3 gets a note: the tile table is replaced by byte layers per D-112.
 - [ ] Test: save a level, load it into a fresh `LevelTiles`, and every layer is byte-identical.
 - [ ] Test: a load emits no per-tile `tile_changed`.
+- [ ] Test: a save file holding an object is not decoded as one (`allow_objects` off).
 - [ ] By hand: dig on the Surface, quit, relaunch, still dug. [1]
 
 ## C. Every level, fixtures and ids
 
 *Mode: ask before starting.*
 
-- [ ] All eight levels are saved, including the untouched solid ones below −2. (Save the result:
-  a save that skips them depends on the generator staying the same.)
+- [ ] All eight levels are saved, including the untouched solid ones below −2 (save the result,
+  not the recipe).
+- [ ] Each level's `level_seed` is saved as a number and set from the save on load, **after**
+  `set_depth`, which re-hashes it (trap 7, D-116).
+- [ ] A saved depth with no recipe row is refused, not clamped: `Level.clamp_depth` folds it onto
+  the last level without a word.
 - [ ] Each level's fixtures are saved as kind, tile and id; kind ids are numbers, and are forever
-  (trap 8 of slice 002, [D-104](../docs/design-decisions.md)).
-- [ ] `Objects`' id counter is saved, and restored **after** anything that calls
+  ([D-104](../docs/design-decisions.md)).
+- [ ] The next fixture id is saved, and restored **after** anything that calls
   `Objects.reset_ids()` (trap 6).
-- [ ] **Decide:** whether loaded fixtures go through the `Objects` gatekeeper's placement rules,
-  or straight into `LevelFixtures`. Re-checking catches a corrupt save; skipping it means a rule
-  tightened later can't refuse an old world's ladder.
-- [ ] **Decide:** whether `ramp_problems` and `ladder_problems` run on a loaded world as they do
-  on a generated one.
-- [ ] `LevelFixtures.add` refuses the same fixture twice (carried from 002). A load that runs
-  twice, or a fixture that's also stamped by generation, would otherwise double up silently.
+- [ ] `LevelFixtures.add` refuses the same fixture twice (carried from 002, trap 6).
+- [ ] After a load, `placement_problem` runs on every fixture and `ramp_problems` and
+  `ladder_problems` on the world; each problem is a `push_warning`, F3 shows the count, nothing
+  is dropped (D-113).
 - [ ] The world spawn is a fixture, so it comes back like any other
   ([D-091](../docs/design-decisions.md)).
-- [ ] Test: after a load, the next id is greater than every loaded fixture's id.
+- [ ] Save on every level change, after the actor arrives (D-110).
+- [ ] Test: after a load, the next fixture id is greater than every loaded fixture's id.
 - [ ] Test: a world with digs on three depths round-trips, each depth only its own.
+- [ ] Test: a fixture that breaks a placement rule loads, and is reported.
 - [ ] By hand: dig on the Surface, −1 and −2, quit, relaunch, check each. [2]
 - [ ] By hand: the ramp, the hole and the ladder still work, both ways. [3]
 
@@ -92,54 +95,65 @@ The first thing on screen: a dug tile survives a relaunch.
 
 *Mode: ask before starting.*
 
-- [ ] **Decide:** whether actors get a stable `actor_id` in this slice. world-runtime §6 wants one
-  ("built structures record `builder_id`"); nothing has one yet. A save of N actors with no ids
-  works until something refers to an actor.
-- [ ] **Decide:** what an actor's saved state is. Candidates: name, depth, position (pixels or
-  tile), facing, equipped tool. Not capabilities, which the game grants; not a dig in progress
-  (it resets on any interruption, [D-072](../docs/design-decisions.md)).
-- [ ] **Decide:** which loaded actor the local player takes control of. The save holds actors;
-  attaching input, the view and the camera to one of them is presentation's job
-  (the carve-out in world-runtime §6). With one actor it's obvious, which is trap 1: write it so a
-  second saved actor doesn't change the answer by accident.
-- [ ] Where actors are is saved; the spawn is used only for new players and deaths
-  ([D-091](../docs/design-decisions.md)). A loaded actor is not sent to the world spawn.
-- [ ] **Decide:** what a loaded actor standing somewhere no longer passable does. Today nothing
-  could change it between save and load, but a tile kind's passability can change in a later
-  build.
-- [ ] Test: two actors on different depths round-trip, each to its own depth and `(x, y)`.
-- [ ] By hand: quit on −2 facing west; relaunch there, facing west. [4]
+- [ ] Every actor gets an `actor_id` from a world-wide counter when it's created; the next actor
+  id is saved and restored last (D-114).
+- [ ] An actor saves id, kind (`"player"`), name, depth, tile and facing; it loads at the center
+  of its tile. Not capabilities, not a dig in progress, not the equipped tool (D-114).
+- [ ] `SaveGame` saves every actor it's handed and never picks one (trap 1,
+  [D-045](../docs/design-decisions.md)).
+- [ ] On load, `game.gd` grants capabilities and the players group by kind, not by "the first
+  one".
+- [ ] The save records `local_actor_id`, handed in by `game.gd`; on load, input, the view, the
+  camera and F3 go to that actor, falling back to the lowest-id player with a warning (D-115).
+- [ ] A loaded actor is not sent to the world spawn ([D-091](../docs/design-decisions.md)),
+  unless its tile is impassable: then it goes there, with a warning naming it and the tile
+  (D-115).
+- [ ] Test: two actors on different depths round-trip, each to its own depth and tile.
+- [ ] Test: with two players saved, the local one is the one `local_actor_id` names, whichever
+  order they're saved in.
+- [ ] Test: an actor saved on a tile made impassable loads at the spawn.
+- [ ] By hand: quit on −2 facing west; relaunch on the same tile, facing west. [4]
 
-## E. Versions, seeds and the header
-
-*Mode: ask before starting.*
-
-- [ ] `format_version` is an integer from the first save, with a migration function per step
-  ([world-runtime §7](../docs/tech/world-runtime-and-persistence.md)). Write a no-op migration
-  now (M0 acceptance, §10), so the path exists before it's needed.
-- [ ] Seeds are saved as numbers, and load reads them back without re-hashing (trap 7).
-- [ ] **Decide:** `tuning_profile_id`. One swappable resource for every tuning number, named in
-  each save so playtest feedback is traceable ([D-037](../docs/design-decisions.md)). It isn't
-  built. Build a minimal one now, write a placeholder id, or leave the field out until it
-  exists.
-- [ ] **Decide:** which header fields exist yet. §7 lists `game_time` and `playtime`; there's no
-  game clock. Leave them out, or save what there is.
-- [ ] Derived data isn't saved, and is rebuilt on load: today that's the renderers' textures and
-  the view; later support, light and chambers
-  ([world-runtime §3](../docs/tech/world-runtime-and-persistence.md)).
-- [ ] A save from a newer version than the game is refused, loudly, and not overwritten. [6]
-- [ ] A truncated or unreadable save is refused, loudly, and not overwritten. [6]
-- [ ] Test: each refusal, without a running scene.
-- [ ] `F3` shows loaded or new, and the format version. [7]
-
-## F. New game and continue
+## E. Versions, header and broken saves
 
 *Mode: ask before starting.*
 
-- [ ] Whatever A decided for new game versus continue, wired up.
-- [ ] By hand: new game with a save present behaves as decided, never half of each. [5]
-- [ ] **Decide, by looking:** is the save or the load felt (a hitch on quit, or on launch)?
-  Measure both at the full eight levels first.
+- [ ] `format_version` is an integer from the first save, with a migration function per step and
+  a no-op first migration ([world-runtime §7](../docs/tech/world-runtime-and-persistence.md)).
+- [ ] The header holds what D-116 lists: `world_seed`, `tuning_profile_id` (`"none"`),
+  `local_actor_id`, both id counters, `playtime_seconds`, `saved_at`, `game_version`. Keys are
+  read by name; a missing key loads as its default.
+- [ ] `application/config/version` is set in the project, so `game_version` has a value.
+- [ ] Playtime adds up across sessions: the loaded value plus this session's time.
+- [ ] Every write rotates: `world.save.tmp` → old `world.save` to `world.save.bak` →
+  `world.save.tmp` to `world.save` (D-111).
+- [ ] A save from a newer version, a truncated save and an unreadable save are each refused,
+  renamed to `world.broken.<timestamp>.save` and kept; the backup loads instead, with a
+  `push_error`, an on-screen message that stays up, and F3 saying so (D-111). [6]
+- [ ] No `world.save` but a `world.save.bak` is a fallback, never a new game (D-111).
+- [ ] If the backup is refused too, the game doesn't start: no world, no saving, both files left
+  alone, and a message naming both reasons and paths (D-111). [6]
+- [ ] Derived data isn't saved and is rebuilt on load: today, the renderers' textures and the
+  view ([world-runtime §3](../docs/tech/world-runtime-and-persistence.md)).
+- [ ] `F3` shows loaded, new or from the backup, and the format version. [7]
+- [ ] Test: each refusal, and the fallback to the backup, without a running scene.
+- [ ] Test: the missing-save-with-backup case loads the backup.
+- [ ] Test: a save with a key missing loads it as its default.
+
+## F. New game, the timer, and feel
+
+*Mode: ask before starting.*
+
+- [ ] `--new-game` (a user argument after `--`) moves an existing save aside to
+  `world.<timestamp>.save` before anything is generated (D-111).
+- [ ] The autosave timer runs while playing; its interval is a named constant, to move into the
+  tuning profile when it's built (D-110, D-116).
+- [ ] By hand: new game with a save present gives a fresh world, and the old save is beside it,
+  intact. [5]
+- [ ] Measure a full save and a full load at all eight levels.
+- [ ] **Decide, by looking:** is the timer's save felt mid-play? Over about a frame, split it into
+  a main-thread snapshot and a compress-and-write on a worker thread (D-110). Is the load felt at
+  launch?
 
 ## G. Done
 
@@ -158,5 +172,6 @@ The first thing on screen: a dug tile survives a relaunch.
   tests that need the whole game add to it; sharing one game in `before_all` for read-only tests
   is the carried-forward fix.
 - **Generation on first descent** (world-runtime §8) isn't how the code works: all eight levels
-  are built at launch. It doesn't block saves, but a save format that assumes every level exists
-  will need a "not yet generated" case when that changes.
+  are built at launch. A save of a world where some levels don't exist yet is a missing key, and
+  the load needs that case when generation changes.
+- **Nothing prunes old saves.** Moved-aside and broken saves pile up in the slot folder.
