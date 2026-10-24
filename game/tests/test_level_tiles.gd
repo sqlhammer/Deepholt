@@ -232,3 +232,208 @@ func test_the_disc_matches_world_is_in_bounds() -> void:
 				if outside == World.is_in_bounds(WorldPos.new(x, y, depth)):
 					mismatches += 1
 		assert_eq(mismatches, 0, "depth %d's disc matches World's" % depth)
+
+
+# --- bulk_load_tile_arrays: a load replaces whole layers at once ---
+# A load needs its own path: the public setters warn, and the per-tile
+# set_* functions emit tile_changed once per tile (slice 003 trap 5).
+# Layers come by name; a missing layer keeps its default, and a layer
+# that is present but the wrong size refuses the whole load (D-112).
+
+const BULK_RADIUS: int = 3
+
+
+func _bulk_tiles() -> LevelTiles:
+	return LevelTiles.new(LevelBound.new(1, "Unit Test", BULK_RADIUS))
+
+
+func _bulk_size() -> int:
+	var width: int = 2 * BULK_RADIUS + 1
+	return width * width
+
+
+func _filled(size: int, kind: int) -> PackedByteArray:
+	var bytes: PackedByteArray = []
+	bytes.resize(size)
+	bytes.fill(kind)
+	return bytes
+
+
+# Every byte different from its neighbor, so a match means every
+# position matched, not just the count of each value.
+func _patterned(size: int, offset: int) -> PackedByteArray:
+	var bytes: PackedByteArray = []
+	bytes.resize(size)
+	for i in size:
+		bytes[i] = (i + offset) % 200
+	return bytes
+
+
+func _layers() -> Dictionary:
+	return {
+		"ground": _filled(_bulk_size(), TileKind.GROUND.DIRT),
+		"top": _filled(_bulk_size(), TileKind.TOP.OPEN),
+		"ore": _filled(_bulk_size(), TileKind.ORE.COPPER),
+	}
+
+
+func test_bulk_load_takes_every_layer_byte_for_byte() -> void:
+	var tiles: LevelTiles = _bulk_tiles()
+	var ground: PackedByteArray = _patterned(_bulk_size(), 0)
+	var top: PackedByteArray = _patterned(_bulk_size(), 1)
+	var ore: PackedByteArray = _patterned(_bulk_size(), 2)
+	var result: LevelTiles.REFUSAL_REASON = tiles.bulk_load_tile_arrays(
+		{"ground": ground, "top": top, "ore": ore})
+	assert_eq(result, LevelTiles.REFUSAL_REASON.NONE, "a well-sized load is taken")
+	assert_eq(tiles.ground, ground, "ground is byte-identical")
+	assert_eq(tiles.top, top, "top is byte-identical")
+	assert_eq(tiles.ore, ore, "ore is byte-identical")
+
+
+# The corners of the square outside the disc are in the arrays too,
+# so a byte-identical load includes them.
+func test_bulk_load_reads_back_through_the_getters() -> void:
+	var tiles: LevelTiles = _bulk_tiles()
+	tiles.bulk_load_tile_arrays(_layers())
+	assert_eq(tiles.get_ground(0, 0), TileKind.GROUND.DIRT, "ground read")
+	assert_eq(tiles.get_top(1, -1), TileKind.TOP.OPEN, "top read")
+	assert_eq(tiles.get_ore(-1, 2), TileKind.ORE.COPPER, "ore read")
+	assert_eq(tiles.get_top(BULK_RADIUS, BULK_RADIUS), TileKind.SENTINEL_OUT_OF_BOUNDS,
+		"a loaded corner still reads as outside the disc")
+
+
+func test_bulk_load_emits_no_tile_changed() -> void:
+	var tiles: LevelTiles = _bulk_tiles()
+	watch_signals(tiles)
+	tiles.bulk_load_tile_arrays(_layers())
+	assert_signal_emit_count(tiles, "tile_changed", 0,
+		"a load is not a tile-by-tile change")
+
+
+func test_bulk_load_announces_tiles_replaced_once() -> void:
+	var tiles: LevelTiles = _bulk_tiles()
+	watch_signals(tiles)
+	tiles.bulk_load_tile_arrays(_layers())
+	assert_signal_emit_count(tiles, "tiles_replaced", 1, "one announcement per load")
+	# The announcement names the tiles that changed.
+	assert_signal_emitted_with_parameters(tiles, "tiles_replaced", [tiles])
+
+
+func test_bulk_load_trips_no_setter_warning() -> void:
+	var tiles: LevelTiles = _bulk_tiles()
+	tiles.bulk_load_tile_arrays(_layers())
+	assert_push_warning_count(0, "a load must not go through the warning setters")
+
+
+func test_bulk_load_keeps_the_level_bound() -> void:
+	var tiles: LevelTiles = _bulk_tiles()
+	var bound: LevelBound = tiles.level_bound
+	tiles.bulk_load_tile_arrays(_layers())
+	assert_same(tiles.level_bound, bound, "a load replaces tiles, not the shape")
+
+
+func test_bulk_load_missing_layer_keeps_its_default() -> void:
+	var tiles: LevelTiles = _bulk_tiles()
+	var default_ore: PackedByteArray = tiles.ore
+	var layers: Dictionary = _layers()
+	layers.erase("ore")
+	var result: LevelTiles.REFUSAL_REASON = tiles.bulk_load_tile_arrays(layers)
+	assert_eq(result, LevelTiles.REFUSAL_REASON.NONE,
+		"an older save without a layer is not broken")
+	assert_eq(tiles.ore, default_ore, "the missing layer keeps its default")
+	assert_eq(tiles.ground, layers["ground"], "the present layers are still taken")
+	assert_eq(tiles.top, layers["top"], "the present layers are still taken")
+
+
+func test_bulk_load_with_no_layers_changes_nothing() -> void:
+	var tiles: LevelTiles = _bulk_tiles()
+	var ground: PackedByteArray = tiles.ground
+	var top: PackedByteArray = tiles.top
+	var ore: PackedByteArray = tiles.ore
+	var result: LevelTiles.REFUSAL_REASON = tiles.bulk_load_tile_arrays({})
+	assert_eq(result, LevelTiles.REFUSAL_REASON.NONE, "every layer missing is not an error")
+	assert_eq(tiles.ground, ground, "ground kept")
+	assert_eq(tiles.top, top, "top kept")
+	assert_eq(tiles.ore, ore, "ore kept")
+
+
+# A refused load must leave the level exactly as it was: taking
+# ground and top and then refusing ore would leave it half old and
+# half new.
+func _assert_refused_and_untouched(layers: Dictionary, why: String) -> void:
+	var tiles: LevelTiles = _bulk_tiles()
+	var ground: PackedByteArray = tiles.ground
+	var top: PackedByteArray = tiles.top
+	var ore: PackedByteArray = tiles.ore
+	watch_signals(tiles)
+	var result: LevelTiles.REFUSAL_REASON = tiles.bulk_load_tile_arrays(layers)
+	assert_eq(result, LevelTiles.REFUSAL_REASON.LAYER_SIZE_MISMATCH, why)
+	assert_eq(tiles.ground, ground, "%s: ground untouched" % why)
+	assert_eq(tiles.top, top, "%s: top untouched" % why)
+	assert_eq(tiles.ore, ore, "%s: ore untouched" % why)
+	assert_signal_emit_count(tiles, "tiles_replaced", 0,
+		"%s: a refused load announces nothing" % why)
+
+
+func test_bulk_load_refuses_a_short_layer() -> void:
+	var layers: Dictionary = _layers()
+	layers["ore"] = _filled(_bulk_size() - 1, TileKind.ORE.COPPER)
+	_assert_refused_and_untouched(layers, "ore one byte short")
+
+
+func test_bulk_load_refuses_a_long_layer() -> void:
+	var layers: Dictionary = _layers()
+	layers["ground"] = _filled(_bulk_size() + 1, TileKind.GROUND.DIRT)
+	_assert_refused_and_untouched(layers, "ground one byte long")
+
+
+# Present but empty is a broken save, not a missing layer: the check
+# is whether the key exists, not whether the array has anything in it.
+func test_bulk_load_refuses_a_present_but_empty_layer() -> void:
+	var layers: Dictionary = _layers()
+	layers["top"] = PackedByteArray()
+	_assert_refused_and_untouched(layers, "top present but empty")
+
+
+func test_bulk_load_refuses_a_layer_sized_for_another_bound() -> void:
+	var layers: Dictionary = _layers()
+	var width: int = 2 * (BULK_RADIUS + 1) + 1
+	layers["ground"] = _filled(width * width, TileKind.GROUND.DIRT)
+	layers["top"] = _filled(width * width, TileKind.TOP.OPEN)
+	layers["ore"] = _filled(width * width, TileKind.ORE.COPPER)
+	_assert_refused_and_untouched(layers, "every layer sized for radius + 1")
+
+
+# Packed arrays are copy-on-write: a dig after a load must not reach
+# back into the data the level was loaded from.
+func test_digging_after_a_load_leaves_the_loaded_data_alone() -> void:
+	var tiles: LevelTiles = _bulk_tiles()
+	var layers: Dictionary = _layers()
+	var top_before: PackedByteArray = layers["top"].duplicate()
+	tiles.bulk_load_tile_arrays(layers)
+	tiles.set_top(0, 0, TileKind.TOP.MINABLE_ROCK)
+	assert_eq(tiles.get_top(0, 0), TileKind.TOP.MINABLE_ROCK, "the dig landed")
+	assert_eq(layers["top"], top_before, "the loaded data is unchanged")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

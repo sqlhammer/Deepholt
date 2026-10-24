@@ -190,10 +190,22 @@ func _ore_cells() -> PackedInt32Array:
 func _listen_to(new_tiles: LevelTiles) -> void:
 	if _tiles == new_tiles: return
 	
-	if _tiles != null and _tiles.tile_changed.is_connected(_on_tile_changed):
-		_tiles.tile_changed.disconnect(_on_tile_changed)
+	if _tiles != null:
+		if _tiles.tile_changed.is_connected(_on_tile_changed):
+			_tiles.tile_changed.disconnect(_on_tile_changed)
+		if _tiles.tiles_replaced.is_connected(_on_tiles_replaced):
+			_tiles.tiles_replaced.disconnect(_on_tiles_replaced)
 	
 	new_tiles.tile_changed.connect(_on_tile_changed)
+	new_tiles.tiles_replaced.connect(_on_tiles_replaced)
+
+
+func _on_tiles_replaced(source: LevelTiles) -> void:
+	# Only the level on screen; the disconnect in _listen_to should
+	# already guarantee it, this keeps it true if that ever slips.
+	if source != _tiles: return
+	
+	show_level(source)
 
 
 # One tile of one layer changed in the data: rewrite its texel. The

@@ -38,21 +38,29 @@ and the quicksave key (D-109, D-110).
 
 ## B. One level's tiles, round trip
 
-*Mode: ask before starting.*
+*Mode: Educational Assistant (2026-10-23). Walkthrough in `work/lesson/003-B-tiles-round-trip.md`.*
 
 The first thing on screen: a dug tile survives a relaunch.
 
-- [ ] `SaveGame` exists as a static class taking a path, with a save and a load function. Saves
+*Staging (sequencing, not a design decision):* in B, launch still generates all eight levels,
+then each level's saved layers replace its arrays. Fixtures, the spawn and the player come from
+generation until C replaces "generate, then overlay" with "build from the save". A saved bound
+that doesn't match the generated level is warned about and that level is skipped; the real
+saved-bound-wins path is in C.
+
+- [ ] `SaveGame` exists as a static class in `src/persist/`, taking a path, with a save and a
+  load function. Saves
   write `world.save.tmp` and rename it over `world.save` (trap 4; the `.bak` step arrives in E).
 - [ ] The file is read with `get_var` and `allow_objects` left off (trap 3).
 - [ ] Each tile layer is written by name and compressed with ZSTD; the decompressed size is
   checked against the saved bound's side squared before it's taken (D-109, D-112, trap 5).
 - [ ] `LevelTiles` gets a bulk load path that neither trips the warning setters nor emits a
   `tile_changed` per tile (trap 5). A layer missing from the save fills its default (D-112).
-- [ ] A loaded `Level` is built from its **saved** bound. `Level.setup` reads the recipe at
-  [level.gd:24](../game/src/world/level.gd#L24), so loading needs its own path (D-112).
-- [ ] `World.is_in_bounds` reads the level's own bound, not the recipe table (D-112). A bound
-  that differs from the recipe is a `push_warning`.
+  *Its tests: Agent mode, at Derik's request (2026-10-24).*
+- [ ] Each level's bound is saved as plain ints, never as the `LevelBound` resource (an object
+  can't go through a save with `allow_objects` off).
+- [ ] The game scene's save path can be set before `_ready`, so tests that load `game.tscn` never
+  read or write the real save.
 - [ ] Save on quit: window close, with `set_auto_accept_quit(false)`, save, then quit; and an
   `Esc` quit, which doesn't exist yet. Save on a debug quicksave key (D-110, trap 2).
 - [ ] Launch loads the save if there is one, and generates otherwise (D-111). The load lands
@@ -68,6 +76,12 @@ The first thing on screen: a dug tile survives a relaunch.
 
 *Mode: ask before starting.*
 
+- [ ] Continue builds the world from the save instead of generating and overlaying (B's
+  staging ends here).
+- [ ] A loaded `Level` is built from its **saved** bound. `Level.setup` reads the recipe at
+  [level.gd:24](../game/src/world/level.gd#L24), so loading needs its own path (D-112).
+- [ ] `World.is_in_bounds` reads the level's own bound, not the recipe table (D-112). A bound
+  that differs from the recipe is a `push_warning`.
 - [ ] All eight levels are saved, including the untouched solid ones below −2 (save the result,
   not the recipe).
 - [ ] Each level's `level_seed` is saved as a number and set from the save on load, **after**

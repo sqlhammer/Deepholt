@@ -25,9 +25,13 @@ enum LAYER {
 	TOP,
 	ORE,
 }
+enum REFUSAL_REASON {
+	NONE,
+	LAYER_SIZE_MISMATCH
+}
 
 signal tile_changed(x: int, y: int, layer: LAYER, level_tiles: LevelTiles)
-
+signal tiles_replaced(level_tiles: LevelTiles)
 
 func _init(p_level_bound: LevelBound) -> void:
 	level_bound = p_level_bound
@@ -39,19 +43,45 @@ func _init(p_level_bound: LevelBound) -> void:
 	_ore = _init_tile_array(ore,TileKind.ORE.NONE)
 
 
+func bulk_load_tile_arrays(layers: Dictionary) -> REFUSAL_REASON:
+	var level_size: int = _get_level_bound_array_size(level_bound)
+	if (layers.has("ground") and layers["ground"].size() != level_size):
+		return REFUSAL_REASON.LAYER_SIZE_MISMATCH
+	if (layers.has("top") and layers["top"].size() != level_size):
+		return REFUSAL_REASON.LAYER_SIZE_MISMATCH
+	if (layers.has("ore") and layers["ore"].size() != level_size):
+		return REFUSAL_REASON.LAYER_SIZE_MISMATCH
+	
+	# Using the private vars and not using the setters to avoid tens of 
+	# thousands of tile change signal emits during initialization.
+	if layers.has("ground"): _ground = layers["ground"].duplicate()
+	if layers.has("top"): _top = layers["top"].duplicate()
+	if layers.has("ore"): _ore = layers["ore"].duplicate()
+	
+	tiles_replaced.emit(self)
+	
+	return REFUSAL_REASON.NONE
+
+
 func _init_tile_array(tiles: PackedByteArray, tile_kind: int) -> PackedByteArray:
 	var max_x = level_bound.radius
 	var max_y = level_bound.radius
 	var min_x = 0-level_bound.radius
 	var min_y = 0-level_bound.radius
-	var width: int = 2 * level_bound.radius + 1
-	tiles.resize(width * width)
+	
+	tiles.resize(_get_level_bound_array_size(level_bound))
 	
 	for x in range(min_x,max_x+1):
 		for y in range(min_y, max_y+1):
 			tiles[get_index(x,y)] = tile_kind
 	
 	return tiles
+
+
+func _get_level_bound_array_size(p_level_bound: LevelBound) -> int:
+	var width: int = 2 * p_level_bound.radius + 1
+	var size: int = width * width
+	return size
 
 
 func get_ground(x: int, y: int) -> int:
