@@ -13,10 +13,6 @@ func _ready() -> void:
 	pass
 
 
-# A new level is entirely the default tile -- solid minable rock on rock
-# ground, out to its radial bounds -- with no fixtures. The level
-# generator fills it from its recipe (D-084); where players spawn is a
-# fixture, not a level property (D-091, D-092).
 func setup(p_depth: int) -> void:
 	set_depth(p_depth)
 	self.name = "Level%d" % depth

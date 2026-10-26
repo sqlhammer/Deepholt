@@ -21,7 +21,8 @@ func before_each() -> void:
 	# actor needs its Sprite2D child.
 	_actor = autofree(Global.actor_packed_scene.instantiate())
 	_handler = autofree(InputHandler.new())
-	_handler.setup(_actor, func() -> Vector2: return _mouse_at)
+	# No game: nothing here presses quick_save, the only use of it.
+	_handler.setup(_actor, func() -> Vector2: return _mouse_at, null)
 
 
 func after_each() -> void:

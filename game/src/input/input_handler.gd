@@ -4,6 +4,7 @@ class_name InputHandler
 var actor: Actor
 var mouse_world_position: Callable
 var current_device_scheme: DEVICE_SCHEME = DEVICE_SCHEME.GAMEPAD
+var game: Node
 
 # Inside this distance from the feet the mouse's direction is
 # mostly noise, so it counts as no aim and facing holds.
@@ -16,14 +17,18 @@ enum DEVICE_SCHEME {
 	MOUSE_AND_KEYBOARD,
 }
 
-func setup(p_actor: Actor, p_mouse_world_position: Callable) -> void:
+func setup(p_actor: Actor, p_mouse_world_position: Callable, p_game: Node) -> void:
 	actor = p_actor
 	name = "InputHandler%s" % p_actor.actor_name
 	mouse_world_position = p_mouse_world_position
+	game = p_game
 
 
 func _input(event: InputEvent) -> void:
 	_update_device_scheme(event)
+	
+	if event.is_action_pressed("quick_save"):
+		game.save_game()
 
 
 func _physics_process(_delta: float) -> void:
@@ -67,6 +72,22 @@ func _update_device_scheme(event: InputEvent) -> void:
 	# keep stealing aim from the mouse.
 	elif event is InputEventJoypadMotion and absf(event.axis_value) > 0.5:
 		current_device_scheme = DEVICE_SCHEME.GAMEPAD
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

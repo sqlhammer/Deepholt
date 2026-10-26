@@ -84,7 +84,8 @@ func test_the_interact_button_climbs_once_per_press() -> void:
 	var actor: Actor = _actor_at(BESIDE_HOLE, 1, Vector2i(0, -1))
 	var handler: InputHandler = InputHandler.new()
 	add_child_autofree(handler)
-	handler.setup(actor, func() -> Vector2: return Vector2.ZERO)
+	# No game: nothing here presses quick_save, the only use of it.
+	handler.setup(actor, func() -> Vector2: return Vector2.ZERO, null)
 	handler.set_physics_process(false)  # driven by hand below
 
 	Input.action_press(&"interact")

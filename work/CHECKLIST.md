@@ -9,6 +9,9 @@ except one that needs the running game. Items below build what was decided; each
 decision it carries out. **Decide, by looking** items need the running game. Numbers in brackets
 are the brief's by-hand outcomes.
 
+The save system's rules, in one readable place:
+[docs/tech/save-files.md](../docs/tech/save-files.md).
+
 Slice 002's checklist is in git history (last at `f0681b2`).
 
 ---
@@ -54,9 +57,12 @@ saved-bound-wins path is in C.
 - [ ] The file is read with `get_var` and `allow_objects` left off (trap 3).
 - [ ] Each tile layer is written by name and compressed with ZSTD; the decompressed size is
   checked against the saved bound's side squared before it's taken (D-109, D-112, trap 5).
-- [ ] `LevelTiles` gets a bulk load path that neither trips the warning setters nor emits a
+- [x] `LevelTiles` gets a bulk load path that neither trips the warning setters nor emits a
   `tile_changed` per tile (trap 5). A layer missing from the save fills its default (D-112).
-  *Its tests: Agent mode, at Derik's request (2026-10-24).*
+  *Its tests: Agent mode, at Derik's request (2026-10-24). So are the tests for
+  `SaveGame.serialize`, `deserialize` and `save_game` (2026-10-25) The fix to `deserialize`'s
+  layer sizing and radius check, its type checks, and the depth, typing and
+  version cleanups: Agent mode (2026-10-25).*
 - [ ] Each level's bound is saved as plain ints, never as the `LevelBound` resource (an object
   can't go through a save with `allow_objects` off).
 - [ ] The game scene's save path can be set before `_ready`, so tests that load `game.tscn` never

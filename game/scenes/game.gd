@@ -5,9 +5,14 @@ extends Node
 
 # What is on screen: follows the locally controlled actor (D-094).
 var view: View
+var save_slots: PackedStringArray
+var current_save_slot: String
 
 
 func _ready() -> void:
+	SaveGame.setup()
+	save_slots = SaveGame.get_save_slots()
+	current_save_slot = save_slots[0]
 	_spawn_levels()
 	_create_view()
 	_spawn_player("DefaultName")
@@ -36,7 +41,7 @@ func grant_player_capabilities(actor: Actor) -> void:
 func set_user_control(actor: Actor) -> void:
 	# Attach input handling to the player
 	var input: InputHandler = InputHandler.new()
-	input.setup(actor, mouse_world_position)
+	input.setup(actor, mouse_world_position, self)
 	add_child(input)
 	
 	# The screen shows this actor's depth, and follows it (D-094)
@@ -61,6 +66,18 @@ func mouse_world_position() -> Vector2:
 	var letterbox: Vector2 = (display.size - view_size * scale) / 2.0
 	var view_px: Vector2 = (display.get_local_mouse_position() - letterbox) / scale
 	return _view.get_canvas_transform().affine_inverse() * view_px
+
+
+func save_game() -> bool:
+	var levels: Array[Level] = []
+	for level in get_tree().get_nodes_in_group("levels"):
+		if level is Level: levels.append(level)
+	
+	var result = SaveGame.save_game(current_save_slot, levels)
+	if result != SaveGame.REFUSAL_REASON.NONE:
+		return false
+	
+	return true
 
 
 # Every level is built from its depth's recipe (D-084); the scene only

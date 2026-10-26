@@ -227,6 +227,9 @@ violation is a *gameplay* system reaching for it.
 
 ## 7. Save format
 
+The rules for files, writing, loading and broken saves are in
+[save-files.md](./save-files.md).
+
 ```
   header   : format_version · world_seed · game_time · playtime · actor_count
   per depth: level_seed · region table · POI instances · tile arrays (compressed)

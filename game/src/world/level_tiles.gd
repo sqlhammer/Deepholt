@@ -79,9 +79,15 @@ func _init_tile_array(tiles: PackedByteArray, tile_kind: int) -> PackedByteArray
 
 
 func _get_level_bound_array_size(p_level_bound: LevelBound) -> int:
-	var width: int = 2 * p_level_bound.radius + 1
-	var size: int = width * width
-	return size
+	return array_size(p_level_bound.radius)
+
+
+# How many tiles a layer holds for a level of this radius: the square
+# around its disc. The one place this is worked out, so a load and the
+# tiles it fills can't disagree.
+static func array_size(radius: int) -> int:
+	var width: int = 2 * radius + 1
+	return width * width
 
 
 func get_ground(x: int, y: int) -> int:
