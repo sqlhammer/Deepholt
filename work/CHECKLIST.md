@@ -62,7 +62,8 @@ saved-bound-wins path is in C.
   *Its tests: Agent mode, at Derik's request (2026-10-24). So are the tests for
   `SaveGame.serialize`, `deserialize` and `save_game` (2026-10-25) The fix to `deserialize`'s
   layer sizing and radius check, its type checks, and the depth, typing and
-  version cleanups: Agent mode (2026-10-25).*
+  version cleanups, and `save_game`'s saves-root parameter: Agent mode
+  (2026-10-25/26).*
 - [ ] Each level's bound is saved as plain ints, never as the `LevelBound` resource (an object
   can't go through a save with `allow_objects` off).
 - [ ] The game scene's save path can be set before `_ready`, so tests that load `game.tscn` never

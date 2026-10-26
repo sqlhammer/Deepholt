@@ -403,7 +403,9 @@ func test_round_trip_keeps_each_depths_digs_its_own() -> void:
 # Write the temporary file, move the old save to the backup, then
 # rename the temporary file into place. Never written in place.
 
-const TEST_SLOT: String = "user://test_saves/save_game"
+# The tests' own saves root, outside the real saves folder.
+const TEST_ROOT: String = "user://test_saves"
+const TEST_SLOT: String = TEST_ROOT + "/save_game"
 
 
 func before_each() -> void:
@@ -460,7 +462,7 @@ func _top_of(levels: Array[Level]) -> PackedByteArray:
 
 
 func test_first_save_writes_world_save_only() -> void:
-	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(TEST_SLOT, _world_with_dig(1))
+	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(TEST_SLOT, _world_with_dig(1), TEST_ROOT)
 	assert_eq(result, SaveGame.REFUSAL_REASON.NONE, "the save succeeds")
 	assert_true(_exists("world.save"), "world.save written")
 	assert_false(_exists("world.save.tmp"), "no temporary file left behind")
@@ -469,13 +471,13 @@ func test_first_save_writes_world_save_only() -> void:
 
 func test_saved_file_reads_back_as_the_serialized_data() -> void:
 	var levels: Array[Level] = _world_with_dig(1)
-	SaveGame.save_game(TEST_SLOT, levels)
+	SaveGame.save_game(TEST_SLOT, levels, TEST_ROOT)
 	assert_eq(_read("world.save"), SaveGame.serialize(levels),
 		"the file holds exactly what serialize produced")
 
 
 func test_saved_file_is_a_dictionary_with_objects_off() -> void:
-	SaveGame.save_game(TEST_SLOT, _world_with_dig(1))
+	SaveGame.save_game(TEST_SLOT, _world_with_dig(1), TEST_ROOT)
 	assert_true(_read("world.save") is Dictionary,
 		"get_var with allow_objects off gives back plain data")
 
@@ -483,8 +485,8 @@ func test_saved_file_is_a_dictionary_with_objects_off() -> void:
 func test_second_save_moves_the_first_to_the_backup() -> void:
 	var first: Array[Level] = _world_with_dig(1)
 	var second: Array[Level] = _world_with_dig(2)
-	SaveGame.save_game(TEST_SLOT, first)
-	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(TEST_SLOT, second)
+	SaveGame.save_game(TEST_SLOT, first, TEST_ROOT)
+	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(TEST_SLOT, second, TEST_ROOT)
 	assert_eq(result, SaveGame.REFUSAL_REASON.NONE, "the second save succeeds")
 	assert_eq(_saved_top("world.save"), _top_of(second), "world.save is the newest")
 	assert_eq(_saved_top("world.save.bak"), _top_of(first), "the backup is the one before")
@@ -492,11 +494,11 @@ func test_second_save_moves_the_first_to_the_backup() -> void:
 
 
 func test_only_one_backup_is_kept() -> void:
-	SaveGame.save_game(TEST_SLOT, _world_with_dig(1))
+	SaveGame.save_game(TEST_SLOT, _world_with_dig(1), TEST_ROOT)
 	var second: Array[Level] = _world_with_dig(2)
-	SaveGame.save_game(TEST_SLOT, second)
+	SaveGame.save_game(TEST_SLOT, second, TEST_ROOT)
 	var third: Array[Level] = _world_with_dig(3)
-	SaveGame.save_game(TEST_SLOT, third)
+	SaveGame.save_game(TEST_SLOT, third, TEST_ROOT)
 	assert_eq(_saved_top("world.save"), _top_of(third), "world.save is the third")
 	assert_eq(_saved_top("world.save.bak"), _top_of(second), "the backup is the second")
 	assert_eq(DirAccess.get_files_at(TEST_SLOT).size(), 2, "just the save and one backup")
@@ -508,7 +510,7 @@ func test_a_leftover_temporary_file_is_replaced() -> void:
 	f.store_string("half a save")
 	f.close()
 	var levels: Array[Level] = _world_with_dig(1)
-	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(TEST_SLOT, levels)
+	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(TEST_SLOT, levels, TEST_ROOT)
 	assert_eq(result, SaveGame.REFUSAL_REASON.NONE, "the save succeeds")
 	assert_false(_exists("world.save.tmp"), "the leftover is gone")
 	assert_eq(_saved_top("world.save"), _top_of(levels), "world.save is the new save")
@@ -519,16 +521,16 @@ func test_a_leftover_temporary_file_is_replaced() -> void:
 # world.save.tmp makes the write fail.
 func test_a_failed_write_leaves_the_old_save_alone() -> void:
 	var first: Array[Level] = _world_with_dig(1)
-	SaveGame.save_game(TEST_SLOT, first)
+	SaveGame.save_game(TEST_SLOT, first, TEST_ROOT)
 	DirAccess.make_dir_absolute(_path("world.save.tmp"))
-	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(TEST_SLOT, _world_with_dig(2))
+	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(TEST_SLOT, _world_with_dig(2), TEST_ROOT)
 	assert_ne(result, SaveGame.REFUSAL_REASON.NONE, "the save reports failure")
 	assert_eq(_saved_top("world.save"), _top_of(first), "the old save is untouched")
 	assert_false(_exists("world.save.bak"), "and was not moved to the backup")
 
 
 func test_saving_an_empty_world_writes_a_readable_file() -> void:
-	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(TEST_SLOT, [])
+	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(TEST_SLOT, [], TEST_ROOT)
 	assert_eq(result, SaveGame.REFUSAL_REASON.NONE, "the save succeeds")
 	assert_eq(_read("world.save").get("levels"), {}, "an empty world, still readable")
 
@@ -537,10 +539,42 @@ func test_saving_an_empty_world_writes_a_readable_file() -> void:
 # report success without a save on disk.
 func test_success_always_means_a_file_exists() -> void:
 	var missing: String = TEST_SLOT.path_join("no-such-slot")
-	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(missing, _world_with_dig(1))
+	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(missing, _world_with_dig(1), TEST_ROOT)
 	if result == SaveGame.REFUSAL_REASON.NONE:
 		assert_true(FileAccess.file_exists(missing.path_join("world.save")),
 			"success, so the file is there")
 	else:
 		assert_false(FileAccess.file_exists(missing.path_join("world.save")),
 			"failure, and no file claims otherwise")
+
+
+# --- save_game: refusing paths outside the saves root ---
+
+func test_save_refuses_a_slot_outside_the_root() -> void:
+	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(
+		"user://elsewhere/slot-001", _world_with_dig(1), TEST_ROOT)
+	assert_eq(result, SaveGame.REFUSAL_REASON.SAVE_FAILED, "not inside the root")
+	assert_push_error("Failed to save outside of save path")
+
+
+# "user://test_saves-old" starts with "user://test_saves" as a string,
+# but it isn't inside it.
+func test_save_refuses_a_sibling_that_shares_the_roots_name() -> void:
+	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(
+		TEST_ROOT + "-old/slot-001", _world_with_dig(1), TEST_ROOT)
+	assert_eq(result, SaveGame.REFUSAL_REASON.SAVE_FAILED, "a sibling, not inside")
+	assert_push_error("Failed to save outside of save path")
+
+
+func test_save_refuses_a_path_that_climbs_out_of_the_root() -> void:
+	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(
+		TEST_ROOT + "/../elsewhere", _world_with_dig(1), TEST_ROOT)
+	assert_eq(result, SaveGame.REFUSAL_REASON.SAVE_FAILED, ".. leaves the root")
+	assert_push_error("Failed to save outside of save path")
+
+
+func test_save_refuses_the_root_itself() -> void:
+	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(
+		TEST_ROOT, _world_with_dig(1), TEST_ROOT)
+	assert_eq(result, SaveGame.REFUSAL_REASON.SAVE_FAILED, "a slot is a folder inside it")
+	assert_push_error("Failed to save outside of save path")

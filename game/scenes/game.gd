@@ -12,7 +12,8 @@ var current_save_slot: String
 func _ready() -> void:
 	SaveGame.setup()
 	save_slots = SaveGame.get_save_slots()
-	current_save_slot = save_slots[0]
+	if save_slots.size() > 0:
+		current_save_slot = save_slots[0]
 	_spawn_levels()
 	_create_view()
 	_spawn_player("DefaultName")
