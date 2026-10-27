@@ -578,3 +578,33 @@ func test_save_refuses_the_root_itself() -> void:
 		TEST_ROOT, _world_with_dig(1), TEST_ROOT)
 	assert_eq(result, SaveGame.REFUSAL_REASON.SAVE_FAILED, "a slot is a folder inside it")
 	assert_push_error("Failed to save outside of save path")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

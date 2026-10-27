@@ -9,6 +9,12 @@ var save_slots: PackedStringArray
 var current_save_slot: String
 
 
+enum REFUSAL_REASON {
+	NONE,
+	LOAD_FAILED_NO_OP,
+}
+
+
 func _ready() -> void:
 	SaveGame.setup()
 	save_slots = SaveGame.get_save_slots()
@@ -81,11 +87,79 @@ func save_game() -> bool:
 	return true
 
 
+# Core principle: we don't want to update existing objects. Instead, we will
+# build new objects and replace them if they have already loaded into the game.
+# This will prevent merge issues and it will set us up for the future when
+# the game is not loaded on start-up but is, instead, loaded after the main menu.
+func load_game() -> REFUSAL_REASON:
+	if current_save_slot == "": return REFUSAL_REASON.LOAD_FAILED_NO_OP
+	
+	var game_data: Dictionary = SaveGame.load_game(current_save_slot)
+	if not game_data.has("format_version"): return REFUSAL_REASON.LOAD_FAILED_NO_OP
+	if not game_data.has("levels"): return REFUSAL_REASON.LOAD_FAILED_NO_OP
+	
+	
+	# clean up objects dependent on level
+	_free_actors()
+	
+	# load levels
+	_free_levels()
+	var _lvls: Array[Level] = _get_levels_from_save_data(game_data)
+	_attach_levels(_lvls)
+	
+	# Trigger the view to refresh the tiles
+	# TODO: Make a func for this
+	for _lvl in _lvls:
+		if _lvl.depth == view.shown_depth:
+			$GameViewport/LevelRenderer.show_level(_lvl.level_tiles)
+	
+	# load objects
+	
+	
+	# load NPCs
+	
+	
+	# load actors
+	_spawn_player("DefaultName") #TODO: Replace with actual loaded actor later
+	
+	
+	return REFUSAL_REASON.NONE
+
+
 # Every level is built from its depth's recipe (D-084); the scene only
 # decides where they live.
 func _spawn_levels() -> void:
-	for level: Level in LevelGenerator.generate_levels(World.level_recipes):
+	_attach_levels(LevelGenerator.generate_levels(World.level_recipes))
+
+
+func _attach_levels(levels: Array[Level]) -> void:
+	for level: Level in levels:
 		$Levels.add_child(level)
+		level.level_tiles.tiles_replaced.emit(level.level_tiles)
+
+
+func _get_levels_from_save_data(data: Dictionary) -> Array[Level]:
+	# TODO: Rethink this. All it's doing is changing from Dict to Array
+	
+	if not data.has("levels"): return []
+	var levels: Array[Level] = []
+	
+	for key in data.levels:
+		levels.append(data.levels[key])
+	
+	return levels
+
+
+func _free_levels() -> void:
+	for level in get_tree().get_nodes_in_group("levels"):
+		if level is not Level: continue
+		level.free()
+
+
+func _free_actors() -> void:
+	for actor in get_tree().get_nodes_in_group("actors"):
+		if actor is not Actor: continue
+		actor.free()
 
 
 # A new player appears at the world's default spawn, or the nearest

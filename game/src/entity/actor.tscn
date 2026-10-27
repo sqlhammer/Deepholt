@@ -106,7 +106,7 @@ _data = {
 &"WALK_UP": SubResource("Animation_34lrw")
 }
 
-[node name="Actor" type="Node2D" unique_id=910169004]
+[node name="Actor" type="Node2D" unique_id=910169004 groups=["actors"]]
 script = ExtResource("1_70l2e")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=569719171]

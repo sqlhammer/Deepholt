@@ -31,7 +31,7 @@ static func save_game(slot_path: String, levels: Array[Level],
 	
 	# Write data to tmp
 	var tmp_save_path: String = slot_path.path_join("%s.tmp" % SAVE_BASE_NAME)
-	var result: bool = _overwrite_data(data,tmp_save_path)
+	var result: bool = _overwrite_data(FORMAT_VERSION, data, tmp_save_path)
 	if result == false: return REFUSAL_REASON.SAVE_FAILED
 	
 	# Backup old save
@@ -47,9 +47,32 @@ static func save_game(slot_path: String, levels: Array[Level],
 	return REFUSAL_REASON.NONE
 
 
-static func load_game() -> REFUSAL_REASON:
+static func load_game(slot_path: String) -> Dictionary:
+	var file_data: Dictionary = get_save_data(slot_path)
+	var game_data: Dictionary = {}
 	
-	return REFUSAL_REASON.NONE
+	# Version
+	if not file_data.has("format_version"): return {}
+	game_data["format_version"] = file_data.format_version
+	
+	# Levels
+	var levels: Array[Level] = deserialize(file_data)
+	if levels:
+		game_data["levels"] = {}
+		for level in levels:
+			game_data["levels"][level.depth] = level
+	
+	
+	# Objects
+	
+	
+	# NPCs
+	
+	
+	# Actors
+	
+	
+	return game_data
 
 
 static func setup() -> void:
@@ -103,8 +126,8 @@ static func deserialize(data: Dictionary) -> Array[Level]:
 			layers = _deserialize_tile_layers(level_data)
 		
 		# Build level
-		var level: Level = Level.new()
-		level.setup(bound["depth"])
+		var level_recipe: LevelRecipe = World.level_recipes.get_recipe(bound.depth)
+		var level: Level = LevelGenerator.generate_level(level_recipe)
 		# Never use _set_level_seed() because it recomputes the seed. The save is the source of truth
 		level.level_seed = level_data["level_seed"]
 		var result: LevelTiles.REFUSAL_REASON = level.level_tiles.bulk_load_tile_arrays(layers)
@@ -130,7 +153,35 @@ static func get_save_slots() -> PackedStringArray:
 		push_warning("An error occurred when trying to access the path: %s." % SAVES_DIR)
 	
 	return slots
- 
+
+
+static func get_save_data(slot_path: String) -> Dictionary:
+	var file_path: String = slot_path.path_join(SAVE_BASE_NAME)
+	var data: Dictionary = _get_file_data(file_path)
+	return data
+
+
+static func _get_file_data(file_path: String) -> Dictionary:
+	var dict_data: Dictionary = {}
+	
+	var file := FileAccess.open(file_path, FileAccess.READ)
+	if file == null:
+		push_error(error_string(FileAccess.get_open_error()))
+		return {}
+	
+	# Store and retrieve the format_version separately from the remainder of
+	# the data so that it's format can change and be detected before reading it
+	var version: Variant = file.get_var()
+	if version is Dictionary and version.has("format_version"):
+		dict_data["format_version"] = version["format_version"]
+	
+	var data: Variant = file.get_var()
+	if data is Dictionary:
+		for key in data:
+			dict_data[key] = data[key]
+	
+	return dict_data
+
 
 static func _serialize_tile_layers(level_data: Dictionary, level: Level) -> void:
 	# Level and Dictionary are byref, therefore their updates don't need to be returned
@@ -242,12 +293,16 @@ static func _create_slot_directory_if_missing() -> void:
 		DirAccess.make_dir_recursive_absolute(slot_dir)
 
 
-static func _overwrite_data(data: Dictionary, file_path: String) -> bool:
+static func _overwrite_data(format_version: int, data: Dictionary, file_path: String) -> bool:
 	var f := FileAccess.open(file_path, FileAccess.WRITE)
 	if f == null: return false
 	
-	if f.store_var(data, ALLOW_OBJECTS):
-		return true
+	# Store the format_version separately from the remainder of
+	# the data so that it's format can change and be detected before reading it
+	var version: Dictionary = { "format_version": format_version }
+	if f.store_var(version, ALLOW_OBJECTS):
+		if f.store_var(data, ALLOW_OBJECTS):
+			return true
 	
 	return false
 

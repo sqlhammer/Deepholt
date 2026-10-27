@@ -29,9 +29,14 @@ func _input(event: InputEvent) -> void:
 	
 	if event.is_action_pressed("quick_save"):
 		game.save_game()
+	if event.is_action_pressed("load"):
+		game.load_game()
 
 
 func _physics_process(_delta: float) -> void:
+	if actor == null or actor is not Actor:
+		return
+	
 	var move: Vector2 = Input.get_vector(
 		"move_left", "move_right", "move_up", "move_down")
 	actor.move(move)
