@@ -7,11 +7,11 @@ signal action_ended(verb: String)
 signal move_intent_changed(move_intent: Vector2)
 
 var current_WorldPos: WorldPos
+var current_level: Level
 var actor_name: String = "Actor"
 var move_intent: Vector2 = Vector2.ZERO
 var action_intent: bool = false
 var aim_vector: Vector2 = Vector2.ZERO
-var current_level: Level
 var facing: Vector2i = Vector2i(0,1) # Default = Down
 
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
@@ -70,6 +70,7 @@ func move(p_move_intent: Vector2) -> void:
 
 
 func _move(_motion: Vector2) -> void:
+	if not current_level: return
 	var tiles: LevelTiles = current_level.level_tiles
 	var moved: Rect2 = TileCollision.move_box(tiles, get_world_box(), _motion)
 	
@@ -154,7 +155,7 @@ func _physics_process(delta: float) -> void:
 
 func setup(p_name: String, world_pos: WorldPos) -> Actor:
 	var old_pos: WorldPos = current_WorldPos
-	depth = world_pos.depth
+	set_depth(world_pos.depth)
 	position = TileSpace.tile_center(Vector2i(world_pos.x, world_pos.y))
 	current_WorldPos = get_current_WorldPos()
 	actor_worldpos_changed.emit(self, old_pos, current_WorldPos)
@@ -164,6 +165,7 @@ func setup(p_name: String, world_pos: WorldPos) -> Actor:
 
 
 func get_current_WorldPos() -> WorldPos:
+	if not current_level: return
 	var g_pos = get_world_box().get_center()
 	return World.get_worldpos_from_global_position(g_pos, current_level)
 

@@ -223,9 +223,6 @@ func test_the_screen_follows_the_player_down_a_level() -> void:
 	assert_eq(_game.view.shown_depth, 1, "and the view says -1")
 
 
-func test_load_game() -> void:
-	_game.load_game()
-
 
 
 

@@ -7,6 +7,9 @@ extends Node
 var view: View
 var save_slots: PackedStringArray
 var current_save_slot: String
+var active_actor: Actor:
+	get: return _active_actor
+var _active_actor: Actor
 
 
 enum REFUSAL_REASON {
@@ -15,27 +18,20 @@ enum REFUSAL_REASON {
 }
 
 
-func _ready() -> void:
-	SaveGame.setup()
-	save_slots = SaveGame.get_save_slots()
-	if save_slots.size() > 0:
-		current_save_slot = save_slots[0]
-	_spawn_levels()
-	_create_view()
-	_spawn_player("DefaultName")
-
-
-func _create_view() -> void:
-	view = View.new()
-	view.name = "View"
-	add_child(view)
-	$GameViewport/LevelRenderer.watch(view)
-	$GameViewport/FixtureRenderer.watch(view)
-	$DebugOverlay.watch_view(view)
-
-
 func get_view_camera() -> Camera2D:
 	return $GameViewport/ViewCamera
+
+
+func get_level_renderer() -> LevelRenderer:
+	return $GameViewport/LevelRenderer
+
+
+func refresh_current_view() -> void:
+	for _lvl in get_tree().get_nodes_in_group("levels"):
+		if _lvl is not Level: continue
+		if _lvl.depth == view.shown_depth:
+			get_level_renderer().show_level(_lvl.level_tiles)
+			break
 
 
 func grant_player_capabilities(actor: Actor) -> void:
@@ -80,7 +76,8 @@ func save_game() -> bool:
 	for level in get_tree().get_nodes_in_group("levels"):
 		if level is Level: levels.append(level)
 	
-	var result = SaveGame.save_game(current_save_slot, levels)
+	var actors: Array[Node] = get_tree().get_nodes_in_group("actors")
+	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor)
 	if result != SaveGame.REFUSAL_REASON.NONE:
 		return false
 	
@@ -89,29 +86,31 @@ func save_game() -> bool:
 
 # Core principle: we don't want to update existing objects. Instead, we will
 # build new objects and replace them if they have already loaded into the game.
-# This will prevent merge issues and it will set us up for the future when
-# the game is not loaded on start-up but is, instead, loaded after the main menu.
+# This will prevent merge issues
 func load_game() -> REFUSAL_REASON:
 	if current_save_slot == "": return REFUSAL_REASON.LOAD_FAILED_NO_OP
 	
 	var game_data: Dictionary = SaveGame.load_game(current_save_slot)
+	if not game_data: return REFUSAL_REASON.LOAD_FAILED_NO_OP
 	if not game_data.has("format_version"): return REFUSAL_REASON.LOAD_FAILED_NO_OP
 	if not game_data.has("levels"): return REFUSAL_REASON.LOAD_FAILED_NO_OP
+	if not game_data.has("actors"): return REFUSAL_REASON.LOAD_FAILED_NO_OP
 	
 	
-	# clean up objects dependent on level
+	# Pause game and handle visual transition/loading indicator
+	
+	
+	# clean up objects
 	_free_actors()
+	_free_levels()
+	_free_inputhandlers() # PROBLEM: Clears current_level from loaded actors
 	
 	# load levels
-	_free_levels()
 	var _lvls: Array[Level] = _get_levels_from_save_data(game_data)
 	_attach_levels(_lvls)
 	
 	# Trigger the view to refresh the tiles
-	# TODO: Make a func for this
-	for _lvl in _lvls:
-		if _lvl.depth == view.shown_depth:
-			$GameViewport/LevelRenderer.show_level(_lvl.level_tiles)
+	refresh_current_view()
 	
 	# load objects
 	
@@ -119,11 +118,42 @@ func load_game() -> REFUSAL_REASON:
 	# load NPCs
 	
 	
+	# load player
+	var actors: Dictionary = game_data.actors
+	for key in actors:
+		if actors[key].is_active:
+			# reattach new level node to the actors
+			var actor: Actor = actors[key].actor_obj
+			actor.setup(key,actors[key].worldpos) # Redundant setup to work around losing the level from _free_levels, above.
+			# create the active player
+			_create_player(actors[key].actor_obj)
+	
 	# load actors
-	_spawn_player("DefaultName") #TODO: Replace with actual loaded actor later
+	# TODO: _create_player sets the active player, we need to also spawn the 
+	#		other actors. We can update this when we have other actors implemented
+	#		to test with
 	
 	
 	return REFUSAL_REASON.NONE
+
+
+func _ready() -> void:
+	SaveGame.setup()
+	save_slots = SaveGame.get_save_slots()
+	if save_slots.size() > 0:
+		current_save_slot = save_slots[0]
+	_spawn_levels()
+	_create_view()
+	_spawn_player("DefaultName")
+
+
+func _create_view() -> void:
+	view = View.new()
+	view.name = "View"
+	add_child(view)
+	$GameViewport/LevelRenderer.watch(view)
+	$GameViewport/FixtureRenderer.watch(view)
+	$DebugOverlay.watch_view(view)
 
 
 # Every level is built from its depth's recipe (D-084); the scene only
@@ -162,16 +192,21 @@ func _free_actors() -> void:
 		actor.free()
 
 
-# A new player appears at the world's default spawn, or the nearest
-# free tile to it (D-091). Players have no spawn points of their own
-# yet; beds bring them.
+func _free_inputhandlers() -> void:
+	for child in self.get_children():
+		if child.name.substr(0,12) != "InputHandler": continue
+		if child is not InputHandler: continue
+		child.free()
+
+
 func _spawn_player(_name: String) -> void:
 	var tile: WorldPos = Spawning.spawn_tile_for(null, _levels(), _players())
 	if tile == null:
 		push_error("Nowhere to spawn %s." % _name)
 		return
-
-	_create_player(_name, tile)
+	var actor = Actor.create(Global.actor_packed_scene, _name, tile)
+	
+	_create_player(actor)
 
 
 func _levels() -> Array[Level]:
@@ -188,10 +223,9 @@ func _players() -> Array[Actor]:
 	return actors
 
 
-func _create_player(_name: String, tile: WorldPos) -> Actor:
-	# Create player
-	var actor: Actor = Actor.create(Global.actor_packed_scene, _name, tile)
+func _create_player(actor: Actor) -> Actor:
 	actor.add_to_group("players")
+	_active_actor = actor
 	$GameViewport/Actors/Players.add_child(actor)
 	view.track(actor)
 	
