@@ -143,12 +143,16 @@ func load_game() -> REFUSAL_REASON:
 		# skip header data
 		if actors[key] is not Dictionary: continue
 		if not actors[key].has("actor_obj"): continue
+		
 		# create the active player
-		if actors[key].actor_obj.actor_id == _local_actor_id or \
-			# use the first actor found if no local_actor_id is set
-			_local_actor_id == -1:
-				_create_player(actors[key].actor_obj)
-				break
+		# use the first actor found if no local_actor_id is set
+		if _local_actor_id == -1 and actors[key].actor_obj.actor_kind == ActorKind.ACTOR.PLAYER:
+			_create_player(actors[key].actor_obj)
+			break
+		# create the active player from actor matching the _local_actor_id
+		if key == _local_actor_id:
+			_create_player(actors[key].actor_obj)
+			break
 	
 	# load actors
 	# TODO: _create_player sets the active player, we need to also spawn the 

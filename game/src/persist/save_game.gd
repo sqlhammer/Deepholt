@@ -217,7 +217,7 @@ static func _serialize_actors(actors: Array[Node], active_actor: Actor) -> Dicti
 	for actor in actors:
 		var actor_data: Dictionary = _serialize_actor(actor)
 		if not actor_data: continue
-		data[actor.actor_name] = _serialize_actor(actor)
+		data[actor.actor_id] = _serialize_actor(actor)
 	
 	return data
 
@@ -226,7 +226,6 @@ static func _serialize_actor(actor: Actor) -> Dictionary:
 	var actor_data: Dictionary = {}
 	if not _is_savable_actor_object(actor): return {}
 	
-	actor_data["actor_id"] = actor.actor_id
 	actor_data["actor_kind"] = actor.actor_kind
 	
 	# the actor_name is the key one layer up but we need it here, as well
@@ -250,10 +249,13 @@ static func _deserialize_actors(p_actors: Dictionary, levels: Dictionary) -> Dic
 	var actors: Dictionary = {}
 	if p_actors.has("local_actor_id"):
 		actors["local_actor_id"] = p_actors.local_actor_id
-
+	
 	for key in p_actors:
+		# Actors are keyed by their id. This also skips the header's
+		# local_actor_id, and a save keyed the old way, by name.
+		if key is not int: continue
 		if not _is_valid_actor_entry(p_actors[key]): continue
-		var actor: Actor = _deserialize_actor(p_actors[key], levels)
+		var actor: Actor = _deserialize_actor(p_actors[key], key, levels)
 		if not actor: continue
 		actors[key] = {}
 		actors[key]["actor_obj"] = actor
@@ -263,15 +265,15 @@ static func _deserialize_actors(p_actors: Dictionary, levels: Dictionary) -> Dic
 
 
 # Must have already passed _is_valid_actor_entry
-static func _deserialize_actor(p_actor: Dictionary, levels: Dictionary) -> Actor:
+static func _deserialize_actor(p_actor: Dictionary, p_actor_id: int, p_levels: Dictionary) -> Actor:
 	var actor_name: String = p_actor.actor_name
 	var pos: Dictionary = p_actor.worldpos
-	var level: Level = levels.get(pos.depth)
+	var level: Level = p_levels.get(pos.depth)
 	if level == null:
 		push_warning("Actor %s is on depth %d, which didn't load; skipped." % [actor_name, pos.depth])
 		return null
 	var worldpos: WorldPos = WorldPos.new(pos.x, pos.y, pos.depth)
-	var actor: Actor = Actor.create(Global.actor_packed_scene, actor_name, worldpos, level, p_actor.actor_kind, p_actor.actor_id)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, actor_name, worldpos, level, p_actor.actor_kind, p_actor_id)
 	
 	var facing: Dictionary = p_actor.facing
 	actor.facing = Vector2i(facing.x, facing.y)
@@ -432,7 +434,6 @@ static func _is_valid_fixtures_entry(fixtures: Variant) -> bool:
 
 static func _is_valid_actor_entry(actor: Variant) -> bool:
 	if actor is not Dictionary: return false
-	if actor.get("actor_id") is not int: return false
 	if actor.get("actor_kind") is not int: return false
 	if actor.get("actor_name") is not String: return false
 	

@@ -113,7 +113,7 @@ func test_changing_level_saves_with_the_player_on_the_new_level() -> void:
 	assert_true(actor.change_depth(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
 	assert_true(FileAccess.file_exists(_save_file()), "the move saved")
 	var saved: Dictionary = SaveGame.get_save_data(SAVES_ROOT.path_join("slot-001"))
-	assert_eq(saved.actors[actor.actor_name].worldpos.depth, 1, "with the player on -1")
+	assert_eq(saved.actors[actor.actor_id].worldpos.depth, 1, "with the player on -1")
 
 
 func test_moving_within_a_level_does_not_save() -> void:

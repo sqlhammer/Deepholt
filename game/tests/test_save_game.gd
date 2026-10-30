@@ -837,7 +837,6 @@ func _actor_entry(depth: int) -> Dictionary:
 	return {
 		"actor_name": "Loaded",
 		"actor_kind": 1,
-		"actor_id": 10,
 		"worldpos": {"x": 3, "y": -2, "depth": depth},
 		"facing": {"x": -1, "y": 0},
 	}
@@ -850,8 +849,8 @@ func test_loaded_actors_stand_on_the_loaded_levels() -> void:
 	old_level.setup(0)
 	add_child_autofree(old_level)
 	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
-	var actors: Dictionary = SaveGame._deserialize_actors({"local_actor_id": 10,"Loaded": _actor_entry(0)}, levels)
-	var actor: Actor = actors["Loaded"]["actor_obj"]
+	var actors: Dictionary = SaveGame._deserialize_actors({"local_actor_id": 10,10: _actor_entry(0)}, levels)
+	var actor: Actor = actors[10]["actor_obj"]
 	assert_eq(actor.current_level, levels[0], "on the loaded level")
 	assert_ne(actor.current_level, old_level, "not the one in the tree")
 	assert_true(actor.current_WorldPos.equals(WorldPos.new(3, -2, 0)), "on its saved tile")
@@ -862,7 +861,7 @@ func test_loaded_actors_stand_on_the_loaded_levels() -> void:
 func test_an_actor_on_a_depth_that_did_not_load_is_skipped() -> void:
 	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
 	var before: int = _orphans()
-	var actors: Dictionary = SaveGame._deserialize_actors({"Loaded": _actor_entry(5)}, levels)
+	var actors: Dictionary = SaveGame._deserialize_actors({10: _actor_entry(5)}, levels)
 	assert_eq(actors, {}, "no actor without its level")
 	assert_push_warning("didn't load")
 	assert_eq(_orphans(), before, "and none was left orphaned")
@@ -873,7 +872,7 @@ func test_an_actor_on_a_depth_that_did_not_load_is_skipped() -> void:
 
 func test_a_loaded_world_of_legal_fixtures_reports_no_problems() -> void:
 	_write_save({"levels": SaveGame._serialize_levels(_generated_world()),
-		"actors": {"Loaded": _actor_entry(0)}})
+		"actors": {10: _actor_entry(0)}})
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
 	assert_eq(game_data.get("problems"), [] as Array[String], "the generated world is clean")
 	SaveGame.free_game_data(game_data)
@@ -884,7 +883,7 @@ func test_a_fixture_that_breaks_a_placement_rule_loads_and_is_reported() -> void
 	# The Surface saved all rock: a ladder there has no floor and no
 	# level above.
 	levels[0]["fixtures"] = [_fixture_entry(ObjectKind.OBJECT.LADDER, 2, 3, 77)]
-	_write_save({"levels": levels, "actors": {"Loaded": _actor_entry(0)}})
+	_write_save({"levels": levels, "actors": {10: _actor_entry(0)}})
 
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
 	var surface: Level = game_data.levels[0]
@@ -910,7 +909,7 @@ func test_a_load_reports_a_ramp_problem() -> void:
 	top[index] = TileKind.TOP.OPEN
 	levels[0]["tiles"]["ground"] = _packed(ground)
 	levels[0]["tiles"]["top"] = _packed(top)
-	_write_save({"levels": levels, "actors": {"Loaded": _actor_entry(0)}})
+	_write_save({"levels": levels, "actors": {10: _actor_entry(0)}})
 
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
 	assert_eq(game_data.problems.size(), 1, "the lone ramp end: %s" % [game_data.problems])
@@ -952,7 +951,7 @@ func test_deserialize_skips_each_malformed_actor_entry() -> void:
 	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
 	var broken: Array = []
 	broken.append("not a dictionary")
-	for field: String in ["actor_id", "actor_kind", "actor_name", "worldpos", "facing"]:
+	for field: String in ["actor_kind", "actor_name", "worldpos", "facing"]:
 		var missing: Dictionary = _actor_entry(0)
 		missing.erase(field)
 		broken.append(missing)
@@ -970,16 +969,34 @@ func test_deserialize_skips_each_malformed_actor_entry() -> void:
 
 	var before: int = _orphans()
 	for entry: Variant in broken:
-		assert_eq(SaveGame._deserialize_actors({"Loaded": entry}, levels), {},
+		assert_eq(SaveGame._deserialize_actors({10: entry}, levels), {},
 			"skipped: %s" % [entry])
 	assert_eq(_orphans(), before, "and no actor was built for any of them")
 	SaveGame.free_game_data({"levels": levels})
+
+
+# Actors are keyed by id; a save keyed by name, as before, is skipped
+# rather than handing a String to an int parameter.
+func test_deserialize_skips_an_actor_not_keyed_by_an_int_id() -> void:
+	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
+	var before: int = _orphans()
+	assert_eq(SaveGame._deserialize_actors({"Loaded": _actor_entry(0)}, levels), {},
+		"skipped")
+	assert_eq(_orphans(), before, "and no actor was built")
+	SaveGame.free_game_data({"levels": levels})
+
+
+func test_deserialize_takes_its_id_from_the_key() -> void:
+	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
+	var actors: Dictionary = SaveGame._deserialize_actors({42: _actor_entry(0)}, levels)
+	assert_eq(actors[42].actor_obj.actor_id, 42, "the key is the id")
+	SaveGame.free_game_data({"levels": levels, "actors": actors})
 
 
 func test_an_actor_entry_with_a_tool_path_loads() -> void:
 	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
 	var entry: Dictionary = _actor_entry(0)
 	entry["equipped"] = "res://src/entity/tools/pickaxe.tres"
-	var actors: Dictionary = SaveGame._deserialize_actors({"Loaded": entry}, levels)
+	var actors: Dictionary = SaveGame._deserialize_actors({10: entry}, levels)
 	assert_eq(actors.size(), 1, "a String tool path is allowed")
 	SaveGame.free_game_data({"levels": levels, "actors": actors})
