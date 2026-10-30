@@ -76,6 +76,13 @@ static func load_game(slot_path: String) -> Dictionary:
 
 	# Levels
 	game_data["levels"] = _deserialize_levels(file_data.levels)
+	# Loaded fixtures went straight in; now they're checked, with the
+	# world's ramps and ladders, and reported, never dropped (D-113).
+	var loaded: Array[Level] = []
+	loaded.assign(game_data.levels.values())
+	game_data["problems"] = load_problems(loaded)
+	for problem: String in game_data.problems:
+		push_warning(problem)
 
 	# Objects
 
@@ -89,6 +96,13 @@ static func load_game(slot_path: String) -> Dictionary:
 	game_data["actors"] = _deserialize_actors(file_data.actors, game_data.levels)
 	
 	return game_data
+
+
+# What's wrong with a loaded world, one line per problem: the checks
+# generation runs, on the fixtures and the levels as they came out of
+# the save. A report only; nothing is changed (D-113).
+static func load_problems(levels: Array[Level]) -> Array[String]:
+	return Objects.placement_problems(levels) 		+ LevelGenerator.ramp_problems(levels) 		+ LevelGenerator.ladder_problems(levels)
 
 
 # Frees every node a load built: its levels, and its actors. For a
@@ -168,8 +182,24 @@ static func _serialize_level(level: Level) -> Dictionary:
 	level_data["bound"]["radius"] = bound.radius
 	
 	_serialize_tile_layers(level_data, level)
+	level_data["fixtures"] = _serialize_fixtures(level.level_fixtures)
 	
 	return level_data
+
+
+# One entry per fixture: its kind id, tile and id, all plain ints. The
+# depth is the level's, so it isn't repeated. Kind ids are numbers and
+# never reused, so an old save's kinds mean the same (D-104).
+static func _serialize_fixtures(fixtures: LevelFixtures) -> Array:
+	var data: Array = []
+	for fixture: Fixture in fixtures.all():
+		data.append({
+			"kind": fixture.kind,
+			"x": fixture.tile.x,
+			"y": fixture.tile.y,
+			"id": fixture.id,
+		})
+	return data
 
 
 static func _serialize_actors(actors: Array[Node], active_actor: Actor) -> Dictionary:
@@ -243,6 +273,11 @@ static func _deserialize_levels(p_levels: Dictionary) -> Dictionary:
 	
 	for level_key in p_levels:
 		if not _is_valid_level_entry(level_key, p_levels[level_key]): continue
+		# A depth with no recipe row is refused here. Level.set_depth
+		# would clamp it onto the last level without a word.
+		if not World.level_recipes.has_recipe(level_key):
+			push_warning("Saved depth %d has no recipe row; skipped." % level_key)
+			continue
 		var level: Level = _deserialize_level(level_key, p_levels[level_key])
 		if not level: continue
 		levels[level_key] = level
@@ -269,7 +304,29 @@ static func _deserialize_level(p_depth: int, p_level: Dictionary) -> Level:
 		level.free()
 		return
 	
+	# The saved fixtures replace the generated ones. A save with no
+	# fixtures entry, from before they were saved, keeps what was
+	# generated, as a missing tile layer does.
+	if p_level.has("fixtures"):
+		level.level_fixtures = _deserialize_fixtures(p_depth, p_level.fixtures)
+	
 	return level
+
+
+# p_fixtures must already have passed _is_valid_level_entry. Each goes
+# straight into the store with its saved id, without the placement
+# rules (D-113). Only a second fixture with an id already on the level
+# is left out: the store can't hold two, and one id must name one
+# fixture.
+static func _deserialize_fixtures(p_depth: int, p_fixtures: Array) -> LevelFixtures:
+	var fixtures: LevelFixtures = LevelFixtures.new()
+	for entry: Dictionary in p_fixtures:
+		if fixtures.find(entry.id) != null:
+			push_warning("Saved fixture id %d is on depth %d twice; the second is skipped." % [
+				entry.id, p_depth])
+			continue
+		fixtures.add(Fixture.new(entry.kind, WorldPos.new(entry.x, entry.y, p_depth), entry.id))
+	return fixtures
 
 
 static func _deserialize_tile_layers(level_data: Dictionary) -> Dictionary:
@@ -338,12 +395,27 @@ static func _is_valid_level_entry(key: Variant, entry: Variant) -> bool:
 	# differ has been edited or damaged, and neither can be trusted.
 	if bound["depth"] != key: return false
 
+	if entry.has("fixtures") and not _is_valid_fixtures_entry(entry["fixtures"]):
+		return false
+
 	if not entry.has("tiles"): return true
 	var tiles: Variant = entry["tiles"]
 	if not tiles is Dictionary: return false
 	for layer: String in ["ground", "top", "ore"]:
 		if tiles.has(layer) and not tiles[layer] is PackedByteArray: return false
 
+	return true
+
+
+# Whether a level's saved fixtures are an Array of entries, each with
+# an int kind, x, y and id. Whether each one is allowed where it is
+# is the load report's question, not this one's (D-113).
+static func _is_valid_fixtures_entry(fixtures: Variant) -> bool:
+	if not fixtures is Array: return false
+	for entry: Variant in fixtures:
+		if not entry is Dictionary: return false
+		for field: String in ["kind", "x", "y", "id"]:
+			if not entry.get(field) is int: return false
 	return true
 
 

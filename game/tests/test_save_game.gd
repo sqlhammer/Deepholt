@@ -336,6 +336,19 @@ func test_deserialize_skips_a_key_that_disagrees_with_its_bound() -> void:
 	_assert_bad_level_skipped(saved, "keyed 1, bound says 2")
 
 
+# A depth with no recipe row is refused, not folded onto the last
+# level by Level.set_depth's clamp. The last row's level is the one it
+# would have overwritten.
+func test_deserialize_refuses_a_depth_with_no_recipe_row() -> void:
+	var last: int = World.level_recipes.rows.size() - 1
+	var beyond: int = last + 1
+	var saved: Dictionary = _level_data(last)
+	saved["bound"]["depth"] = beyond
+	assert_eq(_deserialize({beyond: saved}), {}, "no level for a depth with no recipe")
+	assert_push_warning("Saved depth %d has no recipe row" % beyond)
+	assert_no_new_orphans("nothing was built for the refused depth")
+
+
 func test_deserialize_with_no_levels_is_empty() -> void:
 	assert_eq(_deserialize({}), {}, "nothing to load")
 
@@ -392,6 +405,146 @@ func test_round_trip_keeps_each_depths_digs_its_own() -> void:
 	assert_eq(loaded[0].level_tiles.get_top(1, 0), TileKind.TOP.OPEN, "the Surface dig")
 	assert_eq(loaded[1].level_tiles.get_top(1, 0), TileKind.TOP.MINABLE_ROCK,
 		"−1 untouched at the same (x, y)")
+
+
+# --- fixtures (D-104, D-113) ---
+
+# A ladder and the world spawn on -1, each with its own id.
+func _level_with_fixtures() -> Level:
+	var level: Level = _level(1)
+	level.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.LADDER, WorldPos.new(4, -3, 1), 41))
+	level.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.WORLD_SPAWN, WorldPos.new(-2, 5, 1), 42))
+	return level
+
+
+func _fixture_entry(kind: int, x: int, y: int, id: int) -> Dictionary:
+	return {"kind": kind, "x": x, "y": y, "id": id}
+
+
+# Kind, tile and id, as numbers; the depth is the level's.
+func _fixtures_of(level: Level) -> Array:
+	var found: Array = []
+	for fixture: Fixture in level.level_fixtures.all():
+		found.append([fixture.kind, fixture.tile.x, fixture.tile.y, fixture.tile.depth, fixture.id])
+	return found
+
+
+# Every level, as generation builds it. Freed after the test.
+func _generated_world() -> Array[Level]:
+	var levels: Array[Level] = []
+	for recipe: LevelRecipe in World.level_recipes.rows:
+		levels.append(autofree(LevelGenerator.generate_level(recipe)))
+	return levels
+
+
+func test_serialize_saves_each_fixture_as_kind_tile_and_id() -> void:
+	var saved: Dictionary = _serialize([_level_with_fixtures()])[1]
+	assert_eq(saved["fixtures"], [
+		_fixture_entry(ObjectKind.OBJECT.LADDER, 4, -3, 41),
+		_fixture_entry(ObjectKind.OBJECT.WORLD_SPAWN, -2, 5, 42),
+	], "one entry per fixture, in the store's order")
+	for entry: Dictionary in saved["fixtures"]:
+		for field: String in entry:
+			assert_eq(typeof(entry[field]), TYPE_INT, "%s is a plain int" % field)
+
+
+func test_serialize_saves_a_level_with_no_fixtures_as_an_empty_list() -> void:
+	assert_eq(_serialize([_level(0)])[0]["fixtures"], [], "saved, and empty")
+
+
+func test_serialized_fixtures_hold_no_objects() -> void:
+	var levels: Dictionary = _serialize([_level_with_fixtures()])
+	assert_eq(_object_in(levels, "levels"), "", "plain data only")
+
+
+func test_deserialize_replaces_the_generated_fixtures_with_the_saved() -> void:
+	var saved: Dictionary = _level_data(0)
+	saved["fixtures"] = [_fixture_entry(ObjectKind.OBJECT.LADDER, 7, 8, 300)]
+	var level: Level = _deserialize({0: saved})[0]
+	assert_eq(_fixtures_of(level), [[ObjectKind.OBJECT.LADDER, 7, 8, 0, 300]],
+		"only the saved ladder: the generated spawn is gone")
+
+
+func test_deserialize_with_an_empty_fixture_list_leaves_none() -> void:
+	var saved: Dictionary = _level_data(0)
+	saved["fixtures"] = []
+	assert_eq(_deserialize({0: saved})[0].level_fixtures.all(), [] as Array[Fixture],
+		"an empty list is no fixtures, not the generated ones")
+
+
+# A save written before fixtures were saved keeps what generation put
+# there, the way a missing tile layer keeps its default.
+func test_deserialize_without_a_fixtures_entry_keeps_the_generated() -> void:
+	var generated: Level = autofree(LevelGenerator.generate_level(World.level_recipes.get_recipe(0)))
+	var level: Level = _deserialize({0: _level_data(0)})[0]
+	assert_eq(_fixtures_of(level).size(), _fixtures_of(generated).size(),
+		"as many fixtures as generation places")
+	assert_gt(level.level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN).size(), 0,
+		"the Surface's generated spawn among them")
+
+
+func test_deserialize_skips_fixtures_that_are_not_a_list() -> void:
+	var saved: Dictionary = _level_data(1)
+	saved["fixtures"] = {"kind": 1}
+	_assert_bad_level_skipped(saved, "fixtures is a Dictionary")
+
+
+func test_deserialize_skips_a_fixture_that_is_not_a_dictionary() -> void:
+	var saved: Dictionary = _level_data(1)
+	saved["fixtures"] = [[ObjectKind.OBJECT.LADDER, 0, 0, 1]]
+	_assert_bad_level_skipped(saved, "a fixture is an Array")
+
+
+func test_deserialize_skips_a_fixture_missing_a_field_or_of_the_wrong_type() -> void:
+	for field: String in ["kind", "x", "y", "id"]:
+		var missing: Dictionary = _fixture_entry(ObjectKind.OBJECT.LADDER, 0, 0, 1)
+		missing.erase(field)
+		var as_float: Dictionary = _fixture_entry(ObjectKind.OBJECT.LADDER, 0, 0, 1)
+		as_float[field] = 1.0
+		for entry: Dictionary in [missing, as_float]:
+			var saved: Dictionary = _level_data(1)
+			saved["fixtures"] = [entry]
+			_assert_bad_level_skipped(saved, "fixture %s: %s" % [field, entry])
+
+
+# A saved fixture goes in without the placement rules (D-113): one on
+# solid rock, under no hole, still comes back.
+func test_deserialize_takes_a_fixture_the_rules_would_refuse() -> void:
+	var saved: Dictionary = _level_data(1)
+	saved["tiles"].erase("top")
+	saved["fixtures"] = [_fixture_entry(ObjectKind.OBJECT.LADDER, 9, 9, 5)]
+	var level: Level = _deserialize({1: saved})[1]
+	assert_eq(_fixtures_of(level), [[ObjectKind.OBJECT.LADDER, 9, 9, 1, 5]], "it loads")
+
+
+func test_deserialize_skips_a_second_fixture_with_the_same_id() -> void:
+	var saved: Dictionary = _level_data(1)
+	saved["fixtures"] = [
+		_fixture_entry(ObjectKind.OBJECT.LADDER, 1, 1, 5),
+		_fixture_entry(ObjectKind.OBJECT.WORLD_SPAWN, 2, 2, 5),
+	]
+	var level: Level = _deserialize({1: saved})[1]
+	assert_eq(_fixtures_of(level), [[ObjectKind.OBJECT.LADDER, 1, 1, 1, 5]], "the first is kept")
+	assert_push_warning("Saved fixture id 5 is on depth 1 twice")
+
+
+func test_round_trip_keeps_every_fixtures_kind_tile_and_id() -> void:
+	var original: Level = _level_with_fixtures()
+	var loaded: Level = _deserialize(_serialize([original]))[1]
+	assert_eq(_fixtures_of(loaded), _fixtures_of(original), "the same fixtures, in order")
+
+
+# The world spawn is a fixture (D-091), so it comes back like a ladder,
+# with its tile and id, not placed again at random.
+func test_round_trip_brings_the_world_spawn_back_where_it_was() -> void:
+	var originals: Array[Level] = _generated_world()
+	var spawn: Fixture = Spawning.world_spawn(originals)
+	var loaded: Dictionary = _deserialize(_serialize(originals))
+	var loaded_levels: Array[Level] = []
+	loaded_levels.assign(loaded.values())
+	var back: Fixture = Spawning.world_spawn(loaded_levels)
+	assert_true(back.tile.equals(spawn.tile), "on the same tile: %s" % spawn.tile)
+	assert_eq(back.id, spawn.id, "with the same id")
 
 
 # --- save_game: writing the file (save-files.md §4, D-111) ---
@@ -480,6 +633,25 @@ func test_saved_file_is_a_dictionary_with_objects_off() -> void:
 	_save(_world_with_dig(1))
 	assert_true(_read("world.save") is Dictionary,
 		"get_var with allow_objects off gives back plain data")
+
+
+# Slice 003 trap 3: an Object in a save file could carry a script, so
+# a load reads with allow_objects off. A file written with objects on
+# must come back as no data at all, never as the Object.
+func test_a_save_file_holding_an_object_is_not_decoded_as_one() -> void:
+	var f: FileAccess = FileAccess.open(_path(SaveGame.SAVE_BASE_NAME), FileAccess.WRITE)
+	f.store_var({"format_version": SaveGame.FORMAT_VERSION}, false)
+	var smuggled: Resource = Resource.new()
+	f.store_var({"levels": smuggled, "actors": {"Someone": smuggled}}, true)
+	f.close()
+
+	var data: Dictionary = SaveGame.get_save_data(TEST_SLOT)
+	assert_eq(_object_in(data, "data"), "", "no Object came out of the file")
+	assert_false(data.has("levels"), "the body that held it is dropped whole")
+	assert_eq(SaveGame.load_game(TEST_SLOT), {}, "and the load is refused")
+	# Each read logs three: the refused Object, then the failed decode
+	# passed up twice. get_save_data and load_game read once each.
+	assert_engine_error_count(6, "Godot refuses the Object on each read")
 
 
 func test_second_save_moves_the_first_to_the_backup() -> void:
@@ -694,3 +866,58 @@ func test_an_actor_on_a_depth_that_did_not_load_is_skipped() -> void:
 	assert_push_warning("didn't load")
 	assert_eq(_orphans(), before, "and none was left orphaned")
 	SaveGame.free_game_data({"levels": levels})
+
+
+# --- load_game: the fixture report (D-113) ---
+
+func test_a_loaded_world_of_legal_fixtures_reports_no_problems() -> void:
+	_write_save({"levels": SaveGame._serialize_levels(_generated_world()),
+		"actors": {"Loaded": _actor_entry(0)}})
+	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
+	assert_eq(game_data.get("problems"), [] as Array[String], "the generated world is clean")
+	SaveGame.free_game_data(game_data)
+
+
+func test_a_fixture_that_breaks_a_placement_rule_loads_and_is_reported() -> void:
+	var levels: Dictionary = _saved_levels()
+	# The Surface saved all rock: a ladder there has no floor and no
+	# level above.
+	levels[0]["fixtures"] = [_fixture_entry(ObjectKind.OBJECT.LADDER, 2, 3, 77)]
+	_write_save({"levels": levels, "actors": {"Loaded": _actor_entry(0)}})
+
+	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
+	var surface: Level = game_data.levels[0]
+	assert_not_null(surface.level_fixtures.find(77), "the ladder loaded")
+	# Once by the placement rules, once by the world's ladder check.
+	assert_eq(game_data.problems.size(), 2, "two reports: %s" % [game_data.problems])
+	assert_string_contains(game_data.problems[0], "#77")
+	assert_string_contains(game_data.problems[0], "TILE_NOT_PASSABLE")
+	assert_string_contains(game_data.problems[1], "no level above")
+	assert_push_warning("breaks a placement rule")
+	assert_push_warning("has no level above it")
+	SaveGame.free_game_data(game_data)
+
+
+# The world's own checks run too: a ramp end with no other end below
+# it is reported.
+func test_a_load_reports_a_ramp_problem() -> void:
+	var levels: Dictionary = _saved_levels()
+	var ground: PackedByteArray = _filled(_size(0), TileKind.GROUND.ROCK)
+	var top: PackedByteArray = _filled(_size(0), TileKind.TOP.MINABLE_ROCK)
+	var index: int = LevelTiles.new(World.level_recipes.get_bounds(0)).get_index(0, 0)
+	ground[index] = _a_down_ramp()
+	top[index] = TileKind.TOP.OPEN
+	levels[0]["tiles"]["ground"] = _packed(ground)
+	levels[0]["tiles"]["top"] = _packed(top)
+	_write_save({"levels": levels, "actors": {"Loaded": _actor_entry(0)}})
+
+	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
+	assert_eq(game_data.problems.size(), 1, "the lone ramp end: %s" % [game_data.problems])
+	assert_push_warning("which has no level")
+	SaveGame.free_game_data(game_data)
+
+
+func _a_down_ramp() -> int:
+	for kind: int in TileKind.RAMPS:
+		if TileKind.RAMPS[kind].down: return kind
+	return -1

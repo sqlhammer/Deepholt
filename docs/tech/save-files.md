@@ -110,6 +110,8 @@ These are **not** refusals:
 - **A missing tile layer.** It loads as that layer's default. ([D-112])
 - **A fixture that breaks a placement rule, or a ramp or ladder check that fails.** It loads
   anyway, a warning is logged, and F3 shows the count. Nothing is dropped. ([D-113])
+  The one exception is a second fixture with an id already on its level: a level can't hold
+  two fixtures with one id, so the second is skipped, with a warning.
 
 ## 7. Reading a save back
 

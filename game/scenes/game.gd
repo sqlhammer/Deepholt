@@ -126,7 +126,9 @@ func load_game() -> REFUSAL_REASON:
 	_attach_levels(_lvls)
 	
 	# Trigger the view to refresh the tiles
+	if not view: _create_view()
 	refresh_current_view()
+	$DebugOverlay.show_load_problems(game_data.get("problems", []).size())
 	
 	# load objects
 	
@@ -161,6 +163,8 @@ func _notification(what: int) -> void:
 
 func _ready() -> void:
 	_set_current_save_slot()
+	if load_game() == REFUSAL_REASON.NONE: return
+	
 	_spawn_levels()
 	_create_view()
 	_spawn_player("DefaultName")
@@ -263,11 +267,20 @@ func _create_player(actor: Actor) -> Actor:
 	_active_actor = actor
 	$GameViewport/Actors/Players.add_child(actor)
 	view.track(actor)
-	
+	actor.actor_worldpos_changed.connect(_on_player_moved)
+
 	grant_player_capabilities(actor)
 	set_user_control(actor)
-	
+
 	return actor
+
+
+# Any player changing level saves the game (D-110). The signal comes
+# once the actor has arrived, so the save has it on the new level.
+func _on_player_moved(_actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> void:
+	if old_pos == null or new_pos == null: return
+	if old_pos.depth == new_pos.depth: return
+	save_game()
 
 
 

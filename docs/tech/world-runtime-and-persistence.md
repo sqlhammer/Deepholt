@@ -68,6 +68,12 @@ Structure-of-arrays, chunked at **32×32** for dirty tracking and render batchin
 `flags` bits: `is_wall`, `floor_breached`, `is_built_floor`, `is_reinforced`, `has_rubble`,
 `visited`, `remembered`, `submerged`.
 
+> **This table is not the build's layout** ([D-112](../design-decisions.md#d-112--tile-layers-are-saved-by-name-a-byte-layer-per-fact-a-saved-bound-wins)).
+> Every per-tile fact is its own `PackedByteArray` layer in `LevelTiles`, saved by name.
+> `terrain_id` was split into the `ground` and `top` layers in slice 001, and `ore_id` is the
+> `ore` layer. The `flags` bitfield is replaced too: each flag arrives as a byte layer of its own,
+> starting with `remembered` in slice 004. The persistent / computed split below still holds.
+
 ### Derived, never stored
 **Support state is computed, not authored.** On any tile edit, mark dirty and recompute support
 within `R_max + 2` of the change, processed across frames from a dirty set. It must also be

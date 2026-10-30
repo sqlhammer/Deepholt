@@ -15,12 +15,19 @@ signal fixture_changed(fixture: Fixture, added: bool)
 var _by_tile: Dictionary[Vector2i, Array] = {}
 
 
-func add(fixture: Fixture) -> void:
+# Refuses a fixture whose id the store already holds, so the same
+# fixture added twice (a load run twice) can't double it (slice 003
+# trap 6). Returns whether it was added.
+func add(fixture: Fixture) -> bool:
+	if find(fixture.id) != null:
+		push_error("Fixture id %d is already on this level; %s refused." % [fixture.id, fixture])
+		return false
 	var key: Vector2i = _key(fixture.tile)
 	if not _by_tile.has(key):
 		_by_tile[key] = []
 	_by_tile[key].append(fixture)
 	fixture_changed.emit(fixture, true)
+	return true
 
 
 # Removes the fixture with this id, and returns it; null if there is

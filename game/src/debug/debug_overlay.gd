@@ -70,6 +70,7 @@ func _get_group(title: String) -> int:
 		"World Seed": return 0
 		"Level Seed": return 0
 		WORLD_SPAWN_SECTION: return 0
+		LOAD_PROBLEMS_SECTION: return 0
 		"Player: ": return 10
 	
 	return group
@@ -201,6 +202,15 @@ func _kind_name(table: Dictionary, id: int) -> String:
 	for key in table:
 		if table[key] == id: return key
 	return "UNKNOWN (%d)" % id
+
+
+const LOAD_PROBLEMS_SECTION: String = "Load problems"
+
+
+# How many problems the last load reported (D-113). Each is also a
+# warning in the log; this is how you'd notice there were any.
+func show_load_problems(count: int) -> void:
+	set_section(LOAD_PROBLEMS_SECTION, str(count))
 
 
 const VIEW_SECTION: String = "Shown depth"

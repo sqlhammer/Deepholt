@@ -85,3 +85,23 @@ func test_a_fixture_keeps_its_own_copy_of_its_tile() -> void:
 	var fixture: Fixture = Fixture.new(ObjectKind.OBJECT.LADDER, tile, 1)
 	tile.x = 50
 	assert_eq(fixture.tile.x, 1, "changing the caller's WorldPos doesn't move the fixture")
+
+
+# Slice 003 trap 6: a load run twice must not double every ladder.
+func test_adding_the_same_fixture_twice_is_refused() -> void:
+	var ladder: Fixture = _fixture(ObjectKind.OBJECT.LADDER, 0, 0, 1)
+	assert_true(_store.add(ladder), "the first add is taken")
+	watch_signals(_store)
+	assert_false(_store.add(ladder), "the second is refused")
+	assert_push_error("Fixture id 1 is already on this level")
+	assert_eq(_store.all(), [ladder] as Array[Fixture], "the store holds it once")
+	assert_signal_not_emitted(_store, "fixture_changed", "and the refusal announces nothing")
+
+
+# The id is what makes two fixtures the same: one id names one fixture.
+func test_another_fixture_with_a_held_id_is_refused() -> void:
+	_store.add(_fixture(ObjectKind.OBJECT.LADDER, 0, 0, 1))
+	assert_false(_store.add(_fixture(ObjectKind.OBJECT.WORLD_SPAWN, 5, 5, 1)),
+		"a second fixture with id 1 is refused")
+	assert_push_error("Fixture id 1 is already on this level")
+	assert_eq(_store.at(Vector2i(5, 5)), [] as Array[Fixture], "and not filed anywhere")

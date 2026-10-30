@@ -74,6 +74,55 @@ func test_a_load_puts_the_player_on_a_level_in_the_tree() -> void:
 	assert_true(player.current_level in _levels(), "under Levels")
 
 
+func _save_file() -> String:
+	return SAVES_ROOT.path_join("slot-001").path_join(SaveGame.SAVE_BASE_NAME)
+
+
+# A whole generated world loads clean, and F3 says so (D-113).
+func test_a_load_shows_its_problem_count_in_f3() -> void:
+	assert_true(_game.save_game(), "saved first")
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "the load succeeds")
+	var overlay: Node = _game.get_node("DebugOverlay")
+	assert_eq(overlay.debug_text[overlay.LOAD_PROBLEMS_SECTION].text, "0",
+		"no problems in a generated world")
+
+
+# Ladders and the world spawn come back with their ids (D-091, D-104).
+func test_a_load_brings_back_every_fixture() -> void:
+	var before: Array = _fixture_ids()
+	assert_gt(before.size(), 0, "the generated world has fixtures")
+	assert_true(_game.save_game(), "saved first")
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "the load succeeds")
+	assert_eq(_fixture_ids(), before, "the same fixtures, by id")
+
+
+func _fixture_ids() -> Array:
+	var ids: Array = []
+	for level: Level in _levels():
+		for fixture: Fixture in level.level_fixtures.all():
+			ids.append(fixture.id)
+	ids.sort()
+	return ids
+
+
+# Every level change saves, once the player has arrived (D-110).
+func test_changing_level_saves_with_the_player_on_the_new_level() -> void:
+	var actor: Actor = _game.active_actor
+	var here: WorldPos = actor.current_WorldPos
+	assert_false(FileAccess.file_exists(_save_file()), "no save yet")
+	assert_true(actor.change_depth(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
+	assert_true(FileAccess.file_exists(_save_file()), "the move saved")
+	var saved: Dictionary = SaveGame.get_save_data(SAVES_ROOT.path_join("slot-001"))
+	assert_eq(saved.actors[actor.actor_name].worldpos.depth, 1, "with the player on -1")
+
+
+func test_moving_within_a_level_does_not_save() -> void:
+	var actor: Actor = _game.active_actor
+	actor.position += Vector2(TileSpace.TILE_PIXELS, 0)
+	actor._update_WorldPos()
+	assert_false(FileAccess.file_exists(_save_file()), "a step is not a save")
+
+
 # --- levels ---
 
 func test_ready_spawns_each_depth_once() -> void:

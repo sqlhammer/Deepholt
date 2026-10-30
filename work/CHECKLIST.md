@@ -69,16 +69,18 @@ saved-bound-wins path is in C.
 - [x] The game scene's save path can be set before `_ready`, so tests that load `game.tscn` never
   read or write the real save. *`game.gd`'s `saves_root`, passed to every `SaveGame` call;
   Agent mode, 2026-10-29/30 (R-P5).*
-- [ ] Save on quit: window close, with `set_auto_accept_quit(false)`, save, then quit; and an
+- [x] Save on quit: window close, with `set_auto_accept_quit(false)`, save, then quit; and an
   `Esc` quit, which doesn't exist yet. Save on a debug quicksave key (D-110, trap 2).
-- [ ] Launch loads the save if there is one, and generates otherwise (D-111). The load lands
+- [x] Launch loads the save if there is one, and generates otherwise (D-111). The load lands
   before `View` first shows a level, or the view is re-pointed after it; the renderers build from
   the loaded tiles, with no replay ([D-065](../docs/design-decisions.md)).
-- [ ] world-runtime §3 gets a note: the tile table is replaced by byte layers per D-112.
+- [x] world-runtime §3 gets a note: the tile table is replaced by byte layers per D-112.
+  *Agent mode, 2026-10-30.*
 - [x] Test: save a level, load it into a fresh `LevelTiles`, and every layer is byte-identical.
 - [x] Test: a load emits no per-tile `tile_changed`.
-- [ ] Test: a save file holding an object is not decoded as one (`allow_objects` off).
-- [ ] By hand: dig on the Surface, quit, relaunch, still dug. [1]
+- [x] Test: a save file holding an object is not decoded as one (`allow_objects` off).
+  *Agent mode, 2026-10-30.*
+- [x] By hand: dig on the Surface, quit, relaunch, still dug. [1]
 
 ## C. Every level, fixtures and ids
 
@@ -93,21 +95,28 @@ generates, then the save's layers and fixtures replace what was generated.
   not the recipe).
 - [x] Each level's `level_seed` is saved as a number and set from the save on load, **after**
   `set_depth`, which re-hashes it (trap 7, D-116).
-- [ ] A saved depth with no recipe row is refused, not clamped: `Level.clamp_depth` folds it onto
-  the last level without a word.
-- [ ] Each level's fixtures are saved as kind, tile and id; kind ids are numbers, and are forever
-  ([D-104](../docs/design-decisions.md)).
-- [ ] `LevelFixtures.add` refuses the same fixture twice (carried from 002, trap 6).
-- [ ] After a load, `placement_problem` runs on every fixture and `ramp_problems` and
+- [x] A saved depth with no recipe row is refused, not clamped: `Level.clamp_depth` folds it onto
+  the last level without a word. *`deserialize` skips it with a `push_warning`, via
+  `LevelRecipeTable.has_recipe`; Agent mode, 2026-10-30.*
+- [x] Each level's fixtures are saved as kind, tile and id; kind ids are numbers, and are forever
+  ([D-104](../docs/design-decisions.md)). *A `fixtures` list of `{kind, x, y, id}` per level;
+  the saved list replaces the generated fixtures, and a save with no list keeps them. A second
+  fixture with an id already on its level is skipped with a warning. Agent mode, 2026-10-30.*
+- [x] `LevelFixtures.add` refuses the same fixture twice (carried from 002, trap 6). *By id,
+  with a `push_error`; returns whether it was added. Agent mode, 2026-10-30.*
+- [x] After a load, `placement_problem` runs on every fixture and `ramp_problems` and
   `ladder_problems` on the world; each problem is a `push_warning`, F3 shows the count, nothing
-  is dropped (D-113).
-- [ ] The world spawn is a fixture, so it comes back like any other
-  ([D-091](../docs/design-decisions.md)).
-- [ ] Save on every level change, after the actor arrives (D-110).
+  is dropped (D-113). *`SaveGame.load_problems`, via the new `Objects.placement_problems`, which
+  also reports unknown kind ids and ids shared across levels. Agent mode, 2026-10-30.*
+- [x] The world spawn is a fixture, so it comes back like any other
+  ([D-091](../docs/design-decisions.md)). *Agent mode, 2026-10-30.*
+- [x] Save on every level change, after the actor arrives (D-110). *Any player's
+  `actor_worldpos_changed` with a new depth; Agent mode, 2026-10-30.*
 - [x] Test: a world with digs on three depths round-trips, each depth only its own.
-- [ ] Test: a fixture that breaks a placement rule loads, and is reported.
-- [ ] By hand: dig on the Surface, −1 and −2, quit, relaunch, check each. [2]
-- [ ] By hand: the ramp, the hole and the ladder still work, both ways. [3]
+- [x] Test: a fixture that breaks a placement rule loads, and is reported. *Agent mode,
+  2026-10-30.*
+- [x] By hand: dig on the Surface, −1 and −2, quit, relaunch, check each. [2]
+- [x] By hand: the ramp, the hole and the ladder still work, both ways. [3]
 
 ## D. Actors
 

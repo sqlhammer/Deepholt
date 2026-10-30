@@ -18,6 +18,15 @@ func get_recipe(depth: int) -> LevelRecipe:
 	return null
 
 
+# Whether the table has a row for depth. Quiet, unlike get_recipe, for
+# a caller that refuses the depth itself, such as a load.
+func has_recipe(depth: int) -> bool:
+	for row: LevelRecipe in rows:
+		if row != null and row.bound != null and row.bound.depth == depth:
+			return true
+	return false
+
+
 # The shape of the level at a depth, or null if there is none.
 func get_bounds(depth: int) -> LevelBound:
 	var recipe: LevelRecipe = get_recipe(depth)

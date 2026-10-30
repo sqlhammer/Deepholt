@@ -67,9 +67,12 @@ func reset_ids() -> void:
 # Why a fixture of `kind` can't go on `tile` of a level, or NONE. Takes
 # the level's stores rather than finding them, so generation can ask it
 # about levels that aren't in the tree yet. `tiles_above` is the level
-# one depth up, or null if there is none.
+# one depth up, or null if there is none. `ignoring` is a fixture
+# already in the store that doesn't count against the tile: the one
+# being checked, when a load re-checks what it put in (D-113).
 static func placement_problem(kind: int, tile: Vector2i, tiles: LevelTiles,
-		fixtures: LevelFixtures, tiles_above: LevelTiles) -> REFUSAL_REASON:
+		fixtures: LevelFixtures, tiles_above: LevelTiles,
+		ignoring: Fixture = null) -> REFUSAL_REASON:
 	var top: int = tiles.get_top(tile.x, tile.y)
 	var ground: int = tiles.get_ground(tile.x, tile.y)
 	if TileKind.is_sentinel(top) or TileKind.is_sentinel(ground):
@@ -77,12 +80,45 @@ static func placement_problem(kind: int, tile: Vector2i, tiles: LevelTiles,
 	if not TileKind.is_passable(top, ground):
 		return REFUSAL_REASON.TILE_NOT_PASSABLE
 	for existing: Fixture in fixtures.at(tile):
+		if existing == ignoring: continue
 		if existing.kind in CONFLICTS.get(kind, []):
 			return REFUSAL_REASON.TILE_OCCUPIED
 	if kind == ObjectKind.OBJECT.LADDER:
 		if tiles_above == null or tiles_above.get_ground(tile.x, tile.y) != TileKind.GROUND.HOLE:
 			return REFUSAL_REASON.NO_HOLE_ABOVE
 	return REFUSAL_REASON.NONE
+
+
+# Every fixture already on `levels` that the placement rules wouldn't
+# allow there now, as one line each, plus any kind id this build
+# doesn't know and any id two fixtures share. A report, for a load
+# (D-113): nothing is removed. Takes the levels, so it works on a
+# world that isn't in the tree.
+static func placement_problems(levels: Array[Level]) -> Array[String]:
+	var by_depth: Dictionary[int, Level] = {}
+	for level: Level in levels:
+		by_depth[level.depth] = level
+
+	var problems: Array[String] = []
+	var seen_ids: Dictionary[int, Fixture] = {}
+	for level: Level in levels:
+		var above: Level = by_depth.get(level.depth - 1)
+		var tiles_above: LevelTiles = above.level_tiles if above != null else null
+		for fixture: Fixture in level.level_fixtures.all():
+			var where: String = "Fixture %s" % fixture
+			if fixture.kind == ObjectKind.OBJECT.NULL \
+					or fixture.kind not in ObjectKind.OBJECT.values():
+				problems.append("%s has a kind this build doesn't know." % where)
+			if seen_ids.has(fixture.id):
+				problems.append("%s shares its id with %s." % [where, seen_ids[fixture.id]])
+			seen_ids[fixture.id] = fixture
+			var reason: REFUSAL_REASON = placement_problem(fixture.kind,
+				Vector2i(fixture.tile.x, fixture.tile.y), level.level_tiles,
+				level.level_fixtures, tiles_above, fixture)
+			if reason != REFUSAL_REASON.NONE:
+				problems.append("%s breaks a placement rule: %s." % [
+					where, REFUSAL_REASON.find_key(reason)])
+	return problems
 
 
 func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:

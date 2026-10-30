@@ -150,3 +150,72 @@ func test_placed_fixtures_get_different_ids() -> void:
 func test_every_level_has_a_fixture_store() -> void:
 	for level in _levels:
 		assert_not_null(level.level_fixtures, "depth %d" % level.depth)
+
+
+# --- the load report (D-113) ---
+
+func _add(kind: int, tile: Vector2i, id: int, depth: int = 1) -> Fixture:
+	var fixture: Fixture = Fixture.new(kind, WorldPos.new(tile.x, tile.y, depth), id)
+	_levels[depth].level_fixtures.add(fixture)
+	return fixture
+
+
+func test_a_fixture_already_in_place_is_not_its_own_conflict() -> void:
+	var ladder: Fixture = _add(ObjectKind.OBJECT.LADDER, UNDER_HOLE, 900)
+	assert_eq(Objects.placement_problem(ObjectKind.OBJECT.LADDER, UNDER_HOLE,
+		_levels[1].level_tiles, _levels[1].level_fixtures, _levels[0].level_tiles, ladder),
+		Objects.REFUSAL_REASON.NONE, "ignoring itself, the ladder is fine")
+	assert_eq(Objects.placement_problem(ObjectKind.OBJECT.LADDER, UNDER_HOLE,
+		_levels[1].level_tiles, _levels[1].level_fixtures, _levels[0].level_tiles),
+		Objects.REFUSAL_REASON.TILE_OCCUPIED, "a second ladder there still isn't")
+
+
+func test_a_world_of_legal_fixtures_has_no_problems() -> void:
+	_add(ObjectKind.OBJECT.LADDER, UNDER_HOLE, 900)
+	_add(ObjectKind.OBJECT.WORLD_SPAWN, OPEN, 901)
+	assert_eq(Objects.placement_problems(_levels), [] as Array[String], "nothing to report")
+
+
+func test_each_broken_rule_is_one_line_and_nothing_is_removed() -> void:
+	# No hole above (3, 3), and (5, 5) is still solid rock.
+	var ladder: Fixture = _add(ObjectKind.OBJECT.LADDER, OPEN, 900)
+	var spawn: Fixture = _add(ObjectKind.OBJECT.WORLD_SPAWN, Vector2i(5, 5), 901)
+	var problems: Array[String] = Objects.placement_problems(_levels)
+	assert_eq(problems.size(), 2, "one line each: %s" % [problems])
+	assert_string_contains(problems[0], "NO_HOLE_ABOVE")
+	assert_string_contains(problems[1], "TILE_NOT_PASSABLE")
+	assert_eq(_levels[1].level_fixtures.all(), [ladder, spawn] as Array[Fixture],
+		"both are still there")
+
+
+func test_two_conflicting_fixtures_on_a_tile_are_both_reported() -> void:
+	_add(ObjectKind.OBJECT.LADDER, UNDER_HOLE, 900)
+	_add(ObjectKind.OBJECT.WORLD_SPAWN, UNDER_HOLE, 901)
+	var problems: Array[String] = Objects.placement_problems(_levels)
+	assert_eq(problems.size(), 2, "each conflicts with the other: %s" % [problems])
+	for problem: String in problems:
+		assert_string_contains(problem, "TILE_OCCUPIED")
+
+
+func test_a_ladder_on_the_top_level_has_no_hole_above() -> void:
+	_add(ObjectKind.OBJECT.LADDER, OPEN, 900, 0)
+	var problems: Array[String] = Objects.placement_problems(_levels)
+	assert_eq(problems.size(), 1, "no level above the Surface: %s" % [problems])
+	assert_string_contains(problems[0], "NO_HOLE_ABOVE")
+
+
+func test_an_unknown_kind_is_reported() -> void:
+	_add(200, OPEN, 900)
+	_add(ObjectKind.OBJECT.NULL, OPEN, 901)
+	var problems: Array[String] = Objects.placement_problems(_levels)
+	assert_eq(problems.size(), 2, "both kinds are unknown: %s" % [problems])
+	for problem: String in problems:
+		assert_string_contains(problem, "kind this build doesn't know")
+
+
+func test_an_id_shared_across_levels_is_reported() -> void:
+	_add(ObjectKind.OBJECT.WORLD_SPAWN, OPEN, 900, 0)
+	_add(ObjectKind.OBJECT.LADDER, UNDER_HOLE, 900, 1)
+	var problems: Array[String] = Objects.placement_problems(_levels)
+	assert_eq(problems.size(), 1, "one shared id: %s" % [problems])
+	assert_string_contains(problems[0], "shares its id")
