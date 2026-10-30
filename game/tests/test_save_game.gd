@@ -921,3 +921,64 @@ func _a_down_ramp() -> int:
 	for kind: int in TileKind.RAMPS:
 		if TileKind.RAMPS[kind].down: return kind
 	return -1
+
+
+# --- what can't be saved, and what can't be loaded ---
+
+# A slot folder with no save in it yet: nothing to load, no crash.
+func test_loading_a_slot_with_no_save_file_is_refused() -> void:
+	assert_eq(SaveGame.load_game(TEST_SLOT), {}, "nothing to load")
+	assert_push_error("world.save")
+	assert_push_error_count(1, "one error, naming the file, not an upgrade failure")
+
+
+func test_serialize_skips_a_level_with_no_tiles() -> void:
+	var level: Level = _level(0)
+	level.level_tiles = null
+	assert_eq(_serialize([level]), {0: {}}, "nothing saved for it")
+
+
+func test_serialize_skips_an_actor_with_no_position() -> void:
+	var actor: Actor = autofree(Global.actor_packed_scene.instantiate())
+	var actors: Array[Node] = [actor]
+	assert_eq(SaveGame._serialize_actors(actors, actor), {},
+		"an actor never set up isn't saved")
+
+
+# Every way an actor entry can be malformed is skipped, as each field
+# of a level is: a save is a file anyone can edit.
+func test_deserialize_skips_each_malformed_actor_entry() -> void:
+	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
+	var broken: Array = []
+	broken.append("not a dictionary")
+	for field: String in ["is_active", "actor_name", "worldpos", "facing"]:
+		var missing: Dictionary = _actor_entry(0)
+		missing.erase(field)
+		broken.append(missing)
+	for field: String in ["x", "y", "depth"]:
+		var bad: Dictionary = _actor_entry(0)
+		bad.worldpos[field] = 1.0
+		broken.append(bad)
+	for field: String in ["x", "y"]:
+		var bad: Dictionary = _actor_entry(0)
+		bad.facing[field] = "west"
+		broken.append(bad)
+	var bad_tool: Dictionary = _actor_entry(0)
+	bad_tool["equipped"] = 7
+	broken.append(bad_tool)
+
+	var before: int = _orphans()
+	for entry: Variant in broken:
+		assert_eq(SaveGame._deserialize_actors({"Loaded": entry}, levels), {},
+			"skipped: %s" % [entry])
+	assert_eq(_orphans(), before, "and no actor was built for any of them")
+	SaveGame.free_game_data({"levels": levels})
+
+
+func test_an_actor_entry_with_a_tool_path_loads() -> void:
+	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
+	var entry: Dictionary = _actor_entry(0)
+	entry["equipped"] = "res://src/entity/tools/pickaxe.tres"
+	var actors: Dictionary = SaveGame._deserialize_actors({"Loaded": entry}, levels)
+	assert_eq(actors.size(), 1, "a String tool path is allowed")
+	SaveGame.free_game_data({"levels": levels, "actors": actors})

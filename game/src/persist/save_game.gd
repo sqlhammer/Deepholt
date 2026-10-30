@@ -57,6 +57,9 @@ static func save_game(slot_path: String, levels: Array[Level],
 
 static func load_game(slot_path: String) -> Dictionary:
 	var raw_file_data: Dictionary = get_save_data(slot_path)
+	# Nothing read: the read has already said why. Not an upgrade
+	# failure, which is what an empty result would be blamed on below.
+	if not raw_file_data: return {}
 	var file_data = _upgrade_file_data_to_latest_format_version(raw_file_data)
 	if not file_data: 
 		push_error("Load game aborted: Failed to upgrade save file data to current format version.")
