@@ -28,7 +28,7 @@ func before_each() -> void:
 	_level.level_tiles.set_top(DIRT_TILE.x, DIRT_TILE.y, TileKind.TOP.MINABLE_DIRT)
 	_level.level_tiles.set_top(OPEN_TILE.x, OPEN_TILE.y, TileKind.TOP.OPEN)
 
-	_actor = Actor.create(Global.actor_packed_scene, "Digger", WorldPos.new(0, 0, 0))
+	_actor = Actor.create(Global.actor_packed_scene, "Digger", WorldPos.new(0, 0, 0), World.get_level_by_depth(0))
 	add_child_autofree(_actor)
 	_dig = _new_capability(_actor)
 
@@ -164,7 +164,7 @@ func test_progress_resets_after_completing_a_dig() -> void:
 
 func test_another_actors_completed_dig_leaves_progress_alone() -> void:
 	_tick(ROCK_TILE, 2)
-	var other: Actor = Actor.create(Global.actor_packed_scene, "Other", WorldPos.new(0, 0, 0))
+	var other: Actor = Actor.create(Global.actor_packed_scene, "Other", WorldPos.new(0, 0, 0), World.get_level_by_depth(0))
 	autofree(other)
 	_dig._on_tile_dug(other, _at(DIRT_TILE))
 	assert_almost_eq(_dig.progress, 2 * SPEED * TICK, 0.0001,

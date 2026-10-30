@@ -3,13 +3,16 @@ extends Node
 
 @onready var game_viewport: SubViewport = $GameViewport
 
-# What is on screen: follows the locally controlled actor (D-094).
 var view: View
+# The folder every save slot sits in. Set it before _ready to point
+# the game elsewhere; tests do, so they never touch real saves.
+var saves_root: String = SaveGame.SAVES_DIR
 var save_slots: PackedStringArray
 var current_save_slot: String
 var active_actor: Actor:
 	get: return _active_actor
 var _active_actor: Actor
+var _input_handlers: Array[InputHandler] = []
 
 
 enum REFUSAL_REASON {
@@ -46,6 +49,7 @@ func set_user_control(actor: Actor) -> void:
 	var input: InputHandler = InputHandler.new()
 	input.setup(actor, mouse_world_position, self)
 	add_child(input)
+	_input_handlers.append(input)
 	
 	# The screen shows this actor's depth, and follows it (D-094)
 	view.follow(actor)
@@ -72,12 +76,21 @@ func mouse_world_position() -> Vector2:
 
 
 func save_game() -> bool:
+	if current_save_slot == "": 
+		# Create a slot if none exist yet.
+		# This should not happen after we have a game menu because
+		# a game should not be created without creating and setting vars for
+		# the slot for it to save to.
+		SaveGame.setup(saves_root)
+		_set_current_save_slot()
+		if current_save_slot == "": return false
+	
 	var levels: Array[Level] = []
 	for level in get_tree().get_nodes_in_group("levels"):
 		if level is Level: levels.append(level)
 	
 	var actors: Array[Node] = get_tree().get_nodes_in_group("actors")
-	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor)
+	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor, saves_root)
 	if result != SaveGame.REFUSAL_REASON.NONE:
 		return false
 	
@@ -88,13 +101,16 @@ func save_game() -> bool:
 # build new objects and replace them if they have already loaded into the game.
 # This will prevent merge issues
 func load_game() -> REFUSAL_REASON:
-	if current_save_slot == "": return REFUSAL_REASON.LOAD_FAILED_NO_OP
+	if current_save_slot == "": 
+		return REFUSAL_REASON.LOAD_FAILED_NO_OP
 	
 	var game_data: Dictionary = SaveGame.load_game(current_save_slot)
 	if not game_data: return REFUSAL_REASON.LOAD_FAILED_NO_OP
-	if not game_data.has("format_version"): return REFUSAL_REASON.LOAD_FAILED_NO_OP
-	if not game_data.has("levels"): return REFUSAL_REASON.LOAD_FAILED_NO_OP
-	if not game_data.has("actors"): return REFUSAL_REASON.LOAD_FAILED_NO_OP
+	# The data holds nodes nothing else frees; refusing it frees them
+	if not game_data.has("format_version") or not game_data.has("levels") \
+		or not game_data.has("actors"):
+			SaveGame.free_game_data(game_data)
+			return REFUSAL_REASON.LOAD_FAILED_NO_OP
 	
 	
 	# Pause game and handle visual transition/loading indicator
@@ -103,7 +119,7 @@ func load_game() -> REFUSAL_REASON:
 	# clean up objects
 	_free_actors()
 	_free_levels()
-	_free_inputhandlers() # PROBLEM: Clears current_level from loaded actors
+	_free_inputhandlers()
 	
 	# load levels
 	var _lvls: Array[Level] = _get_levels_from_save_data(game_data)
@@ -122,9 +138,6 @@ func load_game() -> REFUSAL_REASON:
 	var actors: Dictionary = game_data.actors
 	for key in actors:
 		if actors[key].is_active:
-			# reattach new level node to the actors
-			var actor: Actor = actors[key].actor_obj
-			actor.setup(key,actors[key].worldpos) # Redundant setup to work around losing the level from _free_levels, above.
 			# create the active player
 			_create_player(actors[key].actor_obj)
 	
@@ -138,10 +151,8 @@ func load_game() -> REFUSAL_REASON:
 
 
 func _ready() -> void:
-	SaveGame.setup()
-	save_slots = SaveGame.get_save_slots()
-	if save_slots.size() > 0:
-		current_save_slot = save_slots[0]
+	#SaveGame.setup()
+	_set_current_save_slot()
 	_spawn_levels()
 	_create_view()
 	_spawn_player("DefaultName")
@@ -166,6 +177,12 @@ func _attach_levels(levels: Array[Level]) -> void:
 	for level: Level in levels:
 		$Levels.add_child(level)
 		level.level_tiles.tiles_replaced.emit(level.level_tiles)
+
+
+func _set_current_save_slot() -> void:
+	save_slots = SaveGame.get_save_slots(saves_root)
+	if save_slots.size() > 0:
+		current_save_slot = save_slots[0]
 
 
 func _get_levels_from_save_data(data: Dictionary) -> Array[Level]:
@@ -193,10 +210,9 @@ func _free_actors() -> void:
 
 
 func _free_inputhandlers() -> void:
-	for child in self.get_children():
-		if child.name.substr(0,12) != "InputHandler": continue
-		if child is not InputHandler: continue
-		child.free()
+	for handler in _input_handlers:
+		if is_instance_valid(handler): handler.free()
+	_input_handlers.clear()
 
 
 func _spawn_player(_name: String) -> void:
@@ -204,7 +220,7 @@ func _spawn_player(_name: String) -> void:
 	if tile == null:
 		push_error("Nowhere to spawn %s." % _name)
 		return
-	var actor = Actor.create(Global.actor_packed_scene, _name, tile)
+	var actor = Actor.create(Global.actor_packed_scene, _name, tile, _level_at(tile.depth))
 	
 	_create_player(actor)
 
@@ -214,6 +230,12 @@ func _levels() -> Array[Level]:
 	for child in $Levels.get_children():
 		if child is Level: levels.append(child)
 	return levels
+
+
+func _level_at(depth: int) -> Level:
+	for level: Level in _levels():
+		if level.depth == depth: return level
+	return null
 
 
 func _players() -> Array[Actor]:

@@ -2380,3 +2380,100 @@ A migration is needed only when the meaning of data already saved changes.
 *Considered:* building a minimal tuning profile now (a system shaped on a thin sample); leaving
 the tuning field out (a version bump later); writing `game_time` as real seconds (wrong once game
 time runs at its own rate).
+
+---
+
+### D-117 — An actor is handed the level it starts on; depth changes still look theirs up
+**Decided** (by Derik, slice 003 section D, from the save/load code review, 2026-10-30).
+Settles how an actor gets its `current_level`
+([D-068](#d-068--an-actor-is-a-plain-node-with-a-feet-box-a-stored-depth-and-an-intent)) when it
+is created.
+
+- **`Actor.create` and `Actor.setup` take the `Level` the actor starts on,** as a required
+  parameter beside its `WorldPos`, whose depth must match it. The actor no longer looks its
+  starting level up in the tree. There is no fallback to a lookup when none is given.
+- **A load puts each actor on the levels that load built.** `SaveGame` hands the actors the
+  levels it has just built, by depth, before either is in the tree. An actor whose depth didn't
+  load is skipped with a `push_warning`, before any node is built for it.
+- **A spawned player gets its level from the game scene's own `$Levels`**, not from `World`.
+- **A depth change still looks its level up.** `change_depth` (ramps, ladders) and the `depth`
+  property still go through `World.get_level_by_depth`. A depth change only happens while the
+  world is in the tree, where the lookup is correct.
+- **The direction, not yet decided:** an actor is given a way to look levels up and never
+  reaches `World` for them, ramps and ladders included. That is one case of a wider question,
+  how simulation reaches the world at all (the renderers, `Spawning`, the debug overlay and the
+  dig capability use `World` the same way), and it is explored before it is decided.
+
+*Why:* the lookup searches the `"levels"` group, which is whatever is in the tree at that moment.
+During a load the old world is still there, so loaded actors were bound to the old levels, which
+were then freed; a second `setup()` papered over it. At launch there are no levels in the tree,
+so a load there would fail `set_depth`'s assert. A level outside the tree still turns positions
+into tiles correctly, through its own transform and its parents' (checked by a test before
+building). Passing the level is the spirit of
+[D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer): simulation takes what it
+acts on as a parameter rather than resolving it from something global, and `World`'s lookup
+assumes the tree holds exactly one world, which tests already break.
+
+*Costs accepted:* the actor is half given its level and half looking it up until the direction
+is decided. Every caller of `Actor.create` must find a level first; tests do it with
+`World.get_level_by_depth`. The depth check in `setup` is an `assert`, so it holds only in debug
+builds.
+
+*Considered:* making `SaveGame._deserialize_actors` public and having `game.gd` call it after
+the new levels are attached (fixes the order, but splits the load across two callers and keeps
+the hidden dependency); `SaveGame` returning actors as plain data for `game.gd` to build (the
+same, with more code in `game.gd`); giving the actor a level lookup now (the direction above,
+but a decision about world access as a whole, too big to make inside a save slice).
+
+---
+
+### D-118 — The world is a node that owns its levels and id counters, handed by reference
+**Decided** (by Derik, 2026-10-30, after the slice 003 save/load review). Decides the direction
+[D-117](#d-117--an-actor-is-handed-the-level-it-starts-on-depth-changes-still-look-theirs-up)
+left open. Supersedes the part of
+[D-078](#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime) and
+[D-100](#d-100--objects-an-objects-autoload-a-per-level-store-an-object-grid-and-a-ladder-rule)
+that puts the tile and fixture gatekeepers on autoloads, and the part of
+[D-104](#d-104--fixture-ids-removal-misses-and-how-prefabs-stamp-fixtures) and
+[D-114](#d-114--actors-get-int-ids-from-a-world-counter-what-an-actor-saves) that puts the id
+counters on `Objects`.
+
+- **A world is a node in the game scene that owns its `Level` nodes,** replacing `$Levels`. It
+  holds the world's levels by depth, its seed, and its id counters.
+- **It is handed by explicit reference** to whatever needs it. Nothing finds it, or a level, by
+  searching the tree, by a group, or by `get_parent()`.
+- **The id counters live in the world they number:** the next fixture id and the next actor id.
+  A new world starts its own; a loaded world restores its own. There is no global counter to
+  reset.
+- **The gatekeepers stay one front door per kind of change** (tiles, D-078; fixtures,
+  [D-090](#d-090--objects-get-their-own-gatekeeper-separate-from-world)), and that door is on the
+  world instance, not a global signal bus.
+- **Helpers that hold no state become static** (depth display names, position to tile). They
+  never needed a world.
+- **Recipes stay global:** they are fixed design data, read only to generate. A level's bounds
+  come from the level itself
+  ([D-112](#d-112--tile-layers-are-saved-by-name-a-byte-layer-per-fact-a-saved-bound-wins)).
+- **Two worlds in one process must stay possible outside tests** (a load built beside the
+  running world, a co-op host and client, a menu preview). Nothing may assume there is exactly
+  one.
+- **It is its own slice, 004.** The dark moves to 005, and digging your own way down to 006. Where
+  D-104 says the id counter is saved "in slice 004" and D-112 says the remembered bit arrives "in
+  slice 004", read 003 and 005.
+
+*Why:* every `World` lookup assumed the tree held exactly one world. A load breaks that (the old
+world is still there while the new one is built), tests break it, and co-op would. It is the
+world-sized version of the player singleton
+([D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer)). A node that owns its
+levels can be built and checked away from the tree and swapped in one move, so a load is all or
+nothing, and freeing a world frees everything in it, so a refused load can't leak nodes. Counters
+inside the world can't be reset by another world being generated (slice 003 trap 6).
+
+*Costs accepted:* most simulation calls change shape: the actor, ramps and ladders, both
+gatekeepers, the renderers and most tests take a world they used to look up. The world's node
+lifecycle (freeing, signals disconnecting on free) has to be handled with care. More code passes
+a parameter than reaches for a global.
+
+*Considered:* keeping the `World` autoload with an explicit list of the current world's levels
+(the smallest change, but one world per process forever); a plain `RefCounted` world object
+(the same benefits, but nodes it holds still need an owner to parent and free them); passing
+levels into each call with no world object (the parts with state would have no home).

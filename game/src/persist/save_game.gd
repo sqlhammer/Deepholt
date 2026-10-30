@@ -11,6 +11,7 @@ enum REFUSAL_REASON {
 # The save format this build writes and reads. Raised with a migration
 # from the version before (world-runtime §7, D-116).
 const FORMAT_VERSION: int = 1
+const TOOL_DIR := "res://src/entity/tools/"
 const SAVES_DIR: String = "user://saves"
 const SAVE_BASE_NAME: String = "world.save"
 const ALLOW_OBJECTS: bool = false
@@ -61,47 +62,65 @@ static func load_game(slot_path: String) -> Dictionary:
 		push_error("Load game aborted: Failed to upgrade save file data to current format version.")
 		return {}
 	
-	# Header data
+	# Every section is checked before any node is built. A refusal
+	# after levels or actors exist would orphan them
 	if not file_data.has("format_version"): return {}
+	if not file_data.get("levels") is Dictionary: return {}
+	if not file_data.levels: return {}
+	if not file_data.get("actors") is Dictionary: return {}
+	if not file_data.actors: return {}
+
+	# Header data
 	var game_data: Dictionary = {}
 	game_data["format_version"] = file_data.format_version
-	
+
 	# Levels
-	if not file_data.has("levels"): return {}
-	if not file_data["levels"] is Dictionary: return {}
-	if not file_data.levels: return {}
 	game_data["levels"] = _deserialize_levels(file_data.levels)
-	
+
 	# Objects
-	
-	
+
+
 	# NPCs
-	
-	
+
+
 	# Actors
-	if not file_data.has("actors"): return {}
-	if not file_data["actors"] is Dictionary: return {}
-	if not file_data.actors: return {}
-	game_data["actors"] = _deserialize_actors(file_data.actors)
+	# Actors stand on the levels this load built, not on whatever is
+	# in the tree, which is the world being replaced.
+	game_data["actors"] = _deserialize_actors(file_data.actors, game_data.levels)
 	
 	return game_data
 
 
-static func setup() -> void:
-	_create_slot_directory_if_missing()
+# Frees every node a load built: its levels, and its actors. For a
+# caller that refuses loaded data instead of putting it in the tree.
+static func free_game_data(game_data: Dictionary) -> void:
+	var levels: Variant = game_data.get("levels")
+	if levels is Dictionary:
+		for key in levels:
+			if levels[key] is Node: levels[key].free()
+	var actors: Variant = game_data.get("actors")
+	if actors is Dictionary:
+		for key in actors:
+			var entry: Variant = actors[key]
+			if entry is Dictionary and entry.get("actor_obj") is Node:
+				entry.actor_obj.free()
 
 
-static func get_save_slots() -> PackedStringArray:
+static func setup(saves_root: String = SAVES_DIR) -> void:
+	_create_slot_directory_if_missing(saves_root)
+
+
+static func get_save_slots(saves_root: String = SAVES_DIR) -> PackedStringArray:
 	var slots: PackedStringArray = []
-	var save_dir = DirAccess.open(SAVES_DIR)
+	var save_dir = DirAccess.open(saves_root)
 	if save_dir:
 		var subdirs: PackedStringArray = save_dir.get_directories()
 		for dir in subdirs:
-			if Global.is_regex_match(dir, r"slot-\d\d\d"):
-				var full_slot_path: String = SAVES_DIR.path_join(dir)
+			if Global.is_regex_match(dir, r"^slot-\d{3}$"):
+				var full_slot_path: String = saves_root.path_join(dir)
 				slots.append(full_slot_path)
 	else:
-		push_warning("An error occurred when trying to access the path: %s." % SAVES_DIR)
+		push_warning("An error occurred when trying to access the path: %s." % saves_root)
 	
 	return slots
 
@@ -110,6 +129,22 @@ static func get_save_data(slot_path: String) -> Dictionary:
 	var file_path: String = slot_path.path_join(SAVE_BASE_NAME)
 	var data: Dictionary = _get_file_data(file_path)
 	return data
+
+
+static func _load_tool(path: Variant) -> ToolData:
+	if not path is String: return null
+	var clean: String = (path as String).simplify_path()
+	if not clean.begins_with(TOOL_DIR):
+		push_warning("Tool path outside %s: %s" % [TOOL_DIR, clean])
+		return null
+	if not ResourceLoader.exists(clean):
+		push_warning("Tool path not found: %s" % clean)
+		return null
+	var res := load(clean)
+	if not res is ToolData:
+		push_warning("Not a ToolData: %s" % clean)
+		return null
+	return res
 
 
 static func _serialize_levels(levels: Array[Level]) -> Dictionary:
@@ -167,17 +202,16 @@ static func _serialize_actor(actor: Actor, active_actor: Actor) -> Dictionary:
 	actor_data.facing["x"] = actor.facing.x
 	actor_data.facing["y"] = actor.facing.y
 	
-	if actor.equipped:
-		actor_data["equipped"] = actor.equipped.resource_path
-	
 	return actor_data
 
 
-static func _deserialize_actors(p_actors: Dictionary) -> Dictionary:
+# levels is the loaded levels by depth; each actor is put on its own.
+static func _deserialize_actors(p_actors: Dictionary, levels: Dictionary) -> Dictionary:
 	var actors: Dictionary = {}
-	
+
 	for key in p_actors:
-		var actor: Actor = _deserialize_actor(p_actors[key])
+		if not _is_valid_actor_entry(p_actors[key]): continue
+		var actor: Actor = _deserialize_actor(p_actors[key], levels)
 		if not actor: continue
 		actors[key] = {}
 		actors[key]["actor_obj"] = actor
@@ -187,20 +221,19 @@ static func _deserialize_actors(p_actors: Dictionary) -> Dictionary:
 	return actors
 
 
-static func _deserialize_actor(p_actor: Dictionary) -> Actor:
-	if not _is_valid_actor_entry(p_actor): return
-	
+# Must have already passed _is_valid_actor_entry
+static func _deserialize_actor(p_actor: Dictionary, levels: Dictionary) -> Actor:
 	var actor_name: String = p_actor.actor_name
 	var pos: Dictionary = p_actor.worldpos
+	var level: Level = levels.get(pos.depth)
+	if level == null:
+		push_warning("Actor %s is on depth %d, which didn't load; skipped." % [actor_name, pos.depth])
+		return null
 	var worldpos: WorldPos = WorldPos.new(pos.x, pos.y, pos.depth)
-	var actor: Actor = Actor.create(Global.actor_packed_scene, actor_name, worldpos)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, actor_name, worldpos, level)
 	
 	var facing: Dictionary = p_actor.facing
 	actor.facing = Vector2i(facing.x, facing.y)
-	
-	if p_actor.has("equipped"):
-		var tool: ToolData = load(p_actor.equipped)
-		actor.equipped = tool
 	
 	return actor
 
@@ -209,6 +242,7 @@ static func _deserialize_levels(p_levels: Dictionary) -> Dictionary:
 	var levels: Dictionary = {}
 	
 	for level_key in p_levels:
+		if not _is_valid_level_entry(level_key, p_levels[level_key]): continue
 		var level: Level = _deserialize_level(level_key, p_levels[level_key])
 		if not level: continue
 		levels[level_key] = level
@@ -216,17 +250,15 @@ static func _deserialize_levels(p_levels: Dictionary) -> Dictionary:
 	return levels
 
 
+# p_level must already have passed _is_valid_level_entry.
 static func _deserialize_level(p_depth: int, p_level: Dictionary) -> Level:
-	if not _is_valid_level_entry(p_depth, p_level): return
-	var bound: Dictionary = p_level["bound"]
-
 	# Build layer arrays
 	var layers: Dictionary = {}
 	if p_level.has("tiles"):
 		layers = _deserialize_tile_layers(p_level)
 	
 	# Build level
-	var level_recipe: LevelRecipe = World.level_recipes.get_recipe(bound.depth)
+	var level_recipe: LevelRecipe = World.level_recipes.get_recipe(p_depth)
 	var level: Level = LevelGenerator.generate_level(level_recipe)
 	# Never use _set_level_seed() because it recomputes the seed. The save is the source of truth
 	level.level_seed = p_level["level_seed"]
@@ -399,8 +431,8 @@ static func _rename_file(file_path: String, new_name: String, overwrite: bool = 
 	return true
 
 
-static func _create_slot_directory_if_missing() -> void:
-	var slot_dir = SAVES_DIR.path_join("slot-001")
+static func _create_slot_directory_if_missing(saves_root: String = SAVES_DIR) -> void:
+	var slot_dir = saves_root.path_join("slot-001")
 	if not DirAccess.dir_exists_absolute(slot_dir):
 		DirAccess.make_dir_recursive_absolute(slot_dir)
 

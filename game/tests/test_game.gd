@@ -5,12 +5,20 @@ extends GutTest
 # fresh game.tscn, so _ready has already spawned all eight levels
 # and one player by the time the test body runs.
 
+const SaveDirs = preload("res://tests/save_dirs.gd")
+const SAVES_ROOT: String = SaveDirs.TEST_ROOT + "/game"
+
 var _game: Node
 
 
 func before_each() -> void:
 	_game = load("res://scenes/game.tscn").instantiate()
+	_game.saves_root = SAVES_ROOT
 	add_child_autofree(_game)
+
+
+func after_each() -> void:
+	SaveDirs.remove_tree(SAVES_ROOT)
 
 
 func _levels() -> Array[Level]:
@@ -33,6 +41,37 @@ func _handler_for(actor: Actor) -> InputHandler:
 	for child in _game.get_children():
 		if child is InputHandler and child.actor == actor: return child
 	return null
+
+
+# --- saves ---
+
+# The test root holds no slots, so the game picks none, even when the
+# real saves folder has one.
+func test_ready_looks_for_slots_only_under_its_saves_root() -> void:
+	assert_eq(_game.current_save_slot, "", "no slot under the test root")
+
+
+func test_the_first_save_makes_its_slot_under_the_saves_root() -> void:
+	assert_true(_game.save_game(), "the save succeeds")
+	assert_eq(_game.current_save_slot, SAVES_ROOT.path_join("slot-001"),
+		"the slot is made under the test root")
+	assert_true(FileAccess.file_exists(
+		SAVES_ROOT.path_join("slot-001").path_join(SaveGame.SAVE_BASE_NAME)),
+		"and the save is written there")
+
+
+# The F6 path end to end: the old world goes, and the loaded player
+# stands on a loaded level that is in the tree, not a freed one.
+func test_a_load_puts_the_player_on_a_level_in_the_tree() -> void:
+	var old_player: Actor = _game.active_actor
+	assert_true(_game.save_game(), "saved first")
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "the load succeeds")
+	var player: Actor = _game.active_actor
+	assert_ne(player, old_player, "a new actor, built by the load")
+	assert_false(is_instance_valid(old_player), "the old one is freed")
+	assert_true(is_instance_valid(player.current_level), "its level is not freed")
+	assert_true(player.current_level.is_inside_tree(), "and is in the tree")
+	assert_true(player.current_level in _levels(), "under Levels")
 
 
 # --- levels ---
@@ -113,9 +152,11 @@ func test_spawn_player_with_no_world_spawn_adds_no_player() -> void:
 
 
 func test_create_player_stands_on_the_tile_given() -> void:
-	var actor: Actor = _game._create_player("TestPlayer", WorldPos.new(14, -2, 2))
+	var _pos: WorldPos = WorldPos.new(14, -2, 2)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "TestPlayer", _pos, World.get_level_by_depth(_pos.depth))
+	actor = _game._create_player(actor)
 	assert_true(actor in _actors(), "the actor is added under Players")
-	assert_true(actor.current_WorldPos.equals(WorldPos.new(14, -2, 2)),
+	assert_true(actor.current_WorldPos.equals(_pos),
 		"on that tile, at that depth")
 
 
@@ -123,7 +164,7 @@ func test_create_player_stands_on_the_tile_given() -> void:
 
 func _actor_at_depth(depth: int) -> Actor:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, depth))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, depth), World.get_level_by_depth(depth))
 	_game.get_node("GameViewport/Actors/Players").add_child(actor)
 	return actor
 
@@ -133,6 +174,22 @@ func test_user_control_gives_the_actor_an_input_handler() -> void:
 	_game.set_user_control(actor)
 	assert_not_null(_handler_for(actor),
 		"an InputHandler driving this actor is under Game")
+
+
+# Found by the reference game.gd keeps, not by name: a renamed handler
+# still goes, and an unrelated node named like one stays.
+func test_freeing_input_handlers_frees_only_the_games_own() -> void:
+	var actor: Actor = _actor_at_depth(3)
+	_game.set_user_control(actor)
+	var handler: InputHandler = _handler_for(actor)
+	handler.name = "Renamed"
+	var lookalike: Node = Node.new()
+	lookalike.name = "InputHandlerLookalike"
+	_game.add_child(lookalike)
+	_game._free_inputhandlers()
+	assert_false(is_instance_valid(handler), "the renamed handler is freed")
+	assert_true(is_instance_valid(lookalike), "the lookalike is left alone")
+	assert_eq(_game._input_handlers.size(), 0, "and the list is emptied")
 
 
 func test_user_control_points_the_camera_at_the_actor() -> void:

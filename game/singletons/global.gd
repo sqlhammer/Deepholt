@@ -30,27 +30,12 @@ func contains_whitespace(text: String) -> bool:
 
 
 func is_regex_match(data: String, pattern: String) -> bool:
-	var result: bool = false
-	
-	# 1. Initialize the RegEx object
 	var regex = RegEx.new()
+	if regex.compile(pattern) != OK:
+		push_error("Invalid regex pattern: %s" % pattern)
+		return false
 
-	# 2. Compile your pattern (using r"..." creates a raw string literal to avoid extra escaping)
-	regex.compile(pattern) 
-	
-	# 3. Search the string
-	var regex_result = regex.search(data)
-	
-	# 4. Check if a match was found (returns null if no match)
-	if regex_result:
-		result = true
-		print("Match found!")
-		print("Full match: ", regex_result.get_string()) # Prints: player-9823
-		print("Captured ID: ", regex_result.get_string(1)) # Prints: 9823
-	else:
-		print("No match.")
-	
-	return result
+	return regex.search(data) != null
 
 
 

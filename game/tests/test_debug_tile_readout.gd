@@ -71,7 +71,7 @@ func test_a_depth_with_no_resident_level_says_so() -> void:
 # them to move, so a fresh actor shows up without taking a step.
 func test_a_watched_actor_shows_before_it_moves() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0), World.get_level_by_depth(0))
 	autofree(actor)
 	_overlay.visible = true
 	_overlay.watch(actor)
@@ -81,7 +81,7 @@ func test_a_watched_actor_shows_before_it_moves() -> void:
 
 func test_a_hidden_overlay_does_not_build_readouts() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0), World.get_level_by_depth(0))
 	autofree(actor)
 	_overlay.visible = false
 	_overlay.watch(actor)
@@ -91,7 +91,7 @@ func test_a_hidden_overlay_does_not_build_readouts() -> void:
 
 func test_a_freed_actor_loses_its_section() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0), World.get_level_by_depth(0))
 	_overlay.visible = true
 	_overlay.watch(actor)
 	assert_true(_overlay.debug_text.has("Player: TestPlayer"),
@@ -116,7 +116,7 @@ func test_toggling_flips_visibility() -> void:
 
 func test_toggling_on_shows_a_watched_actor_straight_away() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0), World.get_level_by_depth(0))
 	autofree(actor)
 	_overlay.visible = false
 	_overlay.watch(actor)

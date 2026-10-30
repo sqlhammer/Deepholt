@@ -161,7 +161,7 @@ func _real_levels() -> void:
 
 
 func _actor_at(tile: Vector2i, depth: int) -> Actor:
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth))
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth), World.get_level_by_depth(depth))
 	add_child_autofree(actor)
 	return actor
 

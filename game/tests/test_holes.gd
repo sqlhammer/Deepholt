@@ -77,7 +77,7 @@ func test_an_actor_walking_at_a_hole_stops_beside_it() -> void:
 				level.level_tiles.set_top(x, y, TileKind.TOP.OPEN)
 		level.level_tiles.set_ground(0, 0, TileKind.GROUND.HOLE)
 	for side: Vector2i in [Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
-		var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(side.x, side.y, 0))
+		var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(side.x, side.y, 0), World.get_level_by_depth(0))
 		add_child_autofree(actor)
 		var toward: Vector2 = Vector2(-side) / 2.0 * 1.4
 		for i in 40:

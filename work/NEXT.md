@@ -1,8 +1,8 @@
 # Next
 
-Sketches, not commitments. Slice 002 is done ([log](./log/002-go-down.md)); 003 is the one I'd
-argue for next, and the order past it should fall out of what 003 teaches. Cheap to throw away —
-expect them to change.
+Sketches, not commitments. Slice 002 is done ([log](./log/002-go-down.md)) and 003 is in
+progress. 004 was decided during 003; the order past it should fall out of what 003 and 004
+teach. Cheap to throw away; expect them to change.
 
 ---
 
@@ -19,7 +19,89 @@ been piling up since slice 002's generation discussion. Better to settle the for
 is still little to put in it. It's also the first time excavation survives a session, which is
 the first time it feels like tenancy rather than a sandbox.
 
-## 004 — The dark
+## 004 — A world you can hold
+
+Press F6 and the whole mountain is swapped for the saved one in a single move. A damaged save
+leaves the running world exactly as it was, and ids carry on from where the world left them.
+
+Inserted ahead of the dark after the slice 003 review, where every save/load bug traced back to
+one assumption: that the tree holds exactly one world. Its shape is already decided
+([D-118](../docs/design-decisions.md#d-118--the-world-is-a-node-that-owns-its-levels-and-id-counters-handed-by-reference)):
+the world becomes a node that owns its levels and its id counters, and is handed to whatever needs
+it by reference, never looked up. It's mostly a change of shape, so most of what can be checked by
+hand is how a load behaves. That is the slice's playable edge, and it should be stated plainly in
+the brief rather than padded out. Fuller than a sketch, because the decisions came first; it
+becomes `NOW.md` when 003 closes.
+
+**What should be true when you stop** (by hand, unless marked):
+- Dig on two levels, F5, dig more, F6: the screen, F3 and every level show the saved world, and
+  nothing of the replaced one.
+- F6 on a truncated save: nothing changes. Not the screen, not F3, not the ids.
+- F3 shows the running world, and its next fixture id and next actor id. Loading twice in a row
+  shows the same numbers both times. They don't restart, and they don't climb.
+- The ramp, the hole and the ladder still work both ways; digs stay on their own level.
+- *Automated:* two worlds in one process, at the same depths, each with an actor. A dig, a depth
+  change and a fixture placed in one leave the other untouched.
+- *Automated:* generating a second world doesn't change the first world's counters.
+- *Automated:* freeing a world leaves no orphan nodes. No code in `src/` searches the tree for
+  levels.
+
+**Already settled:**
+- The world's shape, the counters, the gatekeepers on the instance, helpers that hold no state
+  made static, recipes kept global, two worlds possible (D-118).
+- One front door per kind of change: tiles
+  ([D-078](../docs/design-decisions.md#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime)),
+  fixtures ([D-090](../docs/design-decisions.md#d-090--objects-get-their-own-gatekeeper-separate-from-world)).
+- Simulation takes what it acts on as a parameter
+  ([D-045](../docs/design-decisions.md#d-045--no-player-singleton-carves-out-the-presentation-layer)).
+- An actor is handed its starting level
+  ([D-117](../docs/design-decisions.md#d-117--an-actor-is-handed-the-level-it-starts-on-depth-changes-still-look-theirs-up)).
+  This slice replaces its remaining lookup on a depth change.
+- Every level stays resident
+  ([D-035](../docs/design-decisions.md#d-035--no-tile-streaming-system-the-whole-world-stays-resident)).
+
+**What you'll be deciding:**
+- **How each consumer gets the world.** A field set on the actor at setup, a reference on each
+  level (`level.world`), through the view for the renderers, or a mix.
+- **What a gatekeeper is now.** Methods on the world node, signals on it, or child nodes under it
+  (a tile gate and a fixture gate). And how a capability that emits today (`dig_requested`) reaches
+  it.
+- **What's left of the `World` and `Objects` autoloads.** Deleted, or reduced to recipes and the
+  static helpers, and under what names.
+- **Who builds a world.** `LevelGenerator` returning a world, `SaveGame` returning a world, and who
+  swaps it in and re-points the view, renderers, input and F3.
+- **Where the world node sits in the scene,** and what that does to coordinates (trap below).
+
+**Traps:**
+- **The name `World` is taken.** An autoload's name shadows a `class_name` of the same name, so a
+  world node class called `World` can't coexist with the autoload. Rename one first, on purpose.
+- **Lookups creep back in.** `get_parent()`, `owner`, `get_first_node_in_group`: each is a tree
+  search in disguise, and each works fine until there are two worlds.
+- **Signals on a replaced world.** Godot drops a node's connections when it is freed, so anything
+  connected to the old world's gatekeepers goes silent after a swap. A swap has to re-point the
+  listeners, and a test has to prove it.
+- **Freeing during a callback.** The F6 handler already frees itself mid-`_input` (review bug 8).
+  A swap started from input should be deferred to the end of the frame.
+- **Coordinates only line up by accident.** `$Levels` sits under the game root, and actors sit
+  inside `GameViewport`. `actor.position` is passed as a global position into `level.to_local`,
+  which is only correct because every transform between them is the identity. Moving the levels
+  under a world node keeps that true only if the world node is at the origin too.
+- **Test churn.** Most tests put levels in the tree and rely on the lookup. Expect a large,
+  mechanical change; grep the run for `Ignoring` and `Parse Error` (GUT skips files that fail to
+  parse).
+- **Taken from 003** (trimmed 2026-10-30; the
+  [003 checklist](./CHECKLIST.md#moved-to-slice-004-d-118) has the detail). These were part of
+  003's job, and this slice must deliver them:
+  - Continue builds the world from the save, rather than generating and overlaying.
+  - A loaded level is built from its saved bound, which fixes the level lost when a radius changes
+    (review bug 4).
+  - `is_in_bounds` reads the level's own bound.
+  - Both id counters are saved, restored and in the header, with a test that after a load the next
+    fixture id is greater than every loaded one.
+  - The actor id counter gets its real home. 003 gives it a temporary one, which gets redone
+    here.
+
+## 005 — The dark
 
 Dark vision, a light radius, and rock you cannot see past. The first half of *the dark is home,
 the sun is the hazard* (pillar [P3](../docs/game-overview.md)) — inverted from the genre default.
@@ -30,14 +112,14 @@ away and asks again. Tunnel memory's remembered bit is persistent, so it lands i
 that already exists. Likely the first slice where the render route from 001 (D-046) either holds
 up or gets replaced.
 
-## 005 — Dig your own way down
+## 006 — Dig your own way down
 
 Breach a floor to make a hole, and build a ladder in it. The first runtime use of the `Objects`
 gatekeeper (it has only ever placed things during generation), and the first of the vertical
 logistics ladder you build rather than find ([vertical-logistics §2](../docs/systems/vertical-logistics-and-power.md)).
 Breaching is the M1 verb and the one hard tool gate on descent
 ([digging-and-structure §1](../docs/systems/digging-and-structure.md)); building needs at least a
-placement mode. Probably too big as one slice; the split should fall out of 003 and 004.
+placement mode. Probably too big as one slice; the split should fall out of 003 and 005.
 
 ---
 

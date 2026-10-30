@@ -46,9 +46,9 @@ var depth: int:
 	set(value): set_depth(value)
 
 
-static func create(scene: PackedScene, p_name: String, world_pos: WorldPos) -> Actor:
+static func create(scene: PackedScene, p_name: String, world_pos: WorldPos, level: Level) -> Actor:
 	var actor: Actor = scene.instantiate() as Actor
-	return actor.setup(p_name, world_pos)
+	return actor.setup(p_name, world_pos, level)
 
 
 func _ready() -> void:
@@ -153,9 +153,14 @@ func _physics_process(delta: float) -> void:
 	_primary_action(delta)
 
 
-func setup(p_name: String, world_pos: WorldPos) -> Actor:
+# The actor is handed the level it starts on rather than finding it
+# in the tree: a load builds actors before its levels are in the
+# tree, where a lookup finds the old world's level, or none.
+func setup(p_name: String, world_pos: WorldPos, level: Level) -> Actor:
+	assert(level != null and level.depth == world_pos.depth,
+		"Actor setup needs the level at the depth it starts on.")
 	var old_pos: WorldPos = current_WorldPos
-	set_depth(world_pos.depth)
+	_set_level(level)
 	position = TileSpace.tile_center(Vector2i(world_pos.x, world_pos.y))
 	current_WorldPos = get_current_WorldPos()
 	actor_worldpos_changed.emit(self, old_pos, current_WorldPos)
@@ -203,6 +208,13 @@ func set_depth(p_depth: int) -> void:
 	_update_WorldPos()
 
 
+# Puts the actor on a level it has been given, with no lookup.
+func _set_level(level: Level) -> void:
+	_depth = level.depth
+	current_level = level
+	_update_WorldPos()
+
+
 # Moves the actor onto a tile on another level (D-093). Whatever sends
 # the actor (a ramp, a ladder) decides the target; the actor only
 # checks it can stand there, with the same test walking uses. Position
@@ -217,7 +229,7 @@ func change_depth(target: WorldPos) -> bool:
 	if landing == null: return false
 
 	position = landing
-	set_depth(target.depth)
+	_set_level(level)
 	return true
 
 

@@ -21,7 +21,7 @@ func before_each() -> void:
 
 func _actor_at(tile: Vector2i, depth: int) -> Actor:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth))
+		Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth), World.get_level_by_depth(depth))
 	add_child_autofree(actor)
 	return actor
 
@@ -150,7 +150,7 @@ func test_a_dig_on_one_depth_changes_only_that_depth() -> void:
 
 func test_a_freed_actor_is_dropped_from_the_view() -> void:
 	var followed: Actor = _actor_at(OPEN_TILE, 0)
-	var other: Actor = Actor.create(Global.actor_packed_scene, "Gone", WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 0))
+	var other: Actor = Actor.create(Global.actor_packed_scene, "Gone", WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 0), World.get_level_by_depth(0))
 	add_child(other)
 	var view: View = _view_following(followed)
 	view.track(other)

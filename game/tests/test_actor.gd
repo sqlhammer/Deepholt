@@ -49,7 +49,7 @@ func test_the_actor_scene_is_an_actor() -> void:
 
 func test_create_places_the_actor_on_the_tile_center() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), World.get_level_by_depth(1))
 	autofree(actor)
 	assert_eq(actor.position, Vector2(56, -24),
 		"tile (3, -2) is centered at (56, -24)")
@@ -59,7 +59,7 @@ func test_create_places_the_actor_on_the_tile_center() -> void:
 # scene's default box still fits inside the spawn tile.
 func test_create_records_the_world_pos() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), World.get_level_by_depth(1))
 	autofree(actor)
 	assert_true(actor.current_WorldPos.equals(WorldPos.new(3, -2, 1)),
 		"current_WorldPos is the tile it was created on, depth included")
@@ -67,8 +67,24 @@ func test_create_records_the_world_pos() -> void:
 
 func test_setup_returns_the_actor_for_chaining() -> void:
 	var actor: Actor = _actor()
-	assert_eq(actor.setup("TestPlayer", WorldPos.new(0, 0, 0)), actor,
+	assert_eq(actor.setup("TestPlayer", WorldPos.new(0, 0, 0), World.get_level_by_depth(0)), actor,
 		"setup returns self so instantiate().setup() chains")
+
+
+# A load builds its levels before they're in the tree, while the old
+# world's level at the same depth still is. The actor must stand on
+# the level it's given, never the one a lookup would find.
+func test_setup_stands_on_the_level_given_not_the_trees() -> void:
+	var loaded: Level = autofree(Global.level_packed_scene.instantiate())
+	loaded.setup(1)
+	var actor: Actor = Actor.create(
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), loaded)
+	autofree(actor)
+	assert_eq(actor.current_level, loaded, "the given level, outside the tree")
+	assert_ne(actor.current_level, World.get_level_by_depth(1),
+		"not the depth-1 level that is in the tree")
+	assert_true(actor.current_WorldPos.equals(WorldPos.new(3, -2, 1)),
+		"and on its tile, worked out without the tree")
 
 
 func test_setting_depth_finds_that_level() -> void:
@@ -169,7 +185,7 @@ func test_crossing_a_tile_boundary_emits_actor_old_and_new() -> void:
 # two already agree, so entering the tree must change nothing.
 func test_entering_the_tree_keeps_the_spawn_tile() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), World.get_level_by_depth(1))
 	add_child_autofree(actor)
 	assert_true(actor.current_WorldPos.equals(WorldPos.new(3, -2, 1)),
 		"still on tile (3, -2) at depth 1 after _ready")
@@ -177,7 +193,7 @@ func test_entering_the_tree_keeps_the_spawn_tile() -> void:
 
 func test_entering_the_tree_does_not_move_the_actor() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), World.get_level_by_depth(1))
 	add_child_autofree(actor)
 	assert_eq(actor.position, Vector2(56, -24),
 		"_ready leaves the spawn position alone")
@@ -260,7 +276,7 @@ func _actor_in_room() -> Actor:
 	tiles.set_top(0, 0, TileKind.TOP.OPEN)
 	tiles.set_top(1, 0, TileKind.TOP.OPEN)
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "Mover", WorldPos.new(0, 0, 0))
+		Global.actor_packed_scene, "Mover", WorldPos.new(0, 0, 0), World.get_level_by_depth(0))
 	add_child_autofree(actor)
 	return actor
 

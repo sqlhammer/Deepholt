@@ -32,6 +32,14 @@ it back to hand-made. That last part was outcome 8 of slice 002, and this slice 
 whenever the view moves, and `F3` reads the actor. None of them keep history, so none of them
 need to be told what happened before a load.
 
+**Trimmed 2026-10-30.** The save/load review showed every load bug coming from one assumption:
+that the tree holds exactly one world. Fixing it became slice 004
+([D-118](../docs/design-decisions.md#d-118--the-world-is-a-node-that-owns-its-levels-and-id-counters-handed-by-reference)).
+The parts of this slice that 004 reshapes (building the world from the save, saved bounds, the
+id counters' restore) moved there; the [checklist](./CHECKLIST.md#moved-to-slice-004-d-118) lists
+them. The outcomes below still hold, on B's staging: launch generates, then the save replaces
+what was generated.
+
 ## What should be true when you stop
 
 By hand, in a running game:
@@ -59,7 +67,8 @@ Separately, automated, without a running scene where possible:
 - a level's tiles round-trip byte-identical, every layer;
 - a load emits no per-tile `tile_changed`;
 - a world with digs on three depths round-trips, each depth only its own;
-- after a load, the next fixture id is greater than every loaded fixture's;
+- *(moved to slice 004, D-118)* after a load, the next fixture id is greater than every loaded
+  fixture's;
 - two actors on different depths round-trip, each to its own depth and tile;
 - a save from a newer format version, and a truncated save, are each refused, kept, and the
   backup loaded in their place.
