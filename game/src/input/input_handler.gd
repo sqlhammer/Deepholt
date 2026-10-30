@@ -31,6 +31,8 @@ func _input(event: InputEvent) -> void:
 		game.save_game()
 	if event.is_action_pressed("load"):
 		game.load_game()
+	if event.is_action_pressed("save_and_quit_to_desktop"):
+		game.save_and_quit_to_desktop()
 
 
 func _physics_process(_delta: float) -> void:

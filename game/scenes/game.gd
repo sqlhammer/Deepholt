@@ -150,12 +150,25 @@ func load_game() -> REFUSAL_REASON:
 	return REFUSAL_REASON.NONE
 
 
+func save_and_quit_to_desktop() -> void:
+	_prepare_then_quit()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_prepare_then_quit()
+
+
 func _ready() -> void:
-	#SaveGame.setup()
 	_set_current_save_slot()
 	_spawn_levels()
 	_create_view()
 	_spawn_player("DefaultName")
+
+
+func _prepare_then_quit() -> void:
+	save_game()
+	get_tree().quit()
 
 
 func _create_view() -> void:
