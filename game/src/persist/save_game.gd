@@ -72,11 +72,11 @@ static func load_game(slot_path: String) -> Dictionary:
 	if not file_data.levels: return {}
 	if not file_data.get("actors") is Dictionary: return {}
 	if not file_data.actors: return {}
-
+	
 	# Header data
 	var game_data: Dictionary = {}
 	game_data["format_version"] = file_data.format_version
-
+	
 	# Levels
 	game_data["levels"] = _deserialize_levels(file_data.levels)
 	# Loaded fixtures went straight in; now they're checked, with the
@@ -86,17 +86,19 @@ static func load_game(slot_path: String) -> Dictionary:
 	game_data["problems"] = load_problems(loaded)
 	for problem: String in game_data.problems:
 		push_warning(problem)
-
+	
 	# Objects
-
-
+	
+	
 	# NPCs
-
-
+	
+	
 	# Actors
 	# Actors stand on the levels this load built, not on whatever is
 	# in the tree, which is the world being replaced.
-	game_data["actors"] = _deserialize_actors(file_data.actors, game_data.levels)
+	var _actors = _deserialize_actors(file_data.actors, game_data.levels)
+	if _actors.size() < 1: return {}
+	game_data["actors"] = _actors
 	
 	return game_data
 
@@ -105,7 +107,9 @@ static func load_game(slot_path: String) -> Dictionary:
 # generation runs, on the fixtures and the levels as they came out of
 # the save. A report only; nothing is changed (D-113).
 static func load_problems(levels: Array[Level]) -> Array[String]:
-	return Objects.placement_problems(levels) 		+ LevelGenerator.ramp_problems(levels) 		+ LevelGenerator.ladder_problems(levels)
+	return Objects.placement_problems(levels) \
+		+ LevelGenerator.ramp_problems(levels) \
+		+ LevelGenerator.ladder_problems(levels)
 
 
 # Frees every node a load built: its levels, and its actors. For a
@@ -207,20 +211,22 @@ static func _serialize_fixtures(fixtures: LevelFixtures) -> Array:
 
 static func _serialize_actors(actors: Array[Node], active_actor: Actor) -> Dictionary:
 	var data: Dictionary = {}
+	data["local_actor_id"] = active_actor.actor_id
 	
 	for actor in actors:
-		var actor_data: Dictionary = _serialize_actor(actor, active_actor)
+		var actor_data: Dictionary = _serialize_actor(actor)
 		if not actor_data: continue
-		data[actor.actor_name] = _serialize_actor(actor, active_actor)
+		data[actor.actor_name] = _serialize_actor(actor)
 	
 	return data
 
 
-static func _serialize_actor(actor: Actor, active_actor: Actor) -> Dictionary:
+static func _serialize_actor(actor: Actor) -> Dictionary:
 	var actor_data: Dictionary = {}
 	if not _is_savable_actor_object(actor): return {}
 	
-	actor_data["is_active"] = ( actor == active_actor )
+	actor_data["actor_id"] = actor.actor_id
+	actor_data["actor_kind"] = actor.actor_kind
 	
 	# the actor_name is the key one layer up but we need it here, as well
 	# to make iterating over actor objects easier when deserializing
@@ -241,6 +247,8 @@ static func _serialize_actor(actor: Actor, active_actor: Actor) -> Dictionary:
 # levels is the loaded levels by depth; each actor is put on its own.
 static func _deserialize_actors(p_actors: Dictionary, levels: Dictionary) -> Dictionary:
 	var actors: Dictionary = {}
+	if p_actors.has("local_actor_id"):
+		actors["local_actor_id"] = p_actors.local_actor_id
 
 	for key in p_actors:
 		if not _is_valid_actor_entry(p_actors[key]): continue
@@ -248,7 +256,6 @@ static func _deserialize_actors(p_actors: Dictionary, levels: Dictionary) -> Dic
 		if not actor: continue
 		actors[key] = {}
 		actors[key]["actor_obj"] = actor
-		actors[key]["is_active"] = p_actors[key].is_active
 		actors[key]["worldpos"] = actor.current_WorldPos
 	
 	return actors
@@ -263,7 +270,7 @@ static func _deserialize_actor(p_actor: Dictionary, levels: Dictionary) -> Actor
 		push_warning("Actor %s is on depth %d, which didn't load; skipped." % [actor_name, pos.depth])
 		return null
 	var worldpos: WorldPos = WorldPos.new(pos.x, pos.y, pos.depth)
-	var actor: Actor = Actor.create(Global.actor_packed_scene, actor_name, worldpos, level)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, actor_name, worldpos, level, p_actor.actor_kind, p_actor.actor_id)
 	
 	var facing: Dictionary = p_actor.facing
 	actor.facing = Vector2i(facing.x, facing.y)
@@ -424,7 +431,8 @@ static func _is_valid_fixtures_entry(fixtures: Variant) -> bool:
 
 static func _is_valid_actor_entry(actor: Variant) -> bool:
 	if actor is not Dictionary: return false
-	if actor.get("is_active") is not bool: return false
+	if actor.get("actor_id") is not int: return false
+	if actor.get("actor_kind") is not int: return false
 	if actor.get("actor_name") is not String: return false
 	
 	if actor.get("worldpos") is not Dictionary: return false

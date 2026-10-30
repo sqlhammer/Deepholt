@@ -3,6 +3,7 @@ extends Node
 var world_seed: int
 # One recipe per depth, each holding that level's bounds (D-085).
 var level_recipes: LevelRecipeTable = preload("res://src/world/level_recipes.tres")
+var id_allocator: IdAllocator = IdAllocator.new()
 
 signal tile_dug(actor: Actor, tile: WorldPos)
 signal dig_requested(actor: Actor, tile: WorldPos)

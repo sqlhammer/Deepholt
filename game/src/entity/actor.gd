@@ -6,6 +6,11 @@ signal action_begun(verb: String)
 signal action_ended(verb: String)
 signal move_intent_changed(move_intent: Vector2)
 
+var actor_id: int = -1
+var _actor_kind: int = ActorKind.ACTOR.NULL
+var actor_kind: int:
+	get: return _actor_kind
+	set(value): _set_actor_kind(value)
 var current_WorldPos: WorldPos
 var current_level: Level
 var actor_name: String = "Actor"
@@ -46,9 +51,9 @@ var depth: int:
 	set(value): set_depth(value)
 
 
-static func create(scene: PackedScene, p_name: String, world_pos: WorldPos, level: Level) -> Actor:
-	var actor: Actor = scene.instantiate() as Actor
-	return actor.setup(p_name, world_pos, level)
+static func create(p_scene: PackedScene, p_name: String, p_world_pos: WorldPos, p_level: Level, p_kind: int, p_actor_id: int = -1) -> Actor:
+	var actor: Actor = p_scene.instantiate() as Actor
+	return actor.setup(p_name, p_world_pos, p_level, p_kind, p_actor_id)
 
 
 func _ready() -> void:
@@ -129,6 +134,15 @@ func interact() -> bool:
 	return change_depth(target)
 
 
+func _set_actor_kind(value: int) -> void:
+	for key in ActorKind.ACTOR:
+		if ActorKind.ACTOR[key] == value:
+			_actor_kind = value
+			return
+	
+	_actor_kind = ActorKind.ACTOR.NULL
+
+
 func _primary_action(delta: float) -> void:
 	if not action_intent: 
 		return
@@ -156,7 +170,7 @@ func _physics_process(delta: float) -> void:
 # The actor is handed the level it starts on rather than finding it
 # in the tree: a load builds actors before its levels are in the
 # tree, where a lookup finds the old world's level, or none.
-func setup(p_name: String, world_pos: WorldPos, level: Level) -> Actor:
+func setup(p_name: String, world_pos: WorldPos, level: Level, p_kind: int, p_actor_id: int = -1) -> Actor:
 	assert(level != null and level.depth == world_pos.depth,
 		"Actor setup needs the level at the depth it starts on.")
 	var old_pos: WorldPos = current_WorldPos
@@ -164,8 +178,13 @@ func setup(p_name: String, world_pos: WorldPos, level: Level) -> Actor:
 	position = TileSpace.tile_center(Vector2i(world_pos.x, world_pos.y))
 	current_WorldPos = get_current_WorldPos()
 	actor_worldpos_changed.emit(self, old_pos, current_WorldPos)
+	if p_actor_id != -1:
+		actor_id = p_actor_id
+	else:
+		actor_id = World.id_allocator.allocate()
 	actor_name = p_name
 	name = "Actor%s" % p_name
+	actor_kind = p_kind
 	return self
 
 

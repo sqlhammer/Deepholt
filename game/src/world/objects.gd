@@ -94,7 +94,7 @@ static func placement_problem(kind: int, tile: Vector2i, tiles: LevelTiles,
 # doesn't know and any id two fixtures share. A report, for a load
 # (D-113): nothing is removed. Takes the levels, so it works on a
 # world that isn't in the tree.
-static func placement_problems(levels: Array[Level]) -> Array[String]:
+func placement_problems(levels: Array[Level]) -> Array[String]:
 	var by_depth: Dictionary[int, Level] = {}
 	for level: Level in levels:
 		by_depth[level.depth] = level

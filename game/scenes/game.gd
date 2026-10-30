@@ -14,7 +14,6 @@ var active_actor: Actor:
 var _active_actor: Actor
 var _input_handlers: Array[InputHandler] = []
 
-
 enum REFUSAL_REASON {
 	NONE,
 	LOAD_FAILED_NO_OP,
@@ -107,10 +106,9 @@ func load_game() -> REFUSAL_REASON:
 	var game_data: Dictionary = SaveGame.load_game(current_save_slot)
 	if not game_data: return REFUSAL_REASON.LOAD_FAILED_NO_OP
 	# The data holds nodes nothing else frees; refusing it frees them
-	if not game_data.has("format_version") or not game_data.has("levels") \
-		or not game_data.has("actors"):
-			SaveGame.free_game_data(game_data)
-			return REFUSAL_REASON.LOAD_FAILED_NO_OP
+	if not _is_valid_game_data(game_data):
+		SaveGame.free_game_data(game_data)
+		return REFUSAL_REASON.LOAD_FAILED_NO_OP
 	
 	
 	# Pause game and handle visual transition/loading indicator
@@ -138,10 +136,14 @@ func load_game() -> REFUSAL_REASON:
 	
 	# load player
 	var actors: Dictionary = game_data.actors
+	var _local_actor_id: int = -1
+	if actors.has("local_actor_id"):
+		_local_actor_id = actors.local_actor_id
 	for key in actors:
-		if actors[key].is_active:
-			# create the active player
+		# create the active player
+		if actors[key].actor_id == _local_actor_id or _local_actor_id == -1:
 			_create_player(actors[key].actor_obj)
+			break
 	
 	# load actors
 	# TODO: _create_player sets the active player, we need to also spawn the 
@@ -150,6 +152,15 @@ func load_game() -> REFUSAL_REASON:
 	
 	
 	return REFUSAL_REASON.NONE
+
+
+func _is_valid_game_data(game_data: Dictionary) -> bool:
+	if not game_data.has("format_version"): return false
+	if not game_data.has("levels"): return false
+	if not game_data.has("actors"): return false
+	if game_data.actors.size() < 1: return false
+	
+	return true
 
 
 func save_and_quit_to_desktop() -> void:
@@ -237,7 +248,7 @@ func _spawn_player(_name: String) -> void:
 	if tile == null:
 		push_error("Nowhere to spawn %s." % _name)
 		return
-	var actor = Actor.create(Global.actor_packed_scene, _name, tile, _level_at(tile.depth))
+	var actor = Actor.create(Global.actor_packed_scene, _name, tile, _level_at(tile.depth), ActorKind.ACTOR.PLAYER)
 	
 	_create_player(actor)
 

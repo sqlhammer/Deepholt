@@ -122,16 +122,16 @@ generates, then the save's layers and fixtures replace what was generated.
 
 *Mode: ask before starting.*
 
-- [ ] Every actor gets an `actor_id` from a counter when it's created, and saves it (D-114).
+- [x] Every actor gets an `actor_id` from a counter when it's created, and saves it (D-114).
   Where the counter lives, and saving and restoring it, are in slice 004 (D-118). Expect the
   counter's home here to be redone there.
-- [ ] An actor saves id, kind (`"player"`), name, depth, tile and facing; it loads at the center
+- [x] An actor saves id, kind (`"player"`), name, depth, tile and facing; it loads at the center
   of its tile. Not capabilities, not a dig in progress, not the equipped tool (D-114).
-- [ ] `SaveGame` saves every actor it's handed and never picks one (trap 1,
+- [x] `SaveGame` saves every actor it's handed and never picks one (trap 1,
   [D-045](../docs/design-decisions.md)).
 - [ ] On load, `game.gd` grants capabilities and the players group by kind, not by "the first
   one".
-- [ ] The save records `local_actor_id`, handed in by `game.gd`; on load, input, the view, the
+- [x] The save records `local_actor_id`, handed in by `game.gd`; on load, input, the view, the
   camera and F3 go to that actor, falling back to the lowest-id player with a warning (D-115).
 - [ ] A loaded actor is not sent to the world spawn ([D-091](../docs/design-decisions.md)),
   unless its tile is impassable: then it goes there, with a warning naming it and the tile
