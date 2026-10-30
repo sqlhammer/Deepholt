@@ -30,7 +30,7 @@ func _ladder(depth: int, id: int, tile: Vector2i = SPOT) -> Fixture:
 
 
 func _following_actor_at(depth: int) -> Array:
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(SPOT.x, SPOT.y, depth), World.get_level_by_depth(depth))
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(SPOT.x, SPOT.y, depth), World.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
 	add_child_autofree(actor)
 	var view: View = View.new()
 	add_child_autofree(view)
@@ -196,7 +196,7 @@ func test_the_hand_made_hole_on_minus_one_shows_the_ladder_top() -> void:
 	await wait_physics_frames(1)
 	for level: Level in LevelGenerator.generate_levels(World.level_recipes):
 		add_child_autofree(level)
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(14, -1, 1), World.get_level_by_depth(1))
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(14, -1, 1), World.get_level_by_depth(1), ActorKind.ACTOR.PLAYER)
 	add_child_autofree(actor)
 	var view: View = View.new()
 	add_child_autofree(view)

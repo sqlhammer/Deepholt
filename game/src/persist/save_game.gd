@@ -211,7 +211,8 @@ static func _serialize_fixtures(fixtures: LevelFixtures) -> Array:
 
 static func _serialize_actors(actors: Array[Node], active_actor: Actor) -> Dictionary:
 	var data: Dictionary = {}
-	data["local_actor_id"] = active_actor.actor_id
+	if active_actor:
+		data["local_actor_id"] = active_actor.actor_id
 	
 	for actor in actors:
 		var actor_data: Dictionary = _serialize_actor(actor)

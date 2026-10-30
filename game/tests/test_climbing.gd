@@ -19,7 +19,7 @@ func after_each() -> void:
 
 
 func _actor_at(tile: Vector2i, depth: int, facing: Vector2i) -> Actor:
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth), World.get_level_by_depth(depth))
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth), World.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
 	add_child_autofree(actor)
 	actor.facing = facing
 	return actor

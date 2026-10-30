@@ -835,8 +835,9 @@ func test_free_game_data_frees_its_levels_and_actors() -> void:
 
 func _actor_entry(depth: int) -> Dictionary:
 	return {
-		"is_active": true,
 		"actor_name": "Loaded",
+		"actor_kind": 1,
+		"actor_id": 10,
 		"worldpos": {"x": 3, "y": -2, "depth": depth},
 		"facing": {"x": -1, "y": 0},
 	}
@@ -849,7 +850,7 @@ func test_loaded_actors_stand_on_the_loaded_levels() -> void:
 	old_level.setup(0)
 	add_child_autofree(old_level)
 	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
-	var actors: Dictionary = SaveGame._deserialize_actors({"Loaded": _actor_entry(0)}, levels)
+	var actors: Dictionary = SaveGame._deserialize_actors({"local_actor_id": 10,"Loaded": _actor_entry(0)}, levels)
 	var actor: Actor = actors["Loaded"]["actor_obj"]
 	assert_eq(actor.current_level, levels[0], "on the loaded level")
 	assert_ne(actor.current_level, old_level, "not the one in the tree")
@@ -941,7 +942,7 @@ func test_serialize_skips_a_level_with_no_tiles() -> void:
 func test_serialize_skips_an_actor_with_no_position() -> void:
 	var actor: Actor = autofree(Global.actor_packed_scene.instantiate())
 	var actors: Array[Node] = [actor]
-	assert_eq(SaveGame._serialize_actors(actors, actor), {},
+	assert_eq(SaveGame._serialize_actors(actors, actor), {"local_actor_id": -1},
 		"an actor never set up isn't saved")
 
 
@@ -951,7 +952,7 @@ func test_deserialize_skips_each_malformed_actor_entry() -> void:
 	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
 	var broken: Array = []
 	broken.append("not a dictionary")
-	for field: String in ["is_active", "actor_name", "worldpos", "facing"]:
+	for field: String in ["actor_id", "actor_kind", "actor_name", "worldpos", "facing"]:
 		var missing: Dictionary = _actor_entry(0)
 		missing.erase(field)
 		broken.append(missing)

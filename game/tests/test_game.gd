@@ -202,7 +202,7 @@ func test_spawn_player_with_no_world_spawn_adds_no_player() -> void:
 
 func test_create_player_stands_on_the_tile_given() -> void:
 	var _pos: WorldPos = WorldPos.new(14, -2, 2)
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "TestPlayer", _pos, World.get_level_by_depth(_pos.depth))
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "TestPlayer", _pos, World.get_level_by_depth(_pos.depth), ActorKind.ACTOR.PLAYER)
 	actor = _game._create_player(actor)
 	assert_true(actor in _actors(), "the actor is added under Players")
 	assert_true(actor.current_WorldPos.equals(_pos),
@@ -213,7 +213,7 @@ func test_create_player_stands_on_the_tile_given() -> void:
 
 func _actor_at_depth(depth: int) -> Actor:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, depth), World.get_level_by_depth(depth))
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, depth), World.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
 	_game.get_node("GameViewport/Actors/Players").add_child(actor)
 	return actor
 
