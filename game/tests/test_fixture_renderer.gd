@@ -74,7 +74,7 @@ func test_a_fixture_on_another_depth_is_not_drawn_until_the_view_goes_there() ->
 	var renderer: FixtureRenderer = _renderer()
 	renderer.watch(pair[1])
 	assert_null(renderer.sprite_for(5), "not drawn while the Surface is shown")
-	pair[0].change_depth(WorldPos.new(SPOT.x, SPOT.y, 1))
+	pair[0].move_to(WorldPos.new(SPOT.x, SPOT.y, 1))
 	assert_not_null(renderer.sprite_for(5), "drawn once -1 is shown")
 
 
@@ -82,7 +82,7 @@ func test_changes_on_a_level_no_longer_shown_are_ignored() -> void:
 	var pair: Array = _following_actor_at(0)
 	var renderer: FixtureRenderer = _renderer()
 	renderer.watch(pair[1])
-	pair[0].change_depth(WorldPos.new(SPOT.x, SPOT.y, 1))
+	pair[0].move_to(WorldPos.new(SPOT.x, SPOT.y, 1))
 	_levels[0].level_fixtures.add(_ladder(0, 9))
 	assert_null(renderer.sprite_for(9), "the Surface isn't shown: nothing drawn on -1")
 
@@ -126,7 +126,7 @@ func test_moving_to_another_level_clears_the_old_levels_sprites() -> void:
 	var renderer: FixtureRenderer = _renderer()
 	renderer.watch(pair[1])
 	assert_not_null(renderer.sprite_for(11), "the Surface's ladder is drawn")
-	pair[0].change_depth(WorldPos.new(SPOT.x, SPOT.y, 1))
+	pair[0].move_to(WorldPos.new(SPOT.x, SPOT.y, 1))
 	assert_null(renderer.sprite_for(11), "and gone once -1 is shown")
 
 
@@ -185,7 +185,7 @@ func test_tops_are_only_for_the_level_below_the_shown_one() -> void:
 	_hole_over_spot()
 	_levels[1].level_fixtures.add(_ladder(1, 24))
 	var parts: Array = _surface_view_renderer()
-	parts[0].change_depth(WorldPos.new(SPOT.x, SPOT.y, 1))
+	parts[0].move_to(WorldPos.new(SPOT.x, SPOT.y, 1))
 	assert_null(parts[1].top_sprite_for(24), "down on -1, the Surface's hole isn't shown")
 	_levels[1].level_fixtures.add(_ladder(1, 25))
 	assert_null(parts[1].top_sprite_for(25), "-1 isn't 'below' any more: its changes draw no tops")

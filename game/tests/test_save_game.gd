@@ -1000,3 +1000,63 @@ func test_an_actor_entry_with_a_tool_path_loads() -> void:
 	var actors: Dictionary = SaveGame._deserialize_actors({10: entry}, levels)
 	assert_eq(actors.size(), 1, "a String tool path is allowed")
 	SaveGame.free_game_data({"levels": levels, "actors": actors})
+
+
+# --- round trip: actors (D-114) ---
+
+# A tile an actor can stand on: passable, not a ramp. The first found
+# row by row, or the last, so two picks on one level can differ.
+func _open_tile(level: Level, last: bool = false) -> WorldPos:
+	var tiles: LevelTiles = level.level_tiles
+	var radius: int = tiles.level_bound.radius
+	var found: WorldPos = null
+	for y in range(-radius, radius + 1):
+		for x in range(-radius, radius + 1):
+			var ground: int = tiles.get_ground(x, y)
+			if not TileKind.is_passable(tiles.get_top(x, y), ground): continue
+			if TileKind.is_ramp(ground): continue
+			found = WorldPos.new(x, y, level.depth)
+			if not last: return found
+	return found
+
+
+func _at_depth(levels: Array[Level], depth: int) -> Level:
+	for level: Level in levels:
+		if level.depth == depth: return level
+	return null
+
+
+func _player_on(tile: WorldPos, levels: Array[Level], actor_name: String, id: int) -> Actor:
+	return autofree(Actor.create(Global.actor_packed_scene, actor_name, tile,
+		_at_depth(levels, tile.depth), ActorKind.ACTOR.PLAYER, id))
+
+
+# Each actor comes back on its own depth and tile, both on open
+# floor, so nothing about the tile could send it to the spawn.
+func test_two_actors_on_different_depths_round_trip_each_to_its_own() -> void:
+	var levels: Array[Level] = _generated_world()
+	var tile_a: WorldPos = _open_tile(_at_depth(levels, 1))
+	var tile_b: WorldPos = _open_tile(_at_depth(levels, 2), true)
+	assert_not_null(tile_a, "-1 has open floor")
+	assert_not_null(tile_b, "-2 has open floor")
+	var a: Actor = _player_on(tile_a, levels, "Upper", 10)
+	var b: Actor = _player_on(tile_b, levels, "Lower", 11)
+	var actors: Array[Node] = [a, b]
+	assert_eq(SaveGame.save_game(TEST_SLOT, levels, actors, a, TEST_ROOT),
+		SaveGame.REFUSAL_REASON.NONE, "the save succeeds")
+
+	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
+	assert_true(game_data.has("actors"), "the load succeeds")
+	if not game_data.has("actors"): return
+	assert_true(game_data.actors.has(10) and game_data.actors.has(11), "both actors load")
+	if game_data.actors.has(10):
+		var back_a: Actor = game_data.actors[10].actor_obj
+		assert_true(back_a.current_WorldPos.equals(tile_a),
+			"Upper on %s, got %s" % [tile_a, back_a.current_WorldPos])
+		assert_eq(back_a.current_level.depth, 1, "and on the -1 level")
+	if game_data.actors.has(11):
+		var back_b: Actor = game_data.actors[11].actor_obj
+		assert_true(back_b.current_WorldPos.equals(tile_b),
+			"Lower on %s, got %s" % [tile_b, back_b.current_WorldPos])
+		assert_eq(back_b.current_level.depth, 2, "and on the -2 level")
+	SaveGame.free_game_data(game_data)

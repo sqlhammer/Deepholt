@@ -44,6 +44,8 @@ func grant_player_capabilities(actor: Actor) -> void:
 
 
 func set_user_control(actor: Actor) -> void:
+	_active_actor = actor
+	
 	# Attach input handling to the player
 	var input: InputHandler = InputHandler.new()
 	input.setup(actor, mouse_world_position, self)
@@ -126,40 +128,14 @@ func load_game() -> REFUSAL_REASON:
 	# Trigger the view to refresh the tiles
 	if not view: _create_view()
 	refresh_current_view()
-	$DebugOverlay.show_load_problems(game_data.get("problems", []).size())
 	
 	# load objects
 	
 	
-	# load NPCs
-	
-	
-	# load player
-	var actors: Dictionary = game_data.actors
-	var _local_actor_id: int = -1
-	if actors.has("local_actor_id"):
-		_local_actor_id = actors.local_actor_id
-	for key in actors:
-		# skip header data
-		if actors[key] is not Dictionary: continue
-		if not actors[key].has("actor_obj"): continue
-		
-		# create the active player
-		# use the first actor found if no local_actor_id is set
-		if _local_actor_id == -1 and actors[key].actor_obj.actor_kind == ActorKind.ACTOR.PLAYER:
-			_create_player(actors[key].actor_obj)
-			break
-		# create the active player from actor matching the _local_actor_id
-		if key == _local_actor_id:
-			_create_player(actors[key].actor_obj)
-			break
-	
 	# load actors
-	# TODO: _create_player sets the active player, we need to also spawn the 
-	#		other actors. We can update this when we have other actors implemented
-	#		to test with
+	_load_actors(game_data.actors)
 	
-	
+	$DebugOverlay.show_load_problems(game_data.get("problems", []).size())
 	return REFUSAL_REASON.NONE
 
 
@@ -223,8 +199,6 @@ func _set_current_save_slot() -> void:
 
 
 func _get_levels_from_save_data(data: Dictionary) -> Array[Level]:
-	# TODO: Rethink this. All it's doing is changing from Dict to Array
-	
 	if not data.has("levels"): return []
 	var levels: Array[Level] = []
 	
@@ -244,6 +218,8 @@ func _free_actors() -> void:
 	for actor in get_tree().get_nodes_in_group("actors"):
 		if actor is not Actor: continue
 		actor.free()
+	# Nothing may reach the freed player, a save least of all
+	_active_actor = null
 
 
 func _free_inputhandlers() -> void:
@@ -253,13 +229,14 @@ func _free_inputhandlers() -> void:
 
 
 func _spawn_player(_name: String) -> void:
-	var tile: WorldPos = Spawning.spawn_tile_for(null, _levels(), _players())
+	var tile: WorldPos = Spawning.spawn_tile_for(null, _levels(), _actors())
 	if tile == null:
 		push_error("Nowhere to spawn %s." % _name)
 		return
 	var actor = Actor.create(Global.actor_packed_scene, _name, tile, _level_at(tile.depth), ActorKind.ACTOR.PLAYER)
 	
-	_create_player(actor)
+	_create_actor(actor)
+	set_user_control(actor)
 
 
 func _levels() -> Array[Level]:
@@ -282,28 +259,91 @@ func _players() -> Array[Actor]:
 	return actors
 
 
-func _create_player(actor: Actor) -> Actor:
-	actor.add_to_group("players")
-	_active_actor = actor
-	$GameViewport/Actors/Players.add_child(actor)
-	view.track(actor)
-	actor.actor_worldpos_changed.connect(_on_player_moved)
+func _actors() -> Array[Actor]:
+	var actors: Array[Actor] = []
+	for node in get_tree().get_nodes_in_group("actors"):
+		if node is Actor: actors.append(node as Actor)
+	return actors
 
-	grant_player_capabilities(actor)
-	set_user_control(actor)
+
+func _create_actor(actor: Actor) -> Actor:
+	match actor.actor_kind:
+		ActorKind.ACTOR.NULL:
+			$GameViewport/Actors/NPCs.add_child(actor)
+		ActorKind.ACTOR.PLAYER:
+			actor.add_to_group("players")
+			$GameViewport/Actors/Players.add_child(actor)
+			grant_player_capabilities(actor)
+	
+	view.track(actor)
+	actor.actor_worldpos_changed.connect(_on_actor_moved)
 
 	return actor
 
 
-# Any player changing level saves the game (D-110). The signal comes
+# Any actor changing level saves the game (D-110). The signal comes
 # once the actor has arrived, so the save has it on the new level.
-func _on_player_moved(_actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> void:
+func _on_actor_moved(_actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> void:
 	if old_pos == null or new_pos == null: return
 	if old_pos.depth == new_pos.depth: return
 	save_game()
 
 
+# Each saved actor joins the game on its saved tile. One stuck on a
+# tile that's no longer passable is moved to the spawn first, before
+# anything listens to it: a move across a depth would save the world
+# this load is still building (D-115, D-119). Then exactly one player
+# is given to the user.
+func _load_actors(actors: Dictionary) -> void:
+	for key in actors:
+		# skip header data
+		if actors[key] is not Dictionary: continue
+		if not actors[key].has("actor_obj"): continue
+	
+		var actor: Actor = actors[key].actor_obj
+		_move_if_stuck(actor)
+		_create_actor(actor)
+	
+	var local_actor_id: Variant = actors.get("local_actor_id", -1)
+	if local_actor_id is not int: local_actor_id = -1
+	var local: Actor = _local_player(local_actor_id)
+	if local: set_user_control(local)
 
+
+# By the path a new player takes, avoiding the actors already placed
+# (D-091). With nowhere to go, it stays where it is, loudly.
+func _move_if_stuck(actor: Actor) -> void:
+	var stuck: WorldPos = actor.current_WorldPos
+	var tiles: LevelTiles = actor.current_level.level_tiles
+	if TileKind.is_passable(tiles.get_top(stuck.x, stuck.y), tiles.get_ground(stuck.x, stuck.y)):
+		return
+	
+	var target: WorldPos = Spawning.spawn_tile_for(null, _levels(), _actors())
+	if target == null or not actor.move_to(target):
+		push_error("%s is stuck on %s, which is impassable, with nowhere to go." % [
+			actor.actor_name, stuck])
+		return
+	push_warning("%s was on %s, which is impassable; moved to the world spawn at %s." % [
+		actor.actor_name, stuck, target])
+
+
+# The player the save names as local (D-115). A missing id, or one
+# that names no loaded player, falls back to the lowest-id player,
+# with a warning.
+func _local_player(local_actor_id: int) -> Actor:
+	var players: Array[Actor] = _players()
+	if players.is_empty():
+		push_error("The save has no player to control.")
+		return null
+	
+	var lowest: Actor = players[0]
+	for player: Actor in players:
+		if player.actor_id == local_actor_id: return player
+		if player.actor_id < lowest.actor_id: lowest = player
+	
+	push_warning("The save's local actor %d isn't a loaded player; %s (%d) is local instead." % [
+		local_actor_id, lowest.actor_name, lowest.actor_id])
+	return lowest
 
 
 

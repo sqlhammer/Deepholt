@@ -156,8 +156,8 @@ and tags). None of them are next.
 
 - **Level-change transitions** ([D-108](../docs/design-decisions.md)). Ramps and ladders are
   instant for now; a transition time and visual effects are wanted later. It goes between the
-  request and `Actor.change_depth`, not into the `Ramp` or `Ladder` rules, and must say what a held
-  dig does during it.
+  request and `Actor.move_to` ([D-119](../docs/design-decisions.md)), not into the `Ramp` or
+  `Ladder` rules, and must say what a held dig does during it.
 - **Moving a fixture** (a bed, M6). Discussed in 002, not recorded: make `Fixture.tile` read-only,
   move through the store and the gatekeeper, and decide whether a move is announced as a removal
   plus a placement or as its own event.

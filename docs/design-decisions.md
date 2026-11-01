@@ -2477,3 +2477,29 @@ a parameter than reaches for a global.
 (the smallest change, but one world per process forever); a plain `RefCounted` world object
 (the same benefits, but nodes it holds still need an owner to parent and free them); passing
 levels into each call with no world object (the parts with state would have no home).
+
+---
+
+### D-119 — `move_to` is the one way an actor is put somewhere else
+**Decided** (by Derik, slice 003 section D, 2026-11-01). Renames
+[D-093](#d-093--an-actor-changes-its-own-depth-the-change-is-announced-as-a-tile-change)'s
+`change_depth`; where D-093, D-117 and `NEXT.md` say `change_depth`, read `move_to`.
+
+- **`Actor.move_to(target: WorldPos) -> bool`** moves the actor onto any tile, on its own depth
+  or another. It is what ramps, ladders and a load's move to the spawn
+  ([D-115](#d-115--the-save-names-the-local-actor-an-actor-on-an-impassable-tile-goes-to-the-spawn))
+  call, and what a teleport would call later.
+- **Its rules are D-093's, unchanged:** the target's level must exist and the actor's feet must
+  fit there, by the test walking uses; a refusal returns `false` and changes nothing. Position
+  is set before the level, so the move is announced once, through `actor_worldpos_changed`,
+  with the final tile.
+- **A load moves an actor before `game.gd` listens to it.** A move announced to `game.gd`
+  across a depth saves the game (D-110); during a load that would save a world half built, and
+  rotate the good save into the backup.
+
+*Why:* the name said "depth", and the method never needed the depth to change. One path for
+every relocation keeps the landing rule and the announcement in one place.
+
+*Considered:* keeping `change_depth` and adding a separate teleport (two copies of the landing
+rule to drift apart); keeping `change_depth` as a wrapper around `move_to` (a second name for
+one thing).

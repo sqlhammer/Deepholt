@@ -37,7 +37,7 @@ func _view_following(actor: Actor) -> View:
 
 func test_changing_depth_keeps_x_and_y() -> void:
 	var actor: Actor = _actor_at(OPEN_TILE, 0)
-	assert_true(actor.change_depth(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1)), "the move is made")
+	assert_true(actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1)), "the move is made")
 	assert_eq(actor.depth, 1, "the actor is on -1")
 	assert_eq(actor.current_WorldPos.x, OPEN_TILE.x, "same x")
 	assert_eq(actor.current_WorldPos.y, OPEN_TILE.y, "same y")
@@ -48,7 +48,7 @@ func test_changing_depth_keeps_x_and_y() -> void:
 func test_a_depth_change_is_announced_once_with_the_final_tile() -> void:
 	var actor: Actor = _actor_at(OPEN_TILE, 0)
 	watch_signals(actor)
-	actor.change_depth(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 2))
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 2))
 	assert_signal_emit_count(actor, "actor_worldpos_changed", 1, "one announcement")
 	var args: Array = get_signal_parameters(actor, "actor_worldpos_changed")
 	assert_eq(args[1].depth, 0, "from the Surface")
@@ -61,7 +61,7 @@ func test_a_blocked_landing_is_refused_and_changes_nothing() -> void:
 	World.get_level_by_depth(1).level_tiles.set_top(OPEN_TILE.x, OPEN_TILE.y, TileKind.TOP.MINABLE_ROCK)
 	var position_before: Vector2 = actor.position
 	watch_signals(actor)
-	assert_false(actor.change_depth(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1)), "refused")
+	assert_false(actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1)), "refused")
 	assert_eq(actor.depth, 0, "still on the Surface")
 	assert_eq(actor.position, position_before, "not moved")
 	assert_signal_not_emitted(actor, "actor_worldpos_changed", "nothing announced")
@@ -69,7 +69,7 @@ func test_a_blocked_landing_is_refused_and_changes_nothing() -> void:
 
 func test_a_depth_with_no_level_is_refused() -> void:
 	var actor: Actor = _actor_at(OPEN_TILE, 0)
-	assert_false(actor.change_depth(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 99)), "no level at 99")
+	assert_false(actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 99)), "no level at 99")
 	assert_eq(actor.depth, 0, "still on the Surface")
 
 
@@ -91,7 +91,7 @@ func test_the_view_follows_its_actor_down() -> void:
 	var actor: Actor = _actor_at(OPEN_TILE, 0)
 	var view: View = _view_following(actor)
 	watch_signals(view)
-	actor.change_depth(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
 	assert_eq(view.shown_depth, 1, "the view moved with its actor")
 	assert_signal_emitted_with_parameters(view, "shown_depth_changed", [0, 1])
 
@@ -102,7 +102,7 @@ func test_another_actor_changing_depth_does_not_move_the_view() -> void:
 	var view: View = _view_following(followed)
 	view.track(other)
 	watch_signals(view)
-	other.change_depth(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	other.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
 	assert_eq(view.shown_depth, 0, "the screen stays where the local actor is")
 	assert_signal_not_emitted(view, "shown_depth_changed", "no change announced")
 
@@ -123,16 +123,16 @@ func test_an_actor_on_another_depth_is_not_drawn() -> void:
 	var view: View = _view_following(followed)
 	view.track(other)
 	assert_true(other.visible, "drawn while on the shown depth")
-	other.change_depth(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	other.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
 	assert_false(other.visible, "hidden once it leaves")
-	followed.change_depth(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	followed.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
 	assert_true(other.visible, "drawn again when the view reaches its depth")
 
 
 func test_the_followed_actor_is_always_drawn() -> void:
 	var actor: Actor = _actor_at(OPEN_TILE, 0)
 	_view_following(actor)
-	actor.change_depth(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 2))
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 2))
 	assert_true(actor.visible, "the view is always on its own actor's depth")
 
 
@@ -155,5 +155,5 @@ func test_a_freed_actor_is_dropped_from_the_view() -> void:
 	var view: View = _view_following(followed)
 	view.track(other)
 	other.free()
-	followed.change_depth(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	followed.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
 	assert_eq(view._tracked.size(), 1, "only the followed actor is still tracked")

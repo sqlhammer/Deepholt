@@ -120,7 +120,8 @@ generates, then the save's layers and fixtures replace what was generated.
 
 ## D. Actors
 
-*Mode: ask before starting.*
+*Mode: Derik built the section; its tests, and finishing it from the plan of 2026-11-01, were
+Agent mode.*
 
 - [x] Every actor gets an `actor_id` from a counter when it's created, and saves it (D-114).
   Where the counter lives, and saving and restoring it, are in slice 004 (D-118). Expect the
@@ -129,18 +130,23 @@ generates, then the save's layers and fixtures replace what was generated.
   of its tile. Not capabilities, not a dig in progress, not the equipped tool (D-114).
 - [x] `SaveGame` saves every actor it's handed and never picks one (trap 1,
   [D-045](../docs/design-decisions.md)).
-- [ ] On load, `game.gd` grants capabilities and the players group by kind, not by "the first
+- [x] On load, `game.gd` grants capabilities and the players group by kind, not by "the first
   one".
 - [x] The save records `local_actor_id`, handed in by `game.gd`; on load, input, the view, the
   camera and F3 go to that actor, falling back to the lowest-id player with a warning (D-115).
-- [ ] A loaded actor is not sent to the world spawn ([D-091](../docs/design-decisions.md)),
+  *The fallback, and exactly one player given control, finished in Agent mode, 2026-11-01:
+  ticked before, a missing id gave every player control and an id that didn't load gave none.*
+- [x] A loaded actor is not sent to the world spawn ([D-091](../docs/design-decisions.md)),
   unless its tile is impassable: then it goes there, with a warning naming it and the tile
-  (D-115).
-- [ ] Test: two actors on different depths round-trip, each to its own depth and tile.
-- [ ] Test: with two players saved, the local one is the one `local_actor_id` names, whichever
+  (D-115). *By `Actor.move_to`, the renamed `change_depth`
+  ([D-119](../docs/design-decisions.md)), before `game.gd` listens to the actor, so the move
+  can't save a half-loaded world; the spawn search keeps clear of every actor placed, NPCs too.
+  Finished in Agent mode, 2026-11-01.*
+- [x] Test: two actors on different depths round-trip, each to its own depth and tile.
+- [x] Test: with two players saved, the local one is the one `local_actor_id` names, whichever
   order they're saved in.
-- [ ] Test: an actor saved on a tile made impassable loads at the spawn.
-- [ ] By hand: quit on −2 facing west; relaunch on the same tile, facing west. [4]
+- [x] Test: an actor saved on a tile made impassable loads at the spawn.
+- [x] By hand: quit on −2 facing west; relaunch on the same tile, facing west. [4]
 
 ## E. Versions, header and broken saves
 

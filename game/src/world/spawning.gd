@@ -67,3 +67,28 @@ static func _is_free(tile: Vector2i, depth: int, tiles: LevelTiles, actors: Arra
 		if actor.depth == depth and actor.get_world_box().intersects(tile_rect):
 			return false
 	return true
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

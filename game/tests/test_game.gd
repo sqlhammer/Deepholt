@@ -110,7 +110,7 @@ func test_changing_level_saves_with_the_player_on_the_new_level() -> void:
 	var actor: Actor = _game.active_actor
 	var here: WorldPos = actor.current_WorldPos
 	assert_false(FileAccess.file_exists(_save_file()), "no save yet")
-	assert_true(actor.change_depth(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
+	assert_true(actor.move_to(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
 	assert_true(FileAccess.file_exists(_save_file()), "the move saved")
 	var saved: Dictionary = SaveGame.get_save_data(SAVES_ROOT.path_join("slot-001"))
 	assert_eq(saved.actors[actor.actor_id].worldpos.depth, 1, "with the player on -1")
@@ -121,6 +121,267 @@ func test_moving_within_a_level_does_not_save() -> void:
 	actor.position += Vector2(TileSpace.TILE_PIXELS, 0)
 	actor._update_WorldPos()
 	assert_false(FileAccess.file_exists(_save_file()), "a step is not a save")
+
+
+# --- loading actors (D-091, D-114, D-115) ---
+
+func _actor_with_id(id: int) -> Actor:
+	for actor: Actor in _actors():
+		if actor.actor_id == id: return actor
+	return null
+
+
+# The player, moved straight down onto -1. The Surface spawn sits
+# over -1's home cave, so the landing is open, and off the spawn.
+func _player_on_minus_one() -> Actor:
+	var actor: Actor = _game.active_actor
+	var here: WorldPos = actor.current_WorldPos
+	assert_true(actor.move_to(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
+	return actor
+
+
+# Only an impassable tile sends a loaded actor to the spawn.
+func test_a_loaded_actor_on_open_floor_is_not_sent_to_the_spawn() -> void:
+	var actor: Actor = _player_on_minus_one()
+	var id: int = actor.actor_id
+	var tile: WorldPos = actor.current_WorldPos
+	assert_true(_game.save_game(), "saved")
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "the load succeeds")
+	var loaded: Actor = _actor_with_id(id)
+	assert_not_null(loaded, "the actor loads")
+	if loaded == null: return
+	assert_true(loaded.current_WorldPos.equals(tile),
+		"on its saved tile %s, got %s" % [tile, loaded.current_WorldPos])
+
+
+# D-115: rock fills the tile the actor saved on, as a change to
+# passability in a later build could. It loads at the world spawn,
+# by the path a new player takes, with one warning naming it and the
+# tile it was on.
+func test_an_actor_saved_on_a_tile_made_impassable_loads_at_the_spawn() -> void:
+	var actor: Actor = _player_on_minus_one()
+	var id: int = actor.actor_id
+	var actor_name: String = actor.actor_name
+	var stuck: WorldPos = actor.current_WorldPos
+	World.get_level_by_depth(1).level_tiles.set_top(
+		stuck.x, stuck.y, TileKind.TOP.MINABLE_ROCK)
+	assert_true(_game.save_game(), "saved, standing in rock")
+	var spawn: WorldPos = _world_spawn().tile
+
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "the load succeeds")
+	var loaded: Actor = _actor_with_id(id)
+	assert_not_null(loaded, "the actor still loads")
+	if loaded == null: return
+	assert_true(loaded.current_WorldPos.equals(spawn),
+		"at the world spawn %s, got %s" % [spawn, loaded.current_WorldPos])
+	assert_eq(loaded.current_level, World.get_level_by_depth(spawn.depth),
+		"on the spawn's level")
+	assert_eq(_warnings_naming([actor_name, str(stuck)]), 1,
+		"one warning naming %s and %s" % [actor_name, stuck])
+
+
+# How many push_warnings so far contain every one of texts. Each
+# found is marked handled. assert_push_warning matches one text only,
+# and this leaves the wording free.
+func _warnings_naming(texts: Array) -> int:
+	var count: int = 0
+	for err in gut.error_tracker.get_errors_for_test():
+		if err.handled or not err.is_push_warning(): continue
+		var all: bool = true
+		for text: String in texts:
+			if not err.contains_text(text): all = false
+		if all:
+			err.handled = true
+			count += 1
+	return count
+
+
+# A load never saves: a stuck actor moved across a depth would
+# otherwise save a world half built, and rotate the good save into
+# the backup (D-119).
+func test_moving_a_stuck_actor_on_load_does_not_save() -> void:
+	var actor: Actor = _player_on_minus_one()
+	var actor_name: String = actor.actor_name
+	var stuck: WorldPos = actor.current_WorldPos
+	World.get_level_by_depth(1).level_tiles.set_top(
+		stuck.x, stuck.y, TileKind.TOP.MINABLE_ROCK)
+	assert_true(_game.save_game(), "saved, standing in rock")
+	var saved: PackedByteArray = FileAccess.get_file_as_bytes(_save_file())
+	var backup: PackedByteArray = FileAccess.get_file_as_bytes(_save_file() + ".bak")
+
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "the load succeeds")
+	assert_eq(_warnings_naming([actor_name]), 1, "the move is reported")
+	# Compared as a bool: a failing byte compare prints both files
+	assert_true(FileAccess.get_file_as_bytes(_save_file()) == saved, "the save is untouched")
+	assert_true(FileAccess.get_file_as_bytes(_save_file() + ".bak") == backup,
+		"and so is the backup")
+
+
+# The spawn search keeps clear of every actor already placed, not
+# only players (D-091). The NPC is saved first, so it is placed first.
+func test_a_stuck_actor_is_moved_clear_of_an_npc_on_the_spawn() -> void:
+	var spawn: WorldPos = _world_spawn().tile
+	var npc: Actor = _game._create_actor(Actor.create(Global.actor_packed_scene, "Npc",
+		spawn, World.get_level_by_depth(spawn.depth), ActorKind.ACTOR.NULL))
+	var player: Actor = _player_on_minus_one()
+	var id: int = player.actor_id
+	var player_name: String = player.actor_name
+	var stuck: WorldPos = player.current_WorldPos
+	World.get_level_by_depth(1).level_tiles.set_top(
+		stuck.x, stuck.y, TileKind.TOP.MINABLE_ROCK)
+	var order: Array[Node] = [npc, player]
+	_save_actors(order, player)
+
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "the load succeeds")
+	assert_eq(_warnings_naming([player_name]), 1, "the move is reported")
+	var loaded: Actor = _actor_with_id(id)
+	var loaded_npc: Actor = _npc_named("Npc")
+	assert_not_null(loaded, "the player loads")
+	assert_not_null(loaded_npc, "the NPC loads")
+	if loaded == null or loaded_npc == null: return
+	assert_true(loaded_npc.current_WorldPos.equals(spawn), "the NPC is on the spawn")
+	assert_eq(loaded.depth, spawn.depth, "the player is on the spawn's level")
+	assert_false(loaded.current_WorldPos.equals(spawn), "but not on the NPC's tile")
+	assert_false(loaded.get_world_box().intersects(loaded_npc.get_world_box()),
+		"and not in its feet")
+
+
+# With no spawn to go to, a stuck actor still loads, where it was,
+# and the load says so loudly (D-091: no candidate is a loud failure).
+func test_a_stuck_actor_with_nowhere_to_go_stays_put_with_an_error() -> void:
+	var actor: Actor = _player_on_minus_one()
+	var id: int = actor.actor_id
+	var stuck: WorldPos = actor.current_WorldPos
+	World.get_level_by_depth(1).level_tiles.set_top(
+		stuck.x, stuck.y, TileKind.TOP.MINABLE_ROCK)
+	var surface: LevelFixtures = World.get_level_by_depth(0).level_fixtures
+	surface.remove(_world_spawn().id)
+	assert_true(_game.save_game(), "saved, in rock, with no spawn")
+
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "the load succeeds")
+	assert_push_error("Expected one world spawn, found 0.")
+	assert_push_error("with nowhere to go")
+	var loaded: Actor = _actor_with_id(id)
+	assert_not_null(loaded, "the actor still loads")
+	if loaded == null: return
+	assert_true(loaded.current_WorldPos.equals(stuck), "on its saved tile")
+	assert_eq(_game.active_actor, loaded, "and is still the local player")
+
+
+# A save holding only an NPC: it loads, nobody is given control, and
+# the load says why.
+func test_a_save_with_no_player_gives_nobody_control() -> void:
+	var spawn: WorldPos = _world_spawn().tile
+	var npc: Actor = _game._create_actor(Actor.create(Global.actor_packed_scene, "Npc",
+		spawn, World.get_level_by_depth(spawn.depth), ActorKind.ACTOR.NULL))
+	var order: Array[Node] = [npc]
+	_save_actors(order, null)
+
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "the load succeeds")
+	assert_push_error("no player to control")
+	assert_not_null(_npc_named("Npc"), "the NPC loads")
+	assert_eq(_actors().size(), 0, "no players")
+	assert_null(_game.active_actor, "no active actor")
+	assert_eq(_handler_count(), 0, "no input handler")
+
+
+func _npc_named(actor_name: String) -> Actor:
+	for child in _game.get_node("GameViewport/Actors/NPCs").get_children():
+		if child is Actor and child.actor_name == actor_name: return child
+	return null
+
+
+# The game's player and a second one, spawned beside it.
+func _two_players() -> Array[Actor]:
+	_game._spawn_player("Second")
+	var players: Array[Actor] = _actors()
+	assert_eq(players.size(), 2, "two players")
+	return players
+
+
+# Saves these actors in this order, naming local (null for none) as
+# the local actor. Writes over the game's own save, so the order and
+# the local actor are the test's.
+func _save_actors(order: Array[Node], local: Actor) -> void:
+	assert_true(_game.save_game(), "a slot exists")
+	assert_eq(SaveGame.save_game(_game.current_save_slot, _levels(), order, local, SAVES_ROOT),
+		SaveGame.REFUSAL_REASON.NONE, "saved in the chosen order")
+
+
+# Two players saved, local_actor_id naming the first spawned, in the
+# order given.
+func _save_two_players(local_first: bool) -> Array[int]:
+	var players: Array[Actor] = _two_players()
+	var local: Actor = players[0]
+	var other: Actor = players[1]
+	var order: Array[Node] = [local, other]
+	if not local_first: order.reverse()
+	_save_actors(order, local)
+	return [local.actor_id, other.actor_id]
+
+
+func _handler_count() -> int:
+	return _game.get_children().filter(
+		func(child: Node) -> bool: return child is InputHandler).size()
+
+
+# The local actor gets input, the view, the camera and F3; the other
+# gets none of them (D-115, D-094).
+func _assert_local_is(local_id: int, other_id: int) -> void:
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "the load succeeds")
+	var local: Actor = _actor_with_id(local_id)
+	var other: Actor = _actor_with_id(other_id)
+	assert_not_null(local, "the local player loads")
+	assert_not_null(other, "the other player loads")
+	if local == null or other == null: return
+	assert_eq(_game.active_actor, local, "the active actor is the one saved as local")
+	assert_eq(_handler_count(), 1, "one input handler")
+	assert_not_null(_handler_for(local), "input drives the local player")
+	assert_null(_handler_for(other), "and not the other")
+	assert_eq(_game.view.actor, local, "the view follows the local player")
+	assert_eq(_game.get_view_camera().actor, local, "the camera follows the local player")
+	var overlay: Node = _game.get_node("DebugOverlay")
+	assert_true(overlay.watched_actors.has(local.get_instance_id()), "F3 watches the local player")
+	assert_false(overlay.watched_actors.has(other.get_instance_id()), "and not the other")
+
+
+func test_the_local_player_saved_first_is_the_one_local_actor_id_names() -> void:
+	var ids: Array[int] = _save_two_players(true)
+	_assert_local_is(ids[0], ids[1])
+
+
+func test_the_local_player_saved_last_is_the_one_local_actor_id_names() -> void:
+	var ids: Array[int] = _save_two_players(false)
+	_assert_local_is(ids[0], ids[1])
+
+
+# D-115's fallback: no local actor saved. The lowest id is local, with
+# a warning, and saved second so the order can't be what picks it.
+func test_with_no_local_actor_saved_the_lowest_id_player_is_local() -> void:
+	var players: Array[Actor] = _two_players()
+	var lowest: Actor = players[0]
+	var other: Actor = players[1]
+	assert_lt(lowest.actor_id, other.actor_id, "spawned first, so the lower id")
+	var ids: Array[int] = [lowest.actor_id, other.actor_id]
+	var order: Array[Node] = [other, lowest]
+	_save_actors(order, null)
+	_assert_local_is(ids[0], ids[1])
+	assert_push_warning("isn't a loaded player")
+
+
+# The local actor named in the save didn't load: the same fallback.
+func test_a_local_actor_that_did_not_load_falls_back_to_the_lowest_id() -> void:
+	var players: Array[Actor] = _two_players()
+	var kept: Actor = players[0]
+	var missing: Actor = players[1]
+	var ids: Array[int] = [kept.actor_id, missing.actor_id]
+	var order: Array[Node] = [kept]
+	_save_actors(order, missing)
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "the load succeeds")
+	assert_null(_actor_with_id(ids[1]), "the missing actor wasn't saved")
+	assert_eq(_game.active_actor, _actor_with_id(ids[0]), "the one that loaded is local")
+	assert_eq(_handler_count(), 1, "with one input handler")
+	assert_push_warning("isn't a loaded player")
 
 
 # --- levels ---
@@ -200,10 +461,10 @@ func test_spawn_player_with_no_world_spawn_adds_no_player() -> void:
 	assert_eq(_actors().size(), before, "no actor is created")
 
 
-func test_create_player_stands_on_the_tile_given() -> void:
+func test_create_actor_stands_on_the_tile_given() -> void:
 	var _pos: WorldPos = WorldPos.new(14, -2, 2)
 	var actor: Actor = Actor.create(Global.actor_packed_scene, "TestPlayer", _pos, World.get_level_by_depth(_pos.depth), ActorKind.ACTOR.PLAYER)
-	actor = _game._create_player(actor)
+	actor = _game._create_actor(actor)
 	assert_true(actor in _actors(), "the actor is added under Players")
 	assert_true(actor.current_WorldPos.equals(_pos),
 		"on that tile, at that depth")
@@ -321,7 +582,7 @@ func test_mouse_maps_through_top_and_bottom_bars() -> void:
 func test_the_screen_follows_the_player_down_a_level() -> void:
 	var actor: Actor = _actors()[0]
 	var here: WorldPos = actor.current_WorldPos
-	assert_true(actor.change_depth(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
+	assert_true(actor.move_to(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
 	var renderer: LevelRenderer = _game.get_node("GameViewport/LevelRenderer")
 	var top: Texture2D = renderer.material.get_shader_parameter("top_data")
 	var expected: int = LevelRenderer.level_width(World.get_level_by_depth(1).level_tiles)

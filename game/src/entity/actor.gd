@@ -95,7 +95,7 @@ func _move(_motion: Vector2) -> void:
 func _take_ramp(actual_motion: Vector2) -> void:
 	var target: WorldPos = Ramp.target_for(current_level.level_tiles, current_WorldPos, actual_motion)
 	if target != null:
-		change_depth(target)
+		move_to(target)
 
 
 func stop() -> void:
@@ -131,7 +131,7 @@ func primary_action(p_action_intent: bool) -> void:
 func interact() -> bool:
 	var target: WorldPos = Ladder.target_for(current_WorldPos, facing)
 	if target == null: return false
-	return change_depth(target)
+	return move_to(target)
 
 
 func _set_actor_kind(value: int) -> void:
@@ -234,13 +234,13 @@ func _set_level(level: Level) -> void:
 	_update_WorldPos()
 
 
-# Moves the actor onto a tile on another level (D-093). Whatever sends
-# the actor (a ramp, a ladder) decides the target; the actor only
-# checks it can stand there, with the same test walking uses. Position
-# is set before depth so the change is announced once, with the final
-# tile. Returns false, changing nothing, if there is no level there or
-# the landing is blocked.
-func change_depth(target: WorldPos) -> bool:
+# Moves the actor onto a tile, on this level or another (D-093,
+# D-119). Whatever sends the actor (a ramp, a ladder, a load) decides
+# the target; the actor only checks it can stand there, with the same
+# test walking uses. Position is set before the level so the move is
+# announced once, with the final tile. Returns false, changing
+# nothing, if there is no level there or the landing is blocked.
+func move_to(target: WorldPos) -> bool:
 	var level: Level = World.get_level_by_depth(target.depth)
 	if level == null: return false
 
