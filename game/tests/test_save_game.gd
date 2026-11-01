@@ -579,7 +579,7 @@ func _read(file: String) -> Variant:
 # Levels only: actors need levels in the tree, which these don't use.
 func _save(levels: Array[Level], slot: String = TEST_SLOT) -> SaveGame.REFUSAL_REASON:
 	var no_actors: Array[Node] = []
-	return SaveGame.save_game(slot, levels, no_actors, null, TEST_ROOT)
+	return SaveGame.save_game(slot, levels, no_actors, null, World.world_seed, "none", TEST_ROOT)
 
 
 # A save whose Surface has one tile dug at (x, 0), so two saves can
@@ -871,7 +871,8 @@ func test_an_actor_on_a_depth_that_did_not_load_is_skipped() -> void:
 # --- load_game: the fixture report (D-113) ---
 
 func test_a_loaded_world_of_legal_fixtures_reports_no_problems() -> void:
-	_write_save({"levels": SaveGame._serialize_levels(_generated_world()),
+	_write_save({"world_seed": World.world_seed,
+		"levels": SaveGame._serialize_levels(_generated_world()),
 		"actors": {10: _actor_entry(0)}})
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
 	assert_eq(game_data.get("problems"), [] as Array[String], "the generated world is clean")
@@ -883,7 +884,8 @@ func test_a_fixture_that_breaks_a_placement_rule_loads_and_is_reported() -> void
 	# The Surface saved all rock: a ladder there has no floor and no
 	# level above.
 	levels[0]["fixtures"] = [_fixture_entry(ObjectKind.OBJECT.LADDER, 2, 3, 77)]
-	_write_save({"levels": levels, "actors": {10: _actor_entry(0)}})
+	_write_save({"world_seed": World.world_seed, "levels": levels,
+		"actors": {10: _actor_entry(0)}})
 
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
 	var surface: Level = game_data.levels[0]
@@ -909,7 +911,8 @@ func test_a_load_reports_a_ramp_problem() -> void:
 	top[index] = TileKind.TOP.OPEN
 	levels[0]["tiles"]["ground"] = _packed(ground)
 	levels[0]["tiles"]["top"] = _packed(top)
-	_write_save({"levels": levels, "actors": {10: _actor_entry(0)}})
+	_write_save({"world_seed": World.world_seed, "levels": levels,
+		"actors": {10: _actor_entry(0)}})
 
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
 	assert_eq(game_data.problems.size(), 1, "the lone ramp end: %s" % [game_data.problems])
@@ -941,7 +944,7 @@ func test_serialize_skips_a_level_with_no_tiles() -> void:
 func test_serialize_skips_an_actor_with_no_position() -> void:
 	var actor: Actor = autofree(Global.actor_packed_scene.instantiate())
 	var actors: Array[Node] = [actor]
-	assert_eq(SaveGame._serialize_actors(actors, actor), {"local_actor_id": -1},
+	assert_eq(SaveGame._serialize_actors(actors), {},
 		"an actor never set up isn't saved")
 
 
@@ -1042,7 +1045,7 @@ func test_two_actors_on_different_depths_round_trip_each_to_its_own() -> void:
 	var a: Actor = _player_on(tile_a, levels, "Upper", 10)
 	var b: Actor = _player_on(tile_b, levels, "Lower", 11)
 	var actors: Array[Node] = [a, b]
-	assert_eq(SaveGame.save_game(TEST_SLOT, levels, actors, a, TEST_ROOT),
+	assert_eq(SaveGame.save_game(TEST_SLOT, levels, actors, a, World.world_seed, "none", TEST_ROOT),
 		SaveGame.REFUSAL_REASON.NONE, "the save succeeds")
 
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)

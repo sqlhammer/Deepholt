@@ -13,6 +13,7 @@ var active_actor: Actor:
 	get: return _active_actor
 var _active_actor: Actor
 var _input_handlers: Array[InputHandler] = []
+@export var tuning_profile_id: String
 
 enum REFUSAL_REASON {
 	NONE,
@@ -91,7 +92,7 @@ func save_game() -> bool:
 		if level is Level: levels.append(level)
 	
 	var actors: Array[Node] = get_tree().get_nodes_in_group("actors")
-	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor, saves_root)
+	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor, World.world_seed, tuning_profile_id, saves_root)
 	if result != SaveGame.REFUSAL_REASON.NONE:
 		return false
 	
@@ -133,7 +134,9 @@ func load_game() -> REFUSAL_REASON:
 	
 	
 	# load actors
-	_load_actors(game_data.actors)
+	var raw_id: Variant = game_data.get("local_actor_id", -1)
+	var local_actor_id: int = int(raw_id) if raw_id is int or raw_id is float else -1
+	_load_actors(game_data.actors, local_actor_id)
 	
 	$DebugOverlay.show_load_problems(game_data.get("problems", []).size())
 	return REFUSAL_REASON.NONE
@@ -294,7 +297,7 @@ func _on_actor_moved(_actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> voi
 # anything listens to it: a move across a depth would save the world
 # this load is still building (D-115, D-119). Then exactly one player
 # is given to the user.
-func _load_actors(actors: Dictionary) -> void:
+func _load_actors(actors: Dictionary, local_actor_id: int) -> void:
 	for key in actors:
 		# skip header data
 		if actors[key] is not Dictionary: continue
@@ -304,8 +307,6 @@ func _load_actors(actors: Dictionary) -> void:
 		_move_if_stuck(actor)
 		_create_actor(actor)
 	
-	var local_actor_id: Variant = actors.get("local_actor_id", -1)
-	if local_actor_id is not int: local_actor_id = -1
 	var local: Actor = _local_player(local_actor_id)
 	if local: set_user_control(local)
 

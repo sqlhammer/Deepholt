@@ -304,7 +304,8 @@ func _two_players() -> Array[Actor]:
 # the local actor are the test's.
 func _save_actors(order: Array[Node], local: Actor) -> void:
 	assert_true(_game.save_game(), "a slot exists")
-	assert_eq(SaveGame.save_game(_game.current_save_slot, _levels(), order, local, SAVES_ROOT),
+	assert_eq(SaveGame.save_game(_game.current_save_slot, _levels(), order, local,
+		World.world_seed, _game.tuning_profile_id, SAVES_ROOT),
 		SaveGame.REFUSAL_REASON.NONE, "saved in the chosen order")
 
 

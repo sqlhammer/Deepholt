@@ -16,26 +16,22 @@ const SAVES_DIR: String = "user://saves"
 const SAVE_BASE_NAME: String = "world.save"
 const ALLOW_OBJECTS: bool = false
 const COMPRESSION_MODE: FileAccess.CompressionMode = FileAccess.COMPRESSION_ZSTD
+const DEFAULT_TUNING_PROFILE_ID: String = "none"
 
 
 # saves_root is the folder every slot must sit inside. It's SAVES_DIR
 # for the game; tests pass their own, so they never touch real saves.
 static func save_game(slot_path: String, levels: Array[Level], 
-	actors: Array[Node], active_actor: Actor, 
-	saves_root: String = SAVES_DIR) -> REFUSAL_REASON:
+	actors: Array[Node], active_actor: Actor, world_seed: int, 
+	tuning_profile_id: String, saves_root: String = SAVES_DIR) -> REFUSAL_REASON:
 	
 	# Validate input path
 	if not _is_inside(slot_path, saves_root):
 		push_error("Failed to save outside of save path. Requested: %s | Must begin with: %s" % [slot_path, saves_root])
 		return REFUSAL_REASON.SAVE_FAILED
 	
-	# Serialize data
-	var game_data: Dictionary = {}
-	game_data["format_version"] = FORMAT_VERSION
-	var level_data: Dictionary = _serialize_levels(levels)
-	game_data["levels"] = level_data
-	var actor_data: Dictionary = _serialize_actors(actors, active_actor)
-	game_data["actors"] = actor_data
+	# Serialize
+	var game_data = _serialize_all(levels, actors, active_actor, world_seed, tuning_profile_id)
 	
 	# Write data to tmp
 	var tmp_save_path: String = slot_path.path_join("%s.tmp" % SAVE_BASE_NAME)
@@ -68,14 +64,24 @@ static func load_game(slot_path: String) -> Dictionary:
 	# Every section is checked before any node is built. A refusal
 	# after levels or actors exist would orphan them
 	if not file_data.has("format_version"): return {}
+	if not file_data.has("world_seed"): return {}
 	if not file_data.get("levels") is Dictionary: return {}
 	if not file_data.levels: return {}
 	if not file_data.get("actors") is Dictionary: return {}
 	if not file_data.actors: return {}
 	
-	# Header data
+	# Header data | Mandatory
 	var game_data: Dictionary = {}
 	game_data["format_version"] = file_data.format_version
+	game_data["world_seed"] = file_data.world_seed
+	
+	# Header data | Optional
+	if file_data.has("local_actor_id"):
+		game_data["local_actor_id"] = file_data.local_actor_id
+	if file_data.has("tuning_profile_id"): 
+		game_data["tuning_profile_id"] = file_data.tuning_profile_id
+	else:
+		game_data["tuning_profile_id"] = DEFAULT_TUNING_PROFILE_ID
 	
 	# Levels
 	game_data["levels"] = _deserialize_levels(file_data.levels)
@@ -152,6 +158,34 @@ static func get_save_data(slot_path: String) -> Dictionary:
 	return data
 
 
+static func _serialize_all(levels: Array[Level], 
+	actors: Array[Node], active_actor: Actor, world_seed: int, 
+	tuning_profile_id: String) -> Dictionary:
+	
+	# Serialize data
+	## Header
+	var game_data: Dictionary = {}
+	game_data["format_version"] = FORMAT_VERSION
+	if not tuning_profile_id:
+		game_data["tuning_profile_id"] = DEFAULT_TUNING_PROFILE_ID
+	else:
+		game_data["tuning_profile_id"] = tuning_profile_id
+	game_data["world_seed"] = world_seed
+	if active_actor:
+		game_data["local_actor_id"] = active_actor.actor_id
+	
+	## Levels
+	var level_data: Dictionary = _serialize_levels(levels)
+	game_data["levels"] = level_data
+	
+	## Actors
+	var actor_data: Dictionary = _serialize_actors(actors)
+	game_data["actors"] = actor_data
+	
+	return game_data
+
+
+
 static func _load_tool(path: Variant) -> ToolData:
 	if not path is String: return null
 	var clean: String = (path as String).simplify_path()
@@ -209,10 +243,8 @@ static func _serialize_fixtures(fixtures: LevelFixtures) -> Array:
 	return data
 
 
-static func _serialize_actors(actors: Array[Node], active_actor: Actor) -> Dictionary:
+static func _serialize_actors(actors: Array[Node]) -> Dictionary:
 	var data: Dictionary = {}
-	if active_actor:
-		data["local_actor_id"] = active_actor.actor_id
 	
 	for actor in actors:
 		var actor_data: Dictionary = _serialize_actor(actor)
@@ -247,8 +279,6 @@ static func _serialize_actor(actor: Actor) -> Dictionary:
 # levels is the loaded levels by depth; each actor is put on its own.
 static func _deserialize_actors(p_actors: Dictionary, levels: Dictionary) -> Dictionary:
 	var actors: Dictionary = {}
-	if p_actors.has("local_actor_id"):
-		actors["local_actor_id"] = p_actors.local_actor_id
 	
 	for key in p_actors:
 		# Actors are keyed by their id. This also skips the header's
