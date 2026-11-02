@@ -150,29 +150,54 @@ Agent mode.*
 
 ## E. Versions, header and broken saves
 
-*Mode: ask before starting.*
+*Mode: Derik built the header, the version and playtime. The `saved_at` refactor, broken
+saves, the backup fallback, F3's save line and the section's tests were Agent mode,
+2026-11-01.*
 
-- [ ] `format_version` is an integer from the first save, with a migration function per step and
+- [x] `format_version` is an integer from the first save, with a migration function per step and
   a no-op first migration ([world-runtime §7](../docs/tech/world-runtime-and-persistence.md)).
-- [ ] The header holds what D-116 lists: `world_seed`, `tuning_profile_id` (`"none"`),
+  *`_migration_from(version)` gives each step; `_migrate_0_to_1` is the no-op. A newer
+  version, or one with no step, is refused.*
+- [x] The header holds what D-116 lists: `world_seed`, `tuning_profile_id` (`"none"`),
   `local_actor_id`, `playtime_seconds`, `saved_at`, `game_version`. Keys are read by name; a
   missing key loads as its default. The two id counters join the header in slice 004 (D-118).
-- [ ] `application/config/version` is set in the project, so `game_version` has a value.
-- [ ] Playtime adds up across sessions: the loaded value plus this session's time.
+  *Playtime is two clocks under `stats` (D-120); `format_version`, `world_seed` and
+  `game_version` are required, the rest default (D-121). `saved_at` is UTC Unix seconds with
+  `saved_at_utc_offset` in minutes, both required (D-122); refactored in Agent mode,
+  2026-11-01.*
+- [x] `application/config/version` is set in the project, so `game_version` has a value.
+  *`"0.0.0"`, read by `Global.get_game_version()`.*
+- [x] Playtime adds up across sessions: the loaded value plus this session's time. *Two
+  `Timer` nodes, active (pausable) and total (always), each seeded from the save's `stats`
+  on load and counting on from there, in whole seconds. No test yet.*
 - [x] Every write rotates: `world.save.tmp` → old `world.save` to `world.save.bak` →
   `world.save.tmp` to `world.save` (D-111).
-- [ ] A save from a newer version, a truncated save and an unreadable save are each refused,
+- [x] A save from a newer version, a truncated save and an unreadable save are each refused,
   renamed to `world.broken.<timestamp>.save` and kept; the backup loads instead, with a
   `push_error`, an on-screen message that stays up, and F3 saying so (D-111). [6]
-- [ ] No `world.save` but a `world.save.bak` is a fallback, never a new game (D-111).
-- [ ] If the backup is refused too, the game doesn't start: no world, no saving, both files left
-  alone, and a message naming both reasons and paths (D-111). [6]
-- [ ] Derived data isn't saved and is rebuilt on load: today, the renderers' textures and the
-  view ([world-runtime §3](../docs/tech/world-runtime-and-persistence.md)).
-- [ ] `F3` shows loaded, new or from the backup, and the format version. [7]
-- [ ] Test: each refusal, and the fallback to the backup, without a running scene.
-- [ ] Test: the missing-save-with-backup case loads the backup.
-- [ ] Test: a save with a key missing loads it as its default.
+  *`SaveGame.load_slot`; the timestamp is UTC, `YYYYMMDDTHHMMSSZ`, with a counter for a name
+  already taken (D-123). A truncated file is caught by its length prefix before `get_var`
+  decodes it. If the broken save can't be moved aside, the slot is refused instead: left in
+  place, the next write would rotate it over the good backup. Agent mode, 2026-11-01; outcome
+  6 by hand is still to walk.*
+- [x] No `world.save` but a `world.save.bak` is a fallback, never a new game (D-111).
+- [x] If the backup is refused too, the game doesn't start: no world, no saving, both files left
+  alone, and a message naming both reasons and paths (D-111). [6] *A save refused with no
+  backup is refused the same way, never a new game. A refused load from the debug load key
+  mid-session reports the same, and leaves the running world and saving alone.*
+- [x] Derived data isn't saved and is rebuilt on load: today, the renderers' textures and the
+  view ([world-runtime §3](../docs/tech/world-runtime-and-persistence.md)). *The save holds
+  the header, tile layers, fixtures and actors only; on load each level emits
+  `tiles_replaced` for the renderers, and the view is created if missing and re-pointed at
+  the local player. Checked by reading the code, 2026-11-01.*
+- [x] `F3` shows loaded, new or from the backup, and the format version. [7] *A "Save" line:
+  `new, format 1`, `loaded, format 1`, `loaded from the backup, format 1`, or
+  `refused: nothing loaded`. The version is the one the file was saved in, before any
+  migration. Outcome 7 by hand is still to walk.*
+- [x] Test: each refusal, and the fallback to the backup, without a running scene.
+- [x] Test: the missing-save-with-backup case loads the backup.
+- [x] Test: a save with a key missing loads it as its default. *The optional keys; a missing
+  required key is refused, naming the key (D-121, D-122).*
 
 ## F. New game, the timer, and feel
 

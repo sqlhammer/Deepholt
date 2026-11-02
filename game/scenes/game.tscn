@@ -2,9 +2,11 @@
 
 [ext_resource type="Script" uid="uid://b6vley1i3fg20" path="res://scenes/game.gd" id="1_lnu2h"]
 [ext_resource type="Shader" uid="uid://bfb3tcb5b3fh6" path="res://src/render/pixel_upscale.gdshader" id="1_shader"]
+[ext_resource type="Script" uid="uid://cla1j7qx572bs" path="res://scenes/active_play_timer.gd" id="2_0tnpc"]
 [ext_resource type="Shader" uid="uid://crs47ucj8gntg" path="res://src/render/level_tiles.gdshader" id="2_lbhrr"]
 [ext_resource type="PackedScene" uid="uid://yqul1ole3cs7" path="res://src/debug/debug_overlay.tscn" id="2_yqjtg"]
 [ext_resource type="Script" uid="uid://d1wibfcu60s88" path="res://src/render/level_renderer.gd" id="3_rendr"]
+[ext_resource type="Script" uid="uid://c13ql6103rdvp" path="res://scenes/total_play_timer.gd" id="3_vtaks"]
 [ext_resource type="Texture2D" uid="uid://cettgrfqujiw7" path="res://src/render/tile_atlas.png" id="4_atlas"]
 [ext_resource type="Script" uid="uid://pmdnx3vjtmb4" path="res://src/render/view_camera.gd" id="5_dbpan"]
 [ext_resource type="Script" uid="uid://cikl5gwpw2ltt" path="res://src/render/fixture_renderer.gd" id="6_fixtr"]
@@ -29,6 +31,15 @@ viewport_path = NodePath("GameViewport")
 
 [node name="Game" type="Node" unique_id=2029655952]
 script = ExtResource("1_lnu2h")
+
+[node name="ActivePlayTimer" type="Timer" parent="." unique_id=546512562]
+process_mode = 1
+script = ExtResource("2_0tnpc")
+
+[node name="TotalPlayTimer" type="Timer" parent="." unique_id=1960837772]
+process_mode = 3
+autostart = true
+script = ExtResource("3_vtaks")
 
 [node name="Levels" type="Node2D" parent="." unique_id=1399950092]
 
@@ -73,3 +84,6 @@ stretch_mode = 5
 visible = true
 offset = Vector2(25, 25)
 transform = Transform2D(1, 0, 0, 1, 25, 25)
+
+[connection signal="timeout" from="ActivePlayTimer" to="ActivePlayTimer" method="_on_timeout"]
+[connection signal="timeout" from="TotalPlayTimer" to="TotalPlayTimer" method="_on_timeout"]

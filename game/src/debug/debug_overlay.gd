@@ -3,6 +3,7 @@ extends CanvasLayer
 # How many tiles out from an actor the tile window reaches, so a radius of 5
 # draws an 11 x 11 square.
 @export var tile_window_radius: int = 5
+var game: Node
 
 var debug_text : Dictionary = {}
 
@@ -71,6 +72,7 @@ func _get_group(title: String) -> int:
 		"Level Seed": return 0
 		WORLD_SPAWN_SECTION: return 0
 		LOAD_PROBLEMS_SECTION: return 0
+		SAVE_SECTION: return 0
 		"Player: ": return 10
 	
 	return group
@@ -213,6 +215,24 @@ func show_load_problems(count: int) -> void:
 	set_section(LOAD_PROBLEMS_SECTION, str(count))
 
 
+const SAVE_SECTION: String = "Save"
+
+
+# Where this session's world came from, and the format version it was
+# saved in; a new world shows the version it will be saved in
+# (outcome 7). A refused slot has no version to show.
+func show_load_source(source: SaveGame.SOURCE, format_version: int) -> void:
+	set_section(SAVE_SECTION, load_source_text(source, format_version))
+
+
+static func load_source_text(source: SaveGame.SOURCE, format_version: int) -> String:
+	match source:
+		SaveGame.SOURCE.NEW: return "new, format %d" % format_version
+		SaveGame.SOURCE.SAVE: return "loaded, format %d" % format_version
+		SaveGame.SOURCE.BACKUP: return "loaded from the backup, format %d" % format_version
+	return "refused: nothing loaded"
+
+
 const VIEW_SECTION: String = "Shown depth"
 
 
@@ -237,3 +257,49 @@ func _ramp_char(ground: int) -> String:
 		if LevelGridLoader.GROUND_CHARS[character] == ground and TileKind.is_ramp(ground):
 			return character
 	return "."
+
+
+func _on_active_play_timer() -> void:
+	if not game: return
+	set_section("Active Play Time", game.get_active_play_time())
+
+
+func _on_total_play_timer() -> void:
+	if not game: return
+	var time: String = game.get_total_play_time()
+	set_section("Total Play Time", time)
+
+
+func connect_timers(active_play_timer: Timer, total_play_timer: Timer) -> void:
+	if active_play_timer.has_signal("timeout"):
+		active_play_timer.timeout.connect(_on_active_play_timer)
+	if total_play_timer.has_signal("timeout"):
+		total_play_timer.timeout.connect(_on_total_play_timer)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

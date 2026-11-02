@@ -15,6 +15,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 [application]
 
 config/name="Deepholt"
+config/version="0.0.0"
 run/main_scene="uid://p66nsvtkjca"
 config/auto_accept_quit=false
 config/features=PackedStringArray("4.7", "Forward Plus")

@@ -2503,3 +2503,101 @@ every relocation keeps the landing rule and the announcement in one place.
 *Considered:* keeping `change_depth` and adding a separate teleport (two copies of the landing
 rule to drift apart); keeping `change_depth` as a wrapper around `move_to` (a second name for
 one thing).
+
+---
+
+### D-120 — Playtime is two clocks: active and total
+**Decided** (by Derik, slice 003 section E, 2026-11-01). Replaces
+[D-116](#d-116--the-save-header-and-a-placeholder-tuning-profile-id)'s single
+`playtime_seconds`.
+
+- **`active_play_time`**: seconds the game ran unpaused. A pausable `Timer` on the game scene.
+  This is what D-116's `playtime_seconds` meant, the playtest data pre-alpha criterion 5 asks
+  for.
+- **`total_play_time`**: seconds the game was open, paused or not. A `Timer` that always
+  processes.
+- **Both are saved under a `stats` dictionary in the header**, as floats counted in whole
+  seconds. On load each timer is seeded from the save and counts on from there, so both add up
+  across sessions. A zero isn't written; a missing value leaves the timer where it was, which at
+  launch is 0.
+
+*Why:* time paused or left idle isn't play, but how long the game sits open is worth knowing
+too. Two clocks keep both, where one can't be split after the fact.
+
+*Considered:* one `playtime_seconds`, as D-116 had it (idle time and play time mixed, or idle
+time lost).
+
+---
+
+### D-121 — Three header keys are required; the rest load as their defaults
+**Decided** (by Derik, slice 003 section E, 2026-11-01). Narrows
+[D-116](#d-116--the-save-header-and-a-placeholder-tuning-profile-id)'s "a key missing from an
+older save loads as its default".
+
+- **Required:** `format_version`, `world_seed` and `game_version`. A save missing any of them is
+  refused, as one missing `levels` or `actors` is.
+- **Optional, read by name, a missing one loads as its default:** `tuning_profile_id`
+  (`"none"`), `local_actor_id` (the lowest-id player,
+  [D-115](#d-115--the-save-names-the-local-actor-an-actor-on-an-impassable-tile-goes-to-the-spawn)),
+  the save time, and `stats` ([D-120](#d-120--playtime-is-two-clocks-active-and-total)).
+
+*Why:* the required three say what the save is: its format, its world, and the build that wrote
+it. A save that can't say those can't be trusted, or diagnosed from a bug report
+([D-111](#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves)). The
+others have a safe default.
+
+*Consequences:* saves written before `game_version` was added are refused. Until section E's
+broken-save handling is built, a refused save means a new world, and its next two saves rotate
+the old save out of `world.save` and then `world.save.bak`. Format version 1 isn't settled yet:
+until format versions are tracked, a required key can be added without a version bump or a
+migration.
+
+*Considered:* every key optional, as D-116 had it (a save with no seed or build would load as a
+world nobody can identify).
+
+---
+
+### D-122 — The save time is a UTC Unix int and the writer's offset, both required
+**Decided** (by Derik, slice 003 section E, 2026-11-01). Settles
+[D-116](#d-116--the-save-header-and-a-placeholder-tuning-profile-id)'s `saved_at`, and adds to
+[D-121](#d-121--three-header-keys-are-required-the-rest-load-as-their-defaults)'s required keys.
+
+- **`saved_at`**: an int, Unix seconds, which are UTC.
+- **`saved_at_utc_offset`**: an int, the writer's offset from UTC in minutes, as
+  `Time.get_time_zone_from_system().bias` gives it. On Windows that includes daylight saving
+  (checked in Godot 4.7.2's source).
+- **Both are written from one clock read**, so they always agree. A local time is never
+  stored: it is the Unix time plus the offset, worked out for display.
+- **Both are required.** A save where either is missing, or isn't an int, is refused. Saves
+  written before this, with no save time or with date strings in its place, are refused.
+
+*Why:* an int compares, sorts and names files (`world.broken.<timestamp>.save`,
+[D-111](#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves)) with no
+parsing. A date string with no zone can't say when it was, and two stored times, UTC and local,
+can disagree. The offset keeps the writer's local time for a bug report.
+
+*Consequences:* D-121's consequence applies to these saves too: until broken-save handling is
+built, a refused save is lost to a new world within two saves.
+
+*Considered:* ISO date strings for UTC and local (ambiguous, and parsed to compare); UTC and
+local as two ints (the local one reads as a Unix time it isn't, and the two can disagree);
+leaving the save time optional, as D-121 had it (nothing reads it yet).
+
+---
+
+### D-123 — Moved-aside saves are named with a UTC time in ISO basic format
+**Decided** (by Derik, slice 003 section E, 2026-11-01). Settles the timestamp format that
+[save-files §8](tech/save-files.md) left open, for
+[D-111](#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves)'s
+`world.broken.<timestamp>.save` and `world.<timestamp>.save`.
+
+- **The timestamp is UTC, written `YYYYMMDDTHHMMSSZ`**, for example
+  `world.broken.20261101T214909Z.save`.
+- **A name already taken gets a counter** (`…214909Z-2.save`), so a second broken save in the
+  same second never overwrites the first.
+
+*Why:* it's readable at a glance, sorts by name in time order, and means the same in every time
+zone. It has no colons, which Windows refuses in a file name.
+
+*Considered:* local time in the same form (ambiguous for the repeated hour when daylight saving
+ends, and out of order across it); Unix seconds (short, but unreadable without converting).

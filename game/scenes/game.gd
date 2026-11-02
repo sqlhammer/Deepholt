@@ -14,10 +14,17 @@ var active_actor: Actor:
 var _active_actor: Actor
 var _input_handlers: Array[InputHandler] = []
 @export var tuning_profile_id: String
+# Where this session's world came from (D-111): F3 shows it
+var load_source: SaveGame.SOURCE = SaveGame.SOURCE.NEW
+# Set when neither save in the slot loaded: the game hasn't started,
+# and saving would write over the files the player needs back
+var _saving_refused: bool = false
 
 enum REFUSAL_REASON {
 	NONE,
 	LOAD_FAILED_NO_OP,
+	# Saves were found and none could be loaded (D-111)
+	LOAD_REFUSED,
 }
 
 
@@ -78,7 +85,8 @@ func mouse_world_position() -> Vector2:
 
 
 func save_game() -> bool:
-	if current_save_slot == "": 
+	if _saving_refused: return false
+	if current_save_slot == "":
 		# Create a slot if none exist yet.
 		# This should not happen after we have a game menu because
 		# a game should not be created without creating and setting vars for
@@ -87,12 +95,20 @@ func save_game() -> bool:
 		_set_current_save_slot()
 		if current_save_slot == "": return false
 	
+	# Levels
 	var levels: Array[Level] = []
 	for level in get_tree().get_nodes_in_group("levels"):
 		if level is Level: levels.append(level)
 	
+	# Actors
 	var actors: Array[Node] = get_tree().get_nodes_in_group("actors")
-	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor, World.world_seed, tuning_profile_id, saves_root)
+	
+	# Game Stats
+	var active_play_time: float = $ActivePlayTimer.seconds
+	var total_play_time: float = $TotalPlayTimer.seconds
+	
+	# Save
+	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor, World.world_seed, tuning_profile_id, active_play_time, total_play_time, saves_root)
 	if result != SaveGame.REFUSAL_REASON.NONE:
 		return false
 	
@@ -106,8 +122,12 @@ func load_game() -> REFUSAL_REASON:
 	if current_save_slot == "": 
 		return REFUSAL_REASON.LOAD_FAILED_NO_OP
 	
-	var game_data: Dictionary = SaveGame.load_game(current_save_slot)
-	if not game_data: return REFUSAL_REASON.LOAD_FAILED_NO_OP
+	var slot: SaveGame.SlotLoad = SaveGame.load_slot(current_save_slot)
+	if slot.source == SaveGame.SOURCE.NEW: return REFUSAL_REASON.LOAD_FAILED_NO_OP
+	if slot.source == SaveGame.SOURCE.REFUSED:
+		_report_refused_slot(slot)
+		return REFUSAL_REASON.LOAD_REFUSED
+	var game_data: Dictionary = slot.game_data
 	# The data holds nodes nothing else frees; refusing it frees them
 	if not _is_valid_game_data(game_data):
 		SaveGame.free_game_data(game_data)
@@ -138,8 +158,78 @@ func load_game() -> REFUSAL_REASON:
 	var local_actor_id: int = int(raw_id) if raw_id is int or raw_id is float else -1
 	_load_actors(game_data.actors, local_actor_id)
 	
+	# load stats
+	if game_data.has("stats"):
+		if game_data.stats.has("active_play_time"):
+			$ActivePlayTimer.setup(game_data.stats.active_play_time)
+		if game_data.stats.has("total_play_time"):
+			$TotalPlayTimer.setup(game_data.stats.total_play_time)
+	
+	
 	$DebugOverlay.show_load_problems(game_data.get("problems", []).size())
+	load_source = slot.source
+	if slot.source == SaveGame.SOURCE.BACKUP: _report_backup_load(slot)
+	$DebugOverlay.show_load_source(load_source, game_data.format_version)
 	return REFUSAL_REASON.NONE
+
+
+# Loud, and it stays loud: an error, a message that stays on screen,
+# and F3 (D-111).
+func _report_backup_load(slot: SaveGame.SlotLoad) -> void:
+	var text: String = "Loaded the backup save, %s.\n" % _shown_path(
+		current_save_slot.path_join(SaveGame.BACKUP_NAME))
+	if slot.refusals:
+		text += "The save was refused: %s.\n" % _shown_refusal(slot.refusals[0])
+	else:
+		text += "There was no world.save beside it.\n"
+	if slot.broken_path:
+		text += "It's kept as %s." % _shown_path(slot.broken_path)
+	push_error(text)
+	show_notice(text)
+
+
+func _report_refused_slot(slot: SaveGame.SlotLoad) -> void:
+	var text: String = "No save could be loaded, so the game hasn't started.\n"
+	for refusal: String in slot.refusals:
+		text += "%s.\n" % _shown_refusal(refusal)
+	text += "Both files are left as they were. Move them out of the slot folder to start a new world."
+	push_error(text)
+	show_notice(text)
+
+
+# A path as the player finds it on disk, not as user://
+func _shown_path(path: String) -> String:
+	return ProjectSettings.globalize_path(path)
+
+
+func _shown_refusal(refusal: String) -> String:
+	return refusal.replace(current_save_slot, _shown_path(current_save_slot))
+
+
+# A message that stays on screen for the rest of the session, over the
+# game, whether F3 is up or not.
+func show_notice(text: String) -> void:
+	var label: Label = get_node_or_null("SaveNotice/Label")
+	if label == null:
+		var layer: CanvasLayer = CanvasLayer.new()
+		layer.name = "SaveNotice"
+		layer.layer = 100
+		add_child(layer)
+		label = Label.new()
+		label.name = "Label"
+		label.set_anchors_preset(Control.PRESET_TOP_WIDE)
+		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		label.add_theme_color_override("font_color", Color(1.0, 0.45, 0.4))
+		label.add_theme_color_override("font_outline_color", Color.BLACK)
+		label.add_theme_constant_override("outline_size", 6)
+		layer.add_child(label)
+	label.text = text
+
+
+# The notice on screen, or "" if there's none.
+func notice_text() -> String:
+	var label: Label = get_node_or_null("SaveNotice/Label")
+	return label.text if label else ""
 
 
 func _is_valid_game_data(game_data: Dictionary) -> bool:
@@ -161,9 +251,22 @@ func _notification(what: int) -> void:
 
 
 func _ready() -> void:
-	_set_current_save_slot()
-	if load_game() == REFUSAL_REASON.NONE: return
+	$DebugOverlay.game = self
+	$DebugOverlay.connect_timers($ActivePlayTimer, $TotalPlayTimer)
+	$ActivePlayTimer.start() # TODO: When we have a main menu, don't start until the game has loaded and is playable
 	
+	_set_current_save_slot()
+	var loaded: REFUSAL_REASON = load_game()
+	if loaded == REFUSAL_REASON.NONE: return
+	# No world, and no saving: the refused files stay as they are
+	if loaded == REFUSAL_REASON.LOAD_REFUSED:
+		_saving_refused = true
+		load_source = SaveGame.SOURCE.REFUSED
+		$DebugOverlay.show_load_source(load_source, -1)
+		return
+
+	load_source = SaveGame.SOURCE.NEW
+	$DebugOverlay.show_load_source(load_source, SaveGame.FORMAT_VERSION)
 	_spawn_levels()
 	_create_view()
 	_spawn_player("DefaultName")
@@ -180,6 +283,7 @@ func _create_view() -> void:
 	add_child(view)
 	$GameViewport/LevelRenderer.watch(view)
 	$GameViewport/FixtureRenderer.watch(view)
+	
 	$DebugOverlay.watch_view(view)
 
 
@@ -347,7 +451,12 @@ func _local_player(local_actor_id: int) -> Actor:
 	return lowest
 
 
+func get_active_play_time() -> String:
+	return $ActivePlayTimer._to_string()
 
+
+func get_total_play_time() -> String:
+	return $TotalPlayTimer._to_string()
 
 
 

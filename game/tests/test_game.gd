@@ -123,6 +123,90 @@ func test_moving_within_a_level_does_not_save() -> void:
 	assert_false(FileAccess.file_exists(_save_file()), "a step is not a save")
 
 
+# --- launching over broken saves (D-111) ---
+
+# Quits this game and launches another over the same saves root, so
+# its _ready reads whatever the slot holds now.
+func _relaunch() -> void:
+	_game.free()
+	_game = load("res://scenes/game.tscn").instantiate()
+	_game.saves_root = SAVES_ROOT
+	add_child_autofree(_game)
+
+
+func _backup_file() -> String:
+	return SAVES_ROOT.path_join("slot-001").path_join(SaveGame.BACKUP_NAME)
+
+
+# Cuts a file off halfway, as a crash mid-write would.
+func _truncate(path: String) -> void:
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(path)
+	var f: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	f.store_buffer(bytes.slice(0, bytes.size() / 2))
+	f.close()
+
+
+func _f3_save_line() -> String:
+	var overlay: Node = _game.get_node("DebugOverlay")
+	return overlay.debug_text[overlay.SAVE_SECTION].text
+
+
+func test_f3_says_a_fresh_launch_is_a_new_world() -> void:
+	assert_eq(_game.load_source, SaveGame.SOURCE.NEW, "nothing to load")
+	assert_eq(_f3_save_line(), "new, format %d" % SaveGame.FORMAT_VERSION, "F3 says so")
+	assert_eq(_game.notice_text(), "", "and nothing on screen")
+
+
+func test_f3_says_a_launch_over_a_save_loaded_it() -> void:
+	assert_true(_game.save_game(), "saved")
+	_relaunch()
+	assert_eq(_game.load_source, SaveGame.SOURCE.SAVE, "the save loads")
+	assert_eq(_f3_save_line(), "loaded, format %d" % SaveGame.FORMAT_VERSION, "F3 says so")
+
+
+func test_a_launch_over_a_broken_save_loads_the_backup_loudly() -> void:
+	assert_true(_game.save_game(), "saved once")
+	assert_true(_game.save_game(), "and again, so there's a backup")
+	_truncate(_save_file())
+	_relaunch()
+
+	assert_eq(_game.load_source, SaveGame.SOURCE.BACKUP, "the backup loads")
+	assert_gt(_levels().size(), 0, "the world is there")
+	assert_not_null(_game.active_actor, "and the player is given control")
+	assert_push_error("Loaded the backup save")
+	assert_string_contains(_game.notice_text(), "Loaded the backup save")
+	assert_string_contains(_game.notice_text(), "cut short")
+	assert_string_contains(_game.notice_text(), "world.broken.")
+	assert_eq(_f3_save_line(), "loaded from the backup, format %d" % SaveGame.FORMAT_VERSION,
+		"F3 says so")
+
+
+func test_a_launch_with_both_saves_refused_does_not_start_or_save() -> void:
+	assert_true(_game.save_game(), "saved once")
+	assert_true(_game.save_game(), "and again, so there's a backup")
+	_truncate(_save_file())
+	_truncate(_backup_file())
+	var save_bytes: PackedByteArray = FileAccess.get_file_as_bytes(_save_file())
+	var backup_bytes: PackedByteArray = FileAccess.get_file_as_bytes(_backup_file())
+	_relaunch()
+
+	assert_eq(_game.load_source, SaveGame.SOURCE.REFUSED, "nothing loads")
+	assert_eq(_levels().size(), 0, "no world")
+	assert_eq(_actors().size(), 0, "no player")
+	assert_null(_game.active_actor, "nobody in control")
+	assert_push_error("No save could be loaded")
+	assert_false(_game.save_game(), "saving is refused")
+	assert_true(FileAccess.get_file_as_bytes(_save_file()) == save_bytes, "world.save untouched")
+	assert_true(FileAccess.get_file_as_bytes(_backup_file()) == backup_bytes,
+		"the backup untouched")
+	var notice: String = _game.notice_text()
+	# Each path with its reason: the save's path alone is a prefix of
+	# the backup's
+	assert_string_contains(notice, ProjectSettings.globalize_path(_save_file()) + " is cut short")
+	assert_string_contains(notice, ProjectSettings.globalize_path(_backup_file()) + " is cut short")
+	assert_eq(_f3_save_line(), "refused: nothing loaded", "F3 says so")
+
+
 # --- loading actors (D-091, D-114, D-115) ---
 
 func _actor_with_id(id: int) -> Actor:
@@ -305,7 +389,7 @@ func _two_players() -> Array[Actor]:
 func _save_actors(order: Array[Node], local: Actor) -> void:
 	assert_true(_game.save_game(), "a slot exists")
 	assert_eq(SaveGame.save_game(_game.current_save_slot, _levels(), order, local,
-		World.world_seed, _game.tuning_profile_id, SAVES_ROOT),
+		World.world_seed, _game.tuning_profile_id, 0.0, 0.0, SAVES_ROOT),
 		SaveGame.REFUSAL_REASON.NONE, "saved in the chosen order")
 
 

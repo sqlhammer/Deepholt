@@ -173,8 +173,10 @@ func test_writes_outside_the_level_announce_nothing() -> void:
 func test_the_new_value_is_in_place_when_the_notice_arrives() -> void:
 	var tiles: LevelTiles = _surface()
 	var seen: Array = []
-	tiles.tile_changed.connect(func(x: int, y: int, _layer: int, _source: LevelTiles) -> void:
-		seen.append(tiles.get_top(x, y)))
+	# Read through the signal's own argument: capturing tiles here
+	# would make a cycle, tiles to the lambda and back, and leak both
+	tiles.tile_changed.connect(func(x: int, y: int, _layer: int, source: LevelTiles) -> void:
+		seen.append(source.get_top(x, y)))
 	tiles.set_top(1, 0, TileKind.TOP.OPEN)
 	assert_eq(seen, [TileKind.TOP.OPEN], "the listener reads the new kind, not the old one")
 

@@ -579,7 +579,8 @@ func _read(file: String) -> Variant:
 # Levels only: actors need levels in the tree, which these don't use.
 func _save(levels: Array[Level], slot: String = TEST_SLOT) -> SaveGame.REFUSAL_REASON:
 	var no_actors: Array[Node] = []
-	return SaveGame.save_game(slot, levels, no_actors, null, World.world_seed, "none", TEST_ROOT)
+	return SaveGame.save_game(slot, levels, no_actors, null, World.world_seed, "none",
+		0.0, 0.0, TEST_ROOT)
 
 
 # A save whose Surface has one tile dug at (x, 0), so two saves can
@@ -617,6 +618,19 @@ func test_the_header_holds_the_current_format_version() -> void:
 	assert_eq(typeof(header.get("format_version")), TYPE_INT, "the version is an int")
 	assert_eq(header.get("format_version"), SaveGame.FORMAT_VERSION,
 		"the build's own version")
+
+
+# Unix seconds and the offset, both ints, from one read of the clock
+# (D-122).
+func test_the_save_time_is_unix_seconds_and_the_utc_offset() -> void:
+	var before: int = int(Time.get_unix_time_from_system())
+	_save(_world_with_dig(1))
+	var after: int = int(Time.get_unix_time_from_system())
+	var data: Variant = _read("world.save")
+	assert_eq(typeof(data.get("saved_at")), TYPE_INT, "the time is an int")
+	assert_between(data.get("saved_at"), before, after, "and it's now")
+	assert_eq(data.get("saved_at_utc_offset"), Time.get_time_zone_from_system().bias,
+		"the offset is the system's, in minutes")
 
 
 func test_saved_file_reads_back_as_the_serialized_data() -> void:
@@ -780,8 +794,23 @@ func test_a_pattern_that_wont_compile_matches_nothing() -> void:
 
 # --- load_game: refusals, and what they leave behind ---
 
+# The save as given, with every required header key it leaves out
+# filled in, so a test only spells out what it's about (D-121, D-122).
 func _write_save(data: Dictionary) -> void:
+	_write_raw_save(data.merged(_required_header()))
+
+
+func _write_raw_save(data: Dictionary) -> void:
 	SaveGame._overwrite_data(SaveGame.FORMAT_VERSION, data, _path(SaveGame.SAVE_BASE_NAME))
+
+
+func _required_header() -> Dictionary:
+	return {
+		"world_seed": World.world_seed,
+		"game_version": Global.get_game_version(),
+		"saved_at": 1793569749,
+		"saved_at_utc_offset": -300,
+	}
 
 
 # One level's save data, as save_game writes it. The level it was taken
@@ -808,6 +837,27 @@ func test_load_refuses_a_save_with_no_levels_entry() -> void:
 func test_load_refuses_a_save_with_empty_levels() -> void:
 	_write_save({"levels": {}, "actors": {}})
 	assert_eq(SaveGame.load_game(TEST_SLOT), {}, "nothing to load")
+
+
+# Both save time keys are required ints: a save from before them, or
+# from when the time was saved as date strings, is refused (D-122).
+func test_load_refuses_a_save_time_missing_or_not_an_int() -> void:
+	var broken: Dictionary = {
+		"no saved_at": ["saved_at", null],
+		"saved_at a date string": ["saved_at", "2026-11-01T14:30:05"],
+		"no offset": ["saved_at_utc_offset", null],
+		"offset a string": ["saved_at_utc_offset", "-300"],
+	}
+	for case: String in broken:
+		var data: Dictionary = {"levels": _saved_levels(), "actors": {10: _actor_entry(0)}}
+		data.merge(_required_header())
+		var key: String = broken[case][0]
+		if broken[case][1] == null: data.erase(key)
+		else: data[key] = broken[case][1]
+		_write_raw_save(data)
+		var before: int = _orphans()
+		assert_eq(SaveGame.load_game(TEST_SLOT), {}, "%s is refused" % case)
+		assert_eq(_orphans(), before, "%s builds nothing" % case)
 
 
 func test_a_load_refused_for_its_actors_builds_no_levels() -> void:
@@ -871,8 +921,7 @@ func test_an_actor_on_a_depth_that_did_not_load_is_skipped() -> void:
 # --- load_game: the fixture report (D-113) ---
 
 func test_a_loaded_world_of_legal_fixtures_reports_no_problems() -> void:
-	_write_save({"world_seed": World.world_seed,
-		"levels": SaveGame._serialize_levels(_generated_world()),
+	_write_save({"levels": SaveGame._serialize_levels(_generated_world()),
 		"actors": {10: _actor_entry(0)}})
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
 	assert_eq(game_data.get("problems"), [] as Array[String], "the generated world is clean")
@@ -884,8 +933,7 @@ func test_a_fixture_that_breaks_a_placement_rule_loads_and_is_reported() -> void
 	# The Surface saved all rock: a ladder there has no floor and no
 	# level above.
 	levels[0]["fixtures"] = [_fixture_entry(ObjectKind.OBJECT.LADDER, 2, 3, 77)]
-	_write_save({"world_seed": World.world_seed, "levels": levels,
-		"actors": {10: _actor_entry(0)}})
+	_write_save({"levels": levels, "actors": {10: _actor_entry(0)}})
 
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
 	var surface: Level = game_data.levels[0]
@@ -911,8 +959,7 @@ func test_a_load_reports_a_ramp_problem() -> void:
 	top[index] = TileKind.TOP.OPEN
 	levels[0]["tiles"]["ground"] = _packed(ground)
 	levels[0]["tiles"]["top"] = _packed(top)
-	_write_save({"world_seed": World.world_seed, "levels": levels,
-		"actors": {10: _actor_entry(0)}})
+	_write_save({"levels": levels, "actors": {10: _actor_entry(0)}})
 
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
 	assert_eq(game_data.problems.size(), 1, "the lone ramp end: %s" % [game_data.problems])
@@ -1045,7 +1092,8 @@ func test_two_actors_on_different_depths_round_trip_each_to_its_own() -> void:
 	var a: Actor = _player_on(tile_a, levels, "Upper", 10)
 	var b: Actor = _player_on(tile_b, levels, "Lower", 11)
 	var actors: Array[Node] = [a, b]
-	assert_eq(SaveGame.save_game(TEST_SLOT, levels, actors, a, World.world_seed, "none", TEST_ROOT),
+	assert_eq(SaveGame.save_game(TEST_SLOT, levels, actors, a, World.world_seed, "none",
+		0.0, 0.0, TEST_ROOT),
 		SaveGame.REFUSAL_REASON.NONE, "the save succeeds")
 
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
@@ -1063,3 +1111,215 @@ func test_two_actors_on_different_depths_round_trip_each_to_its_own() -> void:
 			"Lower on %s, got %s" % [tile_b, back_b.current_WorldPos])
 		assert_eq(back_b.current_level.depth, 2, "and on the -2 level")
 	SaveGame.free_game_data(game_data)
+
+
+# --- a slot's launch: the save, its backup, and broken files (D-111) ---
+
+# Two saves that load, told apart by their world seeds.
+const SAVE_SEED: int = 111
+const BACKUP_SEED: int = 222
+
+
+func _good_save(file: String, world_seed: int, version: int = SaveGame.FORMAT_VERSION) -> void:
+	var data: Dictionary = {"levels": _saved_levels(), "actors": {10: _actor_entry(0)}}
+	data.merge(_required_header())
+	data["world_seed"] = world_seed
+	SaveGame._overwrite_data(version, data, _path(file))
+
+
+func _newer_save(file: String) -> void:
+	_good_save(file, SAVE_SEED, SaveGame.FORMAT_VERSION + 1)
+
+
+# A save that stops halfway, as a crash mid-write would leave it.
+func _truncated_save(file: String) -> void:
+	_good_save(file, SAVE_SEED)
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(_path(file))
+	var f: FileAccess = FileAccess.open(_path(file), FileAccess.WRITE)
+	f.store_buffer(bytes.slice(0, bytes.size() / 2))
+	f.close()
+
+
+func _unreadable_save(file: String) -> void:
+	var f: FileAccess = FileAccess.open(_path(file), FileAccess.WRITE)
+	f.store_string("this is not a save file")
+	f.close()
+
+
+func _bytes(file: String) -> PackedByteArray:
+	return FileAccess.get_file_as_bytes(_path(file))
+
+
+func _broken_files() -> PackedStringArray:
+	var broken: PackedStringArray = []
+	for file: String in DirAccess.get_files_at(TEST_SLOT):
+		if file.begins_with("world.broken."): broken.append(file)
+	return broken
+
+
+func _seed_of(slot: SaveGame.SlotLoad) -> Variant:
+	return slot.game_data.get("world_seed")
+
+
+func test_an_empty_slot_is_a_new_game() -> void:
+	var slot: SaveGame.SlotLoad = SaveGame.load_slot(TEST_SLOT)
+	assert_eq(slot.source, SaveGame.SOURCE.NEW, "nothing to load")
+	assert_eq(slot.game_data, {}, "no world")
+	assert_eq(slot.refusals, [] as Array[String], "and nothing refused")
+
+
+func test_a_save_that_loads_is_used_and_the_backup_is_not_read() -> void:
+	_good_save(SaveGame.SAVE_BASE_NAME, SAVE_SEED)
+	_unreadable_save(SaveGame.BACKUP_NAME)
+	var slot: SaveGame.SlotLoad = SaveGame.load_slot(TEST_SLOT)
+	assert_eq(slot.source, SaveGame.SOURCE.SAVE, "the save loads")
+	assert_eq(_seed_of(slot), SAVE_SEED, "the save's world")
+	assert_eq(slot.refusals, [] as Array[String], "the broken backup is never tried")
+	assert_eq(_broken_files(), PackedStringArray(), "and nothing is moved aside")
+	SaveGame.free_game_data(slot.game_data)
+
+
+# A refused world.save is kept, renamed, and the backup loads.
+func _assert_refused_save_falls_back(break_save: Callable, reason: String) -> void:
+	break_save.call(SaveGame.SAVE_BASE_NAME)
+	_good_save(SaveGame.BACKUP_NAME, BACKUP_SEED)
+	var broken_bytes: PackedByteArray = _bytes(SaveGame.SAVE_BASE_NAME)
+
+	var slot: SaveGame.SlotLoad = SaveGame.load_slot(TEST_SLOT)
+	assert_eq(slot.source, SaveGame.SOURCE.BACKUP, "the backup loads")
+	assert_eq(_seed_of(slot), BACKUP_SEED, "the backup's world")
+	assert_eq(slot.refusals.size(), 1, "one file refused")
+	if slot.refusals.size() == 1:
+		assert_string_contains(slot.refusals[0], _path(SaveGame.SAVE_BASE_NAME))
+		assert_string_contains(slot.refusals[0], reason)
+	assert_false(_exists(SaveGame.SAVE_BASE_NAME), "world.save is moved aside")
+	assert_true(_exists(SaveGame.BACKUP_NAME), "the backup stays where it is")
+	var broken: PackedStringArray = _broken_files()
+	assert_eq(broken.size(), 1, "one broken save is kept")
+	if broken.size() == 1:
+		assert_eq(slot.broken_path, _path(broken[0]), "the load says where")
+		assert_true(Global.is_regex_match(broken[0], r"^world\.broken\.\d{8}T\d{6}Z\.save$"),
+			"named with the UTC time (D-123): %s" % broken[0])
+		assert_true(_bytes(broken[0]) == broken_bytes, "kept exactly as it was")
+	SaveGame.free_game_data(slot.game_data)
+
+
+func test_a_save_from_a_newer_version_is_kept_and_the_backup_loads() -> void:
+	_assert_refused_save_falls_back(_newer_save, "newer than this build's")
+
+
+func test_a_truncated_save_is_kept_and_the_backup_loads() -> void:
+	_assert_refused_save_falls_back(_truncated_save, "cut short")
+
+
+func test_an_unreadable_save_is_kept_and_the_backup_loads() -> void:
+	_assert_refused_save_falls_back(_unreadable_save, "unreadable")
+
+
+# A crash between a write's two renames leaves a backup and no save.
+func test_a_backup_with_no_save_loads_the_backup() -> void:
+	_good_save(SaveGame.BACKUP_NAME, BACKUP_SEED)
+	var slot: SaveGame.SlotLoad = SaveGame.load_slot(TEST_SLOT)
+	assert_eq(slot.source, SaveGame.SOURCE.BACKUP, "a fallback, never a new game")
+	assert_eq(_seed_of(slot), BACKUP_SEED, "the backup's world")
+	assert_eq(slot.refusals, [] as Array[String], "nothing was refused")
+	assert_eq(slot.broken_path, "", "nothing to move aside")
+	assert_true(_exists(SaveGame.BACKUP_NAME), "the backup stays where it is")
+	SaveGame.free_game_data(slot.game_data)
+
+
+func test_with_both_refused_nothing_loads_and_both_files_are_left_alone() -> void:
+	_truncated_save(SaveGame.SAVE_BASE_NAME)
+	_newer_save(SaveGame.BACKUP_NAME)
+	var save_bytes: PackedByteArray = _bytes(SaveGame.SAVE_BASE_NAME)
+	var backup_bytes: PackedByteArray = _bytes(SaveGame.BACKUP_NAME)
+	var before: int = _orphans()
+
+	var slot: SaveGame.SlotLoad = SaveGame.load_slot(TEST_SLOT)
+	assert_eq(slot.source, SaveGame.SOURCE.REFUSED, "refused")
+	assert_eq(slot.game_data, {}, "no world")
+	assert_eq(_orphans(), before, "and none left orphaned")
+	assert_eq(slot.refusals.size(), 2, "both files refused")
+	if slot.refusals.size() == 2:
+		assert_string_contains(slot.refusals[0], _path(SaveGame.SAVE_BASE_NAME))
+		assert_string_contains(slot.refusals[0], "cut short")
+		assert_string_contains(slot.refusals[1], _path(SaveGame.BACKUP_NAME))
+		assert_string_contains(slot.refusals[1], "newer than this build's")
+	assert_true(_bytes(SaveGame.SAVE_BASE_NAME) == save_bytes, "world.save untouched")
+	assert_true(_bytes(SaveGame.BACKUP_NAME) == backup_bytes, "the backup untouched")
+	assert_eq(_broken_files(), PackedStringArray(), "nothing moved aside")
+
+
+func test_a_refused_save_with_no_backup_is_refused_never_new() -> void:
+	_unreadable_save(SaveGame.SAVE_BASE_NAME)
+	var slot: SaveGame.SlotLoad = SaveGame.load_slot(TEST_SLOT)
+	assert_eq(slot.source, SaveGame.SOURCE.REFUSED, "not a new game over it")
+	assert_true(_exists(SaveGame.SAVE_BASE_NAME), "and the file stays")
+
+
+func test_a_second_broken_save_in_the_same_second_never_overwrites_the_first() -> void:
+	_unreadable_save("a.save")
+	_unreadable_save("b.save")
+	var first: String = SaveGame.move_aside(_path("a.save"), "broken", 1793569749)
+	var second: String = SaveGame.move_aside(_path("b.save"), "broken", 1793569749)
+	assert_eq(first, _path("world.broken.20261101T214909Z.save"), "the first takes the name")
+	assert_eq(second, _path("world.broken.20261101T214909Z-2.save"),
+		"the second gets a counter")
+
+
+func test_moving_aside_with_no_label_names_it_world_and_the_time() -> void:
+	_unreadable_save("a.save")
+	assert_eq(SaveGame.move_aside(_path("a.save"), "", 1793569749),
+		_path("world.20261101T214909Z.save"), "for a new game's old save (D-111)")
+
+
+func test_a_file_timestamp_is_utc_in_iso_basic_format() -> void:
+	assert_eq(SaveGame.file_timestamp(1793569749), "20261101T214909Z", "D-123")
+	assert_eq(SaveGame.file_timestamp(0), "19700101T000000Z", "zero padded")
+
+
+# Only the required keys refuse a save; the rest load as their
+# defaults (D-121).
+func test_a_save_with_optional_keys_missing_loads_them_as_their_defaults() -> void:
+	_good_save(SaveGame.SAVE_BASE_NAME, SAVE_SEED)
+	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
+	assert_true(game_data.has("levels"),
+		"a save with no tuning profile, stats or local actor loads")
+	assert_eq(game_data.get("tuning_profile_id"), SaveGame.DEFAULT_TUNING_PROFILE_ID,
+		"the tuning profile is none")
+	assert_false(game_data.has("local_actor_id"), "no local actor: the game picks one (D-115)")
+	assert_false(game_data.has("stats"), "no stats: the timers start from 0")
+	SaveGame.free_game_data(game_data)
+
+
+func test_a_save_missing_a_required_key_is_refused_saying_which() -> void:
+	for key: String in SaveGame.REQUIRED_HEADER:
+		var data: Dictionary = {"levels": _saved_levels(), "actors": {10: _actor_entry(0)}}
+		data.merge(_required_header())
+		data.erase(key)
+		_write_raw_save(data)
+		var refusals: Array[String] = []
+		assert_eq(SaveGame.load_file(_path(SaveGame.SAVE_BASE_NAME), refusals), {},
+			"no %s, refused" % key)
+		assert_eq(refusals.size(), 1, "with a reason")
+		if refusals.size() == 1:
+			assert_string_contains(refusals[0], "has no %s" % key)
+
+
+# Older saves come up one step at a time; the first step is a no-op
+# (world-runtime §7).
+func test_a_version_0_save_is_migrated_and_loads() -> void:
+	_good_save(SaveGame.SAVE_BASE_NAME, SAVE_SEED, 0)
+	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
+	assert_true(game_data.has("levels"), "it loads")
+	assert_eq(game_data.get("format_version"), 0, "reporting the version it was saved in")
+	SaveGame.free_game_data(game_data)
+
+
+func test_a_version_with_no_migration_is_refused() -> void:
+	_good_save(SaveGame.SAVE_BASE_NAME, SAVE_SEED, -1)
+	var refusals: Array[String] = []
+	assert_eq(SaveGame.load_file(_path(SaveGame.SAVE_BASE_NAME), refusals), {}, "refused")
+	assert_eq(refusals.size(), 1, "with a reason")
+	if refusals.size() == 1:
+		assert_string_contains(refusals[0], "no migration")

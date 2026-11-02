@@ -17,13 +17,42 @@ const SAVE_BASE_NAME: String = "world.save"
 const ALLOW_OBJECTS: bool = false
 const COMPRESSION_MODE: FileAccess.CompressionMode = FileAccess.COMPRESSION_ZSTD
 const DEFAULT_TUNING_PROFILE_ID: String = "none"
+const BACKUP_NAME: String = SAVE_BASE_NAME + ".bak"
+# The header keys a save is refused without, and the type each must be
+# (D-121, D-122). Every other key loads as its default.
+const REQUIRED_HEADER: Dictionary = {
+	"world_seed": TYPE_INT,
+	"game_version": TYPE_STRING,
+	"saved_at": TYPE_INT,
+	"saved_at_utc_offset": TYPE_INT,
+}
+
+# Where a launch's world comes from (D-111).
+enum SOURCE {
+	NEW, # the slot holds no save
+	SAVE, # world.save loaded
+	BACKUP, # world.save refused or missing, and the backup loaded
+	REFUSED, # nothing loaded: the game must not start
+}
+
+
+# What loading a slot found: the world, where it came from, and why
+# each file that was tried and refused was refused.
+class SlotLoad:
+	var source: SaveGame.SOURCE = SaveGame.SOURCE.NEW
+	var game_data: Dictionary = {}
+	# One line per refused file: its path, then why
+	var refusals: Array[String] = []
+	# Where a refused world.save was moved to, if the backup loaded
+	var broken_path: String = ""
 
 
 # saves_root is the folder every slot must sit inside. It's SAVES_DIR
 # for the game; tests pass their own, so they never touch real saves.
 static func save_game(slot_path: String, levels: Array[Level], 
 	actors: Array[Node], active_actor: Actor, world_seed: int, 
-	tuning_profile_id: String, saves_root: String = SAVES_DIR) -> REFUSAL_REASON:
+	tuning_profile_id: String, active_play_time: float, 
+	total_play_time: float, saves_root: String = SAVES_DIR) -> REFUSAL_REASON:
 	
 	# Validate input path
 	if not _is_inside(slot_path, saves_root):
@@ -31,7 +60,7 @@ static func save_game(slot_path: String, levels: Array[Level],
 		return REFUSAL_REASON.SAVE_FAILED
 	
 	# Serialize
-	var game_data = _serialize_all(levels, actors, active_actor, world_seed, tuning_profile_id)
+	var game_data = _serialize_all(levels, actors, active_actor, world_seed, tuning_profile_id, active_play_time, total_play_time)
 	
 	# Write data to tmp
 	var tmp_save_path: String = slot_path.path_join("%s.tmp" % SAVE_BASE_NAME)
@@ -41,7 +70,7 @@ static func save_game(slot_path: String, levels: Array[Level],
 	# Backup old save
 	var save_path: String = slot_path.path_join(SAVE_BASE_NAME)
 	if FileAccess.file_exists(save_path):
-		result = _rename_file(save_path, "%s.bak" % SAVE_BASE_NAME, true)
+		result = _rename_file(save_path, BACKUP_NAME, true)
 		if result == false: return REFUSAL_REASON.SAVE_FAILED
 	
 	# Rename tmp to normal save
@@ -51,38 +80,108 @@ static func save_game(slot_path: String, levels: Array[Level],
 	return REFUSAL_REASON.NONE
 
 
+# Loads a slot's world.save, falling back to its backup (D-111). A
+# world.save refused while the backup loads is moved aside, kept for
+# troubleshooting. With both refused, nothing is moved or written.
+static func load_slot(slot_path: String) -> SlotLoad:
+	var result: SlotLoad = SlotLoad.new()
+	var save_path: String = slot_path.path_join(SAVE_BASE_NAME)
+	var backup_path: String = slot_path.path_join(BACKUP_NAME)
+	var has_save: bool = FileAccess.file_exists(save_path)
+	var has_backup: bool = FileAccess.file_exists(backup_path)
+	if not has_save and not has_backup: return result
+
+	if has_save:
+		result.game_data = load_file(save_path, result.refusals)
+		if result.game_data:
+			result.source = SOURCE.SAVE
+			return result
+
+	# A missing world.save with a backup is a crash between the two
+	# renames of a write: a fallback, never a new game.
+	if has_backup:
+		result.game_data = load_file(backup_path, result.refusals)
+		if result.game_data and has_save:
+			result.broken_path = move_aside(save_path, "broken",
+				int(Time.get_unix_time_from_system()))
+			# Left in place, the broken save would be rotated over the
+			# good backup by the next write
+			if result.broken_path == "":
+				result.refusals.append("%s couldn't be moved aside" % save_path)
+				free_game_data(result.game_data)
+				result.game_data = {}
+		if result.game_data:
+			result.source = SOURCE.BACKUP
+			return result
+
+	result.source = SOURCE.REFUSED
+	return result
+
+
+# The slot's world.save, or {} if it's refused.
 static func load_game(slot_path: String) -> Dictionary:
-	var raw_file_data: Dictionary = get_save_data(slot_path)
-	# Nothing read: the read has already said why. Not an upgrade
-	# failure, which is what an empty result would be blamed on below.
+	return load_file(slot_path.path_join(SAVE_BASE_NAME))
+
+
+# One save file's world, or {} if it's refused, with a line saying why
+# appended to refusals: the file's path, then the reason.
+static func load_file(file_path: String, refusals: Array[String] = []) -> Dictionary:
+	var why: Array[String] = []
+	var game_data: Dictionary = _load_file(file_path, why)
+	if why: refusals.append("%s %s" % [file_path, why[0]])
+	return game_data
+
+
+# Every check runs before any node is built: a refusal after levels
+# or actors exist would orphan them. why gets the reason for a refusal.
+static func _load_file(file_path: String, why: Array[String]) -> Dictionary:
+	var raw_file_data: Dictionary = _get_file_data(file_path, why)
 	if not raw_file_data: return {}
-	var file_data = _upgrade_file_data_to_latest_format_version(raw_file_data)
-	if not file_data: 
-		push_error("Load game aborted: Failed to upgrade save file data to current format version.")
+
+	var saved_version: int = raw_file_data.format_version
+	if saved_version > FORMAT_VERSION:
+		why.append("is format version %d, newer than this build's %d" % [
+			saved_version, FORMAT_VERSION])
 		return {}
-	
-	# Every section is checked before any node is built. A refusal
-	# after levels or actors exist would orphan them
-	if not file_data.has("format_version"): return {}
-	if not file_data.has("world_seed"): return {}
-	if not file_data.get("levels") is Dictionary: return {}
-	if not file_data.levels: return {}
-	if not file_data.get("actors") is Dictionary: return {}
-	if not file_data.actors: return {}
-	
+	var file_data: Dictionary = _upgrade_file_data_to_latest_format_version(raw_file_data)
+	if not file_data:
+		why.append("is format version %d, which has no migration to %d" % [
+			saved_version, FORMAT_VERSION])
+		return {}
+
+	# An int, not merely present: earlier saves held strings for
+	# saved_at
+	for key: String in REQUIRED_HEADER:
+		if typeof(file_data.get(key)) != REQUIRED_HEADER[key]:
+			why.append("has no %s" % key)
+			return {}
+	if not file_data.get("levels") is Dictionary or not file_data.levels:
+		why.append("has no levels")
+		return {}
+	if not file_data.get("actors") is Dictionary or not file_data.actors:
+		why.append("has no actors")
+		return {}
+
 	# Header data | Mandatory
 	var game_data: Dictionary = {}
-	game_data["format_version"] = file_data.format_version
+	# The version the file was written in, not the one it was
+	# migrated to: F3 shows it (outcome 7)
+	game_data["format_version"] = saved_version
 	game_data["world_seed"] = file_data.world_seed
-	
+	game_data["game_version"] = file_data.game_version
+	game_data["saved_at"] = file_data.saved_at
+	game_data["saved_at_utc_offset"] = file_data.saved_at_utc_offset
+
 	# Header data | Optional
+	if file_data.has("stats"):
+		game_data["stats"] = file_data.stats
 	if file_data.has("local_actor_id"):
 		game_data["local_actor_id"] = file_data.local_actor_id
-	if file_data.has("tuning_profile_id"): 
+	if file_data.has("tuning_profile_id"):
 		game_data["tuning_profile_id"] = file_data.tuning_profile_id
 	else:
 		game_data["tuning_profile_id"] = DEFAULT_TUNING_PROFILE_ID
-	
+
 	# Levels
 	game_data["levels"] = _deserialize_levels(file_data.levels)
 	# Loaded fixtures went straight in; now they're checked, with the
@@ -92,21 +191,49 @@ static func load_game(slot_path: String) -> Dictionary:
 	game_data["problems"] = load_problems(loaded)
 	for problem: String in game_data.problems:
 		push_warning(problem)
-	
+
 	# Objects
-	
-	
+
+
 	# NPCs
-	
-	
+
+
 	# Actors
 	# Actors stand on the levels this load built, not on whatever is
 	# in the tree, which is the world being replaced.
 	var _actors = _deserialize_actors(file_data.actors, game_data.levels)
-	if _actors.size() < 1: return {}
+	if _actors.size() < 1:
+		why.append("has no actor that could be placed")
+		free_game_data(game_data)
+		return {}
 	game_data["actors"] = _actors
-	
+
 	return game_data
+
+
+# Renames a slot's file to world.<label>.<timestamp>.save beside it, or
+# world.<timestamp>.save with no label, never over another file (D-111,
+# D-123). The new path, or "" if the rename failed.
+static func move_aside(file_path: String, label: String, unix_time: int) -> String:
+	var stem: String = "world.%s" % file_timestamp(unix_time)
+	if label: stem = "world.%s.%s" % [label, file_timestamp(unix_time)]
+	var dir: String = file_path.get_base_dir()
+	var target: String = dir.path_join(stem + ".save")
+	var n: int = 2
+	while FileAccess.file_exists(target):
+		target = dir.path_join("%s-%d.save" % [stem, n])
+		n += 1
+	var err: Error = DirAccess.rename_absolute(file_path, target)
+	if err != OK:
+		push_error("Couldn't move %s aside: %s" % [file_path, error_string(err)])
+		return ""
+	return target
+
+
+# A UTC time as YYYYMMDDTHHMMSSZ, for file names (D-123).
+static func file_timestamp(unix_time: int) -> String:
+	var t: Dictionary = Time.get_datetime_dict_from_unix_time(unix_time)
+	return "%04d%02d%02dT%02d%02d%02dZ" % [t.year, t.month, t.day, t.hour, t.minute, t.second]
 
 
 # What's wrong with a loaded world, one line per problem: the checks
@@ -154,36 +281,9 @@ static func get_save_slots(saves_root: String = SAVES_DIR) -> PackedStringArray:
 
 static func get_save_data(slot_path: String) -> Dictionary:
 	var file_path: String = slot_path.path_join(SAVE_BASE_NAME)
-	var data: Dictionary = _get_file_data(file_path)
+	var why: Array[String] = []
+	var data: Dictionary = _get_file_data(file_path, why)
 	return data
-
-
-static func _serialize_all(levels: Array[Level], 
-	actors: Array[Node], active_actor: Actor, world_seed: int, 
-	tuning_profile_id: String) -> Dictionary:
-	
-	# Serialize data
-	## Header
-	var game_data: Dictionary = {}
-	game_data["format_version"] = FORMAT_VERSION
-	if not tuning_profile_id:
-		game_data["tuning_profile_id"] = DEFAULT_TUNING_PROFILE_ID
-	else:
-		game_data["tuning_profile_id"] = tuning_profile_id
-	game_data["world_seed"] = world_seed
-	if active_actor:
-		game_data["local_actor_id"] = active_actor.actor_id
-	
-	## Levels
-	var level_data: Dictionary = _serialize_levels(levels)
-	game_data["levels"] = level_data
-	
-	## Actors
-	var actor_data: Dictionary = _serialize_actors(actors)
-	game_data["actors"] = actor_data
-	
-	return game_data
-
 
 
 static func _load_tool(path: Variant) -> ToolData:
@@ -200,6 +300,53 @@ static func _load_tool(path: Variant) -> ToolData:
 		push_warning("Not a ToolData: %s" % clean)
 		return null
 	return res
+
+
+static func _serialize_all(levels: Array[Level], 
+	actors: Array[Node], active_actor: Actor, world_seed: int, 
+	tuning_profile_id: String, active_play_time: float, 
+	total_play_time: float) -> Dictionary:
+	
+	# Serialize data
+	## Header | Mandatory
+	var game_data: Dictionary = {}
+	game_data["format_version"] = FORMAT_VERSION
+	game_data["world_seed"] = world_seed
+	game_data["game_version"] = Global.get_game_version()
+	# One clock read, so the time and its offset agree (D-122)
+	var now: Dictionary = Global.get_real_time()
+	game_data["saved_at"] = now.unix
+	game_data["saved_at_utc_offset"] = now.utc_offset
+	
+	## Header | Optional
+	if not tuning_profile_id:
+		game_data["tuning_profile_id"] = DEFAULT_TUNING_PROFILE_ID
+	else:
+		game_data["tuning_profile_id"] = tuning_profile_id
+	if active_actor:
+		game_data["local_actor_id"] = active_actor.actor_id
+	
+	# Stats
+	game_data["stats"] = _serialize_stats(active_play_time, total_play_time)
+	
+	## Levels
+	var level_data: Dictionary = _serialize_levels(levels)
+	game_data["levels"] = level_data
+	
+	## Actors
+	var actor_data: Dictionary = _serialize_actors(actors)
+	game_data["actors"] = actor_data
+	
+	return game_data
+
+
+static func _serialize_stats(active_play_time: float, total_play_time: float) -> Dictionary:
+	var data: Dictionary = {}
+	if active_play_time:
+		data["active_play_time"] = active_play_time
+	if total_play_time:
+		data["total_play_time"] = total_play_time
+	return data
 
 
 static func _serialize_levels(levels: Array[Level]) -> Dictionary:
@@ -398,26 +545,48 @@ static func _serialize_tile_layers(level_data: Dictionary, level: Level) -> void
 		tiles[_key] = data.compress(COMPRESSION_MODE)
 
 
-static func _get_file_data(file_path: String) -> Dictionary:
+# The file's two parts, its version and its data, merged. {} if either
+# can't be read, with the reason appended to why.
+static func _get_file_data(file_path: String, why: Array[String]) -> Dictionary:
 	var dict_data: Dictionary = {}
-	
+
 	var file := FileAccess.open(file_path, FileAccess.READ)
 	if file == null:
-		push_error(error_string(FileAccess.get_open_error()) + " - " + file_path)
+		var err: Error = FileAccess.get_open_error()
+		push_error(error_string(err) + " - " + file_path)
+		why.append("can't be opened (%s)" % error_string(err))
 		return {}
-	
+
 	# Store and retrieve the format_version separately from the remainder of
 	# the data so that it's format can change and be detected before reading it
-	var version: Variant = file.get_var()
-	if version is Dictionary and version.has("format_version"):
-		dict_data["format_version"] = version["format_version"]
-	
-	var data: Variant = file.get_var()
-	if data is Dictionary:
-		for key in data:
-			dict_data[key] = data[key]
-	
+	var version: Variant = _read_var(file)
+	if not version is Dictionary or not version.get("format_version") is int:
+		why.append("is unreadable: it has no format version")
+		return {}
+	dict_data["format_version"] = version["format_version"]
+
+	var data: Variant = _read_var(file)
+	if not data is Dictionary:
+		why.append("is cut short or unreadable")
+		return {}
+	for key in data:
+		dict_data[key] = data[key]
+
 	return dict_data
+
+
+# The next value in the file, or null if it's cut short. get_var
+# reads a 4-byte length and then that many bytes; checking the length
+# against what's left first refuses a truncated file quietly, where
+# get_var would print engine errors decoding it.
+static func _read_var(file: FileAccess) -> Variant:
+	var start: int = file.get_position()
+	var left: int = file.get_length() - start
+	if left < 4: return null
+	var length: int = file.get_32()
+	if length > left - 4: return null
+	file.seek(start)
+	return file.get_var(ALLOW_OBJECTS)
 
 
 # Whether one saved level has every field deserialize reads, each of
@@ -566,11 +735,31 @@ static func _overwrite_data(format_version: int, data: Dictionary, file_path: St
 	return false
 
 
-# only one version, so far, stubbed method
+# Brings a save up to FORMAT_VERSION one step at a time, each the
+# migration from the version before (world-runtime §7). {} if a step
+# is missing.
 static func _upgrade_file_data_to_latest_format_version(file_data: Dictionary) -> Dictionary:
-	var upgraded_data: Dictionary
-	upgraded_data = file_data
-	return upgraded_data
+	var data: Dictionary = file_data
+	var version: int = data.format_version
+	while version < FORMAT_VERSION:
+		var step: Callable = _migration_from(version)
+		if not step.is_valid(): return {}
+		data = step.call(data)
+		version += 1
+	return data
+
+
+# The migration from a version to the one after it.
+static func _migration_from(version: int) -> Callable:
+	match version:
+		0: return SaveGame._migrate_0_to_1
+	return Callable()
+
+
+# No save was ever written as version 0. The first migration is a
+# no-op, written before one is needed (world-runtime §7).
+static func _migrate_0_to_1(data: Dictionary) -> Dictionary:
+	return data
 
 
 
