@@ -124,12 +124,14 @@ No forks.
 
 ## G. Done
 
-- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-- [ ] `python scripts/coverage.py` run; uncovered lines looked at (004 closed at 95.7%).
+- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
+  *754 tests, 37 scripts.*
+- [x] `python scripts/coverage.py` run; uncovered lines looked at (004 closed at 95.7%).
+  *97.5%.*
 - [ ] By hand: every by-hand outcome walked in one sitting, launched outside the editor at least
   once.
-- [ ] Claude writes `log/005-clearing-the-backlog.md`.
-- [ ] Claude re-sketches [NEXT.md](./NEXT.md).
+- [x] Claude writes `log/005-clearing-the-backlog.md`.
+- [x] Claude re-sketches [NEXT.md](./NEXT.md).
 
 ---
 

@@ -275,6 +275,19 @@ func test_a_second_change_mid_fade_switches_to_the_latest_depth() -> void:
 	assert_eq(view.shown_depth, 2, "the latest depth")
 
 
+# Past the midpoint a level is already on screen, so another change
+# switches at once, and the fade carries on.
+func test_a_change_after_the_midpoint_switches_at_once() -> void:
+	var actor: Actor = _actor_at(OPEN_TILE, 0)
+	var view: View = _fading_view(actor)
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	view.advance_transition(_world.tuning.level_change_fade_seconds * 0.75)
+	assert_eq(view.shown_depth, 1, "switched at the midpoint")
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 2))
+	assert_eq(view.shown_depth, 2, "the next change shows at once")
+	assert_true(view.is_transitioning(), "while the fade finishes")
+
+
 # An actor that isn't followed changes nothing on screen.
 func test_another_actors_level_change_starts_no_fade() -> void:
 	var view: View = _fading_view(_actor_at(OPEN_TILE, 0))

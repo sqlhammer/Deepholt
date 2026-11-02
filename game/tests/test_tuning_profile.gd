@@ -67,6 +67,15 @@ func test_an_undiggable_kind_has_no_hardness() -> void:
 		"and ore doesn't make it diggable")
 
 
+# A diggable kind the profile forgot is loud, and reads as undiggable
+# rather than as instant.
+func test_a_profile_missing_a_kinds_hardness_is_an_error() -> void:
+	var profile: TuningProfile = _other()
+	profile.hardness = {}
+	assert_lt(profile.hardness_of(TileKind.TOP.MINABLE_ROCK), 0.0, "no hardness")
+	assert_push_error("has no hardness")
+
+
 func test_ore_multiplies_the_hardness() -> void:
 	var rock: float = _default().hardness_of(TileKind.TOP.MINABLE_ROCK)
 	assert_eq(_default().dig_hardness(TileKind.TOP.MINABLE_ROCK, TileKind.ORE.NONE), rock,

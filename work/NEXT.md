@@ -1,8 +1,8 @@
 # Next
 
-Sketches, not commitments. Slice 005 clears the backlog ([NOW.md](./NOW.md)): every item that
-was deferred from slices 002–004, and the carry-forward notes, are now in its checklist. The
-dark and digging move back one slice each. Cheap to throw away; expect them to change.
+Sketches, not commitments. Slice 005 is built ([log](./log/005-clearing-the-backlog.md)); its
+by-hand outcomes are still to walk. 006 is next unless that walk turns something up. Cheap to
+throw away; expect them to change.
 
 ---
 
@@ -20,6 +20,12 @@ one more name on `SaveGame.TILE_LAYERS`
 Light itself is derived, so it isn't saved. Likely the first slice where the render route from
 001 (D-046) either holds up or gets replaced.
 
+What 005 changes here: light radii and anything else tunable go in the world's
+`TuningProfile` ([D-135](../docs/design-decisions.md)), not in code. The level-change fade
+(D-142) is a black overlay over the whole display. A dark that's already near black may want it
+restyled, and the dead Surface hole (D-140) is there to judge how a hole reads in the dark.
+The tunnel-memory layer still edits save format v1 in place (D-133).
+
 What 004 changes here: anything new that draws (a light or fog layer) has to follow the view's
 `shown_world_changed` as well as its depth, or it won't hear a load (D-129). Light comes from
 actors and fixtures, so it is worked out per world, from that world's actors, never from "the"
@@ -36,6 +42,11 @@ placement mode. It's also the first time a fixture is created at runtime, so the
 counter 004 saves gets its first real use, and the first time levels below −2 can be reached.
 Probably too big as one slice; the split should fall out of 006. If 005 builds fixture moves and
 the ladder rule for neighboring shafts, this is where a player first reaches both.
+
+What 005 changes here: fixtures can already move through the gatekeeper (D-138), and the
+ladder rule for neighboring shafts is settled (D-139), so both are reachable here for the first
+time. The temporary Surface hole comes out in this slice (D-140). The first stratum below the
+Surface with its own stone, if it arrives here, triggers the content validator (D-137).
 
 What 004 changes here: a placement is a request on the actor's own world
 (`actor.current_level.world.place_requested`, D-125, D-126), answered on the same world, the
@@ -55,3 +66,15 @@ world's tile gatekeeper.
   that case.
 
 None of them are next.
+
+---
+
+## Carry-forward
+
+Found during 005, not recorded anywhere else. None of it is decided.
+
+- **The two playtime timer scripts are identical** (`active_play_timer.gd`,
+  `total_play_timer.gd`); merge them when the clocks are next touched.
+- **`content/tuning/default.tres` has no `uid` yet;** the editor adds one on its first save.
+- **Coverage at the end of slice 005: 97.5%** (`python scripts/coverage.py`; 004 closed at
+  95.7%).
