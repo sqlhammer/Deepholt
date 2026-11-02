@@ -106,3 +106,11 @@ func test_the_worked_example_from_the_lesson() -> void:
 	_assert_at(_target(14, -2, 2, Vector2i(0, -1)), WorldPos.new(15, -2, 1),
 		"still facing north, (14, -3) is rock: up at (15, -2), east")
 	_assert_at(_target(14, -2, 2, Vector2i(0, 1)), WorldPos.new(14, -1, 1), "facing south: back where you started")
+
+
+
+func test_a_level_in_no_world_has_no_ladder_target() -> void:
+	var loose: Level = autofree(Global.level_packed_scene.instantiate())
+	loose.setup(1)
+	assert_null(Ladder.target_for(loose, WorldPos.new(0, 0, 1), Vector2i(0, -1)), "no target")
+	assert_push_error("is in no world")

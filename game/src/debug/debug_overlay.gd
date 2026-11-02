@@ -125,7 +125,9 @@ const NEXT_IDS_SECTION: String = "Next ids"
 # follows a placement or a new actor, and a load shows whether the
 # counters carried on (slice 004, outcome 3).
 func next_ids_text() -> String:
-	if world == null: return "no world"
+	# A load that gives nobody control leaves the view, and so this,
+	# on the freed world
+	if not is_instance_valid(world): return "no world"
 	return "fixture #%d  actor #%d" % [world.fixture_ids.peek(), world.actor_ids.peek()]
 
 
@@ -135,7 +137,7 @@ func next_ids_text() -> String:
 # the overlay is how you'd find that out.
 func world_spawn_text() -> String:
 	var spawns: Array[Fixture] = []
-	if world == null: return "none"
+	if not is_instance_valid(world): return "none"
 	for level: Level in world.levels():
 		spawns.append_array(level.level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN))
 	if spawns.is_empty():
@@ -208,7 +210,7 @@ func _tile_char(tiles: LevelTiles, x: int, y: int, actor_pos: WorldPos) -> Strin
 
 
 func _find_level_tiles(depth: int) -> LevelTiles:
-	if world == null: return null
+	if not is_instance_valid(world): return null
 	var level: Level = world.level_at(depth)
 	return level.level_tiles if level != null else null
 

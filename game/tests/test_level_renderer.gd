@@ -222,3 +222,35 @@ func test_the_atlas_has_a_cell_for_every_atlas_cell() -> void:
 
 
 
+
+
+# --- following the view's world (D-129) ---
+
+# A view following an actor on a Surface with surface_start stamped.
+func _view_on_a_world() -> View:
+	var world: World = add_child_autofree(preload("res://tests/worlds.gd").with_levels([0, 1]))
+	LevelGridLoader.stamp(world.level_at(0).level_tiles,
+		TilePrefabRegistry.get_prefab(&"surface_start"), Vector2i.ZERO)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(0, 0, 0),
+		world.level_at(0), ActorKind.ACTOR.PLAYER)
+	world.add_actor(actor)
+	var view: View = View.new()
+	add_child_autofree(view)
+	view.follow(actor)
+	return view
+
+
+func test_watching_a_view_already_showing_a_world_draws_it() -> void:
+	var view: View = _view_on_a_world()
+	var renderer: LevelRenderer = _renderer()
+	renderer.watch(view)
+	assert_eq(renderer._tiles, view.shown_world.level_at(0).level_tiles,
+		"the shown world's Surface, straight away")
+
+
+func test_a_shown_depth_the_world_has_no_level_at_is_an_error() -> void:
+	var view: View = _view_on_a_world()
+	var renderer: LevelRenderer = _renderer()
+	renderer.watch(view)
+	renderer._on_shown_depth_changed(0, 6)
+	assert_push_error("No level at depth 6 to show.")

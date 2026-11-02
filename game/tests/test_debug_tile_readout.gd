@@ -253,3 +253,14 @@ func test_the_next_ids_section_appears_when_the_overlay_is_shown() -> void:
 func test_no_world_has_no_next_ids() -> void:
 	_overlay.world = null
 	assert_eq(_overlay.next_ids_text(), "no world")
+
+
+# A load that gives nobody control leaves F3 on the world it replaced,
+# which is freed. Polling it must not touch the freed world.
+func test_a_freed_world_reads_as_none() -> void:
+	var gone: World = World.new()
+	_overlay.world = gone
+	gone.free()
+	assert_eq(_overlay.next_ids_text(), "no world", "no counters to read")
+	assert_eq(_overlay.world_spawn_text(), "none", "no spawn to find")
+	assert_null(_overlay._find_level_tiles(0), "no level")

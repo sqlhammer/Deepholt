@@ -437,3 +437,23 @@ func test_holding_dig_opens_the_faced_tile_on_screen() -> void:
 	var image: Image = renderer._layer_data_images["top"]
 	assert_eq(image.get_data()[(1 + radius) * image.get_width() + radius], TileKind.TOP.OPEN,
 		"and open in what the renderer draws")
+
+
+# D-126: code that needs a world says so loudly rather than looking one
+# up. An actor given no id, on a level in no world, has nowhere to
+# take one from.
+func test_an_actor_with_no_id_on_a_level_in_no_world_is_an_error() -> void:
+	var loose: Level = autofree(Global.level_packed_scene.instantiate())
+	loose.setup(0)
+	var actor: Actor = autofree(Actor.create(Global.actor_packed_scene, "Loose",
+		WorldPos.new(0, 0, 0), loose, ActorKind.ACTOR.PLAYER))
+	assert_push_error("no world to take one from")
+	assert_eq(actor.actor_id, -1, "it has no id")
+
+
+func test_an_actor_on_a_level_in_no_world_cant_move_to_another_depth() -> void:
+	var loose: Level = autofree(Global.level_packed_scene.instantiate())
+	loose.setup(0)
+	var actor: Actor = autofree(Actor.create(Global.actor_packed_scene, "Loose",
+		WorldPos.new(0, 0, 0), loose, ActorKind.ACTOR.PLAYER, 3))
+	assert_false(actor.move_to(WorldPos.new(0, 0, 1)), "there's no world to find -1 in")
