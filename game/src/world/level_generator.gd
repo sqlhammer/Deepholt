@@ -14,8 +14,9 @@ extends RefCounted
 # A new world for a seed, with a level per recipe and its own fresh
 # id counters, so the same seed gives the same fixture ids however
 # many worlds one process builds (D-104, D-118).
-static func generate_world(world_seed: int, recipes: LevelRecipeTable = LevelRecipes.TABLE) -> World:
-	var world: World = World.new()
+static func generate_world(world_seed: int, recipes: LevelRecipeTable = LevelRecipes.TABLE,
+		tuning: TuningProfile = null) -> World:
+	var world: World = World.new(tuning)
 	world.world_seed = world_seed
 	for recipe: LevelRecipe in recipes.rows:
 		world.add_level(generate_level(recipe, world_seed, world.fixture_ids))
@@ -25,11 +26,11 @@ static func generate_world(world_seed: int, recipes: LevelRecipeTable = LevelRec
 	return world
 
 
-# Every ladder needs a hole directly above it, on the level one depth up
-# (D-089). A hole with no ladder is legal. Checked once every level is
-# built, since the two ends are in different prefabs. A ladder outside
-# the upper level's bounds reads a sentinel there, not a hole, so it is
-# reported the same way.
+# Every ladder needs a hole directly above it, on the level one depth
+# up (D-089). A hole with no ladder is legal. Checked once every level
+# is built, since the two ends are in different prefabs. A ladder
+# outside the upper level's bounds reads a sentinel there, not a hole,
+# so it is reported the same way.
 static func ladder_problems(levels: Array[Level]) -> Array[String]:
 	var by_depth: Dictionary[int, Level] = {}
 	for level: Level in levels:
@@ -108,12 +109,13 @@ static func generate_level(recipe: LevelRecipe, world_seed: int, fixture_ids: Id
 	return level
 
 
-# For a placement with a spawn radius, places the world's default spawn
-# (D-091, D-105): a random tile within the radius (a disc, like the
-# level bounds) of the placement's anchor, where an actor could stand,
-# that isn't a ramp, and that the fixture rules allow. Candidates are
-# gathered row by row, then column, so the same seed picks the same
-# tile. No candidate is reported, and nothing is placed.
+# For a placement with a spawn radius, places the world's default
+# spawn (D-091, D-105): a random tile within the radius (a disc, like
+# the level bounds) of the placement's anchor, where an actor could
+# stand, that isn't a ramp, and that the fixture rules allow.
+# Candidates are gathered row by row, then column, so the same seed
+# picks the same tile. No candidate is reported, and nothing is
+# placed.
 static func place_world_spawns(level: Level, recipe: LevelRecipe, rng: RandomNumberGenerator,
 		fixture_ids: IdAllocator) -> void:
 	for placement: PrefabPlacement in recipe.fixed_placements:
@@ -168,7 +170,8 @@ static func apply_fixed_placements(level: Level, recipe: LevelRecipe,
 
 
 # The only source of randomness for generating this level: seeded from
-# the level's own seed, so each depth gets its own repeatable sequence.
+# the level's own seed, so each depth gets its own repeatable
+# sequence.
 static func rng_for(level: Level) -> RandomNumberGenerator:
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = level.level_seed

@@ -1,9 +1,9 @@
 extends RefCounted
 
 # Builds worlds for tests. Preloaded, with no class_name, so adding to
-# it needs no re-import (as save_dirs.gd). Nothing here is in the tree:
-# a test adds the world itself (add_child_autofree) when it needs
-# _ready or _physics_process, or autofrees it otherwise.
+# it needs no re-import (as save_dirs.gd). Nothing here is in the
+# tree: a test adds the world itself (add_child_autofree) when it
+# needs _ready or _physics_process, or autofrees it otherwise.
 
 
 # A world holding a blank level (solid minable rock) at each depth.

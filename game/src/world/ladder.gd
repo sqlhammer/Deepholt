@@ -3,19 +3,18 @@ extends RefCounted
 
 # Where interacting takes an actor by ladder (D-089, D-100, D-101). A
 # ladder is a fixture on the lower level, under a hole on the level
-# above. This answers *where*; the actor makes the move (D-093). Asking
-# is a read, so neither gatekeeper is involved.
+# above. This answers *where*; the actor makes the move (D-093).
+# Asking is a read, so neither gatekeeper is involved.
 #
 #   down: beside a hole, facing it, with a ladder under it -> onto the
 #         ladder's tile below, same (x, y).
-#   up:   standing on a ladder -> beside the hole above: the faced side
-#         if an actor can stand there, otherwise the first that works
-#         in the order north, east, south, west.
+#   up:   standing on a ladder -> beside the hole above: the faced
+#         side if an actor can stand there, otherwise the first that
+#         works in the order north, east, south, west.
 #
-# If an actor stands on a ladder *and* faces a hole with another ladder
-# under it, up is checked first. That isn't a decision yet (D-106): it
-# needs two ladders in neighboring shafts, which can't exist until −3
-# does.
+# If an actor stands on a ladder *and* faces a hole with another
+# ladder under it, it goes down: facing the hole is the choice, and
+# turning away from it climbs (D-139).
 
 const ARRIVAL_ORDER: Array[Vector2i] = [
 	Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
@@ -29,11 +28,11 @@ static func target_for(level: Level, here: WorldPos, facing: Vector2i) -> WorldP
 	if level.world == null:
 		push_error("Level %d is in no world, so its ladders lead nowhere." % level.depth)
 		return null
-	var tile: Vector2i = Vector2i(here.x, here.y)
-
-	if level.level_fixtures.has_kind_at(tile, ObjectKind.OBJECT.LADDER):
+	var down: WorldPos = _down(level, here, facing)
+	if down != null: return down
+	if level.level_fixtures.has_kind_at(Vector2i(here.x, here.y), ObjectKind.OBJECT.LADDER):
 		return _up(level.world, here, facing)
-	return _down(level, here, facing)
+	return null
 
 
 static func _down(level: Level, here: WorldPos, facing: Vector2i) -> WorldPos:

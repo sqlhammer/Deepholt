@@ -44,9 +44,9 @@ static func _overlaps_solid(tiles: LevelTiles, box: Rect2) -> bool:
 
 
 # Whether moving from `before` to `after` (along one axis) carries the
-# box's leading edge across a tile edge that can't be crossed: a ramp's
-# closed side (D-099). Tiles the box only touches don't count, the
-# same as solid tiles.
+# box's leading edge across a tile edge that can't be crossed: a
+# ramp's closed side (D-099). Tiles the box only touches don't count,
+# the same as solid tiles.
 static func _crosses_closed_edge(tiles: LevelTiles, before: Rect2, after: Rect2) -> bool:
 	var eps: Vector2 = Vector2(Global.epsilon, Global.epsilon)
 	var old_first: Vector2i = TileSpace.get_tile_coordinates_from_pixels(before.position)

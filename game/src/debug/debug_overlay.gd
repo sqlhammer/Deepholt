@@ -1,7 +1,7 @@
 extends CanvasLayer
 
-# How many tiles out from an actor the tile window reaches, so a radius of 5
-# draws an 11 x 11 square.
+# How many tiles out from an actor the tile window reaches, so a
+# radius of 5 draws an 11 x 11 square.
 @export var tile_window_radius: int = 5
 var game: Node
 
@@ -74,6 +74,7 @@ func _get_group(title: String) -> int:
 		"Level Seed": return 0
 		WORLD_SPAWN_SECTION: return 0
 		NEXT_IDS_SECTION: return 0
+		TUNING_SECTION: return 0
 		LOAD_PROBLEMS_SECTION: return 0
 		SAVE_SECTION: return 0
 		SAVE_TIME_SECTION: return 0
@@ -119,6 +120,8 @@ func _refresh_watched_actors() -> void:
 
 const WORLD_SPAWN_SECTION: String = "World spawn"
 const NEXT_IDS_SECTION: String = "Next ids"
+# The profile the shown world runs under (D-136)
+const TUNING_SECTION: String = "Tuning"
 
 
 # The ids the shown world hands out next (D-118). Polled, so it
@@ -149,10 +152,10 @@ func world_spawn_text() -> String:
 		tile.x, tile.y, tile.depth, DepthName.of(tile.depth), spawns[0].id]
 
 
-# What the world believes about the tiles around one actor, read straight out
-# of the level's arrays. The window is drawn in the same characters the prefab
-# grids are authored in, so standing on a prefab's anchor should print back
-# the grid that was typed into it.
+# What the world believes about the tiles around one actor, read
+# straight out of the level's arrays. The window is drawn in the same
+# characters the prefab grids are authored in, so standing on a
+# prefab's anchor should print back the grid that was typed into it.
 func _tile_readout(pos: WorldPos) -> String:
 	if pos == null: return "no position"
 
@@ -188,9 +191,10 @@ func _tile_window(tiles: LevelTiles, pos: WorldPos) -> String:
 	return "\n".join(rows)
 
 
-# Blank is outside the arrays entirely and '~' is inside them but outside the
-# level's radial bounds -- the two sentinels of D-059, which is the only way
-# to see what a radial bound does at tile granularity before anything draws.
+# Blank is outside the arrays entirely and '~' is inside them but
+# outside the level's radial bounds -- the two sentinels of D-059,
+# which is the only way to see what a radial bound does at tile
+# granularity before anything draws.
 func _tile_char(tiles: LevelTiles, x: int, y: int, actor_pos: WorldPos) -> String:
 	var top: int = tiles.get_top(x, y)
 	if top == TileKind.SENTINEL_OUT_OF_ARRAY: return " "
@@ -203,7 +207,7 @@ func _tile_char(tiles: LevelTiles, x: int, y: int, actor_pos: WorldPos) -> Strin
 		return _kind_name(TileKind.ORE, ore).substr(0, 1).to_lower()
 
 	if top == TileKind.TOP.OPEN:
-		return _ramp_char(tiles.get_ground(x, y))
+		return _ground_char(tiles.get_ground(x, y))
 	if top == TileKind.TOP.MINABLE_ROCK: return "#"
 	if top == TileKind.TOP.MINABLE_DIRT: return "%"
 	return "?"
@@ -280,6 +284,7 @@ func _on_shown_world_changed(p_world: World, depth: int) -> void:
 	if world != null:
 		set_section("World Seed", str(world.world_seed))
 		set_section(NEXT_IDS_SECTION, next_ids_text())
+		set_section(TUNING_SECTION, world.tuning.id)
 	_on_shown_depth_changed(View.NO_DEPTH, depth)
 
 
@@ -290,11 +295,14 @@ func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:
 	set_section(VIEW_SECTION, "%d [%s]" % [new_depth, DepthName.of(new_depth)])
 
 
-# Open floor prints '.', unless its ground is a ramp: then the letter
-# it is authored with (D-096), so the window reads like the grid.
-func _ramp_char(ground: int) -> String:
+# Open floor prints '.', unless its ground is a ramp or a hole: then
+# the letter it is authored with (D-096), so the window reads like the
+# grid.
+func _ground_char(ground: int) -> String:
+	if not TileKind.is_ramp(ground) and ground != TileKind.GROUND.HOLE:
+		return "."
 	for character: String in LevelGridLoader.GROUND_CHARS:
-		if LevelGridLoader.GROUND_CHARS[character] == ground and TileKind.is_ramp(ground):
+		if LevelGridLoader.GROUND_CHARS[character] == ground:
 			return character
 	return "."
 

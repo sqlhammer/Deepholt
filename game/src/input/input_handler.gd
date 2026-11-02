@@ -4,6 +4,9 @@ class_name InputHandler
 var actor: Actor
 var mouse_world_position: Callable
 var current_device_scheme: DEVICE_SCHEME = DEVICE_SCHEME.GAMEPAD
+# While a level change fades, the actor is stopped and input isn't
+# read (D-142). Keys still held when it ends are read again then.
+var paused: bool = false
 
 # The game-wide keys. The handler only asks; the game decides what a
 # save or a load is (R-P10).
@@ -28,6 +31,19 @@ func setup(p_actor: Actor, p_mouse_world_position: Callable) -> void:
 	mouse_world_position = p_mouse_world_position
 
 
+# The view's fade started: stop the actor, so it neither walks nor
+# digs on a level the player can't see yet.
+func pause() -> void:
+	paused = true
+	if actor == null: return
+	actor.move(Vector2.ZERO)
+	actor.primary_action(false)
+
+
+func resume() -> void:
+	paused = false
+
+
 func _input(event: InputEvent) -> void:
 	_update_device_scheme(event)
 	
@@ -42,6 +58,7 @@ func _input(event: InputEvent) -> void:
 func _physics_process(_delta: float) -> void:
 	if actor == null or actor is not Actor:
 		return
+	if paused: return
 	
 	var move: Vector2 = Input.get_vector(
 		"move_left", "move_right", "move_up", "move_down")

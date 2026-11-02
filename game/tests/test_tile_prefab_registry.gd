@@ -1,9 +1,9 @@
 extends GutTest
 
-# TilePrefabRegistry -- indexes the authored prefabs under res://content/ by
-# their stable ids at startup. These tests are what prove the on-disk .tres
-# format actually parses and reaches a level, rather than only the inline
-# grids the loader tests use.
+# TilePrefabRegistry -- indexes the authored prefabs under
+# res://content/ by their stable ids at startup. These tests are what
+# prove the on-disk .tres format actually parses and reaches a level,
+# rather than only the inline grids the loader tests use.
 
 
 func test_the_authored_surface_prefab_is_registered_by_its_id() -> void:

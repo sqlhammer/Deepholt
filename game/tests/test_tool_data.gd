@@ -16,7 +16,7 @@ func test_the_pickaxe_is_flint_tier() -> void:
 
 func test_flint_digs_surface_stone_in_0_375_seconds() -> void:
 	var tool: ToolData = load(FLINT_PICKAXE)
-	var rock: float = TileKind.get_tile_density(TileKind.TOP.MINABLE_ROCK)
+	var rock: float = TuningProfile.default_profile().hardness_of(TileKind.TOP.MINABLE_ROCK)
 	assert_almost_eq(rock / tool.speed, 0.375, 0.0001, "6 / 16")
 
 

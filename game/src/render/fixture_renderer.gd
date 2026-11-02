@@ -19,8 +19,9 @@ const TEXTURES: Dictionary = {
 }
 
 # Kinds deliberately not drawn (D-091: the world spawn is invisible to
-# players). Kept apart from "no texture", which is an error: a new kind
-# without art should be loud, the way a tile without art draws MISSING.
+# players). Kept apart from "no texture", which is an error: a new
+# kind without art should be loud, the way a tile without art draws
+# MISSING.
 const INVISIBLE: Array[int] = [ObjectKind.OBJECT.WORLD_SPAWN]
 
 const LADDER_TOP: Texture2D = preload("res://src/render/ladder_top.png")
@@ -86,8 +87,10 @@ func _listen_to(fixtures: LevelFixtures) -> void:
 	if _fixtures == fixtures: return
 	if _fixtures != null and _fixtures.fixture_changed.is_connected(_on_fixture_changed):
 		_fixtures.fixture_changed.disconnect(_on_fixture_changed)
+		_fixtures.fixture_moved.disconnect(_on_fixture_moved)
 	_fixtures = fixtures
 	_fixtures.fixture_changed.connect(_on_fixture_changed)
+	_fixtures.fixture_moved.connect(_on_fixture_moved)
 
 
 func _on_fixture_changed(fixture: Fixture, added: bool) -> void:
@@ -95,6 +98,12 @@ func _on_fixture_changed(fixture: Fixture, added: bool) -> void:
 		_add_sprite(fixture)
 	else:
 		_remove_sprite(fixture.id)
+
+
+# The same fixture on another tile of the shown level (D-138).
+func _on_fixture_moved(fixture: Fixture, _from: WorldPos) -> void:
+	_remove_sprite(fixture.id)
+	_add_sprite(fixture)
 
 
 func _add_sprite(fixture: Fixture) -> void:
@@ -136,15 +145,23 @@ func show_ladder_tops(shown_tiles: LevelTiles, below: LevelFixtures) -> void:
 		_add_top(ladder)
 
 
-# The same disconnect as _listen_to, for the level below: without it, a
-# ladder placed two levels down would draw a top on the shown level.
+# The same disconnect as _listen_to, for the level below: without it,
+# a ladder placed two levels down would draw a top on the shown level.
 func _listen_below(below: LevelFixtures) -> void:
 	if _below == below: return
 	if _below != null and _below.fixture_changed.is_connected(_on_below_changed):
 		_below.fixture_changed.disconnect(_on_below_changed)
+		_below.fixture_moved.disconnect(_on_below_moved)
 	_below = below
 	if _below != null:
 		_below.fixture_changed.connect(_on_below_changed)
+		_below.fixture_moved.connect(_on_below_moved)
+
+
+func _on_below_moved(fixture: Fixture, _from: WorldPos) -> void:
+	if fixture.kind != ObjectKind.OBJECT.LADDER: return
+	_remove_top(fixture.id)
+	_add_top(fixture)
 
 
 func _on_below_changed(fixture: Fixture, added: bool) -> void:

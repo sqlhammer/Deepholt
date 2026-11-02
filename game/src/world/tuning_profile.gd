@@ -1,0 +1,81 @@
+class_name TuningProfile
+extends Resource
+
+# Every tuning number in one swappable resource (D-037), one .tres
+# per profile under DIR, named by its id. The world holds the one it
+# runs under (`world.tuning`, D-135), and simulation reaches it
+# through a level, like everything else (D-126). A save records the
+# id, and a load runs the world under the profile the save names, or
+# the default (D-136).
+#
+# The numbers live in the .tres, not here: a number written into a
+# script is a bug even when it's right (D-037). Each default below is
+# a zero that no profile should keep.
+
+const DIR: String = "res://content/tuning/"
+const DEFAULT_ID: String = "default"
+
+@export var id: String = ""
+
+# How often the game saves while playing, in seconds (D-110).
+@export var autosave_interval_seconds: float = 0.0
+
+# How fast an actor walks, in level pixels per second.
+@export var walk_speed: float = 0.0
+
+# How hard each diggable top kind is to dig, keyed by its TileKind.TOP
+# id: the tuning appendix's hardness (D-081). Dig seconds = hardness /
+# tool power, so flint (16) digs rock (6) in 0.375 s.
+@export var hardness: Dictionary[int, float] = {}
+
+# A tile holding ore takes this much longer to dig than the same tile
+# without it (tuning appendix, section 4).
+@export var ore_dig_multiplier: float = 0.0
+
+# How long a level change's fade through black lasts, out and back in
+# (D-142). Zero switches at once.
+@export var level_change_fade_seconds: float = 0.0
+
+
+# The profile with this id, or null if this build has none.
+static func find(profile_id: String) -> TuningProfile:
+	if profile_id.is_empty() or not profile_id.is_valid_filename(): return null
+	var path: String = DIR.path_join(profile_id + ".tres")
+	if not ResourceLoader.exists(path): return null
+	var profile: Resource = load(path)
+	return profile as TuningProfile
+
+
+static func default_profile() -> TuningProfile:
+	return find(DEFAULT_ID)
+
+
+# The profile with this id, or the default with a warning when this
+# build doesn't have it (D-136). `what` names whose choice it was.
+static func find_or_default(profile_id: String, what: String) -> TuningProfile:
+	var profile: TuningProfile = find(profile_id)
+	if profile != null: return profile
+	push_warning("%s names tuning profile \"%s\", which this build doesn't have; using \"%s\"." % [
+		what, profile_id, DEFAULT_ID])
+	return default_profile()
+
+
+# How hard a top kind is to dig, or -1 if it can't be dug. Whether a
+# kind can be dug is TileKind's to say, not the profile's.
+func hardness_of(top_kind: int) -> float:
+	if not TileKind.is_diggable(top_kind): return -1.0
+	if not hardness.has(top_kind):
+		push_error("Tuning profile \"%s\" has no hardness for top kind %d." % [id, top_kind])
+		return -1.0
+	return hardness[top_kind]
+
+
+# How hard a tile is to dig, counting its ore: the top kind's
+# hardness, times ore_dig_multiplier when the tile holds ore. -1 when
+# the top kind can't be dug.
+func dig_hardness(top_kind: int, ore_kind: int) -> float:
+	var value: float = hardness_of(top_kind)
+	if value < 0.0: return value
+	if ore_kind != TileKind.ORE.NONE and ore_kind != TileKind.ORE.NULL:
+		value *= ore_dig_multiplier
+	return value

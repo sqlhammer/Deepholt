@@ -1,197 +1,189 @@
-# Slice 004 — A world you can hold
+# Slice 005 — Clearing the backlog
 
-> Press F6 and the whole mountain is swapped for the saved one in a single move. A damaged save
-> leaves the running world exactly as it was, and ids carry on from where the world left them.
+> Take a ramp and the level change is a transition you can see, not a cut. Under it, every item
+> deferred from slices 002–004 and every carried-forward note is either done or decided.
 
-*Proposed by Claude, 2026-11-01, from [NEXT.md](./NEXT.md)'s sketch. Derik accepts, edits or
-replaces it.*
-
-## Mode
-
-**Agent**, for the whole slice (Derik, 2026-11-01). Its forks are walked through with Derik one
-at a time before any building starts.
+*Proposed by Claude, 2026-11-02. Derik set the scope: only the "Deferred from" sections for
+slices 002–004 and the "Carry-forward" section from [NEXT.md](./NEXT.md). The dark and digging
+move to 006 and 007. Derik accepts, edits or replaces this brief.*
 
 ## Where we are
 
-Slice 003 is done ([log](./log/003-it-persists.md)). A world survives a relaunch: tiles,
-fixtures, actors, the header and the playtime clocks. A broken save is kept and the backup loads,
-and with both refused the game won't start. `--new-game` moves the old world aside.
+Slice 004 is done ([log](./log/004-a-world-you-can-hold.md)). The world is a node that owns its
+levels, its actors and both id counters. A load builds a whole `World` to one side and swaps it
+in at the end of the frame. Derik walked outcomes 1, 3 and 4 by hand on 2026-11-02, and nothing
+turned up.
 
-**The one assumption this slice removes:** that the tree holds exactly one world. The 003 review
-traced every load bug to it, and its fix is already decided
-([D-118](../docs/design-decisions.md#d-118--the-world-is-a-node-that-owns-its-levels-and-id-counters-handed-by-reference)):
-the world becomes a node that owns its levels and its id counters, handed to whatever needs it
-by reference, never looked up.
+Three slices left small things behind on purpose. Each one was the right thing to leave at the
+time, and together they add up to about twenty. This slice clears them before the dark changes
+how everything is drawn. Most of them are tidy-ups. Four are design forks. One, the level-change
+transition, is a feel item, and it's the slice's playable edge.
 
-**What a world is made of, today:**
-- **Levels** sit under `game.gd`'s `$Levels`, in the `levels` group. Anything that wants one
-  calls `World.get_level_by_depth`, which searches that group. Seven files in `src/` do so,
-  plus `game.gd`.
-- **The `World` autoload** holds the world seed, the recipe table, the actor id allocator, the
-  tile gatekeeper's signals (`dig_requested`, `tile_dug`, `dig_refused`) and `is_in_bounds`,
-  which reads the recipe's bound, not the level's.
-- **The `Objects` autoload** is the fixture gatekeeper and holds the fixture id counter.
-- **A load** (`game.gd.load_game`) frees the running levels, actors and input handlers, attaches
-  the loaded ones, and re-points the view and renderers by hand. 003 made it refuse a file
-  before freeing anything, so a damaged save already leaves the world alone. The swap itself is
-  still free-then-attach, in several steps.
+## Mode
 
-**What 003 already did toward this slice:** a level the save holds whole is built from the save,
-not generated (R-P2). After a load, the fixture counter moves past every loaded id. A file with
-any level that won't load is refused (R-B3). The load key no longer frees its own handler
-(R-B8), and the save and load keys are signals on the handler (R-P10).
+**Agent**, for the whole slice (Derik, 2026-11-02). Claude builds every section, and puts each
+section's forks to Derik one at a time before building it.
 
 ## What should be true when you stop
 
 By hand, unless marked:
 
-1. Dig on two levels, F5, dig more, F6: the screen, F3 and every level show the saved world, and
-   nothing of the replaced one.
-2. F6 on a truncated save: nothing changes. Not the screen, not F3, not the ids.
-3. F3 shows the running world, and its next fixture id and next actor id. Loading twice in a row
-   shows the same numbers both times. They don't restart, and they don't climb.
-4. The ramp between the Surface and −1, and the hole on −1 with its ladder on −2, still work
-   both ways; digs stay on their own level.
-5. *Automated:* two worlds in one process, at the same depths, each with an actor. A dig, a depth
-   change and a fixture placed in one leave the other untouched.
-6. *Automated:* generating a second world doesn't change the first world's counters.
-7. *Automated:* freeing a world leaves no orphan nodes. No code in `src/` searches the tree for
-   levels.
+1. Take the ramp or a ladder, either way: the change of level is a transition you can see, not
+   a cut. A held dig does what was decided for the transition, and it still works on arrival
+   ([D-108](../docs/design-decisions.md#d-108--a-held-dig-carries-across-a-level-change-level-changes-are-instant-for-now)).
+2. F5 during a transition, then F6: the load leaves no half-finished transition behind, and the
+   actor is where the save says.
+3. F3's tile window shows a hole differently from open floor.
+4. `--new-game`: the Surface starts without the temporary hole at (0, 2), if Derik decides it
+   has served its purpose (it's the only hole on the Surface, and it has no ladder under it).
+5. The slot folder doesn't keep growing: moved-aside and broken saves are pruned by the rule
+   that gets decided, and the current save and its backup are never touched.
+6. F3's "Last load" is read after a 004-shaped load, and the number goes in the log.
+7. *Automated:* the playtime clocks are tested
+   ([D-120](../docs/design-decisions.md)).
+8. *Automated:* a load returns a typed result, not a dictionary.
+9. *Automated:* a save whose only actors are NPCs loads and is shown. The view shows the new
+   world without a followed actor, and the renderers stop drawing the old one.
+10. *Automated:* an actor on a ladder that faces a hole with another ladder under it goes the
+    way that was decided. It's tested in a built world with neighboring shafts, because −3
+    can't be reached by hand until 007.
+11. *Automated:* a fixture moves through the world's fixture gatekeeper. Its tile can't be
+    changed any other way, and the move is announced the way that was decided.
+12. *Automated:* the autosave interval comes from the tuning profile, and a save records that
+    profile's id rather than `"none"`.
+13. Nothing in the code is still called `density`. The dead tool-loading code is gone, slots
+    are listed in sorted order, the comments are fixed, and
+    [save-files.md](../docs/tech/save-files.md) matches the code.
 
-This slice is mostly a change of shape, so most of what can be checked by hand is how a load
-behaves. That is its playable edge, stated plainly rather than padded out.
+Outcomes 10–12 can't be seen by hand, because nothing in the game uses them yet. They're
+groundwork, built against the system each one belongs to. That's said plainly here so the
+slice isn't padded.
 
 ## What you're deciding
 
-Every fork below was settled on 2026-11-01, before building, as
-[D-124](../docs/design-decisions.md#d-124--the-world-and-objects-autoloads-are-deleted-world-is-the-world-nodes-class)
-to [D-130](../docs/design-decisions.md#d-130--a-save-takes-the-world-and-a-typed-session-the-worlds-counters-go-in-the-header).
-The list stays as the record of what was weighed:
-- the autoloads are deleted, and `World` is the node's class (D-124);
-- the gatekeepers are the same signals, on the world (D-125);
-- a level knows its world, and everything else reaches it through a level (D-126);
-- the generator and the save each build a whole `World`, outside the tree (D-127);
-- the world sits at the origin inside the game viewport, and owns its actors (D-128);
-- the swap happens at the end of the frame, and the view re-points everything that draws
-  (D-129);
-- a save takes the world and a typed `SaveSession`, and the counters go in the header (D-130).
+Taken one at a time before the section that needs it.
 
-The forks as they were put:
-
-- **How each consumer gets the world.** A field set on the actor at setup, a reference on each
-  level (`level.world`), through the view for the renderers, or a mix. Whatever is chosen
-  replaces `World.get_level_by_depth` in the actor's depth changes
-  ([D-117](../docs/design-decisions.md#d-117--an-actor-is-handed-the-level-it-starts-on-depth-changes-still-look-theirs-up)),
-  the ladder rule, both renderers, `Objects` and F3.
-- **What a gatekeeper is now.** Methods on the world node, signals on it, or child nodes under it
-  (a tile gate and a fixture gate). And how a capability that emits today (`dig_requested`)
-  reaches it.
-- **What's left of the `World` and `Objects` autoloads.** Deleted, or reduced to the recipes and
-  the static helpers, and under what names.
-- **Who builds a world.** `LevelGenerator` returning a world, `SaveGame` returning a world, and
-  who swaps it in and re-points the view, renderers, input and F3.
-- **Where the world node sits in the scene,** and what that does to coordinates (trap 5).
-- **What `SaveGame.save_game` takes.** Today it's nine positional parameters, and every new
-  header field broke every caller in 003. A world, plus the few things that aren't the world's
-  (the slot, the local actor, the playtime), would end that.
+- **The level-change transition** (D-108). What it looks like: a fade, a slide, the camera
+  dropping, or something else. How long it takes. Whether the actor is delayed in the
+  simulation (the move happens at the end), or moved at once while the view plays the effect.
+  What a held dig does during it. Whether input, and saving on a level change
+  ([D-110](../docs/design-decisions.md#d-110--when-a-save-happens-quit-level-change-a-timer-and-a-key)),
+  waits for it.
+- **Which way a ladder goes when both directions apply**
+  ([D-106](../docs/design-decisions.md#d-106--interact-is-polled-on-the-physics-tick), "not
+  decided"). The options are up, down, facing direction, or a second input.
+- **Moving a fixture** (002, not recorded). Make `Fixture.tile` read-only, move fixtures only
+  through the world's gatekeeper, and announce the move either as a removal plus a placement or
+  as its own event.
+- **The tuning profile's shape**
+  ([D-037](../docs/design-decisions.md#d-037--one-tuningprofile-resource-holds-every-global-constant)).
+  How it's reached: handed to the world, handed to the game, or global. And how much moves into
+  it now: only the autosave interval, or every global constant the code already has (hardness,
+  tool power, speeds, the autosave interval).
+- **Pruning old saves.** How many moved-aside and broken saves are kept, or for how long, and
+  when pruning runs.
+- **Save format version 1.** Whether it's settled now, so that migrations start, or stays open.
+- **The temporary Surface hole.** Whether it's removed now.
+- **The appendix's hardness band and the content validator**
+  ([D-081](../docs/design-decisions.md#d-081--hardness-belongs-to-tile-kinds-the-pre-alpha-tool-is-a-flint-pickaxe),
+  [D-038](../docs/design-decisions.md#d-038--a-content-validator-enforces-the-derived-invariants-in-ci)).
+  Whether the validator is built in this slice, and if so with which checks. D-081 accepts the
+  Surface's 0.375 s, so a band check needs a way to allow it. Otherwise the open −5 and −7
+  numbers stay with the strata they belong to.
+- **The refusal reasons nothing reads** (`dig_refused`, `request_refused`). Show them in F3 now,
+  or leave them for the sound and UI work that will use them.
 
 ## Already settled
 
-- **The world's shape:** a node that owns its levels and both id counters, gatekeepers on the
-  instance, stateless helpers made static, recipes kept global, two worlds possible
-  ([D-118](../docs/design-decisions.md#d-118--the-world-is-a-node-that-owns-its-levels-and-id-counters-handed-by-reference)).
-- **One front door per kind of change:** tiles change only through the tile gatekeeper
-  ([D-078](../docs/design-decisions.md#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime)),
-  fixtures only through their own
-  ([D-090](../docs/design-decisions.md#d-090--objects-get-their-own-gatekeeper-separate-from-world)).
-- **Simulation takes what it acts on as a parameter,** and nothing resolves to *the* player
-  ([D-045](../docs/design-decisions.md#d-045--no-player-singleton-carves-out-the-presentation-layer)).
-- **An actor is handed its starting level**
-  ([D-117](../docs/design-decisions.md#d-117--an-actor-is-handed-the-level-it-starts-on-depth-changes-still-look-theirs-up)).
-  This slice replaces its remaining lookup, on a depth change.
-- **`move_to` is the one way an actor is put somewhere else**
+- **A transition goes between the request and the move, never into the `Ramp` or `Ladder`
+  rules** (D-108). It delays or animates `Actor.move_to`, which stays the one way an actor is
+  put somewhere else
   ([D-119](../docs/design-decisions.md#d-119--move_to-is-the-one-way-an-actor-is-put-somewhere-else)).
-- **Every level stays resident**
-  ([D-035](../docs/design-decisions.md#d-035--no-tile-streaming-system-the-whole-world-stays-resident)).
-- **A saved bound wins over the recipe**
-  ([D-112](../docs/design-decisions.md#d-112--tile-layers-are-saved-by-name-a-byte-layer-per-fact-a-saved-bound-wins)).
-  Building from the save makes it real (review bug R-B4).
-- **What a refused save does:** kept, the backup tried, loud; both refused and the game won't
-  start
+- **No system assumes exactly one actor** (pillar [P5](../docs/game-overview.md)), and nothing
+  resolves to *the* player
+  ([D-045](../docs/design-decisions.md#d-045--no-player-singleton-carves-out-the-presentation-layer)).
+  A transition belongs to the actor that's taking it. It doesn't pause the game.
+- **Fixtures change only through their own gatekeeper, which now lives on the world**
+  ([D-090](../docs/design-decisions.md#d-090--objects-get-their-own-gatekeeper-separate-from-world),
+  [D-125](../docs/design-decisions.md)).
+- **One `TuningProfile` resource holds every global constant, and a save records its id**
+  (D-037, [D-116](../docs/design-decisions.md)). The autosave interval moves into it first.
+- **Anything that draws follows `shown_world_changed`** (D-129). A view that has no followed
+  actor still has to announce a new world.
+- **What a refused save does, and what's kept:** the broken save is kept, the backup is tried,
+  and the failure is loud
   ([D-111](../docs/design-decisions.md#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves)).
-  A refused F6 mid-session leaves the running world and saving alone.
-- **The header's required keys**
-  ([D-121](../docs/design-decisions.md#d-121--three-header-keys-are-required-the-rest-load-as-their-defaults),
-  [D-122](../docs/design-decisions.md#d-122--the-save-time-is-a-utc-unix-int-and-the-writers-offset-both-required)).
-  Format version 1 isn't settled, so the two id counters join the header with no version bump.
+  Pruning can't break that.
+- **Hardness is the tile kind's** (D-081). The rename to `hardness` changes names only.
+- **A saved bound wins, and a saved level wins over the recipe**
+  ([D-112](../docs/design-decisions.md#d-112--tile-layers-are-saved-by-name-a-byte-layer-per-fact-a-saved-bound-wins)).
+  See trap 4.
 
 ## Traps
 
-### 1. The name `World` is taken
+### 1. A transition is a window where the world is half moved
 
-An autoload's name shadows a `class_name` of the same name, so a world node class called `World`
-can't coexist with the autoload. Rename one first, on purpose, and in its own commit, so the
-rename and the change of shape aren't tangled in one diff.
+Today a level change happens in one call. A transition stretches it across frames, and
+everything that can happen in a frame can now land in the middle of it: F5 and the
+level-change save, F6 freeing the actor mid-tween, a dig, a second interact, another actor's
+move. Choose where the actor *is* during the transition first (still on the old level, or
+already on the new one). Then check each of those against that answer. A swap has to cancel a
+transition the way it already cuts off input handlers. Otherwise a tween or timer fires against
+a freed actor.
 
-### 2. Lookups creep back in
+### 2. An effect that belongs to the view must not live on the actor
 
-`get_parent()`, `owner`, `get_first_node_in_group`, `get_tree().get_nodes_in_group`: each is a
-tree search in disguise, and each works fine until there are two worlds. Outcome 7's "no code in
-`src/` searches the tree for levels" is a grep; run it at the end of every section, not once.
+A fade is presentation, and it follows the shown actor (D-045 lets the view hold one). A delay
+before the move is simulation, and it belongs to each actor. If both live in one place, the
+second local player, or an NPC taking a ladder, either gets a fade it shouldn't, or nobody does.
 
-### 3. Signals on a replaced world
+### 3. The typed load result changes every load test again
 
-Godot drops a node's connections when it's freed, so anything connected to the old world's
-gatekeepers goes silent after a swap, with no error. A swap has to re-point every listener, and
-a test has to prove each one hears the new world. 003 found one already: the fixture renderer
-kept the old level's fixtures when the depth didn't change (R-B9).
+004 kept the dictionary for exactly this reason. Expect a large, mechanical diff. Grep each run
+for `Ignoring` and `Parse Error`, because GUT skips a file it can't parse and the suite still
+passes.
 
-### 4. Freeing during a callback
+### 4. Removing the Surface hole doesn't remove it from a save
 
-F6 starts the load from inside an input handler's `_input`. 003 made the handlers go at the end
-of the frame instead of at once (R-B8). A whole-world swap started from input should be deferred
-the same way: build the new world now, swap it in at the end of the frame.
+A saved level is built from the save, not the recipe. An existing slot keeps the hole, so the
+by-hand check needs `--new-game`.
 
-### 5. Coordinates only line up by accident
+### 5. Pruning deletes, and that can't be undone
 
-`$Levels` sits under the game root, and actors sit inside `GameViewport`. `actor.position` is
-passed as a global position into `level.to_local`, which is only correct because every transform
-between them is the identity. Moving the levels under a world node keeps that true only if the
-world node is at the origin too.
+The moved-aside and broken saves are the evidence D-111 keeps on purpose. A pruning rule that
+matches on a file name can also match the live save or its backup if the naming ever changes.
+Match the exact patterns (D-123's timestamp), test against a folder that has the live save, the
+backup, and one of each kind, and never prune during a load.
 
-### 6. The actor id counter isn't moved on load
+### 6. A validator that fails on accepted numbers gets switched off
 
-Found at the end of 003: `IdAllocator.claim` exists and nothing calls it. After a fresh launch's
-load, a player created next can take an id a loaded actor already has. 003 fixed the fixture
-counter by moving it past the highest loaded id; the actor counter has no fix yet. Saving both
-counters in the header, and restoring them last, after anything that could reset them, ends it
-for both (save-files §7).
+The Surface's 0.375 s is accepted (D-081). A band check without a recorded exception fails the
+build on day one, and a check that's always failing is one that people stop reading.
 
-### 7. Test churn
+### 7. Groundwork with no caller rots quietly
 
-Most tests put levels in the tree and rely on the lookup. Expect a large, mechanical change.
-Grep each run for `Ignoring` and `Parse Error`: GUT skips a file that fails to parse, and the
-suite still passes. Run each test file on its own once if a leak warning appears; 003's came
-from one test.
+Outcomes 10–12 have only tests as callers. Write each against the system it belongs to (the
+gatekeeper, the profile), not as a one-off helper, so that 006 and 007 use it rather than work
+around it.
 
-### 8. From the 002 and 003 logs
+### 8. A wide slice hides which part broke
 
-- **Measure the parts before naming the cause.** Both slices blamed a slow path on the wrong
-  thing until it was broken down. A load takes about 100 ms now; F3 shows "Last save" and
-  "Last load".
-- **Script edits from files, not heredocs,** and match whitespace-tolerantly.
-- **Run the game by hand per section,** not only at the end.
+This slice touches saves, the view, fixtures and the actor. Commit by section, run the suite
+before each commit, and launch the game by hand at the end of every section that changes
+something you can see (002's log).
 
 ## Carried into this slice
 
-From the 003 checklist ("Moved to slice 004" and the review, in git history at `466f939`),
-still to do, each now an item in [CHECKLIST.md](./CHECKLIST.md):
-- A loaded level is built from its **saved** bound, so a level whose radius was tuned isn't lost
-  (R-B4).
-- `World.is_in_bounds` reads the level's own bound, not the recipe table (D-112).
-- Both id counters saved, restored last and in the header; the fixture counter's stopgap
-  (`Objects.reserve_ids_through`) goes.
-- The actor id counter gets its real home (D-114, trap 6).
-- The load in phases: validate, build the world to one side, swap it in, re-point everything
-  (R-S1).
-- `_get_levels_from_save_data` goes once `SaveGame` returns a world (R-S3).
+From [NEXT.md](./NEXT.md) at `c8e5d62`, all of it, each now an item in
+[CHECKLIST.md](./CHECKLIST.md):
+
+- **Deferred from 002:** level-change transitions (D-108); moving a fixture; up or down when
+  both apply on a ladder (D-106).
+- **Deferred from 003:** slot sorting (R-P6); the dead tool-loading code (R-B5); "it's" → "its"
+  and comments over 70 characters (R-S4); save-files.md; the autosave interval into the tuning
+  profile; pruning old saves; tests for the playtime clocks; settling format version 1.
+- **Deferred from 004:** a save whose only actors are NPCs; a typed load result; measuring the
+  load time.
+- **Carry-forward:** `density` → `hardness`; the appendix's band at −5 and −7, and the content
+  validator; the refusal reasons nothing reads; F3 printing a hole as `.`; the temporary Surface
+  hole; the coverage figure (95.7% at the end of 004).

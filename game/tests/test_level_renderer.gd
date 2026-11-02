@@ -1,9 +1,9 @@
 extends GutTest
 
-# LevelRenderer's data textures -- each layer as a read returns it, one
-# byte per tile, in the arrays' own row-major order (D-065). Encoding bugs
-# render as a plausible level rather than as an error, so they are pinned
-# here instead of trusted to the eye.
+# LevelRenderer's data textures -- each layer as a read returns it,
+# one byte per tile, in the arrays' own row-major order (D-065).
+# Encoding bugs render as a plausible level rather than as an error,
+# so they are pinned here instead of trusted to the eye.
 
 
 func _surface_with_start() -> LevelTiles:
@@ -157,7 +157,8 @@ func test_every_byte_survives_being_written_as_a_pixel() -> void:
 
 
 # Outcome 3, the screen half: a dig through the world reaches the
-# images with no code in the world or the dig knowing a renderer exists.
+# images with no code in the world or the dig knowing a renderer
+# exists.
 func test_a_dig_reaches_the_screen() -> void:
 	var world: World = autofree(World.new())
 	var level: Level = Global.level_packed_scene.instantiate()

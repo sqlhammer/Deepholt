@@ -2,10 +2,10 @@ extends GutTest
 
 # Changing depth (D-093) and following it on screen (D-094). An actor
 # moves itself onto another level, checking only that it can stand
-# there, and announces it as an ordinary change of tile. A View follows
-# one actor and owns the depth on screen; nothing else has a "current
-# depth" (NOW.md trap 1), and actors on other depths aren't drawn
-# (trap 2).
+# there, and announces it as an ordinary change of tile. A View
+# follows one actor and owns the depth on screen; nothing else has a
+# "current depth" (NOW.md trap 1), and actors on other depths aren't
+# drawn (trap 2).
 
 const OPEN_TILE: Vector2i = Vector2i(2, -3)
 
@@ -197,6 +197,105 @@ func test_following_another_actor_in_the_same_world_doesnt() -> void:
 	view.follow(second)
 	assert_signal_not_emitted(view, "shown_world_changed", "same world")
 	assert_signal_emitted(view, "shown_depth_changed", "only the depth changed")
+
+
+# D-132: a world is shown without anyone to follow, and the actor
+# followed before is let go.
+func test_showing_a_world_follows_nobody() -> void:
+	var actor: Actor = _actor_at(OPEN_TILE, 0)
+	var view: View = _view_following(actor)
+	var other: Actor = _actor_in_other_world(2)
+	watch_signals(view)
+	view.show_world(other.current_level.world, 1)
+	assert_eq(get_signal_parameters(view, "shown_world_changed"),
+		[other.current_level.world, 1], "the world, at the depth given")
+	assert_null(view.actor, "nobody is followed")
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 2))
+	assert_eq(view.shown_depth, 1, "the old actor's moves no longer move the view")
+
+
+# After a swap has shown the world, following its player moves only
+# the depth (D-132).
+func test_following_an_actor_in_the_shown_world_moves_only_the_depth() -> void:
+	var view: View = View.new()
+	add_child_autofree(view)
+	view.show_world(_world, 0)
+	watch_signals(view)
+	view.follow(_actor_at(OPEN_TILE, 2))
+	assert_signal_not_emitted(view, "shown_world_changed", "the world was already shown")
+	assert_eq(get_signal_parameters(view, "shown_depth_changed"), [0, 2], "only the depth")
+
+
+# --- the fade (D-142) ---
+
+func _fading_view(actor: Actor) -> View:
+	var view: View = _view_following(actor)
+	view.transitions = true
+	return view
+
+
+func test_a_view_without_transitions_switches_at_once() -> void:
+	var actor: Actor = _actor_at(OPEN_TILE, 0)
+	var view: View = _view_following(actor)
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	assert_false(view.is_transitioning(), "no fade")
+	assert_eq(view.shown_depth, 1, "the depth switches")
+
+
+func test_a_move_within_a_level_starts_no_fade() -> void:
+	var actor: Actor = _actor_at(OPEN_TILE, 0)
+	var view: View = _fading_view(actor)
+	watch_signals(view)
+	actor.actor_worldpos_changed.emit(actor, WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 0),
+		WorldPos.new(OPEN_TILE.x + 1, OPEN_TILE.y, 0))
+	assert_signal_not_emitted(view, "transition_started")
+
+
+func test_the_fade_is_announced_start_and_end() -> void:
+	var actor: Actor = _actor_at(OPEN_TILE, 0)
+	var view: View = _fading_view(actor)
+	watch_signals(view)
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	assert_signal_emitted(view, "transition_started")
+	view.advance_transition(_world.tuning.level_change_fade_seconds)
+	assert_signal_emitted(view, "transition_ended")
+	assert_eq(view.shown_depth, 1, "on the new depth")
+
+
+# Down again before the fade switched: the fade goes on, and switches
+# to the latest depth.
+func test_a_second_change_mid_fade_switches_to_the_latest_depth() -> void:
+	var actor: Actor = _actor_at(OPEN_TILE, 0)
+	var view: View = _fading_view(actor)
+	watch_signals(view)
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 2))
+	assert_signal_emit_count(view, "transition_started", 1, "one fade")
+	view.finish_transition()
+	assert_eq(view.shown_depth, 2, "the latest depth")
+
+
+# Past the midpoint a level is already on screen, so another change
+# switches at once, and the fade carries on.
+func test_a_change_after_the_midpoint_switches_at_once() -> void:
+	var actor: Actor = _actor_at(OPEN_TILE, 0)
+	var view: View = _fading_view(actor)
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	view.advance_transition(_world.tuning.level_change_fade_seconds * 0.75)
+	assert_eq(view.shown_depth, 1, "switched at the midpoint")
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 2))
+	assert_eq(view.shown_depth, 2, "the next change shows at once")
+	assert_true(view.is_transitioning(), "while the fade finishes")
+
+
+# An actor that isn't followed changes nothing on screen.
+func test_another_actors_level_change_starts_no_fade() -> void:
+	var view: View = _fading_view(_actor_at(OPEN_TILE, 0))
+	var other: Actor = _actor_at(OPEN_TILE, 0)
+	view.track(other)
+	other.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	assert_false(view.is_transitioning(), "no fade")
+	assert_false(other.visible, "and it's hidden on a depth not shown")
 
 
 func test_the_first_follow_announces_the_world() -> void:

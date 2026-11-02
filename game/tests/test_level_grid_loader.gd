@@ -1,19 +1,20 @@
 extends GutTest
 
-# LevelGridLoader -- stamps an authored TilePrefab's three per-layer text grids
-# into a LevelTiles, with each grid's own anchor marker landing on the anchor
-# coordinate given (D-060). Malformed grids are a hard, all-or-nothing failure
-# (D-055); a grid that merely says nothing about a tile is not malformed, and
-# that tile keeps the level's default (D-062). Ore may only sit inside minable
-# rock (D-056).
+# LevelGridLoader -- stamps an authored TilePrefab's three per-layer
+# text grids into a LevelTiles, with each grid's own anchor marker
+# landing on the anchor coordinate given (D-060). Malformed grids are
+# a hard, all-or-nothing failure (D-055); a grid that merely says
+# nothing about a tile is not malformed, and that tile keeps the
+# level's default (D-062). Ore may only sit inside minable rock
+# (D-056).
 #
 # Grid layout used by the success tests, marker '0' at the center:
 #   ground        top           ore
 #   rrr           .#.           ...
 #   r0r           #0#           .0c
 #   rrr           .#.           ...
-# so north/south/west/east of the anchor are all minable rock, the diagonals
-# are open, and the east tile alone carries copper.
+# so north/south/west/east of the anchor are all minable rock, the
+# diagonals are open, and the east tile alone carries copper.
 
 
 func _stamp(tiles: LevelTiles, ground: String, top: String, ore: String, anchor: Vector2i = Vector2i.ZERO) -> bool:
@@ -45,9 +46,10 @@ func test_small_grid_loads_and_spot_checks_all_four_sides_of_anchor() -> void:
 	assert_eq(tiles.get_ore(-1, 0), TileKind.ORE.NONE, "west of the anchor carries no ore")
 
 
-# The whole point of the prefab: the same grids stamp anywhere, and the marker
-# lands on the anchor rather than on world (0, 0). Depth 0 is used so the
-# level's radial bound is far away and only the anchor maths is under test.
+# The whole point of the prefab: the same grids stamp anywhere, and
+# the marker lands on the anchor rather than on world (0, 0). Depth 0
+# is used so the level's radial bound is far away and only the anchor
+# maths is under test.
 func test_prefab_stamps_relative_to_a_non_zero_anchor() -> void:
 	var level_bounds = LevelBound.new(0, "Unit Test", 4)
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
@@ -81,9 +83,10 @@ func test_ore_under_anything_but_minable_rock_fails_to_load() -> void:
 	assert_false(ok, "ore over anything but minable rock should fail the load")
 
 
-# Every tile a prefab mentions, it mentions on all three layers (D-102).
-# Ore over a tile the top grid leaves out used to be legal, because the
-# default happened to be rock; now the prefab fails to load first.
+# Every tile a prefab mentions, it mentions on all three layers
+# (D-102). Ore over a tile the top grid leaves out used to be legal,
+# because the default happened to be rock; now the prefab fails to
+# load first.
 func test_ore_over_a_tile_the_top_grid_never_mentions_fails_to_load() -> void:
 	var level_bounds = LevelBound.new(1, "Unit Test", 1)
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
@@ -145,10 +148,12 @@ func test_ore_grid_two_anchor_markers_fails_to_load() -> void:
 
 
 # A prefab may be jagged, as long as all three layers share the shape
-# exactly (D-102). Here every grid's last row is one tile long, so (0, 1)
-# and (1, 1) are mentioned by no grid, and keep the level's default.
+# exactly (D-102). Here every grid's last row is one tile long, so (0,
+# 1) and (1, 1) are mentioned by no grid, and keep the level's
+# default.
 func test_a_jagged_prefab_loads_when_every_layer_shares_its_shape() -> void:
-	# Radius 2: the 3 x 3 grid's corners, (+-1, +-1), are outside radius 1.
+	# Radius 2: the 3 x 3 grid's corners, (+-1, +-1), are outside radius
+	# 1.
 	var level_bounds = LevelBound.new(1, "Unit Test", 2)
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
 	var ok: bool = _stamp(tiles,
@@ -161,8 +166,9 @@ func test_a_jagged_prefab_loads_when_every_layer_shares_its_shape() -> void:
 	assert_eq(tiles.get_ground(-1, 1), TileKind.GROUND.DIRT, "on every layer")
 
 
-# Tiles a prefab doesn't mention at all keep the level's default on every
-# layer: a prefab is smaller than the level (D-062, kept by D-102).
+# Tiles a prefab doesn't mention at all keep the level's default on
+# every layer: a prefab is smaller than the level (D-062, kept by
+# D-102).
 func test_tiles_outside_the_prefab_keep_the_level_default() -> void:
 	var level_bounds = LevelBound.new(1, "Unit Test", 2)
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
@@ -186,10 +192,11 @@ func test_a_short_row_on_one_layer_fails_to_load() -> void:
 	assert_eq(tiles.get_top(-1, -1), TileKind.TOP.MINABLE_ROCK, "and nothing was written")
 
 
-# Grids are aligned to each other by their markers, not by position in the
-# string. Here every grid covers the same tiles (D-102), but the ore grid is
-# written with a blank first line, so the same tile sits at a different raw
-# string index in each. Measured from the markers, they still line up.
+# Grids are aligned to each other by their markers, not by position in
+# the string. Here every grid covers the same tiles (D-102), but the
+# ore grid is written with a blank first line, so the same tile sits
+# at a different raw string index in each. Measured from the markers,
+# they still line up.
 func test_layers_align_by_their_markers_not_their_strings() -> void:
 	var level_bounds = LevelBound.new(1, "Unit Test", 2)
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
@@ -204,9 +211,9 @@ func test_layers_align_by_their_markers_not_their_strings() -> void:
 	assert_eq(tiles.get_ore(0, 0), TileKind.ORE.NONE, "the anchor itself carries no ore")
 
 
-# A grid wider than the level's radius reaches tiles the level can't hold.
-# Those are discarded rather than failing the load; in-bounds tiles, including
-# the ones right at the edge, still load normally.
+# A grid wider than the level's radius reaches tiles the level can't
+# hold. Those are discarded rather than failing the load; in-bounds
+# tiles, including the ones right at the edge, still load normally.
 func test_tiles_beyond_level_bounds_are_discarded_not_failed() -> void:
 	var level_bounds = LevelBound.new(1, "Unit Test", 1)
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
@@ -222,10 +229,10 @@ func test_tiles_beyond_level_bounds_are_discarded_not_failed() -> void:
 		"the column beyond the level's radius is never actually there to read back")
 
 
-# The anchor marker isn't always at the grid's geometric center. Tiles must
-# land relative to wherever '0' actually sits, not to an assumed center of a
-# (radius * 2 + 1) square -- regression test for a bug where loading always
-# started at the array's corner instead.
+# The anchor marker isn't always at the grid's geometric center. Tiles
+# must land relative to wherever '0' actually sits, not to an assumed
+# center of a (radius * 2 + 1) square -- regression test for a bug
+# where loading always started at the array's corner instead.
 func test_off_center_marker_places_tiles_relative_to_the_marker() -> void:
 	var level_bounds = LevelBound.new(1, "Unit Test", 2)
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
@@ -384,7 +391,8 @@ func test_an_empty_objects_grid_needs_no_store() -> void:
 
 
 func test_a_small_objects_grid_lines_up_by_its_marker() -> void:
-	# Shaped nothing like the 3 x 3 tile grids: one line above the marker.
+	# Shaped nothing like the 3 x 3 tile grids: one line above the
+	# marker.
 	var fixtures: LevelFixtures = LevelFixtures.new()
 	assert_true(_stamp_with_objects("L\n0", fixtures)[0], "loads")
 	assert_true(fixtures.has_kind_at(Vector2i(2, -1), ObjectKind.OBJECT.LADDER),

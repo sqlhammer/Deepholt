@@ -1,9 +1,9 @@
 extends GutTest
 
-# Two worlds in one process (D-118: nothing may assume there is exactly
-# one). Same depths, each with an actor, both in the tree: whatever
-# happens in one leaves the other untouched (slice 004 outcomes 5 and
-# 7).
+# Two worlds in one process (D-118: nothing may assume there is
+# exactly one). Same depths, each with an actor, both in the tree:
+# whatever happens in one leaves the other untouched (slice 004
+# outcomes 5 and 7).
 
 const OPEN: Vector2i = Vector2i(2, -3)
 const ROCK: Vector2i = Vector2i(5, 5)

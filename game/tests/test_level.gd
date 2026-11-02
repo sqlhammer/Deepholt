@@ -1,8 +1,8 @@
 extends GutTest
 
-# Level -- one depth's node: its tile data and its fixtures, empty until
-# the generator fills them. Where a player spawns is no longer a level
-# property (D-091, D-092): it's a WORLD_SPAWN fixture.
+# Level -- one depth's node: its tile data and its fixtures, empty
+# until the generator fills them. Where a player spawns is no longer a
+# level property (D-091, D-092): it's a WORLD_SPAWN fixture.
 
 
 func _level(depth: int) -> Level:

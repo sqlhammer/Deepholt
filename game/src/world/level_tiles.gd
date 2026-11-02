@@ -1,9 +1,10 @@
 class_name LevelTiles
 extends RefCounted
 
-# A level's tile truth: flat per-layer byte arrays sized to the square around the level's
-# radial bounds (D-048), with a third array for ore (D-054). Access goes only through the
-# small read/write functions below.
+# A level's tile truth: flat per-layer byte arrays sized to the square
+# around the level's radial bounds (D-048), with a third array for ore
+# (D-054). Access goes only through the small read/write functions
+# below.
 
 var level_bound: LevelBound
 var _ground: PackedByteArray

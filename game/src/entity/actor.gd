@@ -21,7 +21,10 @@ var facing: Vector2i = Vector2i(0,1) # Default = Down
 
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 
-@export var speed: float = 85.0
+# Walk speed is the tuning profile's, from the world this actor is
+# in (D-135, D-126).
+var speed: float:
+	get: return current_level.world.tuning.walk_speed
 @export var feet_box: Rect2 = Rect2(-5, 1, 10, 6)
 
 # TODO: Temporary equip. Refactor later.
@@ -79,7 +82,8 @@ func _move(_motion: Vector2) -> void:
 	var tiles: LevelTiles = current_level.level_tiles
 	var moved: Rect2 = TileCollision.move_box(tiles, get_world_box(), _motion)
 	
-	# Adjust position to account for the position of the corner of the feet_box
+	# Adjust position to account for the position of the corner of the
+	# feet_box
 	var actual_motion: Vector2 = moved.position - get_world_box().position
 	position += actual_motion
 	
@@ -117,7 +121,8 @@ func aim(p_aim: Vector2, p_move: Vector2) -> void:
 func primary_action(p_action_intent: bool) -> void:
 	var prior_intent: bool = action_intent
 	
-	# The _physics_process will trigger the actor's action until the intent is reset
+	# The _physics_process will trigger the actor's action until the
+	# intent is reset
 	action_intent = p_action_intent
 	
 	if prior_intent != action_intent:
@@ -286,7 +291,8 @@ func _set_facing(p_vector: Vector2) -> bool:
 		return false  # no input here: let the next source decide
 	facing = TileSpace.snap_facing(facing, p_vector)
 	
-	# if walking, don't update the sprite, the animation player is doing that
+	# if walking, don't update the sprite, the animation player is doing
+	# that
 	if move_intent.is_zero_approx():
 		_update_facing_sprite()
 	

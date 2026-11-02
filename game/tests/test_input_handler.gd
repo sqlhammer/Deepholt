@@ -33,7 +33,8 @@ func test_setup_gives_the_handler_its_actor() -> void:
 	assert_eq(_handler.actor, _actor, "the handler drives the actor it was given")
 
 
-# --- the game-wide keys: asked for by signal, never called (R-P10) ---
+# --- the game-wide keys: asked for by signal, never called (R-P10)
+# ---
 
 func _press(action: StringName) -> void:
 	var event: InputEventAction = InputEventAction.new()

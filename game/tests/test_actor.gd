@@ -1,12 +1,13 @@
 extends GutTest
 
 # Actor: spawning onto a tile, finding its level, and turning its
-# position back into a WorldPos. The actor's tile is the one under
-# the center of its feet box, not under its origin, so collision,
-# the overlay and digging all agree on where it stands.
+# position back into a WorldPos. The actor's tile is the one under the
+# center of its feet box, not under its origin, so collision, the
+# overlay and digging all agree on where it stands.
 #
 # Setting an actor's depth asks the world of the level it stands on
-# (D-126), so the levels these tests use are in one world, in the tree.
+# (D-126), so the levels these tests use are in one world, in the
+# tree.
 
 # A known feet box, so the pixel cases below don't depend on the
 # scene's default. Its center sits 4 px below the actor's origin.
@@ -422,7 +423,7 @@ func test_holding_dig_opens_the_faced_tile_on_screen() -> void:
 	# limit is the dig time from the data plus a margin, so a broken
 	# dig fails instead of looping forever, and retuning the tool or
 	# the rock doesn't break the test.
-	var rock: float = TileKind.get_tile_density(TileKind.TOP.MINABLE_ROCK)
+	var rock: float = TuningProfile.default_profile().hardness_of(TileKind.TOP.MINABLE_ROCK)
 	var dig_seconds: float = rock / actor.equipped.speed
 	var limit: int = ceili(dig_seconds * 60.0) + 10
 	actor.primary_action(true)
@@ -439,8 +440,8 @@ func test_holding_dig_opens_the_faced_tile_on_screen() -> void:
 		"and open in what the renderer draws")
 
 
-# D-126: code that needs a world says so loudly rather than looking one
-# up. An actor given no id, on a level in no world, has nowhere to
+# D-126: code that needs a world says so loudly rather than looking
+# one up. An actor given no id, on a level in no world, has nowhere to
 # take one from.
 func test_an_actor_with_no_id_on_a_level_in_no_world_is_an_error() -> void:
 	var loose: Level = autofree(Global.level_packed_scene.instantiate())

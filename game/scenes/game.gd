@@ -16,7 +16,10 @@ var active_actor: Actor:
 	get: return _active_actor
 var _active_actor: Actor
 var _input_handlers: Array[InputHandler] = []
-@export var tuning_profile_id: String
+# --tuning=<id>, after -- like --new-game, picks the profile a new
+# world runs under; "" for the default (D-136). A loaded world runs
+# under the profile its save names. Set it before _ready to choose.
+var tuning_id: String = _flag_value("--tuning=")
 # Where this session's world came from (D-111): F3 shows it
 var load_source: SaveGame.SOURCE = SaveGame.SOURCE.NEW
 # Set when neither save in the slot loaded: the game hasn't started,
@@ -26,15 +29,15 @@ var _saving_refused: bool = false
 # arguments, starts a fresh world (D-111). Set it before _ready to
 # choose; tests do.
 var new_game: bool = OS.get_cmdline_user_args().has("--new-game")
+# How many kept saves of each kind survive pruning at launch (D-134).
+# Each kind its own count; set it before _ready to choose.
+var keep_per_kind: Dictionary[SaveGame.KEPT_KIND, int] = SaveGame.KEEP_PER_KIND
 var _autosave_timer: Timer
 # How long the last save and the last load took, from the game's side:
 # the whole world, read or written
 var last_save_msec: float = -1.0
 var last_load_msec: float = -1.0
 
-# How often the game saves while playing (D-110). A tuning number: the
-# first to move into the tuning profile when it's built (D-116).
-const AUTOSAVE_INTERVAL_SECONDS: float = 300.0
 # A new world's seed, hashed. One fixed seed until there is a menu to
 # choose one.
 const WORLD_SEED_TEXT: String = "Default Seed"
@@ -71,6 +74,9 @@ func set_user_control(actor: Actor) -> void:
 	input.quick_save_requested.connect(save_game)
 	input.load_requested.connect(_on_load_requested)
 	input.save_and_quit_requested.connect(save_and_quit_to_desktop)
+	# Input waits while a level change fades (D-142)
+	view.transition_started.connect(input.pause)
+	view.transition_ended.connect(input.resume)
 	add_child(input)
 	_input_handlers.append(input)
 	
@@ -85,8 +91,8 @@ func set_user_control(actor: Actor) -> void:
 	$DebugOverlay.watch(actor)
 
 
-# Where the mouse points in world space (level pixels).
-# Presentation: it needs the display rect and the game viewport's camera.
+# Where the mouse points in world space (level pixels). Presentation:
+# it needs the display rect and the game viewport's camera.
 func mouse_world_position() -> Vector2:
 	var display: TextureRect = $Display/UpscaleDisplay
 	var _view: SubViewport = $GameViewport
@@ -111,7 +117,7 @@ func save_game() -> bool:
 	
 	# What isn't the world's (D-130)
 	var local_actor_id: int = active_actor.actor_id if active_actor else -1
-	var session: SaveSession = SaveSession.new(local_actor_id, tuning_profile_id,
+	var session: SaveSession = SaveSession.new(local_actor_id,
 		$ActivePlayTimer.seconds, $TotalPlayTimer.seconds)
 
 	# Save, timed: F3 shows whether it's short enough to go unfelt
@@ -152,30 +158,27 @@ func load_game(defer_swap: bool = false) -> REFUSAL_REASON:
 	if slot.source == SaveGame.SOURCE.REFUSED:
 		_report_refused_slot(slot)
 		return REFUSAL_REASON.LOAD_REFUSED
-	var game_data: Dictionary = slot.game_data
-	var raw_id: Variant = game_data.get("local_actor_id", -1)
-	var local_actor_id: int = int(raw_id) if raw_id is int or raw_id is float else -1
+	var loaded: SaveGame.LoadedGame = slot.loaded
+	var session: SaveSession = loaded.session
 
 	# Swap, then re-point
 	if defer_swap:
-		_swap_in_loaded_world.call_deferred(slot.world, local_actor_id)
+		_swap_in_loaded_world.call_deferred(loaded.world, session.local_actor_id)
 	else:
-		_swap_in_loaded_world(slot.world, local_actor_id)
-		
-	# load stats
-	if game_data.has("stats"):
-		if game_data.stats.has("active_play_time"):
-			$ActivePlayTimer.setup(game_data.stats.active_play_time)
-		if game_data.stats.has("total_play_time"):
-			$TotalPlayTimer.setup(game_data.stats.total_play_time)
-	
-	
-	$DebugOverlay.show_load_problems(game_data.get("problems", []).size())
+		_swap_in_loaded_world(loaded.world, session.local_actor_id)
+
+	# A clock the save left out is -1, and keeps its count (D-120)
+	if session.active_play_time >= 0.0:
+		$ActivePlayTimer.setup(session.active_play_time)
+	if session.total_play_time >= 0.0:
+		$TotalPlayTimer.setup(session.total_play_time)
+
+	$DebugOverlay.show_load_problems(loaded.problems.size())
 	load_source = slot.source
 	last_load_msec = (Time.get_ticks_usec() - started) / 1000.0
 	$DebugOverlay.show_load_time(last_load_msec)
 	if slot.source == SaveGame.SOURCE.BACKUP: _report_backup_load(slot)
-	$DebugOverlay.show_load_source(load_source, game_data.format_version)
+	$DebugOverlay.show_load_source(load_source, loaded.header.format_version)
 	return REFUSAL_REASON.NONE
 
 
@@ -253,7 +256,9 @@ func _notification(what: int) -> void:
 func _ready() -> void:
 	$DebugOverlay.game = self
 	$DebugOverlay.connect_timers($ActivePlayTimer, $TotalPlayTimer)
-	$ActivePlayTimer.start() # TODO: When we have a main menu, don't start until the game has loaded and is playable
+	# TODO: When we have a main menu, don't start until the game has
+	# loaded and is playable.
+	$ActivePlayTimer.start()
 	
 	_set_current_save_slot()
 	if new_game:
@@ -263,6 +268,7 @@ func _ready() -> void:
 	else:
 		var loaded: REFUSAL_REASON = load_game()
 		if loaded == REFUSAL_REASON.NONE:
+			_prune_kept_saves()
 			_start_autosave()
 			return
 		# No world, and no saving: the refused files stay as they are
@@ -272,8 +278,10 @@ func _ready() -> void:
 
 	load_source = SaveGame.SOURCE.NEW
 	$DebugOverlay.show_load_source(load_source, SaveGame.FORMAT_VERSION)
-	_swap_world(LevelGenerator.generate_world(hash(WORLD_SEED_TEXT)))
+	_swap_world(LevelGenerator.generate_world(hash(WORLD_SEED_TEXT), LevelRecipes.TABLE,
+		_launch_profile()))
 	_spawn_player("DefaultName")
+	_prune_kept_saves()
 	_start_autosave()
 
 
@@ -306,14 +314,50 @@ func _move_old_world_aside() -> bool:
 
 # Saves on a timer while playing (D-110). Pausable, so a paused game
 # doesn't save, and only started once there's a world.
+# Once per launch, and only once the game has started: never during
+# a load, and never when it refused to start, since those files are
+# what D-111 keeps (D-134).
+func _prune_kept_saves() -> void:
+	if current_save_slot == "": return
+	for path: String in SaveGame.prune_kept(current_save_slot, keep_per_kind):
+		print("Pruned %s" % _shown_path(path))
+
+
+# The profile a new world runs under (D-136): the default, unless
+# --tuning names another this build has.
+func _launch_profile() -> TuningProfile:
+	if tuning_id.is_empty(): return TuningProfile.default_profile()
+	return TuningProfile.find_or_default(tuning_id, "--tuning")
+
+
+# The value after `prefix` in the user arguments, or "".
+static func _flag_value(prefix: String) -> String:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with(prefix): return arg.substr(prefix.length())
+	return ""
+
+
+# Saves on the running world's interval (D-135).
 func _start_autosave() -> void:
 	_autosave_timer = Timer.new()
 	_autosave_timer.name = "AutosaveTimer"
-	_autosave_timer.wait_time = AUTOSAVE_INTERVAL_SECONDS
+	_autosave_timer.wait_time = world.tuning.autosave_interval_seconds
 	_autosave_timer.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_autosave_timer.timeout.connect(save_game)
 	add_child(_autosave_timer)
 	_autosave_timer.start()
+
+
+# Black over the whole display, as clear as the view's fade says
+# (D-142). Above the game, below F3.
+func _create_fade() -> void:
+	var fade: ColorRect = ColorRect.new()
+	fade.name = "Fade"
+	fade.color = Color(0, 0, 0, 0)
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	$Display.add_child(fade)
+	view.fade_changed.connect(func(value: float) -> void: fade.color.a = value)
 
 
 func _prepare_then_quit() -> void:
@@ -324,7 +368,9 @@ func _prepare_then_quit() -> void:
 func _create_view() -> void:
 	view = View.new()
 	view.name = "View"
+	view.transitions = true
 	add_child(view)
+	_create_fade()
 	$GameViewport/LevelRenderer.watch(view)
 	$GameViewport/FixtureRenderer.watch(view)
 	
@@ -333,13 +379,18 @@ func _create_view() -> void:
 
 # The one way a world comes in, at launch, for a new game and on a
 # load (D-129): input goes, the old world is freed with everything in
-# it, and the new one is added. Giving one of its actors control then
-# re-points the view, and through it the renderers and F3.
+# it, and the new one is added. The view is told the new world at its
+# spawn's depth, and through it the renderers and F3, whether or not
+# a player is then given control (D-132).
 func _swap_world(new_world: World) -> void:
 	_free_inputhandlers()
 	_free_world()
 	_attach_world(new_world)
+	# A loaded world may run under another profile (D-136)
+	if _autosave_timer != null:
+		_autosave_timer.wait_time = world.tuning.autosave_interval_seconds
 	if view == null: _create_view()
+	view.show_world(world, Spawning.world_spawn_depth(world.levels()))
 
 
 # A loaded world's swap. It arrives with its actors (D-127). One stuck

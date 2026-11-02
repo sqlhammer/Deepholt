@@ -97,9 +97,10 @@ func test_minus_two_has_copper_and_minus_one_has_none() -> void:
 
 # --- every level of the slice can be reached on foot ---
 
-# Breadth-first over tiles, with the movement rules: a tile an actor can
-# stand on, and an edge it may cross (ramps' closed sides, D-099). The
-# feet box is narrower than a tile, so tile-to-tile is enough here.
+# Breadth-first over tiles, with the movement rules: a tile an actor
+# can stand on, and an edge it may cross (ramps' closed sides, D-099).
+# The feet box is narrower than a tile, so tile-to-tile is enough
+# here.
 func _reachable(level: Level, from: Vector2i, to: Vector2i) -> bool:
 	var tiles: LevelTiles = level.level_tiles
 	var seen: Dictionary[Vector2i, bool] = {from: true}

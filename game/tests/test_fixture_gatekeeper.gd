@@ -22,7 +22,8 @@ func before_each() -> void:
 		_levels.append(level)
 		for tile: Vector2i in [OPEN, UNDER_HOLE]:
 			level.level_tiles.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
-	# A hole on the Surface over (2, 2), so a ladder there on -1 is legal.
+	# A hole on the Surface over (2, 2), so a ladder there on -1 is
+	# legal.
 	_levels[0].level_tiles.set_ground(UNDER_HOLE.x, UNDER_HOLE.y, TileKind.GROUND.HOLE)
 	watch_signals(_world)
 
@@ -130,6 +131,101 @@ func test_removing_an_unknown_id_is_refused() -> void:
 	_world.remove_requested.emit(null, 4242)
 	assert_signal_emitted_with_parameters(_world, "request_refused",
 		[null, World.FIXTURE_VERB.REMOVE, null, World.FIXTURE_REFUSAL.FIXTURE_NOT_EXISTS])
+
+
+# --- moving (D-138) ---
+
+const ELSEWHERE: Vector2i = Vector2i(4, 3)
+
+
+func _open(tile: Vector2i, depth: int) -> void:
+	_levels[depth].level_tiles.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
+
+
+func _move(id: int, tile: Vector2i, depth: int = 1) -> void:
+	_world.move_requested.emit(null, id, WorldPos.new(tile.x, tile.y, depth))
+
+
+func _spawn_on_open() -> Fixture:
+	_place(ObjectKind.OBJECT.WORLD_SPAWN, OPEN)
+	return _levels[1].level_fixtures.at(OPEN)[0]
+
+
+func test_a_move_refiles_the_same_fixture_and_announces_it() -> void:
+	_open(ELSEWHERE, 1)
+	var fixture: Fixture = _spawn_on_open()
+	_move(fixture.id, ELSEWHERE)
+	var store: LevelFixtures = _levels[1].level_fixtures
+	assert_eq(store.at(OPEN).size(), 0, "gone from its old tile")
+	assert_eq(store.at(ELSEWHERE), [fixture] as Array[Fixture], "the same fixture on the new one")
+	assert_true(fixture.tile.equals(WorldPos.new(ELSEWHERE.x, ELSEWHERE.y, 1)), "its tile says so")
+	var args: Array = get_signal_parameters(_world, "fixture_moved")
+	assert_eq(args[1], fixture, "announced with the fixture")
+	assert_true((args[2] as WorldPos).equals(WorldPos.new(OPEN.x, OPEN.y, 1)), "and where it was")
+	assert_signal_not_emitted(_world, "fixture_removed", "not a removal")
+	assert_signal_emit_count(_world, "fixture_placed", 1, "nor a second placement")
+
+
+func test_a_move_to_another_depth_changes_store() -> void:
+	_open(ELSEWHERE, 0)
+	var fixture: Fixture = _spawn_on_open()
+	_move(fixture.id, ELSEWHERE, 0)
+	assert_null(_levels[1].level_fixtures.find(fixture.id), "gone from -1")
+	assert_eq(_levels[0].level_fixtures.find(fixture.id), fixture, "on the Surface, same id")
+	assert_eq(fixture.tile.depth, 0, "at the new depth")
+	assert_signal_emitted(_world, "fixture_moved")
+
+
+# The rules a placement meets, at the new tile.
+func test_a_move_onto_rock_is_refused_and_changes_nothing() -> void:
+	var fixture: Fixture = _spawn_on_open()
+	_move(fixture.id, Vector2i(9, 9))
+	assert_eq(_refusal_reason(), World.FIXTURE_REFUSAL.TILE_NOT_PASSABLE, "rock")
+	assert_eq(get_signal_parameters(_world, "request_refused")[1], World.FIXTURE_VERB.MOVE,
+		"refused as a move")
+	assert_true(fixture.tile.equals(WorldPos.new(OPEN.x, OPEN.y, 1)), "where it was")
+	assert_signal_not_emitted(_world, "fixture_moved")
+
+
+func test_a_move_onto_a_conflicting_fixture_is_refused() -> void:
+	_open(ELSEWHERE, 1)
+	var fixture: Fixture = _spawn_on_open()
+	_levels[1].level_fixtures.add(Fixture.new(ObjectKind.OBJECT.WORLD_SPAWN,
+		WorldPos.new(ELSEWHERE.x, ELSEWHERE.y, 1), 900))
+	_move(fixture.id, ELSEWHERE)
+	assert_eq(_refusal_reason(), World.FIXTURE_REFUSAL.TILE_OCCUPIED, "two spawns conflict")
+
+
+func test_a_ladder_moved_away_from_its_hole_is_refused() -> void:
+	_place(ObjectKind.OBJECT.LADDER, UNDER_HOLE)
+	var ladder: Fixture = _levels[1].level_fixtures.at(UNDER_HOLE)[0]
+	_move(ladder.id, OPEN)
+	assert_eq(_refusal_reason(), World.FIXTURE_REFUSAL.NO_HOLE_ABOVE, "no hole over the new tile")
+
+
+# The fixture being moved isn't in its own way.
+func test_a_move_onto_its_own_tile_is_allowed() -> void:
+	var fixture: Fixture = _spawn_on_open()
+	_move(fixture.id, OPEN)
+	assert_signal_not_emitted(_world, "request_refused")
+	assert_signal_emitted(_world, "fixture_moved")
+
+
+func test_moving_an_unknown_id_or_to_no_level_is_refused() -> void:
+	_move(4242, OPEN)
+	assert_eq(_refusal_reason(), World.FIXTURE_REFUSAL.FIXTURE_NOT_EXISTS, "no such fixture")
+	var fixture: Fixture = _spawn_on_open()
+	_move(fixture.id, OPEN, 5)
+	assert_eq(_refusal_reason(), World.FIXTURE_REFUSAL.LEVEL_NOT_EXISTS, "no level at -5")
+
+
+func test_a_fixtures_tile_cant_be_set_from_outside() -> void:
+	var fixture: Fixture = _spawn_on_open()
+	fixture.tile = WorldPos.new(ELSEWHERE.x, ELSEWHERE.y, 1)
+	assert_push_error("read-only")
+	assert_true(fixture.tile.equals(WorldPos.new(OPEN.x, OPEN.y, 1)), "unchanged")
+	fixture.tile.x = 99
+	assert_eq(fixture.tile.x, OPEN.x, "and the tile it hands out is a copy")
 
 
 # --- ids ---

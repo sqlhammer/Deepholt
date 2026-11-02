@@ -2779,3 +2779,271 @@ breaks every caller again); the world holding the playtime, tuning id and local 
 shortest call, but the local actor is presentation's choice, as
 [D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer) carves out, and playtime
 belongs to the session, not to the mountain).
+
+---
+
+### D-131 — A load returns the world, a session and a typed header
+**Decided** (by Derik, slice 005 section B, 2026-11-02). Replaces the dictionary that
+[D-127](#d-127--the-generator-and-the-save-each-build-a-whole-world-outside-the-tree)'s load
+returned, with the world under `"world"`.
+
+- **A load returns a typed `SaveGame.LoadedGame`.** It holds the `World`, a
+  [`SaveSession`](#d-130--a-save-takes-the-world-and-a-typed-session-the-worlds-counters-go-in-the-header)
+  (the local actor, the tuning profile and both clocks), a typed header (the format version the
+  file was written in, the world seed, the game version, the save time and its offset), and the
+  load's problems.
+- **A load hands back what a save took in:** the world and a session. A new session field is
+  added in one place, and the save and the load can't drift apart.
+- **A clock the save left out reads as -1 in the session,** so the game can tell it apart from
+  a zero and leave its timer where it was
+  ([D-120](#d-120--playtime-is-two-clocks-active-and-total)). A missing local actor is -1, as
+  it is when saving.
+
+*Why:* the dictionary's keys were checked only at run time, and every reader had to know them.
+
+*Considered:* one flat typed class with a field for every key (the smallest change, but it
+doesn't say which fields mirror the session, so a new one is added twice); keeping the
+dictionary.
+
+---
+
+### D-132 — Every swap shows the new world at its spawn's depth; following an actor moves only the depth
+**Decided** (by Derik, slice 005 section B, 2026-11-02). Amends
+[D-129](#d-129--a-swap-happens-at-the-end-of-the-frame-and-the-view-re-points-everything-that-draws),
+where only following an actor announced a new world.
+
+- **The swap tells the view the new world first,** at the depth of that world's spawn (0 if it
+  has none), and the view stops following the freed actor. `shown_world_changed` is emitted
+  from this one place, for every kind of swap.
+- **Following an actor afterwards only changes the shown depth,** when the actor is on another
+  depth.
+
+*Why:* a save whose only actors are NPCs gave nobody control, so nothing announced the new
+world, and the renderers kept drawing the freed one (found in 004). With the world announced
+in one place, a world with no player is shown like any other.
+
+*Considered:* only when there's no player, show the first actor's depth (the world would then
+be announced from two places), or always the Surface (which isn't always where anything is).
+
+---
+
+### D-133 — Save format version 1 is settled when the first build goes to someone else
+**Decided** (by Derik, slice 005 section C, 2026-11-02). Puts a trigger on what
+[D-121](#d-121--three-header-keys-are-required-the-rest-load-as-their-defaults) left open.
+
+- **Until then, version 1 stays open.** A format change edits v1 in place, with no version bump
+  and no migration, and a save from an older build may be refused.
+- **The first build that anyone other than Derik plays settles v1.** From then on every format
+  change bumps the version and ships a migration from the version before
+  ([world-runtime §7](./tech/world-runtime-and-persistence.md)), and old saves have to keep
+  loading.
+
+*Why:* that build writes the first save that has to survive an update. Slices 006 (a
+tunnel-memory layer) and 007 (fixtures made at runtime) both change the format, and migrations
+before then would only be paid for, never used.
+
+*Considered:* settling now (006's layer would become v2 with a migration; it builds the habit,
+but every slice pays for it); leaving it open with no trigger.
+
+---
+
+### D-134 — Kept saves are pruned to a newest few of each kind, each kind its own count, at launch
+**Decided** (by Derik, slice 005 section C, 2026-11-02). Ends the pile-up that
+[D-111](#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves) and
+[D-123](#d-123--moved-aside-saves-are-named-with-a-utc-time-in-iso-basic-format) left in each slot.
+
+- **Three kinds of kept file, pruned separately:** old worlds (`world.<time>.save`), their
+  backups (`world.backup.<time>.save`), and broken saves (`world.broken.<time>.save`). The
+  newest of each are kept, by the UTC time in the name, then the `-n` that `move_aside` adds
+  when two share a second.
+- **Each kind has its own count** (Derik, while it was being built), so one kind can be kept
+  longer than another without changing the rest. Three of each to start.
+  Pruning takes the counts as a parameter, so a test or a later setting can pass others.
+- **`world.save` and `world.save.bak` are never pruned,** and neither is any file whose name
+  isn't exactly one of those three patterns.
+- **Pruning runs once, at launch, once the game has started:** after the slot loaded, or after
+  a new game moved the old world aside. Never during a load, and never when the game refused to
+  start, because those files are the evidence D-111 keeps.
+
+*Why:* by kind, so a run of new games can't push out the only broken save, which is what a bug
+report needs.
+
+*Considered:* by age (a burst of new games in one day keeps everything); the newest N of any
+kind (a run of new games pushes out the broken save); not pruning until a save-slot menu exists.
+
+---
+
+### D-135 — The world holds its tuning profile; every number in code moves into it
+**Decided** (by Derik, slice 005 section D, 2026-11-02). Builds
+[D-037](#d-037--one-tuningprofile-resource-holds-every-global-constant)'s `TuningProfile`, which
+[D-116](#d-116--the-save-header-and-a-placeholder-tuning-profile-id) left as a placeholder id.
+
+- **A `TuningProfile` is a `Resource` with an `id`,** one `.tres` per profile under
+  `res://content/tuning/`. The default's id is `"default"`, and it replaces the placeholder
+  `"none"`.
+- **The world holds it (`world.tuning`).** The generator and the load each build a world with a
+  profile. Simulation reaches it the way it reaches everything since slice 004: through a level
+  (`actor.current_level.world.tuning`,
+  [D-126](#d-126--a-level-knows-its-world-everything-else-reaches-the-world-through-a-level)).
+  The game reads its own numbers from the world it's running. A save records
+  `world.tuning.id`.
+- **Every tuning number in the code moves into it now:** the autosave interval, the actor's
+  walk speed, each diggable tile kind's hardness, and the ore multiplier.
+- **The profile's id is the world's, not the session's.** A save writes `world.tuning.id`, and
+  `tuning_profile_id` leaves `SaveSession`, amending
+  [D-130](#d-130--a-save-takes-the-world-and-a-typed-session-the-worlds-counters-go-in-the-header)
+  and [D-131](#d-131--a-load-returns-the-world-a-session-and-a-typed-header). A load's header
+  says which profile the file named, and `world.tuning` is the one it runs under.
+- **Whether a tile kind can be dug stays `TileKind`'s** (`TileKind.DIGGABLE`). The profile only
+  says how hard each one is, so a profile can't make rock undiggable by leaving it out.
+- **Not tuning, so not in it:** a tool's power stays on its `ToolData`, because it belongs to
+  the item, and pruning's per-kind counts
+  ([D-134](#d-134--kept-saves-are-pruned-to-a-newest-few-of-each-kind-each-kind-its-own-count-at-launch))
+  stay in `SaveGame`.
+
+*Why:* nothing global holds world state since 004, and a profile on the world keeps that true.
+Tests build a world with any profile and nothing to put back, and two worlds can run under
+different numbers. The list is short now, and only grows from here (006 adds light radii).
+
+*Considered:* a static profile chosen at launch (the fewest changes, but it's global state
+again, and every test that swaps it has to restore it); handing the profile as a parameter to
+each thing that needs a number (each new number threads through its callers); moving only the
+autosave interval, or only the plainly global numbers.
+
+---
+
+### D-136 — A loaded world runs under the profile its save names, else the default
+**Decided** (by Derik, slice 005 section D, 2026-11-02).
+
+- **A load looks up the profile the save names** and builds the world with it, so a playtest
+  keeps its numbers across relaunches.
+- **A profile this build doesn't have** (including an older save's `"none"`) **falls back to
+  the default,** with a warning. The load isn't refused. F3 shows the profile in use.
+- **`--tuning=<id>`** (after `--`, like `--new-game`) picks the profile for a new world. An id
+  this build doesn't have falls back to the default, with a warning.
+
+*Why:* the save is the record of which numbers a playtest ran under (D-037), so the world that
+comes back should run under them too. A missing profile is a reason to warn, not to lose the
+world.
+
+*Considered:* always the launch profile (a save could silently change numbers); refusing a
+save whose profile is missing (an old playtest save stops loading once its profile is deleted).
+
+---
+
+### D-137 — The content validator is built when a stratum below the Surface gets its own stone
+**Decided** (by Derik, slice 005 section D, 2026-11-02). Puts a trigger on
+[D-038](#d-038--a-content-validator-enforces-the-derived-invariants-in-ci).
+
+- **Not built yet.** Today its dig band (each stratum's tool digs that stratum's stone in
+  0.5–0.7 s) would check one stone, the Surface's, and that sits at an accepted 0.375 s
+  ([D-081](#d-081--hardness-belongs-to-tile-kinds-the-pre-alpha-tool-is-a-flint-pickaxe)). Its
+  other checks are about items, creatures, support and recipes, and none of those exist yet.
+- **It's built when the first stratum below the Surface gets its own stone kind,** with the
+  Surface's 0.375 s recorded as its first exception.
+- **The appendix's misses at −5 and −7** wait for those strata, as D-081 says.
+
+*Why:* a validator with nothing real to check is code that's never exercised, and one that
+fails on an accepted number gets switched off.
+
+*Considered:* the dig band now, with the Surface as an exception (it checks one accepted
+exception); a skeleton now with only the checks that have content (prefab ids resolve, kind ids
+are unique), which the existing tests mostly cover already.
+
+---
+
+### D-138 — A fixture moves through the gatekeeper, and the move is its own event
+**Decided** (by Derik, slice 005 section E, 2026-11-02). Settles moving a fixture, discussed in
+slice 002 and not recorded then. A bed (M6) is the first thing that will move.
+
+- **A move is a request on the world:** `move_requested(actor, fixture_id, to)`. It's checked
+  by the same placement rules as a placement
+  ([D-103](#d-103--fixtures-names-signals-refusal-reasons-and-the-conflict-table)), ignoring the
+  fixture being moved, on whatever level `to` names.
+- **It's announced as `fixture_moved(actor, fixture, from)`.** The fixture keeps its id and is
+  the same object. A refusal is `request_refused` with the verb `MOVE`.
+- **`Fixture.tile` is read-only.** Only the store re-files a fixture, so the store and the
+  fixture can't disagree about where it is.
+
+*Why:* a fixture that's moved is the same fixture, so a renderer moves one sprite, and anything
+that tracks it by id (a bed someone owns) isn't told it was destroyed.
+
+*Considered:* a removal then a placement with the same id (no new signal, but a listener can't
+tell a move from a rebuild, and between the two signals the fixture is in neither place).
+
+---
+
+### D-139 — On a ladder facing a usable hole, interact goes down
+**Decided** (by Derik, slice 005 section E, 2026-11-02). Settles what
+[D-106](#d-106--interact-is-polled-on-the-physics-tick) left open.
+
+When an actor stands on a ladder (which leads up) and faces a hole with a ladder under it
+(which leads down), interact goes **down**. To climb instead, the actor turns away from the
+hole.
+
+*Why:* facing a usable hole is a choice the player made, while standing on a ladder is only
+where the last climb left them. It needs no new input, and it reads like walking toward a ramp.
+
+*Considered:* up wins, as the code did before (going down the other shaft means stepping off
+first); separate up and down inputs (never ambiguous, but two new bindings in a game with one
+interact).
+
+---
+
+### D-140 — The temporary Surface hole stays until slice 007
+**Decided** (by Derik, slice 005 section E, 2026-11-02).
+
+The hole at (0, 2) in `surface_start`, the Surface's only hole and one with no ladder under it,
+stays until slice 007, where a player digs their own holes.
+
+*Why:* it's the only dead hole on the Surface to judge against
+([D-107](#d-107--a-hole-with-a-ladder-under-it-shows-the-ladders-top)), including how it reads
+in the dark in 006.
+
+---
+
+### D-141 — Refusal reasons wait for the feedback that will use them
+**Decided** (by Derik, slice 005 section E, 2026-11-02).
+
+The reasons carried by `dig_refused` and `request_refused` stay without a reader until sound and
+UI feedback is built. Nothing shows them in F3 meanwhile.
+
+*Why:* the signals already carry what that feedback needs. A debug readout now would be built
+only to be removed.
+
+*Considered:* showing the last refusal in F3.
+
+---
+
+### D-142 — A level change fades through black in the view; the move itself stays instant
+**Decided** (by Derik, slice 005 section F, 2026-11-02). Builds the transition
+[D-108](#d-108--a-held-dig-carries-across-a-level-change-level-changes-are-instant-for-now)
+deferred.
+
+- **Presentation only.** The simulation doesn't change: `Actor.move_to`
+  ([D-119](#d-119--move_to-is-the-one-way-an-actor-is-put-somewhere-else)) still moves the
+  actor at once, so saves, loads, digs and other actors only ever see an instant move.
+- **The view plays it for the actor it follows.** The screen fades to black, the shown depth
+  switches at the darkest point, and it fades back in. The followed actor stays drawn
+  throughout.
+- **0.5 s in all, half out and half in.** The length is a `TuningProfile` number
+  (`level_change_fade_seconds`, [D-135](#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it)),
+  read from the shown world.
+- **The local player's input is paused during the fade.** The actor stops walking and digging,
+  and interact is ignored. When the fade ends, input is read again, so a dig or a direction
+  still held carries on from arrival, as D-108 has it.
+- **A swap cancels a fade in progress** (a load, or a new game): the new world is shown at once,
+  and input resumes.
+
+*Why:* with the move instant, there's no half-moved world for a save, a load or a dig to land
+in (slice 005 trap 1), and an effect that belongs to the screen lives with the screen
+([D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer)). Pausing input means
+the player never acts blind on a level they can't see yet, and can't walk straight back onto
+the ramp mid-fade.
+
+*Considered:* delaying the move in the simulation (a rule players feel, but every in-between
+case needs an answer), or both; a slide in the direction of travel (both levels drawn at once,
+which the one-level renderers can't do yet); a 0.3 s fade (Derik chose the longer one, so a
+level change reads as a descent); input left running (the player acts without seeing), or
+held keys needing a re-press (reverses D-108).
+
