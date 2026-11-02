@@ -124,12 +124,13 @@ and nothing searching the tree for levels or actors.
 
 ## G. Done
 
-- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-- [ ] `python scripts/coverage.py` run; uncovered lines looked at. (003 closed at 95.1%.)
+- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
+- [x] `python scripts/coverage.py` run; uncovered lines looked at. (003 closed at 95.1%; 004
+  at 95.7%.)
 - [ ] By hand: outcomes 1–4 walked through in one sitting, launched outside the editor at least
   once.
-- [ ] Claude writes `log/004-a-world-you-can-hold.md`.
-- [ ] Claude re-sketches [NEXT.md](./NEXT.md).
+- [x] Claude writes `log/004-a-world-you-can-hold.md`.
+- [x] Claude re-sketches [NEXT.md](./NEXT.md).
 
 ---
 
