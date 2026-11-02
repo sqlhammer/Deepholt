@@ -184,8 +184,8 @@ from one test.
 
 ## Carried into this slice
 
-From the 003 checklist ([Moved to slice 004](./CHECKLIST.md#moved-to-slice-004-d-118) and the
-review), still to do:
+From the 003 checklist ("Moved to slice 004" and the review, in git history at `466f939`),
+still to do, each now an item in [CHECKLIST.md](./CHECKLIST.md):
 - A loaded level is built from its **saved** bound, so a level whose radius was tuned isn't lost
   (R-B4).
 - `World.is_in_bounds` reads the level's own bound, not the recipe table (D-112).
