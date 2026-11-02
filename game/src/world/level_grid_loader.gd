@@ -1,13 +1,13 @@
 class_name LevelGridLoader
 extends RefCounted
 
-# Stamps an authored TilePrefab into a level's tile data. The prefab's '0'
-# marker lands on the anchor coordinate given, and every tile is placed
-# relative to it -- so the same prefab can be stamped anywhere.
+# Stamps an authored TilePrefab into a level's tile data. The prefab's
+# '0' marker lands on the anchor coordinate given, and every tile is
+# placed relative to it -- so the same prefab can be stamped anywhere.
 #
-# A malformed prefab is an all-or-nothing failure: nothing is written unless
-# every check passes. A prefab that simply does not mention a tile is not
-# malformed; that tile keeps the level's default.
+# A malformed prefab is an all-or-nothing failure: nothing is written
+# unless every check passes. A prefab that simply does not mention a
+# tile is not malformed; that tile keeps the level's default.
 
 
 const GROUND_CHARS: Dictionary = {
@@ -67,8 +67,8 @@ static func stamp(tiles: LevelTiles, prefab: TilePrefab, anchor: Vector2i,
 	if not _has_valid_anchor(prefab.top): return false
 	if not _has_valid_anchor(prefab.ore): return false
 	
-	# Grids line up with each other by their anchor markers, so every grid is
-	# read into coordinates measured from its own marker.
+	# Grids line up with each other by their anchor markers, so every
+	# grid is read into coordinates measured from its own marker.
 	var ground_tiles: Dictionary = _to_anchored_tiles(prefab.ground)
 	var top_tiles: Dictionary = _to_anchored_tiles(prefab.top)
 	var ore_tiles: Dictionary = _to_anchored_tiles(prefab.ore)
@@ -117,8 +117,8 @@ static func _has_fixtures(object_tiles: Dictionary) -> bool:
 
 # A fixture stands on floor an actor could stand on. A tile the tile
 # grids don't mention keeps the level's default, minable rock, so a
-# fixture there would be inside rock. Cross-level rules (a ladder needs
-# a hole above it) are checked once every level is built.
+# fixture there would be inside rock. Cross-level rules (a ladder
+# needs a hole above it) are checked once every level is built.
 static func _fixtures_stand_on_floor(object_tiles: Dictionary, ground_tiles: Dictionary,
 		top_tiles: Dictionary) -> bool:
 	for coord: Vector2i in object_tiles:
@@ -135,9 +135,9 @@ static func _fixtures_stand_on_floor(object_tiles: Dictionary, ground_tiles: Dic
 	return true
 
 
-# Ore may only sit inside minable rock. A coordinate the top grid never
-# mentions defaults to minable rock, so ore there is allowed; ore over a top
-# character that is anything but '#' is not.
+# Ore may only sit inside minable rock. A coordinate the top grid
+# never mentions defaults to minable rock, so ore there is allowed;
+# ore over a top character that is anything but '#' is not.
 static func _has_ore_outside_of_minable_rock(top_tiles: Dictionary, ore_tiles: Dictionary) -> bool:
 	for coord in ore_tiles:
 		var ore_char: String = ore_tiles[coord]
@@ -149,7 +149,8 @@ static func _has_ore_outside_of_minable_rock(top_tiles: Dictionary, ore_tiles: D
 	return false
 
 
-# A hole may only sit under TileKind.TOP.OPEN and have TileKind.ORE.NULL
+# A hole may only sit under TileKind.TOP.OPEN and have
+# TileKind.ORE.NULL
 static func _has_invalid_hole_placement(ground_tiles: Dictionary, top_tiles: Dictionary, ore_tiles: Dictionary) -> bool:
 	for coord in ground_tiles:
 		if ground_tiles[coord] != "h": continue # h = HOLE
@@ -168,8 +169,9 @@ static func _has_valid_anchor(grid: String) -> bool:
 	return true
 
 
-# Reads a grid into a dictionary of Vector2i -> character, with coordinates
-# measured from the grid's own anchor marker rather than its corner.
+# Reads a grid into a dictionary of Vector2i -> character, with
+# coordinates measured from the grid's own anchor marker rather than
+# its corner.
 static func _to_anchored_tiles(grid: String) -> Dictionary:
 	var tiles: Dictionary = {}
 	var anchor: Vector2i = Vector2i.ZERO
@@ -215,7 +217,8 @@ static func are_valid_characters(grid: String, allowed_chars: Dictionary) -> boo
 	var pattern: String = "[^" # ^ means this is an allow list
 	for key in allowed_chars:
 		pattern = pattern + key
-	pattern = pattern + "\\s]" # \\s means any type of whitespace, including newlines
+	# \\s means any type of whitespace, including newlines
+	pattern = pattern + "\\s]"
 
 	var regex = RegEx.new()
 	regex.compile(pattern)

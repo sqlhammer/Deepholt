@@ -1,8 +1,9 @@
 extends GutTest
 
-# Ladder -- where interact takes an actor (D-089, D-101). Down: facing a
-# hole with a ladder under it. Up: standing on a ladder, arriving beside
-# the hole on the faced side if open, else north, east, south, west.
+# Ladder -- where interact takes an actor (D-089, D-101). Down: facing
+# a hole with a ladder under it. Up: standing on a ladder, arriving
+# beside the hole on the faced side if open, else north, east, south,
+# west.
 
 # The shaft: a hole on the Surface at (0, 0), a ladder under it on -1.
 const SHAFT: Vector2i = Vector2i.ZERO

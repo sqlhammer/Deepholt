@@ -1,7 +1,7 @@
 extends Node
 
-# Indexes every authored tile prefab on disk at startup, keyed by the stable id
-# each one carries.
+# Indexes every authored tile prefab on disk at startup, keyed by the
+# stable id each one carries.
 
 
 const PREFAB_DIRECTORY: String = "res://content/tile_prefab/"

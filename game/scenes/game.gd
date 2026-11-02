@@ -85,8 +85,8 @@ func set_user_control(actor: Actor) -> void:
 	$DebugOverlay.watch(actor)
 
 
-# Where the mouse points in world space (level pixels).
-# Presentation: it needs the display rect and the game viewport's camera.
+# Where the mouse points in world space (level pixels). Presentation:
+# it needs the display rect and the game viewport's camera.
 func mouse_world_position() -> Vector2:
 	var display: TextureRect = $Display/UpscaleDisplay
 	var _view: SubViewport = $GameViewport
@@ -253,7 +253,9 @@ func _notification(what: int) -> void:
 func _ready() -> void:
 	$DebugOverlay.game = self
 	$DebugOverlay.connect_timers($ActivePlayTimer, $TotalPlayTimer)
-	$ActivePlayTimer.start() # TODO: When we have a main menu, don't start until the game has loaded and is playable
+	# TODO: When we have a main menu, don't start until the game has
+	# loaded and is playable.
+	$ActivePlayTimer.start()
 	
 	_set_current_save_slot()
 	if new_game:

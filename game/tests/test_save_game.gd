@@ -311,7 +311,8 @@ func test_deserialize_skips_a_layer_that_is_not_bytes() -> void:
 
 
 # The right type with the wrong contents: bytes that aren't ZSTD at
-# all, and a real compressed layer cut short as a truncated file would.
+# all, and a real compressed layer cut short as a truncated file
+# would.
 func test_deserialize_skips_a_layer_of_garbage_bytes() -> void:
 	var saved: Dictionary = _level_data(1)
 	saved["tiles"]["top"] = PackedByteArray([1, 2, 3, 4, 5, 6, 7, 8])
@@ -537,8 +538,8 @@ func test_round_trip_keeps_every_fixtures_kind_tile_and_id() -> void:
 	assert_eq(_fixtures_of(loaded), _fixtures_of(original), "the same fixtures, in order")
 
 
-# The world spawn is a fixture (D-091), so it comes back like a ladder,
-# with its tile and id, not placed again at random.
+# The world spawn is a fixture (D-091), so it comes back like a
+# ladder, with its tile and id, not placed again at random.
 func test_round_trip_brings_the_world_spawn_back_where_it_was() -> void:
 	var originals: Array[Level] = _generated_world()
 	var spawn: Fixture = Spawning.world_spawn(originals)
@@ -702,7 +703,8 @@ func test_only_one_backup_is_kept() -> void:
 	assert_eq(DirAccess.get_files_at(TEST_SLOT).size(), 2, "just the save and one backup")
 
 
-# A crash mid-write leaves a .tmp behind; the next save writes over it.
+# A crash mid-write leaves a .tmp behind; the next save writes over
+# it.
 func test_a_leftover_temporary_file_is_replaced() -> void:
 	var f: FileAccess = FileAccess.open(_path("world.save.tmp"), FileAccess.WRITE)
 	f.store_string("half a save")
@@ -754,7 +756,8 @@ func test_save_refuses_a_slot_outside_the_root() -> void:
 	assert_push_error("Failed to save outside of save path")
 
 
-# "<root>-old" starts with "<root>" as a string, but it isn't inside it.
+# "<root>-old" starts with "<root>" as a string, but it isn't inside
+# it.
 func test_save_refuses_a_sibling_that_shares_the_roots_name() -> void:
 	var result: SaveGame.REFUSAL_REASON = _save(_world_with_dig(1), TEST_ROOT + "-old/slot-001")
 	assert_eq(result, SaveGame.REFUSAL_REASON.SAVE_FAILED, "a sibling, not inside")
@@ -788,6 +791,16 @@ func test_only_folders_named_exactly_like_a_slot_are_slots() -> void:
 	slots.sort()
 	assert_eq(slots, [TEST_ROOT.path_join("slot-001"), TEST_ROOT.path_join("slot-002")],
 		"slot- and exactly three digits, nothing before or after")
+
+
+# Launch continues the first slot, so the list is in name order, not
+# the order the folders were made in (R-P6).
+func test_slots_are_listed_in_name_order() -> void:
+	for dir: String in ["slot-009", "slot-003", "slot-010"]:
+		DirAccess.make_dir_recursive_absolute(TEST_ROOT.path_join(dir))
+	var slots: Array = Array(SaveGame.get_save_slots(TEST_ROOT))
+	var names: Array = slots.map(func(path: String) -> String: return path.get_file())
+	assert_eq(names, ["slot-001", "slot-003", "slot-009", "slot-010"], "sorted by name")
 
 
 # --- Global.is_regex_match ---
@@ -825,8 +838,8 @@ func _required_header() -> Dictionary:
 	}
 
 
-# One level's save data, as save_game writes it. The level it was taken
-# from is freed, so it isn't counted as an orphan.
+# One level's save data, as save_game writes it. The level it was
+# taken from is freed, so it isn't counted as an orphan.
 func _saved_levels() -> Dictionary:
 	var level: Level = Level.new()
 	level.setup(0)
@@ -1022,9 +1035,6 @@ func test_deserialize_skips_each_malformed_actor_entry() -> void:
 		var bad: Dictionary = _actor_entry(0)
 		bad.facing[field] = "west"
 		broken.append(bad)
-	var bad_tool: Dictionary = _actor_entry(0)
-	bad_tool["equipped"] = 7
-	broken.append(bad_tool)
 
 	var before: int = _orphans()
 	for entry: Variant in broken:
@@ -1047,14 +1057,6 @@ func test_deserialize_takes_its_id_from_the_key() -> void:
 	var world: World = _loaded_world(_saved_levels())
 	var actors: Array[Actor] = SaveGame._deserialize_actors({42: _actor_entry(0)}, world)
 	assert_eq(actors[0].actor_id, 42, "the key is the id")
-
-
-func test_an_actor_entry_with_a_tool_path_loads() -> void:
-	var world: World = _loaded_world(_saved_levels())
-	var entry: Dictionary = _actor_entry(0)
-	entry["equipped"] = "res://src/entity/tools/pickaxe.tres"
-	var actors: Array[Actor] = SaveGame._deserialize_actors({10: entry}, world)
-	assert_eq(actors.size(), 1, "a String tool path is allowed")
 
 
 # --- round trip: actors (D-114) ---
@@ -1121,7 +1123,8 @@ func test_two_actors_on_different_depths_round_trip_each_to_its_own() -> void:
 	SaveGame.free_game_data(game_data)
 
 
-# --- a slot's launch: the save, its backup, and broken files (D-111) ---
+# --- a slot's launch: the save, its backup, and broken files (D-111)
+# ---
 
 # Two saves that load, told apart by their world seeds.
 const SAVE_SEED: int = 111
@@ -1348,7 +1351,8 @@ func test_the_headers_version_wins_over_the_bodys() -> void:
 		assert_string_contains(refusals[0], "newer than this build's")
 
 
-# --- a level built from the save, the layer list, the radius cap (R-P2, R-P8, R-P9) ---
+# --- a level built from the save, the layer list, the radius cap
+# (R-P2, R-P8, R-P9) ---
 
 # A level the save holds whole is built from it alone: no fixture ids
 # drawn, no world spawn placed from the re-hashed seed (R-P2).

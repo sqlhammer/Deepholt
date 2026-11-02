@@ -60,9 +60,9 @@ func _process(_delta: float) -> void:
 	upload_changed_layers()
 
 
-# Builds the level's data textures, one per layer, and sizes the quad to
-# the level. The textures are derived from the tile data and never read
-# back as truth (D-048, D-065).
+# Builds the level's data textures, one per layer, and sizes the quad
+# to the level. The textures are derived from the tile data and never
+# read back as truth (D-048, D-065).
 func show_level(tiles: LevelTiles) -> void:
 	_listen_to(tiles)
 	_tiles = tiles
@@ -98,8 +98,8 @@ func upload_changed_layers() -> void:
 
 # Every layer as a read returns it, one byte per tile in the same
 # row-major order as the arrays, so texel (column, row) is the tile at
-# (column - radius, row - radius). Built through the reads rather than by
-# copying the arrays: the arrays store the default kind outside the
+# (column - radius, row - radius). Built through the reads rather than
+# by copying the arrays: the arrays store the default kind outside the
 # radial bounds, and only a read says 254 there (D-059, D-065).
 static func layer_bytes(tiles: LevelTiles) -> Dictionary:
 	var radius: int = tiles.level_bound.radius
@@ -137,9 +137,10 @@ func _data_image(tiles: LevelTiles, bytes: PackedByteArray) -> Image:
 	return image
 
 
-# Which atlas cell draws each byte of a layer, indexed by the byte itself
-# (D-064). Every byte without an entry draws MISSING, so a kind that is
-# added without art shows up loudly instead of borrowing a neighbour's.
+# Which atlas cell draws each byte of a layer, indexed by the byte
+# itself (D-064). Every byte without an entry draws MISSING, so a kind
+# that is added without art shows up loudly instead of borrowing a
+# neighbour's.
 func _cell_table() -> PackedInt32Array:
 	var cells: PackedInt32Array = []
 	cells.resize(256)
@@ -147,8 +148,8 @@ func _cell_table() -> PackedInt32Array:
 	return cells
 
 
-# Only the ground draws the outside of the level; the layers above draw
-# nothing there, so it shows through.
+# Only the ground draws the outside of the level; the layers above
+# draw nothing there, so it shows through.
 func _ground_cells() -> PackedInt32Array:
 	var cells: PackedInt32Array = _cell_table()
 	cells[TileKind.GROUND.ROCK] = AtlasCell.FLOOR

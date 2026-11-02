@@ -314,7 +314,8 @@ func test_edges_between_plain_floor_are_open() -> void:
 
 func test_a_box_is_stopped_flush_at_a_closed_side() -> void:
 	var tiles: LevelTiles = _open_tiles_with_ramp(TileKind.GROUND.RAMP_DOWN_E)
-	# A 10 x 6 box in tile (1, 0), moving west into the ramp's closed east side.
+	# A 10 x 6 box in tile (1, 0), moving west into the ramp's closed
+	# east side.
 	var box: Rect2 = Rect2(Vector2(19, 5), Vector2(10, 6))
 	var moved: Rect2 = TileCollision.move_box(tiles, box, Vector2(-8, 0))
 	assert_eq(moved.position.x, 16.0, "flush against the ramp's east edge")

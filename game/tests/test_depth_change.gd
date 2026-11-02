@@ -2,10 +2,10 @@ extends GutTest
 
 # Changing depth (D-093) and following it on screen (D-094). An actor
 # moves itself onto another level, checking only that it can stand
-# there, and announces it as an ordinary change of tile. A View follows
-# one actor and owns the depth on screen; nothing else has a "current
-# depth" (NOW.md trap 1), and actors on other depths aren't drawn
-# (trap 2).
+# there, and announces it as an ordinary change of tile. A View
+# follows one actor and owns the depth on screen; nothing else has a
+# "current depth" (NOW.md trap 1), and actors on other depths aren't
+# drawn (trap 2).
 
 const OPEN_TILE: Vector2i = Vector2i(2, -3)
 

@@ -1,8 +1,8 @@
 extends GutTest
 
-# LevelFixtures -- the fixtures on one level, filed by tile, several to
-# a tile (D-100, D-103). Storage only: it announces every change and
-# decides nothing.
+# LevelFixtures -- the fixtures on one level, filed by tile, several
+# to a tile (D-100, D-103). Storage only: it announces every change
+# and decides nothing.
 
 var _store: LevelFixtures
 
@@ -98,7 +98,8 @@ func test_adding_the_same_fixture_twice_is_refused() -> void:
 	assert_signal_not_emitted(_store, "fixture_changed", "and the refusal announces nothing")
 
 
-# The id is what makes two fixtures the same: one id names one fixture.
+# The id is what makes two fixtures the same: one id names one
+# fixture.
 func test_another_fixture_with_a_held_id_is_refused() -> void:
 	_store.add(_fixture(ObjectKind.OBJECT.LADDER, 0, 0, 1))
 	assert_false(_store.add(_fixture(ObjectKind.OBJECT.WORLD_SPAWN, 5, 5, 1)),

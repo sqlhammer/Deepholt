@@ -4,7 +4,7 @@ class_name CapabilityDig
 const verb: String = "dig"
 
 var progress: float = 0.0
-var tile_density: float = 0.0
+var tile_hardness: float = 0.0
 var current_tile: WorldPos = WorldPos.new(99,99,99)
 var actor: Actor
 
@@ -25,7 +25,7 @@ func dig(delta: float, tool_speed: float, target_tile: WorldPos, level: Level) -
 	var kind: int = _get_tile_kind(level, target_tile)
 	var ore: int = level.level_tiles.get_ore(target_tile.x, target_tile.y)
 	
-	var is_diggable: bool = _set_tile_density(kind, ore)
+	var is_diggable: bool = _set_tile_hardness(kind, ore)
 	if not is_diggable:
 		_reset_progress()
 		return
@@ -44,13 +44,14 @@ func _matches_attached_actor(p_actor: Actor) -> bool:
 
 
 func _on_dig_refused(p_actor: Actor, _tile: WorldPos, _reason: World.DIG_REFUSAL) -> void:
-	if not _matches_attached_actor(p_actor): return # Event not for this actor
+	# Event not for this actor
+	if not _matches_attached_actor(p_actor): return
 	_reset_progress()
 
 
 func _reset_progress() -> void:
 	progress = 0.0
-	tile_density = 0.0
+	tile_hardness = 0.0
 	current_tile = WorldPos.new(99,99,99)
 
 
@@ -60,7 +61,8 @@ func action_ended(p_verb: String) -> void:
 
 
 func _on_tile_dug(p_actor: Actor, _tile: WorldPos = null) -> void:
-	if not _matches_attached_actor(p_actor): return # Event not for this actor
+	# Event not for this actor
+	if not _matches_attached_actor(p_actor): return
 	_reset_progress()
 
 
@@ -69,18 +71,18 @@ func _get_tile_kind(level: Level, tile: WorldPos) -> int:
 
 
 func _is_dig_complete() -> bool:
-	if progress >= tile_density:
+	if progress >= tile_hardness:
 		return true
 	return false
 
 
 # Ore makes a tile harder to dig (TileKind.ORE_DIG_MULTIPLIER).
-func _set_tile_density(kind: int, ore: int = TileKind.ORE.NONE) -> bool:
-	var density: float = TileKind.get_dig_density(kind, ore)
-	if density >= 0.0:
-		tile_density = density
+func _set_tile_hardness(kind: int, ore: int = TileKind.ORE.NONE) -> bool:
+	var hardness: float = TileKind.get_dig_hardness(kind, ore)
+	if hardness >= 0.0:
+		tile_hardness = hardness
 		return true
-	return false # failed to set density (not diggable)
+	return false # failed to set hardness (not diggable)
 
 
 

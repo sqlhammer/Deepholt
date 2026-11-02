@@ -1,9 +1,9 @@
 class_name Fixture
 extends RefCounted
 
-# One thing placed on a level (D-100, D-103): a kind, a tile and an id.
-# Plain data, not a node: presentation draws from it, and the level's
-# LevelFixtures is the only copy of the truth.
+# One thing placed on a level (D-100, D-103): a kind, a tile and an
+# id. Plain data, not a node: presentation draws from it, and the
+# level's LevelFixtures is the only copy of the truth.
 #
 # Set once, in _init, and never reassigned. The store files a fixture
 # under its tile; changing `tile` afterwards would leave the two

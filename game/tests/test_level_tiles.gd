@@ -1,9 +1,11 @@
 extends GutTest
 
-# LevelTiles — flat per-layer byte arrays holding a level's tile truth (D-048), with a third
-# array for ore (D-054), sized to the square around a level's radial bounds and indexed by
-# (x, y) from the level's origin. Reads outside the array or outside the radial disc return
-# reserved sentinels rather than an ordinary kind (D-057, D-059).
+# LevelTiles — flat per-layer byte arrays holding a level's tile truth
+# (D-048), with a third array for ore (D-054), sized to the square
+# around a level's radial bounds and indexed by (x, y) from the
+# level's origin. Reads outside the array or outside the radial disc
+# return reserved sentinels rather than an ordinary kind (D-057,
+# D-059).
 
 
 func test_write_and_read_ground() -> void:
@@ -67,8 +69,8 @@ func test_read_past_negative_y_edge_is_out_of_array() -> void:
 
 
 func test_read_in_square_corner_outside_disc_is_out_of_bounds() -> void:
-	# Level -1 has a radius of 64. This covers -64 to 64 but (64,64) is 90.50966
-	# which is outside of our circular boundary.
+	# Level -1 has a radius of 64. This covers -64 to 64 but (64,64) is
+	# 90.50966 which is outside of our circular boundary.
 	var level_bounds = LevelBound.new(1, "Unit Test", 64)
 	var tiles: LevelTiles = LevelTiles.new(level_bounds)
 	assert_eq(tiles.get_ground(64, 64), TileKind.SENTINEL_OUT_OF_BOUNDS,

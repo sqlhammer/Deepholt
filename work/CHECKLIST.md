@@ -17,16 +17,20 @@ Slice 004's checklist is in git history (last at `c8e5d62`).
 
 No forks.
 
-- [ ] `density` → `hardness` in code (`TileKind.MINABLE_DENSITY` and its readers). Names only
+- [x] `density` → `hardness` in code (`TileKind.MINABLE_DENSITY` and its readers). Names only
   ([D-081](../docs/design-decisions.md)). [13]
-- [ ] The dead tool-loading code goes: `_load_tool`, `TOOL_DIR`, and the `equipped` check in the
+- [x] The dead tool-loading code goes: `_load_tool`, `TOOL_DIR`, and the `equipped` check in the
   actor validator (R-B5). [13]
-- [ ] Save slots are listed sorted, not in `get_directories()` order (R-P6). Test it with slots
+- [x] Save slots are listed sorted, not in `get_directories()` order (R-P6). Test it with slots
   created out of order. [13]
-- [ ] "it's" → "its" in three comments, and every comment wrapped to 70 characters (R-S4). [13]
-- [ ] F3's tile window prints a hole as its own character, not `.`. [3]
-- [ ] Test the playtime clocks: active and total, across a save, a load and a pause
-  ([D-120](../docs/design-decisions.md)). [7]
+- [x] "it's" → "its" in three comments, and every comment wrapped to 70 characters (R-S4).
+  *Only two "it's" were wrong (three lines); 147 long comment lines across 43 files were
+  re-wrapped.* [13]
+- [x] F3's tile window prints a hole as its own character, not `.`. *It prints `h`, the
+  character holes are authored with.* [3]
+- [x] Test the playtime clocks: active and total, across a save, a load and a pause
+  ([D-120](../docs/design-decisions.md)). [7] *Pausing is checked by each timer's
+  `process_mode`, not by pausing the tree, which would pause GUT too.*
 - [ ] By hand: F3 shows a hole distinctly. [3]
 
 ## B. Loads

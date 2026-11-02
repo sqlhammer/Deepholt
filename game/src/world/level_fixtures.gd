@@ -1,11 +1,11 @@
 class_name LevelFixtures
 extends RefCounted
 
-# The fixtures on one level (D-100, D-103), filed by tile, several to a
-# tile. Storage only: it decides nothing, and announces every change --
-# generation, placing, removing, later burial -- as fixture_changed,
-# the way LevelTiles announces tile_changed (D-065). Whether a change is
-# allowed is the Objects gatekeeper's business.
+# The fixtures on one level (D-100, D-103), filed by tile, several to
+# a tile. Storage only: it decides nothing, and announces every change
+# -- generation, placing, removing, later burial -- as
+# fixture_changed, the way LevelTiles announces tile_changed (D-065).
+# Whether a change is allowed is the Objects gatekeeper's business.
 
 signal fixture_changed(fixture: Fixture, added: bool)
 

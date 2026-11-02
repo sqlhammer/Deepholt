@@ -49,10 +49,14 @@ func test_a_box_cant_move_onto_a_hole_from_any_side() -> void:
 	var size: Vector2 = Vector2(10, 6)
 	var cases: Array = [
 		# [start tile, motion, the coordinate it must stop at, which axis]
-		[Vector2i(1, 0), Vector2(-12, 0), 16.0, "x"],   # from the east, left edge at x 16
-		[Vector2i(-1, 0), Vector2(12, 0), 0.0 - size.x, "x"],   # from the west, right edge at x 0
-		[Vector2i(0, 1), Vector2(0, -12), 16.0, "y"],   # from the south, top edge at y 16
-		[Vector2i(0, -1), Vector2(0, 12), 0.0 - size.y, "y"],   # from the north, bottom edge at y 0
+		# From the east, left edge at x 16.
+		[Vector2i(1, 0), Vector2(-12, 0), 16.0, "x"],
+		# From the west, right edge at x 0.
+		[Vector2i(-1, 0), Vector2(12, 0), 0.0 - size.x, "x"],
+		# From the south, top edge at y 16.
+		[Vector2i(0, 1), Vector2(0, -12), 16.0, "y"],
+		# From the north, bottom edge at y 0.
+		[Vector2i(0, -1), Vector2(0, 12), 0.0 - size.y, "y"],
 	]
 	for case in cases:
 		var start: Vector2 = TileSpace.tile_center(case[0]) - size / 2.0

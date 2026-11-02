@@ -36,7 +36,8 @@ func test_coordinate_in_bounds() -> void:
 
 
 func test_coordiante_out_of_bounds() -> void:
-	# distance 100 from origin: outside level Rootshelf's disc (radius 64)
+	# distance 100 from origin: outside level Rootshelf's disc (radius
+	# 64)
 	var pos: WorldPos = WorldPos.new(100, 0, 1)
 	assert_false(_world.is_in_bounds(pos), "(100, 0) should be out of bounds at depth 1")
 
@@ -64,7 +65,8 @@ func test_a_depth_with_no_level_is_out_of_bounds() -> void:
 
 
 # Rows are found by depth, but spawning walks them in order and
-# Level.clamp_depth uses their count, so row N must be depth N (D-086).
+# Level.clamp_depth uses their count, so row N must be depth N
+# (D-086).
 func test_each_rows_depth_matches_its_position() -> void:
 	var rows: Array[LevelRecipe] = LevelRecipes.TABLE.rows
 	for index in rows.size():

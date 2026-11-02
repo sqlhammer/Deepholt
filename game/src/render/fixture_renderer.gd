@@ -19,8 +19,9 @@ const TEXTURES: Dictionary = {
 }
 
 # Kinds deliberately not drawn (D-091: the world spawn is invisible to
-# players). Kept apart from "no texture", which is an error: a new kind
-# without art should be loud, the way a tile without art draws MISSING.
+# players). Kept apart from "no texture", which is an error: a new
+# kind without art should be loud, the way a tile without art draws
+# MISSING.
 const INVISIBLE: Array[int] = [ObjectKind.OBJECT.WORLD_SPAWN]
 
 const LADDER_TOP: Texture2D = preload("res://src/render/ladder_top.png")
@@ -136,8 +137,8 @@ func show_ladder_tops(shown_tiles: LevelTiles, below: LevelFixtures) -> void:
 		_add_top(ladder)
 
 
-# The same disconnect as _listen_to, for the level below: without it, a
-# ladder placed two levels down would draw a top on the shown level.
+# The same disconnect as _listen_to, for the level below: without it,
+# a ladder placed two levels down would draw a top on the shown level.
 func _listen_below(below: LevelFixtures) -> void:
 	if _below == below: return
 	if _below != null and _below.fixture_changed.is_connected(_on_below_changed):

@@ -1,9 +1,9 @@
 extends GutTest
 
-# The debug overlay's tile readout is the only window into tile data until
-# something draws, so what it prints has to be trustworthy. The property under
-# test: standing on a prefab's anchor prints back the grid that was authored
-# into it, in the same characters.
+# The debug overlay's tile readout is the only window into tile data
+# until something draws, so what it prints has to be trustworthy. The
+# property under test: standing on a prefab's anchor prints back the
+# grid that was authored into it, in the same characters.
 
 
 var _overlay: CanvasLayer
@@ -31,7 +31,16 @@ func test_window_prints_back_the_authored_grid_around_the_anchor() -> void:
 	assert_string_contains(readout, "####%......", "one and two rows north of the anchor")
 	assert_string_contains(readout, "####c@.....", "anchor row")
 	assert_string_contains(readout, "####c......", "one row south of anchor")
-	assert_string_contains(readout, "####%.c%%%%", "two rows south of anchor")
+	assert_string_contains(readout, "####%hc%%%%", "two rows south of anchor")
+
+
+# A hole is open on top, like floor, but can't be walked over; it
+# prints as the 'h' it is authored with, not as floor.
+func test_a_hole_prints_as_h_not_as_floor() -> void:
+	var tiles: LevelTiles = _world.level_at(0).level_tiles
+	assert_eq(tiles.get_ground(0, 2), TileKind.GROUND.HOLE, "surface_start's hole")
+	assert_eq(_overlay._tile_char(tiles, 0, 2, WorldPos.new(5, 5, 0)), "h", "a hole")
+	assert_eq(_overlay._tile_char(tiles, 1, 0, WorldPos.new(5, 5, 0)), ".", "floor beside it")
 
 
 func test_readout_names_the_tile_under_the_actor() -> void:
@@ -42,8 +51,8 @@ func test_readout_names_the_tile_under_the_actor() -> void:
 	assert_string_contains(readout, "ore NONE", "and carries no ore")
 
 
-# The array index of world (0, 0) is the center element, (r * width + r).
-# Surface has radius 90, so width 181 and center 16380.
+# The array index of world (0, 0) is the center element, (r * width +
+# r). Surface has radius 90, so width 181 and center 16380.
 func test_readout_reports_the_array_index_of_the_origin() -> void:
 	var readout: String = _overlay._tile_readout(WorldPos.new(0, 0, 0))
 
@@ -51,8 +60,9 @@ func test_readout_reports_the_array_index_of_the_origin() -> void:
 	assert_string_contains(readout, "index 16380 of 32761", "and that is where the actor is standing")
 
 
-# A level that was never given a prefab is solid default rock, and the readout
-# should say so rather than failing to find anything to report.
+# A level that was never given a prefab is solid default rock, and the
+# readout should say so rather than failing to find anything to
+# report.
 func test_a_level_with_no_prefab_reads_as_solid_rock() -> void:
 	var level: Level = preload("res://src/world/level.tscn").instantiate()
 	level.setup(3)

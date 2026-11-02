@@ -3,7 +3,7 @@ extends GutTest
 # CapabilityDig: digging a tile over time (D-071). Progress builds
 # while dig() is called each tick, resets on release and when the
 # target changes (D-072), and the tile is announced as dug once
-# progress reaches its density. Dig time = density / tool speed, so
+# progress reaches its hardness. Dig time = hardness / tool speed, so
 # rock (5) with a speed-10 tool takes 0.5 s.
 #
 # The level is all minable rock by default; tests open or re-kind
@@ -54,8 +54,8 @@ func _tick(tile: Vector2i, times: int = 1) -> void:
 		_dig.dig(TICK, SPEED, _at(tile), _level)
 
 
-func _density(kind_name: String) -> float:
-	return TileKind.MINABLE_DENSITY[kind_name].density
+func _hardness(kind_name: String) -> float:
+	return TileKind.MINABLE_HARDNESS[kind_name].hardness
 
 
 # --- building progress ---
@@ -72,12 +72,12 @@ func test_progress_keeps_building_on_the_same_tile() -> void:
 		"three ticks on one tile add up")
 
 
-func test_digging_uses_the_tiles_density() -> void:
+func test_digging_uses_the_tiles_hardness() -> void:
 	_tick(DIRT_TILE)
-	assert_eq(_dig.tile_density, _density("MINABLE_DIRT"), "dirt's density")
+	assert_eq(_dig.tile_hardness, _hardness("MINABLE_DIRT"), "dirt's hardness")
 	_dig._reset_progress()
 	_tick(ROCK_TILE)
-	assert_eq(_dig.tile_density, _density("MINABLE_ROCK"), "rock's density")
+	assert_eq(_dig.tile_hardness, _hardness("MINABLE_ROCK"), "rock's hardness")
 
 
 # --- what can't be dug ---
@@ -99,8 +99,8 @@ func test_aiming_at_something_undiggable_drops_progress() -> void:
 	assert_eq(_dig.progress, 0.0, "progress on rock is lost on open floor")
 
 
-# TileKind is the one owner of "diggable" (it reads MINABLE_DENSITY).
-# The capability's density lookup and LevelTiles.is_diggable must
+# TileKind is the one owner of "diggable" (it reads MINABLE_HARDNESS).
+# The capability's hardness lookup and LevelTiles.is_diggable must
 # agree with it for every top kind, so nothing drifts from the owner.
 func test_every_place_agrees_on_what_is_diggable() -> void:
 	for kind_name: String in TileKind.TOP:
@@ -108,29 +108,29 @@ func test_every_place_agrees_on_what_is_diggable() -> void:
 		var probe: CapabilityDig = CapabilityDig.new()
 		autofree(probe)
 		var diggable: bool = TileKind.is_diggable(kind)
-		var has_density: bool = probe._set_tile_density(kind)
+		var has_hardness: bool = probe._set_tile_hardness(kind)
 		_level.level_tiles.set_top(5, 0, kind)
 		var level_says: bool = _level.level_tiles.is_diggable(WorldPos.new(5, 0, 0))
-		assert_eq(has_density, diggable,
-			"%s: diggable and has-a-density agree" % kind_name)
+		assert_eq(has_hardness, diggable,
+			"%s: diggable and has-a-hardness agree" % kind_name)
 		assert_eq(level_says, diggable,
 			"%s: LevelTiles.is_diggable agrees" % kind_name)
 
 
 # --- finishing a dig ---
 
-func test_a_dig_completes_at_density_over_speed() -> void:
-	var ticks: int = ceili(_density("MINABLE_ROCK") / (SPEED * TICK))
+func test_a_dig_completes_at_hardness_over_speed() -> void:
+	var ticks: int = ceili(_hardness("MINABLE_ROCK") / (SPEED * TICK))
 	watch_signals(_world)
 	_tick(ROCK_TILE, ticks - 1)
 	assert_signal_not_emitted(_world, "dig_requested", "not done one tick early")
 	_tick(ROCK_TILE)
-	assert_signal_emitted(_world, "dig_requested", "done on the tick progress reaches density")
+	assert_signal_emitted(_world, "dig_requested", "done on the tick progress reaches hardness")
 
 
 func test_a_completed_dig_names_the_actor_and_the_tile() -> void:
 	watch_signals(_world)
-	_tick(ROCK_TILE, ceili(_density("MINABLE_ROCK") / (SPEED * TICK)))
+	_tick(ROCK_TILE, ceili(_hardness("MINABLE_ROCK") / (SPEED * TICK)))
 	var params: Array = get_signal_parameters(_world, "dig_requested")
 	assert_eq(params.size(), 2, "dig_requested carries (actor, tile)")
 	if params.size() == 2:
@@ -139,7 +139,7 @@ func test_a_completed_dig_names_the_actor_and_the_tile() -> void:
 
 
 func test_softer_ground_digs_faster() -> void:
-	var dirt_ticks: int = ceili(_density("MINABLE_DIRT") / (SPEED * TICK))
+	var dirt_ticks: int = ceili(_hardness("MINABLE_DIRT") / (SPEED * TICK))
 	watch_signals(_world)
 	_tick(DIRT_TILE, dirt_ticks)
 	assert_signal_emitted(_world, "dig_requested", "dirt is done in fewer ticks than rock")
@@ -149,8 +149,8 @@ func test_softer_ground_digs_faster() -> void:
 # ticks here where plain rock takes 6.
 func test_a_tile_with_ore_takes_one_and_a_half_times_as_long() -> void:
 	_level.level_tiles.set_ore(ROCK_TILE.x, ROCK_TILE.y, TileKind.ORE.COPPER)
-	var rock_ticks: int = ceili(_density("MINABLE_ROCK") / (SPEED * TICK))
-	var ore_ticks: int = ceili(_density("MINABLE_ROCK") * TileKind.ORE_DIG_MULTIPLIER
+	var rock_ticks: int = ceili(_hardness("MINABLE_ROCK") / (SPEED * TICK))
+	var ore_ticks: int = ceili(_hardness("MINABLE_ROCK") * TileKind.ORE_DIG_MULTIPLIER
 		/ (SPEED * TICK))
 	watch_signals(_world)
 	_tick(ROCK_TILE, rock_ticks)
@@ -160,7 +160,7 @@ func test_a_tile_with_ore_takes_one_and_a_half_times_as_long() -> void:
 
 
 func test_progress_resets_after_completing_a_dig() -> void:
-	_tick(ROCK_TILE, ceili(_density("MINABLE_ROCK") / (SPEED * TICK)))
+	_tick(ROCK_TILE, ceili(_hardness("MINABLE_ROCK") / (SPEED * TICK)))
 	assert_eq(_dig.progress, 0.0, "the next tile starts from zero")
 
 
@@ -208,13 +208,13 @@ func test_after_a_release_the_same_tile_starts_over() -> void:
 # Holding dig on rock until it finishes leaves the tile open in the
 # level's data. (The screen half is LevelRenderer's job.)
 func test_digging_rock_to_completion_opens_it() -> void:
-	_tick(ROCK_TILE, ceili(_density("MINABLE_ROCK") / (SPEED * TICK)))
+	_tick(ROCK_TILE, ceili(_hardness("MINABLE_ROCK") / (SPEED * TICK)))
 	assert_eq(_level.level_tiles.get_top(ROCK_TILE.x, ROCK_TILE.y), TileKind.TOP.OPEN,
 		"the rock is gone")
 
 
 func test_digging_on_after_completion_does_nothing_more() -> void:
-	_tick(ROCK_TILE, ceili(_density("MINABLE_ROCK") / (SPEED * TICK)))
+	_tick(ROCK_TILE, ceili(_hardness("MINABLE_ROCK") / (SPEED * TICK)))
 	watch_signals(_world)
 	_tick(ROCK_TILE, 3)
 	assert_signal_not_emitted(_world, "dig_requested",
@@ -243,12 +243,12 @@ func test_another_actors_refusal_leaves_progress_alone() -> void:
 
 # --- the completion check itself ---
 
-func test_dig_is_complete_exactly_at_density() -> void:
-	_dig.tile_density = 5.0
+func test_dig_is_complete_exactly_at_hardness() -> void:
+	_dig.tile_hardness = 5.0
 	_dig.progress = 4.999
 	assert_false(_dig._is_dig_complete(), "just under is not done")
 	_dig.progress = 5.0
-	assert_true(_dig._is_dig_complete(), "reaching density is done")
+	assert_true(_dig._is_dig_complete(), "reaching hardness is done")
 
 
 # A depth change mid-dig: the same (x, y) on another level is a

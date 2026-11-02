@@ -6,8 +6,8 @@ extends RefCounted
 # stores it checks rather than finding them, so generation and a load
 # can ask about levels that aren't in the tree, or in a world, yet.
 
-# Which kinds can't share a tile with which (D-103). A kind missing from
-# the table conflicts with nothing.
+# Which kinds can't share a tile with which (D-103). A kind missing
+# from the table conflicts with nothing.
 const CONFLICTS: Dictionary = {
 	ObjectKind.OBJECT.LADDER: [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.WORLD_SPAWN],
 	ObjectKind.OBJECT.WORLD_SPAWN: [ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.LADDER],

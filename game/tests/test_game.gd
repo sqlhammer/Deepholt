@@ -726,7 +726,8 @@ func test_freeing_input_handlers_frees_only_the_games_own() -> void:
 
 # The debug load key reaches the load from inside the handler's own
 # _input: the world is built then, and swapped in at the end of the
-# frame, when no handler or actor code is running (R-B8, D-129, trap 4).
+# frame, when no handler or actor code is running (R-B8, D-129, trap
+# 4).
 func test_the_load_key_swaps_the_world_in_at_the_end_of_the_frame() -> void:
 	assert_true(_game.save_game(), "saved")
 	var old_world: World = _game.world
@@ -923,7 +924,8 @@ func test_the_screen_follows_the_player_down_a_level() -> void:
 
 
 
-# F3 reads the counters of the world being played (slice 004 outcome 3).
+# F3 reads the counters of the world being played (slice 004 outcome
+# 3).
 func test_f3_shows_the_running_worlds_next_ids() -> void:
 	var world: World = _game.world
 	assert_eq(_game.get_node("DebugOverlay").next_ids_text(),

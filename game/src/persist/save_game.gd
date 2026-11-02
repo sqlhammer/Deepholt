@@ -11,7 +11,6 @@ enum REFUSAL_REASON {
 # The save format this build writes and reads. Raised with a migration
 # from the version before (world-runtime §7, D-116).
 const FORMAT_VERSION: int = 1
-const TOOL_DIR := "res://src/entity/tools/"
 const SAVES_DIR: String = "user://saves"
 const SAVE_BASE_NAME: String = "world.save"
 const ALLOW_OBJECTS: bool = false
@@ -250,9 +249,9 @@ static func _header_int(file_data: Dictionary, key: String, default: int) -> int
 	return value if value is int else default
 
 
-# Renames a slot's file to world.<label>.<timestamp>.save beside it, or
-# world.<timestamp>.save with no label, never over another file (D-111,
-# D-123). The new path, or "" if the rename failed.
+# Renames a slot's file to world.<label>.<timestamp>.save beside it,
+# or world.<timestamp>.save with no label, never over another file
+# (D-111, D-123). The new path, or "" if the rename failed.
 static func move_aside(file_path: String, label: String, unix_time: int) -> String:
 	var stem: String = "world.%s" % file_timestamp(unix_time)
 	if label: stem = "world.%s.%s" % [label, file_timestamp(unix_time)]
@@ -308,6 +307,9 @@ static func get_save_slots(saves_root: String = SAVES_DIR) -> PackedStringArray:
 	else:
 		push_warning("An error occurred when trying to access the path: %s." % saves_root)
 	
+	# get_directories() promises no order, and launch continues the
+	# first slot (R-P6).
+	slots.sort()
 	return slots
 
 
@@ -316,22 +318,6 @@ static func get_save_data(slot_path: String) -> Dictionary:
 	var why: Array[String] = []
 	var data: Dictionary = _get_file_data(file_path, why)
 	return data
-
-
-static func _load_tool(path: Variant) -> ToolData:
-	if not path is String: return null
-	var clean: String = (path as String).simplify_path()
-	if not clean.begins_with(TOOL_DIR):
-		push_warning("Tool path outside %s: %s" % [TOOL_DIR, clean])
-		return null
-	if not ResourceLoader.exists(clean):
-		push_warning("Tool path not found: %s" % clean)
-		return null
-	var res := load(clean)
-	if not res is ToolData:
-		push_warning("Not a ToolData: %s" % clean)
-		return null
-	return res
 
 
 static func _serialize_all(world: World, session: SaveSession) -> Dictionary:
@@ -379,7 +365,7 @@ static func _serialize_stats(active_play_time: float, total_play_time: float) ->
 
 
 static func _serialize_levels(levels: Array[Level]) -> Dictionary:
-	# Levels (move into it's own func)
+	# Levels (move into its own func)
 	var levels_data: Dictionary = {}
 	for level in levels:
 		if level is not Level: continue
@@ -610,7 +596,8 @@ static func _deserialize_tile_layers(level_data: Dictionary) -> Dictionary:
 
 
 static func _serialize_tile_layers(level_data: Dictionary, level: Level) -> void:
-	# Level and Dictionary are byref, therefore their updates don't need to be returned
+	# Level and Dictionary are byref, therefore their updates don't need
+	# to be returned
 	if not level_data.has("tiles"): level_data["tiles"] = {}
 	var tiles: Dictionary = level_data["tiles"]
 	for layer: String in TILE_LAYERS:
@@ -630,8 +617,9 @@ static func _get_file_data(file_path: String, why: Array[String]) -> Dictionary:
 		why.append("can't be opened (%s)" % error_string(err))
 		return {}
 
-	# Store and retrieve the format_version separately from the remainder of
-	# the data so that it's format can change and be detected before reading it
+	# Store and retrieve the format_version separately from the remainder
+	# of the data so that its format can change and be detected before
+	# reading it
 	var version: Variant = _read_var(file)
 	if not version is Dictionary or not version.get("format_version") is int:
 		why.append("is unreadable: it has no format version")
@@ -721,10 +709,6 @@ static func _is_valid_actor_entry(actor: Variant) -> bool:
 	if actor.facing.get("x") is not int: return false
 	if actor.facing.get("y") is not int: return false
 	
-	# Equipped is optional but should be String, if exists
-	if actor.get("equipped"):
-		if actor.equipped is not String: return false
-	
 	return true
 
 
@@ -801,8 +785,8 @@ static func _overwrite_data(format_version: int, data: Dictionary, file_path: St
 	var f := FileAccess.open(file_path, FileAccess.WRITE)
 	if f == null: return false
 	
-	# Store the format_version separately from the remainder of
-	# the data so that it's format can change and be detected before reading it
+	# Store the format_version separately from the remainder of the data
+	# so that its format can change and be detected before reading it
 	var version: Dictionary = { "format_version": format_version }
 	if f.store_var(version, ALLOW_OBJECTS):
 		if f.store_var(data, ALLOW_OBJECTS):

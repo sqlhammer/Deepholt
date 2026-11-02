@@ -1,8 +1,8 @@
 extends GutTest
 
-# TileKind — the ground/top/ore kind ids from D-051, D-052 and D-056, gathered into one table
-# so every layer's valid ids can be enumerated and checked against LevelTiles' reserved
-# sentinels (D-059).
+# TileKind — the ground/top/ore kind ids from D-051, D-052 and D-056,
+# gathered into one table so every layer's valid ids can be enumerated
+# and checked against LevelTiles' reserved sentinels (D-059).
 
 
 func test_ground_kind_ids_avoid_sentinels() -> void:
@@ -54,28 +54,28 @@ func test_other_kinds_are_not_diggable() -> void:
 
 
 func test_densities_come_from_the_table() -> void:
-	assert_eq(TileKind.get_tile_density(TileKind.TOP.MINABLE_ROCK),
-		TileKind.MINABLE_DENSITY["MINABLE_ROCK"].density, "rock's density")
-	assert_eq(TileKind.get_tile_density(TileKind.TOP.MINABLE_DIRT),
-		TileKind.MINABLE_DENSITY["MINABLE_DIRT"].density, "dirt's density")
+	assert_eq(TileKind.get_tile_hardness(TileKind.TOP.MINABLE_ROCK),
+		TileKind.MINABLE_HARDNESS["MINABLE_ROCK"].hardness, "rock's hardness")
+	assert_eq(TileKind.get_tile_hardness(TileKind.TOP.MINABLE_DIRT),
+		TileKind.MINABLE_HARDNESS["MINABLE_DIRT"].hardness, "dirt's hardness")
 
 
-func test_an_undiggable_kind_has_no_density() -> void:
-	assert_lt(TileKind.get_tile_density(TileKind.TOP.OPEN), 0.0,
-		"a negative density means not diggable")
+func test_an_undiggable_kind_has_no_hardness() -> void:
+	assert_lt(TileKind.get_tile_hardness(TileKind.TOP.OPEN), 0.0,
+		"a negative hardness means not diggable")
 
 
-# A density of zero or less would finish a dig on its first tick, or
+# A hardness of zero or less would finish a dig on its first tick, or
 # be read as "not diggable" by the capability.
-func test_every_density_is_positive() -> void:
-	for kind_name: String in TileKind.MINABLE_DENSITY:
-		assert_gt(TileKind.MINABLE_DENSITY[kind_name].density, 0.0,
+func test_every_hardness_is_positive() -> void:
+	for kind_name: String in TileKind.MINABLE_HARDNESS:
+		assert_gt(TileKind.MINABLE_HARDNESS[kind_name].hardness, 0.0,
 			"%s takes some time to dig" % kind_name)
 
 
-func test_every_density_entry_is_a_top_kind() -> void:
-	for kind_name: String in TileKind.MINABLE_DENSITY:
-		var id: int = TileKind.MINABLE_DENSITY[kind_name].id
+func test_every_hardness_entry_is_a_top_kind() -> void:
+	for kind_name: String in TileKind.MINABLE_HARDNESS:
+		var id: int = TileKind.MINABLE_HARDNESS[kind_name].id
 		assert_true(id in TileKind.TOP.values(), "%s names a real top kind" % kind_name)
 		assert_eq(TileKind.TOP.get(kind_name, -1), id,
 			"and the entry's name matches that kind's name")
@@ -86,29 +86,30 @@ func test_every_density_entry_is_a_top_kind() -> void:
 # Hardness belongs to the tile kind. Surface stone matches the tuning
 # appendix's Surface value; dirt is a bit easier.
 func test_rock_and_dirt_hardness() -> void:
-	assert_eq(TileKind.get_tile_density(TileKind.TOP.MINABLE_ROCK), 6.0, "rock is 6")
-	assert_eq(TileKind.get_tile_density(TileKind.TOP.MINABLE_DIRT), 4.0, "dirt is 4")
-	assert_lt(TileKind.get_tile_density(TileKind.TOP.MINABLE_DIRT),
-		TileKind.get_tile_density(TileKind.TOP.MINABLE_ROCK), "dirt is easier than rock")
+	assert_eq(TileKind.get_tile_hardness(TileKind.TOP.MINABLE_ROCK), 6.0, "rock is 6")
+	assert_eq(TileKind.get_tile_hardness(TileKind.TOP.MINABLE_DIRT), 4.0, "dirt is 4")
+	assert_lt(TileKind.get_tile_hardness(TileKind.TOP.MINABLE_DIRT),
+		TileKind.get_tile_hardness(TileKind.TOP.MINABLE_ROCK), "dirt is easier than rock")
 
 
 func test_ore_makes_a_tile_one_and_a_half_times_as_hard() -> void:
-	assert_eq(TileKind.get_dig_density(TileKind.TOP.MINABLE_ROCK, TileKind.ORE.NONE), 6.0,
+	assert_eq(TileKind.get_dig_hardness(TileKind.TOP.MINABLE_ROCK, TileKind.ORE.NONE), 6.0,
 		"plain rock")
-	assert_eq(TileKind.get_dig_density(TileKind.TOP.MINABLE_ROCK, TileKind.ORE.COPPER), 9.0,
+	assert_eq(TileKind.get_dig_hardness(TileKind.TOP.MINABLE_ROCK, TileKind.ORE.COPPER), 9.0,
 		"rock with copper takes 1.5x")
 
 
 func test_ore_does_not_make_an_undiggable_tile_diggable() -> void:
-	assert_lt(TileKind.get_dig_density(TileKind.TOP.OPEN, TileKind.ORE.COPPER), 0.0,
+	assert_lt(TileKind.get_dig_hardness(TileKind.TOP.OPEN, TileKind.ORE.COPPER), 0.0,
 		"open floor stays undiggable whatever the ore says")
 
 
 # --- ids are forever ---
 
 # A save stores these numbers. Renumbering, reordering or reusing one
-# makes every old save read as the wrong kinds, so the table is pinned:
-# a new kind adds a new number, and nothing here ever changes (trap 8).
+# makes every old save read as the wrong kinds, so the table is
+# pinned: a new kind adds a new number, and nothing here ever changes
+# (trap 8).
 func test_existing_kind_ids_never_change() -> void:
 	assert_eq(TileKind.GROUND, {
 		"NULL": 0, "ROCK": 1, "DIRT": 2, "GRASS": 3, "WATER": 4, "HOLE": 5,

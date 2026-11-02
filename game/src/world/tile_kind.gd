@@ -1,16 +1,17 @@
 class_name TileKind
 extends RefCounted
 
-# The ground, top and ore kind ids for slice 001 (D-051, D-052, D-056), 
-# gathered into one table per layer so callers -- and tests -- can enumerate
-# a layer's valid ids rather than hardcoding them. 
+# The ground, top and ore kind ids for slice 001 (D-051, D-052,
+# D-056), gathered into one table per layer so callers -- and tests --
+# can enumerate a layer's valid ids rather than hardcoding them.
 
-# Values here are the bytes LevelTiles stores; 254 and 255 are reserved
-# sentinels (D-059) and must never appear in any of these tables.
+# Values here are the bytes LevelTiles stores; 254 and 255 are
+# reserved sentinels (D-059) and must never appear in any of these
+# tables.
 
-# Enums and Dictionaries must always have explicit values, never be reordered,
-# and protected against saved games that use TileKind from mutating due to
-# software updates.
+# Enums and Dictionaries must always have explicit values, never be
+# reordered, and protected against saved games that use TileKind from
+# mutating due to software updates.
 
 const SENTINEL_OUT_OF_ARRAY: int = 255
 const SENTINEL_OUT_OF_BOUNDS: int = 254
@@ -65,11 +66,11 @@ const ORE: Dictionary = {
 
 # How hard each diggable top kind is: the "hardness" of the tuning
 # appendix (D-081). Hardness belongs to the kind, not the level; a
-# level only chooses which kinds it has. Dig seconds = density /
+# level only chooses which kinds it has. Dig seconds = hardness /
 # tool power, so flint (16) digs rock (6) in 0.375 s.
-const MINABLE_DENSITY: Dictionary = {
-	"MINABLE_ROCK": { "id": TOP.MINABLE_ROCK, "density": 6.0 },
-	"MINABLE_DIRT": { "id": TOP.MINABLE_DIRT, "density": 4.0 },
+const MINABLE_HARDNESS: Dictionary = {
+	"MINABLE_ROCK": { "id": TOP.MINABLE_ROCK, "hardness": 6.0 },
+	"MINABLE_DIRT": { "id": TOP.MINABLE_DIRT, "hardness": 4.0 },
 }
 
 # A tile holding ore takes this much longer to dig than the same
@@ -78,28 +79,28 @@ const ORE_DIG_MULTIPLIER: float = 1.5
 
 
 static func is_diggable(kind: int) -> bool:
-	for key in TileKind.MINABLE_DENSITY:
-		if kind == TileKind.MINABLE_DENSITY[key].id:
+	for key in TileKind.MINABLE_HARDNESS:
+		if kind == TileKind.MINABLE_HARDNESS[key].id:
 			return true
 	return false
 
 
-static func get_tile_density(kind: int) -> float:
-	for key in TileKind.MINABLE_DENSITY:
-		if kind == TileKind.MINABLE_DENSITY[key].id:
-			return TileKind.MINABLE_DENSITY[key].density
-	return -1.0 # invalid density
+static func get_tile_hardness(kind: int) -> float:
+	for key in TileKind.MINABLE_HARDNESS:
+		if kind == TileKind.MINABLE_HARDNESS[key].id:
+			return TileKind.MINABLE_HARDNESS[key].hardness
+	return -1.0 # invalid hardness
 
 
-# How hard a tile is to dig, counting its ore: the top kind's density,
-# times ORE_DIG_MULTIPLIER when the tile holds ore. Negative when the
-# top kind can't be dug.
-static func get_dig_density(top_kind: int, ore_kind: int) -> float:
-	var density: float = get_tile_density(top_kind)
-	if density < 0.0: return density
+# How hard a tile is to dig, counting its ore: the top kind's
+# hardness, times ORE_DIG_MULTIPLIER when the tile holds ore. Negative
+# when the top kind can't be dug.
+static func get_dig_hardness(top_kind: int, ore_kind: int) -> float:
+	var hardness: float = get_tile_hardness(top_kind)
+	if hardness < 0.0: return hardness
 	if ore_kind != ORE.NONE and ore_kind != ORE.NULL:
-		density *= ORE_DIG_MULTIPLIER
-	return density
+		hardness *= ORE_DIG_MULTIPLIER
+	return hardness
 
 
 static func is_ramp(ground_kind: int) -> bool:
@@ -119,8 +120,8 @@ static func ramp_pair(ground_kind: int) -> int:
 
 # The one side of a ramp end you can cross (D-099), as a step from the
 # ramp tile to its open neighbor: a down end opens uphill, where you
-# walk in to go down; an up end opens downhill, where you walk in to go
-# up. Zero for a kind that isn't a ramp.
+# walk in to go down; an up end opens downhill, where you walk in to
+# go up. Zero for a kind that isn't a ramp.
 static func ramp_open_side(ground_kind: int) -> Vector2i:
 	if not is_ramp(ground_kind): return Vector2i.ZERO
 	var ramp: Dictionary = RAMPS[ground_kind]

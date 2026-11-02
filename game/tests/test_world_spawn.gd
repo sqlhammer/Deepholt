@@ -1,9 +1,9 @@
 extends GutTest
 
-# The world's default spawn (D-091, D-092, D-105): a WORLD_SPAWN fixture
-# the generator places at random within the start placement's radius,
-# on floor an actor could stand on, never on a ramp. Same seed, same
-# tile.
+# The world's default spawn (D-091, D-092, D-105): a WORLD_SPAWN
+# fixture the generator places at random within the start placement's
+# radius, on floor an actor could stand on, never on a ramp. Same
+# seed, same tile.
 
 
 func _surface_spawns() -> Array[Fixture]:
@@ -67,7 +67,8 @@ func test_only_passable_non_ramp_tiles_are_candidates() -> void:
 
 
 func test_the_radius_is_a_disc() -> void:
-	# (2, 2) is 2.83 from the origin: inside a square of 2, outside a disc.
+	# (2, 2) is 2.83 from the origin: inside a square of 2, outside a
+	# disc.
 	var level: Level = _open_level([Vector2i(2, 2), Vector2i(2, 0)] as Array[Vector2i])
 	var candidates: Array[Vector2i] = LevelGenerator.spawn_candidates(level, Vector2i.ZERO, 2)
 	assert_eq(candidates, [Vector2i(2, 0)] as Array[Vector2i], "(2, 2) is outside the disc")

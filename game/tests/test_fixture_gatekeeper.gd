@@ -22,7 +22,8 @@ func before_each() -> void:
 		_levels.append(level)
 		for tile: Vector2i in [OPEN, UNDER_HOLE]:
 			level.level_tiles.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
-	# A hole on the Surface over (2, 2), so a ladder there on -1 is legal.
+	# A hole on the Surface over (2, 2), so a ladder there on -1 is
+	# legal.
 	_levels[0].level_tiles.set_ground(UNDER_HOLE.x, UNDER_HOLE.y, TileKind.GROUND.HOLE)
 	watch_signals(_world)
 
