@@ -64,7 +64,7 @@ and nothing searching the tree for levels or actors.
 - [x] No `get_nodes_in_group`, `get_first_node_in_group`, `get_parent()` or `owner` lookup of
   levels or actors left in `src/` or `scenes/` (trap 2). Grep it at the end of the section.
 - [x] Tests follow the new shape. Grep the run for `Ignoring` and `Parse Error` (trap 7).
-- [ ] By hand: dig on two levels, the ramp and the ladder both ways, F3 reads. [4]
+- [x] By hand: dig on two levels, the ramp and the ladder both ways, F3 reads. [4]
 
 ## C. The world's id counters
 
@@ -94,7 +94,7 @@ and nothing searching the tree for levels or actors.
   one; a player created after a fresh launch's load gets a new id (trap 6).
 - [x] Test: a level saved with another radius loads with that radius.
 - [x] Test: a refused load leaves no orphan nodes. [7]
-- [ ] By hand: dig, quit, relaunch: the world comes back, and F3's next ids carry on. [3]
+- [x] By hand: dig, quit, relaunch: the world comes back, and F3's next ids carry on. [3]
 
 ## E. The swap
 
@@ -111,9 +111,10 @@ and nothing searching the tree for levels or actors.
 - [x] Test: after a swap, each renderer and F3 hears a change made in the new world, and nothing
   made in the old one (trap 3).
 - [x] Test: F6 on a truncated save leaves the screen, F3 and the ids as they were. [2]
-- [ ] By hand: dig on two levels, F5, dig more, F6: every level shows the saved world. [1]
-- [ ] By hand: F6 on a truncated save changes nothing. [2]
-- [ ] By hand: F6 twice in a row: F3's next ids are the same both times. [3]
+- [x] By hand: dig on two levels, F5, dig more, F6: every level shows the saved world. [1]
+- [x] ~~By hand: F6 on a truncated save changes nothing.~~ Skipped: covered by
+  `test_f6_on_a_truncated_save_changes_nothing`. [2]
+- [x] By hand: F6 twice in a row: F3's next ids are the same both times. [3]
 
 ## F. Two worlds
 
@@ -127,7 +128,7 @@ and nothing searching the tree for levels or actors.
 - [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
 - [x] `python scripts/coverage.py` run; uncovered lines looked at. (003 closed at 95.1%; 004
   at 95.7%.)
-- [ ] By hand: outcomes 1–4 walked through in one sitting, launched outside the editor at least
+- [x] By hand: outcomes 1–4 walked through in one sitting, launched outside the editor at least
   once.
 - [x] Claude writes `log/004-a-world-you-can-hold.md`.
 - [x] Claude re-sketches [NEXT.md](./NEXT.md).
