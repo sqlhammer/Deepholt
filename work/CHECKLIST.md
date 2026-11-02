@@ -213,8 +213,8 @@ saves, the backup fallback, F3's save line and the section's tests were Agent mo
   tuning profile when it's built (D-110, D-116). *`AUTOSAVE_INTERVAL_SECONDS`, 300 for now:
   D-110 leaves the number open. A pausable `Timer`, started once there's a world, so a game
   that didn't start never has one.*
-- [ ] By hand: new game with a save present gives a fresh world, and the old save is beside it,
-  intact. [5]
+- [x] By hand: new game with a save present gives a fresh world, and the old save is beside it,
+  intact. [5] *Walked with outcomes 1–7 in G.*
 - [x] Measure a full save and a full load at all eight levels. *Headless, debug build,
   2026-11-01, the generated world (a 3.6 KB file): a save takes about 1.7 ms; a load about
   470 ms. Of the load, about 375 ms is `_deserialize_levels`, about 90 ms is `game.gd` swapping
@@ -349,7 +349,8 @@ Items marked **→ 004** are part of slice 004's job
 - [ ] **R-S4. Tidy-ups.** "it's" → "its" in three comments in `save_game.gd` ("move into it's
   own func", and "so that it's format can change" twice); several comments are over 70
   characters; remove the `# Objects` / `# NPCs` placeholders or point them at checklist items.
-  *Done: `ALLOW_OBJECTS` is passed to every `get_var`, through `_read_var` (E).*
+  *Done: `ALLOW_OBJECTS` is passed to every `get_var`, through `_read_var` (E).* *Left open at
+  003's close, in NEXT.md's "Deferred from 003". R-B4, R-S1 and R-S3 went to 004's NOW.md.*
 
 **Found while fixing the review**
 - [x] **R-F1. `test_save_game.gd` was silently skipped** (renamed `serialize`/`deserialize`, the
@@ -358,12 +359,20 @@ Items marked **→ 004** are part of slice 004's job
 
 ## G. Done
 
-- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings.
-- [ ] `python scripts/coverage.py` run; uncovered lines looked at. (002 closed at 98.9%.)
-- [ ] By hand: outcomes 1–7 walked through in one sitting, launched outside the editor at least
+- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings. *637 tests, no skipped
+  files, no leak warning, 2026-11-01.*
+- [x] `python scripts/coverage.py` run; uncovered lines looked at. (002 closed at 98.9%.)
+  *95.1% (1768 of 1860), 2026-11-01. The drop is mostly in three places: the playtime clocks
+  have no test at all (the two timer scripts, `Global.format_duration`, F3's playtime lines,
+  and `stats` written and read back), the dead tool-loading code (R-B5, 13 lines), and failure
+  paths that need a file the OS refuses to rename (moving a save aside, `_rename_file`). The
+  rest is single guard lines.*
+- [x] By hand: outcomes 1–7 walked through in one sitting, launched outside the editor at least
   once (trap 2).
-- [ ] Claude drafts `log/003-it-persists.md`; Derik corrects it.
-- [ ] Claude re-sketches [NEXT.md](./NEXT.md).
+- [x] Claude drafts `log/003-it-persists.md`; Derik corrects it. *Written 2026-11-01. Derik
+  dropped the correction pass for good the same day; the working agreement says so now.*
+- [x] Claude re-sketches [NEXT.md](./NEXT.md). *2026-11-01: 004 moved to `NOW.md`; 005 and
+  006 re-sketched; 003's leftovers listed under "Deferred from 003".*
 
 ---
 

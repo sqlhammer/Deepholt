@@ -1,245 +1,197 @@
-# Slice 003 — It persists
+# Slice 004 — A world you can hold
 
-> Save a dug world, quit, relaunch, and your corridor is still there, on every level, with the
-> ladder and the spawn where they were, and you're standing where you stopped.
+> Press F6 and the whole mountain is swapped for the saved one in a single move. A damaged save
+> leaves the running world exactly as it was, and ids carry on from where the world left them.
+
+*Proposed by Claude, 2026-11-01, from [NEXT.md](./NEXT.md)'s sketch. Derik accepts, edits or
+replaces it.*
 
 ## Mode
 
-Asked before each checklist section starts, and recorded there. Not carried over from
-slice 002.
+**Agent**, for the whole slice (Derik, 2026-11-01). Its forks are walked through with Derik one
+at a time before any building starts.
 
 ## Where we are
 
-Slice 002 is done ([log](./log/002-go-down.md)). Three hand-made levels, joined by a ramp and a
-ladder; every level keeps its own digs for as long as the game runs, and a relaunch puts all of
-it back to hand-made. That last part was outcome 8 of slice 002, and this slice reverses it.
+Slice 003 is done ([log](./log/003-it-persists.md)). A world survives a relaunch: tiles,
+fixtures, actors, the header and the playtime clocks. A broken save is kept and the backup loads,
+and with both refused the game won't start. `--new-game` moves the old world aside.
+
+**The one assumption this slice removes:** that the tree holds exactly one world. The 003 review
+traced every load bug to it, and its fix is already decided
+([D-118](../docs/design-decisions.md#d-118--the-world-is-a-node-that-owns-its-levels-and-id-counters-handed-by-reference)):
+the world becomes a node that owns its levels and its id counters, handed to whatever needs it
+by reference, never looked up.
 
 **What a world is made of, today:**
-- **Tiles.** Each `Level` has a `LevelTiles`: three `PackedByteArray`s (ground, top, ore), each
-  the square around the level's radius, plus the `LevelBound` it was sized from. All eight levels
-  are built at launch by `LevelGenerator` from `level_recipes.tres`, and stay resident.
-- **Fixtures.** Each `Level` has a `LevelFixtures` of `Fixture`s (kind, tile, id). Ladders and
-  the world spawn are the only kinds. Ids come from `Objects._next_fixture_id`, which the
-  generator resets to the first id before it builds anything.
-- **Seeds.** `World.world_seed` is `hash("Default Seed")`; each `Level.level_seed` is `hash()` of
-  a string built from it and the depth. Nothing draws randomness except the world spawn's
-  placement.
-- **Actors.** One player, created by `game.gd` at the world spawn. Its state is a pixel
-  position, a depth, a facing, a name and an equipped tool. It has no id.
-- **Nothing else.** No game clock, no `TuningProfile`, no menu, no file I/O anywhere in `src/`.
+- **Levels** sit under `game.gd`'s `$Levels`, in the `levels` group. Anything that wants one
+  calls `World.get_level_by_depth`, which searches that group. Seven files in `src/` do so,
+  plus `game.gd`.
+- **The `World` autoload** holds the world seed, the recipe table, the actor id allocator, the
+  tile gatekeeper's signals (`dig_requested`, `tile_dug`, `dig_refused`) and `is_in_bounds`,
+  which reads the recipe's bound, not the level's.
+- **The `Objects` autoload** is the fixture gatekeeper and holds the fixture id counter.
+- **A load** (`game.gd.load_game`) frees the running levels, actors and input handlers, attaches
+  the loaded ones, and re-points the view and renderers by hand. 003 made it refuse a file
+  before freeing anything, so a damaged save already leaves the world alone. The swap itself is
+  still free-then-attach, in several steps.
 
-**What reads it:** `LevelRenderer` and `FixtureRenderer` build from the shown level's data
-whenever the view moves, and `F3` reads the actor. None of them keep history, so none of them
-need to be told what happened before a load.
-
-**Trimmed 2026-10-30.** The save/load review showed every load bug coming from one assumption:
-that the tree holds exactly one world. Fixing it became slice 004
-([D-118](../docs/design-decisions.md#d-118--the-world-is-a-node-that-owns-its-levels-and-id-counters-handed-by-reference)).
-The parts of this slice that 004 reshapes (building the world from the save, saved bounds, the
-id counters' restore) moved there; the [checklist](./CHECKLIST.md#moved-to-slice-004-d-118) lists
-them. The outcomes below still hold, on B's staging: launch generates, then the save replaces
-what was generated.
+**What 003 already did toward this slice:** a level the save holds whole is built from the save,
+not generated (R-P2). After a load, the fixture counter moves past every loaded id. A file with
+any level that won't load is refused (R-B3). The load key no longer frees its own handler
+(R-B8), and the save and load keys are signals on the handler (R-P10).
 
 ## What should be true when you stop
 
-By hand, in a running game:
+By hand, unless marked:
 
-1. Dig on the Surface, quit, relaunch: the tile is still dug.
-2. Dig on the Surface, −1 and −2, quit, relaunch: each level has its own digs, and only its own.
-3. The ramp, the hole and the ladder are where they were, and still work, both ways.
-4. Quit standing on −2, facing west: relaunch on −2, on the same tile in `F3`, facing west.
-   Not at the world spawn. (Actors save their tile, not their pixel:
-   [D-114](../docs/design-decisions.md#d-114--actors-get-int-ids-from-a-world-counter-what-an-actor-saves).)
-5. Start a new game (`--new-game`) while a save exists: a fresh, hand-made world, and the old
-   save moved aside beside it, intact. Never half of each
-   ([D-111](../docs/design-decisions.md#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves)).
-6. Break a save on purpose (truncate it, or bump its version past the game's): it's kept as a
-   broken save, the backup loads instead, and the game says so loudly. Break the backup too, and
-   the game refuses to start and says why. Never a crash, and never a silent new game over the
-   top of it (D-111).
-7. `F3` says whether this session was loaded, new or from the backup, and from which format
-   version.
+1. Dig on two levels, F5, dig more, F6: the screen, F3 and every level show the saved world, and
+   nothing of the replaced one.
+2. F6 on a truncated save: nothing changes. Not the screen, not F3, not the ids.
+3. F3 shows the running world, and its next fixture id and next actor id. Loading twice in a row
+   shows the same numbers both times. They don't restart, and they don't climb.
+4. The ramp between the Surface and −1, and the hole on −1 with its ladder on −2, still work
+   both ways; digs stay on their own level.
+5. *Automated:* two worlds in one process, at the same depths, each with an actor. A dig, a depth
+   change and a fixture placed in one leave the other untouched.
+6. *Automated:* generating a second world doesn't change the first world's counters.
+7. *Automated:* freeing a world leaves no orphan nodes. No code in `src/` searches the tree for
+   levels.
 
-Outcomes 1–7 are walked through at least once with the game launched **outside the editor**
-(trap 2).
-
-Separately, automated, without a running scene where possible:
-- a level's tiles round-trip byte-identical, every layer;
-- a load emits no per-tile `tile_changed`;
-- a world with digs on three depths round-trips, each depth only its own;
-- *(moved to slice 004, D-118)* after a load, the next fixture id is greater than every loaded
-  fixture's;
-- two actors on different depths round-trip, each to its own depth and tile;
-- a save from a newer format version, and a truncated save, are each refused, kept, and the
-  backup loaded in their place.
+This slice is mostly a change of shape, so most of what can be checked by hand is how a load
+behaves. That is its playable edge, stated plainly rather than padded out.
 
 ## What you're deciding
 
-Every fork below was settled on 2026-10-23, before building, as
-[D-109](../docs/design-decisions.md#d-109--a-save-is-one-store_var-file-per-slot-owned-by-a-static-class)
-to [D-116](../docs/design-decisions.md#d-116--the-save-header-and-a-placeholder-tuning-profile-id).
-The list stays as the record of what was weighed. The one fork left is whether the timer's save
-is felt mid-play, which needs the running game (checklist F).
+Every fork below was settled on 2026-11-01, before building, as
+[D-124](../docs/design-decisions.md#d-124--the-world-and-objects-autoloads-are-deleted-world-is-the-world-nodes-class)
+to [D-130](../docs/design-decisions.md#d-130--a-save-takes-the-world-and-a-typed-session-the-worlds-counters-go-in-the-header).
+The list stays as the record of what was weighed:
+- the autoloads are deleted, and `World` is the node's class (D-124);
+- the gatekeepers are the same signals, on the world (D-125);
+- a level knows its world, and everything else reaches it through a level (D-126);
+- the generator and the save each build a whole `World`, outside the tree (D-127);
+- the world sits at the origin inside the game viewport, and owns its actors (D-128);
+- the swap happens at the end of the frame, and the view re-points everything that draws
+  (D-129);
+- a save takes the world and a typed `SaveSession`, and the counters go in the header (D-130).
 
-- **What owns saving and loading.** An autoload beside `World` and `Objects`, or a node in the
-  game scene. An autoload is reachable from anywhere, which is convenient and is also how
-  things become globals; a node in the game scene has to be handed what it saves. Either way it
-  is simulation: it takes levels and actors and saves all of them (trap 1).
-- **The file's encoding.** Each option, and what it costs:
-  - `FileAccess.store_var` of plain dictionaries and `PackedByteArray`s: least code, Godot's own
-    binary format, safe with `allow_objects` off. Opaque to a text editor.
-  - A hand-written byte layout: total control and the smallest file, and every field is
-    yours to read and write in order, forever.
-  - JSON with the arrays base64'd: readable header, diffable, slower and larger; numbers come
-    back as floats, so every int has to be cast on the way in.
-  - A Godot `Resource` (`.tres`/`.res`): the least code of all, and it can run code on load
-    (trap 3).
-- **One file or several.** One file for the world is atomic and simple. A header plus a file per
-  level writes less per save once levels get big, and makes "not generated yet" a missing file
-  rather than a flag. The whole mountain is about 3 MB uncompressed
-  ([world-runtime §1](../docs/tech/world-runtime-and-persistence.md)).
-- **Compression.** Per array (`PackedByteArray.compress`) or the whole file
-  (`FileAccess.open_compressed`). Mostly-solid rock compresses to almost nothing either way;
-  per array keeps the header readable without decompressing.
-- **Where it lives, and slots.** `user://saves/…`. One slot is enough for this slice; the path
-  and file name are what later slots inherit.
-- **When a save happens.** On quit, on a key, on a timer, on a level change, or a mix. Quit-only
-  loses everything on a crash; a timer or level change is where "autosave" lives later. Decide
-  too what counts as a quit: closing the window, `Esc`, the editor's stop button (trap 2).
-- **When a load happens, with no menu.** Always continue if a save exists, with a key or a
-  command-line flag for a new game; or a minimal title screen. The first is quickest to test by
-  hand; the second is the first piece of UI that isn't debug.
-- **What a new game does to an existing save.** Overwrite it at the first save, move it aside,
-  or refuse until it's deleted. Overwriting is the one that loses a playtest world by accident.
-- **How tile arrays are laid out in the save.** Three arrays in a fixed order, or layers by
-  name. By name lets the dark's `remembered` bit (tunnel memory, one persistent bit per tile,
-  [D-033](../docs/design-decisions.md)) arrive in slice 004 as a new layer rather than a
-  migration. Either way, the code's three byte layers aren't the layout world-runtime §3
-  describes (`terrain_id` u16, `flags` u16, `region_id`, `ore_id`); say which one is now the
-  plan.
-- **What happens when a saved level's radius doesn't match its recipe.** It will, the first time
-  a radius is tuned. The save is the truth (below), so the saved bound probably wins. Then
-  `World.is_in_bounds`, which reads the recipe table, disagrees with the level's own
-  `LevelTiles`, which reads its own bound.
-- **Whether loaded fixtures go through `Objects`' placement rules.** Re-checking catches a
-  corrupt save. Skipping it means a rule tightened in a later build can't refuse an old world's
-  ladder. Likewise whether `ramp_problems` and `ladder_problems` run on a loaded world.
-- **Whether actors get a stable `actor_id` now.** world-runtime §6 wants one (structures record
-  `builder_id`); nothing has one. Saving N actors without ids works until something refers to an
-  actor, and that something is the next slice that builds.
-- **What an actor's saved state is.** Name, depth, position (pixels or tile), facing, equipped
-  tool. Not capabilities, which `game.gd` grants; not a dig in progress, which resets on any
-  interruption ([D-072](../docs/design-decisions.md)).
-- **Which loaded actor the local player controls.** Attaching input, the view, the camera and
-  `F3` is presentation's job. With one saved actor the answer is obvious, which is trap 1.
-- **What a loaded actor standing somewhere impassable does.** Nothing between save and load can
-  cause it today; a passability change in a later build can.
-- **`tuning_profile_id`.** One swappable resource holding every tuning number, named in each
-  save so playtest feedback stays traceable to the numbers it was played under
-  ([D-037](../docs/design-decisions.md)). It isn't built. Build a minimal one now, write a
-  placeholder id, or leave the field out until it exists (and pay a version bump then).
-- **Which header fields exist yet.** world-runtime §7 lists `game_time` and `playtime`; there's
-  no game clock. Leave them out, or save what there is.
+The forks as they were put:
+
+- **How each consumer gets the world.** A field set on the actor at setup, a reference on each
+  level (`level.world`), through the view for the renderers, or a mix. Whatever is chosen
+  replaces `World.get_level_by_depth` in the actor's depth changes
+  ([D-117](../docs/design-decisions.md#d-117--an-actor-is-handed-the-level-it-starts-on-depth-changes-still-look-theirs-up)),
+  the ladder rule, both renderers, `Objects` and F3.
+- **What a gatekeeper is now.** Methods on the world node, signals on it, or child nodes under it
+  (a tile gate and a fixture gate). And how a capability that emits today (`dig_requested`)
+  reaches it.
+- **What's left of the `World` and `Objects` autoloads.** Deleted, or reduced to the recipes and
+  the static helpers, and under what names.
+- **Who builds a world.** `LevelGenerator` returning a world, `SaveGame` returning a world, and
+  who swaps it in and re-points the view, renderers, input and F3.
+- **Where the world node sits in the scene,** and what that does to coordinates (trap 5).
+- **What `SaveGame.save_game` takes.** Today it's nine positional parameters, and every new
+  header field broke every caller in 003. A world, plus the few things that aren't the world's
+  (the slot, the local actor, the playtime), would end that.
 
 ## Already settled
 
-- **Save the result, not the recipe.** Full tile arrays, compressed; never seed plus a replay of
-  digs, because regeneration would have to stay bit-identical across every future change to a
-  recipe or prefab ([world-runtime §7](../docs/tech/world-runtime-and-persistence.md)).
-  **Binds** the encoding question: tiles are in the file. It also means all eight levels are
-  saved, the untouched ones too.
-- **A level's bounds are saved with it,** so loading never needs a recipe: a recipe contains its
-  level's bounds, and bounds stay their own type for exactly this reason
-  ([D-085](../docs/design-decisions.md)). **Binds** the radius-mismatch question toward the
-  save.
-- **Tile and fixture kind ids are forever.** A save stores numbers, not names; every existing id
-  is pinned by a test ([D-104](../docs/design-decisions.md), slice 002's trap 8).
-- **`format_version` is an integer with explicit migration functions,** and the first migration
-  is written before it's needed (world-runtime §7; M0 acceptance, §10, asks for one no-op
-  migration).
-- **Derived data is never saved.** Support, light and chambers are recomputed on load
-  ([world-runtime §3](../docs/tech/world-runtime-and-persistence.md)). Today the only derived
-  things are the renderers' textures and the view, and they already rebuild from the truth
-  ([D-065](../docs/design-decisions.md)).
-- **Where actors are is saved; where they spawn is for new players and deaths**
-  ([D-091](../docs/design-decisions.md)). **Binds** outcome 4: a loaded actor doesn't go to the
-  world spawn.
-- **No player singleton.** Simulation takes an actor, or a set of them, as a parameter;
-  presentation may hold the locally controlled one ([D-045](../docs/design-decisions.md)).
-  **Binds** what owns saving: it saves N actors, and it doesn't pick the local one.
-- **No streaming.** Every level stays resident for the session
-  ([D-035](../docs/design-decisions.md)). A load fills all eight before play starts.
-- [Source layout, naming, tabs, signals over direct calls](../docs/coding-standards.md).
+- **The world's shape:** a node that owns its levels and both id counters, gatekeepers on the
+  instance, stateless helpers made static, recipes kept global, two worlds possible
+  ([D-118](../docs/design-decisions.md#d-118--the-world-is-a-node-that-owns-its-levels-and-id-counters-handed-by-reference)).
+- **One front door per kind of change:** tiles change only through the tile gatekeeper
+  ([D-078](../docs/design-decisions.md#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime)),
+  fixtures only through their own
+  ([D-090](../docs/design-decisions.md#d-090--objects-get-their-own-gatekeeper-separate-from-world)).
+- **Simulation takes what it acts on as a parameter,** and nothing resolves to *the* player
+  ([D-045](../docs/design-decisions.md#d-045--no-player-singleton-carves-out-the-presentation-layer)).
+- **An actor is handed its starting level**
+  ([D-117](../docs/design-decisions.md#d-117--an-actor-is-handed-the-level-it-starts-on-depth-changes-still-look-theirs-up)).
+  This slice replaces its remaining lookup, on a depth change.
+- **`move_to` is the one way an actor is put somewhere else**
+  ([D-119](../docs/design-decisions.md#d-119--move_to-is-the-one-way-an-actor-is-put-somewhere-else)).
+- **Every level stays resident**
+  ([D-035](../docs/design-decisions.md#d-035--no-tile-streaming-system-the-whole-world-stays-resident)).
+- **A saved bound wins over the recipe**
+  ([D-112](../docs/design-decisions.md#d-112--tile-layers-are-saved-by-name-a-byte-layer-per-fact-a-saved-bound-wins)).
+  Building from the save makes it real (review bug R-B4).
+- **What a refused save does:** kept, the backup tried, loud; both refused and the game won't
+  start
+  ([D-111](../docs/design-decisions.md#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves)).
+  A refused F6 mid-session leaves the running world and saving alone.
+- **The header's required keys**
+  ([D-121](../docs/design-decisions.md#d-121--three-header-keys-are-required-the-rest-load-as-their-defaults),
+  [D-122](../docs/design-decisions.md#d-122--the-save-time-is-a-utc-unix-int-and-the-writers-offset-both-required)).
+  Format version 1 isn't settled, so the two id counters join the header with no version bump.
 
 ## Traps
 
-### 1. Saving "the player"
+### 1. The name `World` is taken
 
-**The trap.** The shortest save writes `game.gd`'s player: one position, one depth, one facing.
-It works, because there's one actor. Then a second actor exists (a worker, a co-op partner, a
-test actor) and the save silently drops it, or the load hands the local player's controls to
-whichever actor was written first. The save row of world-runtime §6's table is **N** actors.
+An autoload's name shadows a `class_name` of the same name, so a world node class called `World`
+can't coexist with the autoload. Rename one first, on purpose, and in its own commit, so the
+rename and the change of shape aren't tangled in one diff.
 
-**What holds it.** Save every actor under `Actors`, and let presentation decide afterwards which
-one input, the view and the camera follow. The automated check is two actors on different
-depths coming back to their own places.
+### 2. Lookups creep back in
 
-### 2. The editor's stop button isn't a quit
+`get_parent()`, `owner`, `get_first_node_in_group`, `get_tree().get_nodes_in_group`: each is a
+tree search in disguise, and each works fine until there are two worlds. Outcome 7's "no code in
+`src/` searches the tree for levels" is a grep; run it at the end of every section, not once.
 
-**The trap.** Stopping the game from the editor kills the process: no
-`NOTIFICATION_WM_CLOSE_REQUEST`, no `_exit_tree`, no save. A save-on-quit that only runs on that
-notification looks broken in every by-hand test run from the editor, and works fine for
-players. Catching a real window close also needs `get_tree().set_auto_accept_quit(false)`, and
-then quitting yourself after the save. Whatever "quit" ends up meaning, test it outside the
-editor at least once.
+### 3. Signals on a replaced world
 
-### 3. A `Resource` save can run code
+Godot drops a node's connections when it's freed, so anything connected to the old world's
+gatekeepers goes silent after a swap, with no error. A swap has to re-point every listener, and
+a test has to prove each one hears the new world. 003 found one already: the fixture renderer
+kept the old level's fixtures when the depth didn't change (R-B9).
 
-**The trap.** A `.tres` or `.res` can carry an embedded script, and `ResourceLoader.load` runs
-it. Harmless for files the game wrote itself, but a save is the one file players pass around,
-and this is the kind of choice made for convenience now and expensive to unpick once saves
-exist. `store_var`/`get_var` with `allow_objects` left off can't do it, nor can JSON or a
-hand-written layout.
+### 4. Freeing during a callback
 
-### 4. A save written in place can be half a save
+F6 starts the load from inside an input handler's `_input`. 003 made the handlers go at the end
+of the frame instead of at once (R-B8). A whole-world swap started from input should be deferred
+the same way: build the new world now, swap it in at the end of the frame.
 
-**The trap.** A crash or kill partway through writing leaves a truncated file where the good one
-was, and the next launch either fails or starts a new game over it. Write to a temporary file
-and rename it over the old one; `DirAccess.rename` replaces within the same directory.
+### 5. Coordinates only line up by accident
 
-### 5. Loading tiles through the tile setters
+`$Levels` sits under the game root, and actors sit inside `GameViewport`. `actor.position` is
+passed as a global position into `level.to_local`, which is only correct because every transform
+between them is the identity. Moving the levels under a world node keeps that true only if the
+world node is at the origin too.
 
-**The trap.** `LevelTiles`' public `ground`, `top` and `ore` setters `push_warning`, on purpose,
-so assigning a loaded array trips them. The per-tile `set_*` functions emit `tile_changed` once
-per tile: about 25,000 signals at the Surface and 135,000 at the Crush, each one reaching the
-renderer if it's listening. Load needs its own bulk path that replaces the arrays without either.
-Check the array size against the saved bound before taking it.
+### 6. The actor id counter isn't moved on load
 
-### 6. The id counter reset
+Found at the end of 003: `IdAllocator.claim` exists and nothing calls it. After a fresh launch's
+load, a player created next can take an id a loaded actor already has. 003 fixed the fixture
+counter by moving it past the highest loaded id; the actor counter has no fix yet. Saving both
+counters in the header, and restoring them last, after anything that could reset them, ends it
+for both (save-files §7).
 
-**The trap.** `LevelGenerator.generate_levels` calls `Objects.reset_ids()` first. If a load
-restores the counter and then anything generates (a level, a test fixture), ids restart from the
-first one and collide with saved fixtures. `LevelFixtures.add` also accepts the same fixture
-twice (carried from slice 002), so a load that runs twice doubles every ladder without a word.
-Restore the counter last, and add the guard.
+### 7. Test churn
 
-### 7. Seeds hashed from strings
+Most tests put levels in the tree and rely on the lookup. Expect a large, mechanical change.
+Grep each run for `Ignoring` and `Parse Error`: GUT skips a file that fails to parse, and the
+suite still passes. Run each test file on its own once if a leak warning appears; 003's came
+from one test.
 
-**The trap.** `World.set_world_seed` and `Level._set_level_seed` both call `hash()` on a string.
-Godot doesn't promise `hash()` gives the same answer across versions. Nothing uses the level
-seed for randomness yet, so it's invisible, which is the reason to fix it now: save the numbers,
-and on load read them back rather than re-hashing anything.
+### 8. From the 002 and 003 logs
 
-### 8. JSON numbers are floats
+- **Measure the parts before naming the cause.** Both slices blamed a slow path on the wrong
+  thing until it was broken down. A load takes about 100 ms now; F3 shows "Last save" and
+  "Last load".
+- **Script edits from files, not heredocs,** and match whitespace-tolerantly.
+- **Run the game by hand per section,** not only at the end.
 
-**The trap.** Only if the encoding is JSON. `JSON.parse_string` returns every number as a
-`float`. A tile kind, a fixture id or a depth assigned from it into a typed `int` variable is
-converted, but one passed through an untyped `Variant` and compared with `==` or used as a
-dictionary key is not the same value. Cast every number on the way in, in one place.
+## Carried into this slice
 
-### 9. From the 001 and 002 logs
-
-GUT silently skips a test file that fails to parse; treat an "Ignoring script" warning as a
-failure. Measure after changing anything on the tile read path, since the 002 hitch numbers are
-the baseline (Surface ≈ 90 ms, −1 ≈ 47 ms, −2 ≈ 76 ms, the Crush ≈ 490 ms). Run the game by hand
-per section, not per slice.
+From the 003 checklist ([Moved to slice 004](./CHECKLIST.md#moved-to-slice-004-d-118) and the
+review), still to do:
+- A loaded level is built from its **saved** bound, so a level whose radius was tuned isn't lost
+  (R-B4).
+- `World.is_in_bounds` reads the level's own bound, not the recipe table (D-112).
+- Both id counters saved, restored last and in the header; the fixture counter's stopgap
+  (`Objects.reserve_ids_through`) goes.
+- The actor id counter gets its real home (D-114, trap 6).
+- The load in phases: validate, build the world to one side, swap it in, re-point everything
+  (R-S1).
+- `_get_levels_from_save_data` goes once `SaveGame` returns a world (R-S3).

@@ -2601,3 +2601,181 @@ zone. It has no colons, which Windows refuses in a file name.
 
 *Considered:* local time in the same form (ambiguous for the repeated hour when daylight saving
 ends, and out of order across it); Unix seconds (short, but unreadable without converting).
+
+---
+
+### D-124 — The `World` and `Objects` autoloads are deleted; `World` is the world node's class
+**Decided** (by Derik, slice 004, upfront, 2026-11-01). Carries out
+[D-118](#d-118--the-world-is-a-node-that-owns-its-levels-and-id-counters-handed-by-reference)
+for the two autoloads that held world state.
+
+- **Both autoloads go.** Nothing global holds world state.
+- **`class_name World` is the world node,** so the name keeps meaning one thing. The autoload has
+  to be removed before the class can exist (an autoload's name shadows a `class_name`).
+- **The recipe table becomes a preloaded constant on a static class,** since recipes stay global
+  (D-118).
+- **Stateless helpers become static functions** on small static classes: depth display names,
+  position to tile, and the like.
+
+*Why:* any global left behind is somewhere for state to creep back to, and every `World.` call
+changes shape in this slice anyway.
+
+*Considered:* a slim, renamed autoload for the recipes and helpers (convenient, but an invitation
+to put state back); keeping the `World` autoload and naming the node class something else (the
+smallest rename, but two things called "world" meaning different things).
+
+---
+
+### D-125 — The gatekeepers are the same request and outcome signals, on the world instance
+**Decided** (by Derik, slice 004, upfront, 2026-11-01). Carries out D-118's "the door is on the
+world instance" for tiles
+([D-078](#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime)) and fixtures
+([D-090](#d-090--objects-get-their-own-gatekeeper-separate-from-world)).
+
+- **`World` declares and handles the signals the two autoloads have today:** `dig_requested`,
+  `tile_dug` and `dig_refused` for tiles; `place_requested`, `remove_requested`,
+  `fixture_placed`, `fixture_removed` and `request_refused` for fixtures.
+- **A caller emits on the world it was handed,** and hears the outcome from the same world.
+  Only the address changes; the request and answer flow stays as it is.
+- **The two refusal enums need distinct names** once they live on one class (today both are
+  `REFUSAL_REASON`, on `World` and on `Objects`).
+- **The fixture placement rules stay stateless:** they already take the stores they check, so
+  they become static functions, apart from the gatekeeper.
+
+*Why:* it keeps one front door per kind of change, follows the coding standard's signals over
+direct calls, and changes the least behavior in a slice that changes a lot of shape.
+
+*Considered:* two gate child nodes under the world (separate doors that would suit a third
+gate later, at the cost of more nodes to wire and free and `world.tiles.` on every call);
+methods on the world returning a refusal (an immediate answer, but a direct call between nodes
+and a different flow for the dig capability).
+
+---
+
+### D-126 — A level knows its world; everything else reaches the world through a level
+**Decided** (by Derik, slice 004, upfront, 2026-11-01). Settles how consumers get the world D-118
+hands by reference, and replaces the depth-change lookup
+[D-117](#d-117--an-actor-is-handed-the-level-it-starts-on-depth-changes-still-look-theirs-up)
+left in place.
+
+- **`World` sets `level.world` when it takes a level in.** It's the only back-reference, set
+  explicitly by the owner, never found by searching the tree or by `get_parent()`.
+- **An actor's world is `current_level.world`.** A depth change asks that world for the level
+  at the target depth, so the actor holds no second pointer.
+- **The dig capability reaches the gatekeeper through its actor**, and the Ladder and Ramp
+  rules through the level they're given.
+- **The renderers and F3 follow the view, which follows an actor**, so they get the world from
+  the followed actor's level.
+
+*Why:* it's one fact, that a level belongs to one world, with nothing else to keep in step. The
+actor already holds its level (D-117), so most consumers need no new reference at all.
+
+*Consequences:* a level outside any world has `world == null`, and code that needs a world has
+to say so loudly rather than fall back to a lookup. A level is never moved between worlds.
+
+*Considered:* a `world` field on the actor, set at creation (explicit, but two references that
+must agree); passing the world into every rule and call (nothing stored to go stale, but threaded
+through every call site, the input path included).
+
+---
+
+### D-127 — The generator and the save each build a whole `World`, outside the tree
+**Decided** (by Derik, slice 004, upfront, 2026-11-01). Settles who builds the world D-118
+describes.
+
+- **`LevelGenerator` returns a new `World`** for a seed, with its levels, its seed and fresh
+  counters, instead of an `Array[Level]`.
+- **`SaveGame`'s load returns a loaded `World`** (in the slot result, beside its source and
+  refusals), with its levels, seed, restored counters and the saved actors, instead of a
+  `Dictionary` of parts.
+- **Either is built outside the tree** and handed to `game.gd` to swap in. A refused load frees
+  the one `World` it built; nothing else was touched.
+- **`World` stays a container and its gatekeepers** (D-125). Generating stays in the generator,
+  and the save format stays in `SaveGame`.
+
+*Why:* a world built whole, to one side, is what makes a load all or nothing (D-118), and it
+keeps each kind of know-how where it already lives.
+
+*Considered:* static constructors on `World` (`World.generate`, `World.from_save`: one place to
+look, but `World` would know generation and the save format, and `SaveGame` would shrink to file
+I/O).
+
+---
+
+### D-128 — The world sits at the origin inside the game viewport, and owns its actors
+**Decided** (by Derik, slice 004, upfront, 2026-11-01). Settles where D-118's world node lives,
+and widens what it owns from levels and counters to actors as well.
+
+- **`World` is a child of `GameViewport`, at the origin,** with `Levels` and `Actors`
+  (`Players`, `NPCs`) under it. It replaces both `$Levels` and `GameViewport/Actors`.
+- **A world's actors are its own.** Freeing a world frees them; the save reads the world's
+  actors; a loaded world arrives with its actors already in it (D-127).
+- **The renderers and the camera stay beside the world,** as presentation, and are pointed at
+  whichever world is in.
+- **The transforms between a level and an actor stay the identity,** so `level.to_local` of an
+  actor's position keeps working. Nothing in the world may be offset.
+- **Finding actors by group goes**, as finding levels does: the world holds the list.
+
+*Why:* a swap or a refused load can't leave stray actors behind, and two worlds each with an
+actor is just two nodes. It also gives "which actors belong to this world" one answer.
+
+*Considered:* the world at the game root, owning only the levels, with actors left in the
+viewport (the smallest scene change, but a swap would free and re-add actors apart from the
+world, and a world's actors would be found by filtering on their level).
+
+---
+
+### D-129 — A swap happens at the end of the frame, and the view re-points everything that draws
+**Decided** (by Derik, slice 004, upfront, 2026-11-01). Settles how a world built by D-127 is
+swapped in, and how presentation follows it.
+
+- **`game.gd` swaps at the end of the frame.** A load is started from inside an input
+  handler's `_input` (F6), so the new world is built at once and the swap deferred: the old world
+  freed, the new one added, control given to its local player.
+- **The view notices the world changed.** When `view.follow(actor)` is handed an actor whose
+  world isn't the one shown, it announces the world and the depth together
+  (`shown_world_changed`), even when the depth is the same.
+- **The renderers and F3 re-point on that one signal.** They already follow the view
+  ([D-094](#d-094--a-presentation-view-owns-the-shown-depth-and-follows-the-local-actor)).
+  The camera and input go with the actor, as `set_user_control` does today.
+
+*Why:* it adds no second channel beside the view, and a renderer hears the world and the depth
+in one event, so it can't handle them in the wrong order. A load onto the depth already shown
+re-points by design, which closes slice 003's R-B9 case for good.
+
+*Consequences:* anything that draws must follow the view, not the world directly, or it won't
+hear a swap. A test proves each listener hears the new world.
+
+*Considered:* `game.gd` emitting `world_changed` (a second channel, and world and depth heard
+separately, in either order); `game.gd` calling each piece directly (explicit, but direct calls,
+and a list every new piece has to join).
+
+---
+
+### D-130 — A save takes the world and a typed session; the world's counters go in the header
+**Decided** (by Derik, slice 004, upfront, 2026-11-01). Settles what `SaveGame.save_game` is
+handed, after slice 003's nine positional parameters broke every caller with each new header
+field.
+
+- **`save_game(slot, world, session, saves_root)`.** The world gives its levels, actors, seed
+  and both id counters.
+- **`SaveSession` is a small typed class** for what isn't the world's: the local actor's id,
+  the tuning profile id and the two playtime clocks
+  ([D-120](#d-120--playtime-is-two-clocks-active-and-total)). A new header field that isn't the
+  world's becomes a field on it, and no call site changes.
+- **The next fixture id and the next actor id go in the header** from the world itself
+  ([D-116](#d-116--the-save-header-and-a-placeholder-tuning-profile-id), D-118), with no format
+  version bump while version 1 is unsettled.
+- **On load, the counters are restored last, then moved past every id the load brought back,**
+  so a stale or hand-edited counter can never hand out an id already in use. A save with no
+  counters (from slice 003) gets them from the ids alone. This replaces 003's stopgap,
+  `Objects.reserve_ids_through`.
+
+*Why:* the world already knows most of what a save holds, and what it doesn't know has one
+typed home, so the signature stops growing.
+
+*Considered:* the world plus the rest still positional (seven parameters, and the next field
+breaks every caller again); the world holding the playtime, tuning id and local actor too (the
+shortest call, but the local actor is presentation's choice, as
+[D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer) carves out, and playtime
+belongs to the session, not to the mountain).

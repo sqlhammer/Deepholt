@@ -140,9 +140,10 @@ constraint you find out about after building against it just costs a rebuild.
 
 ### The log
 
-Claude drafts the log entry from what actually happened; Derik corrects it. The correction pass
-is the point — that's where the retrospect lands. A draft that goes uncorrected is a signal the
-slice was too small to be worth logging, or that the entry was written too late.
+Claude writes the log entry from what actually happened, and it stands as written: there is no
+correction pass (changed by Derik, 2026-11-01). Derik can still edit an entry whenever he wants
+to, but nothing waits on it. Since the entry is the only retrospect, it says plainly what went
+wrong, including Claude's own mistakes.
 
 ### Referring to pillars and decisions
 
@@ -165,7 +166,7 @@ skimmed past. The identifier is for going deeper, not for decoding.
 3. Forks surface as conversation. Decisions land as `D-nnn`.
 4. The slice is built according to its mode.
 5. Automated checks run. Derik verifies by hand.
-6. Claude drafts `log/NNN-slug.md`. Derik corrects it.
+6. Claude writes `log/NNN-slug.md`.
 7. Claude re-sketches `NEXT.md` against what was just learned, and the next slice starts.
 
 ## 7. Standing tension
