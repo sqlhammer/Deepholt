@@ -20,6 +20,16 @@ one more name on `SaveGame.TILE_LAYERS`
 Light itself is derived, so it isn't saved. Likely the first slice where the render route from
 001 (D-046) either holds up or gets replaced.
 
+**Also in this slice (Derik, 2026-11-02): generation on first descent**
+([world-runtime §8](../docs/tech/world-runtime-and-persistence.md#8-generation-threading)).
+Today all eight levels are built at launch, which isn't how the design says it works: a level is
+generated the first time someone goes down to it. When that changes, a save in which some
+levels don't exist yet has a missing level key, and the load needs that case. It must read as
+"not generated yet", not as a damaged save, since a level the save holds and can't load refuses
+the whole file today (R-B3). It also changes what a ramp or ladder down leads to before the
+level below exists, and when that level's fixture ids are drawn. This makes 006 two pieces of
+work, so the brief should say whether they're one slice or two.
+
 What 005 changes here: light radii and anything else tunable go in the world's
 `TuningProfile` ([D-135](../docs/design-decisions.md)), not in code. The level-change fade
 (D-142) is a black overlay over the whole display. A dark that's already near black may want it
@@ -61,9 +71,6 @@ world's tile gatekeeper.
 - **Procgen beyond the recipe's fixed placements** (D-084's rules and tags).
 - **A title screen and a save-slot menu.** Today launch continues the first slot, and
   `--new-game` is the only way to start fresh (D-111).
-- **Generation on first descent** (world-runtime §8). All eight levels are built at launch. When
-  that changes, a save in which some levels don't exist yet is a missing key, and the load needs
-  that case.
 
 None of them are next.
 
