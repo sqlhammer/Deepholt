@@ -97,7 +97,7 @@ func _levels(depths: Array[int]) -> Array[Level]:
 
 
 func test_the_hand_made_levels_have_no_ramp_problems() -> void:
-	var levels: Array[Level] = LevelGenerator.generate_levels(World.level_recipes)
+	var levels: Array[Level] = LevelGenerator.generate_levels(LevelRecipes.TABLE)
 	for level in levels: autofree(level)
 	assert_eq(LevelGenerator.ramp_problems(levels), [] as Array[String], "every ramp has its pair")
 
@@ -156,12 +156,12 @@ func test_a_ramp_outside_the_other_levels_bounds_is_reported() -> void:
 # --- the hand-made pair, walked ---
 
 func _real_levels() -> void:
-	for level: Level in LevelGenerator.generate_levels(World.level_recipes):
+	for level: Level in LevelGenerator.generate_levels(LevelRecipes.TABLE):
 		add_child_autofree(level)
 
 
 func _actor_at(tile: Vector2i, depth: int) -> Actor:
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth), World.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth), WorldAutoload.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
 	add_child_autofree(actor)
 	return actor
 
@@ -177,9 +177,9 @@ func _walk(actor: Actor, motion: Vector2, steps: int = 20) -> void:
 
 func test_the_surface_start_room_has_the_down_end_and_minus_one_the_up_end() -> void:
 	_real_levels()
-	assert_eq(World.get_level_by_depth(0).level_tiles.get_ground(6, 0), TileKind.GROUND.RAMP_DOWN_E,
+	assert_eq(WorldAutoload.get_level_by_depth(0).level_tiles.get_ground(6, 0), TileKind.GROUND.RAMP_DOWN_E,
 		"Surface (6, 0)")
-	assert_eq(World.get_level_by_depth(1).level_tiles.get_ground(6, 0), TileKind.GROUND.RAMP_UP_E,
+	assert_eq(WorldAutoload.get_level_by_depth(1).level_tiles.get_ground(6, 0), TileKind.GROUND.RAMP_UP_E,
 		"-1 (6, 0)")
 
 
@@ -228,7 +228,7 @@ func test_walking_backwards_still_takes_the_ramp() -> void:
 
 func test_a_closed_landing_leaves_the_actor_on_the_ramp() -> void:
 	_real_levels()
-	World.get_level_by_depth(1).level_tiles.set_top(6, 0, TileKind.TOP.MINABLE_ROCK)
+	WorldAutoload.get_level_by_depth(1).level_tiles.set_top(6, 0, TileKind.TOP.MINABLE_ROCK)
 	var actor: Actor = _actor_at(Vector2i(5, 0), 0)
 	_walk(actor, Vector2(1.4, 0), 12)
 	assert_eq(actor.depth, 0, "refused: still on the Surface")
@@ -270,7 +270,7 @@ func test_f3_prints_a_ramp_as_its_letter() -> void:
 	_real_levels()
 	var overlay: CanvasLayer = preload("res://src/debug/debug_overlay.tscn").instantiate()
 	add_child_autofree(overlay)
-	var tiles: LevelTiles = World.get_level_by_depth(0).level_tiles
+	var tiles: LevelTiles = WorldAutoload.get_level_by_depth(0).level_tiles
 	assert_eq(overlay._tile_char(tiles, 6, 0, WorldPos.new(0, 0, 0)), "e", "the down-east end")
 
 

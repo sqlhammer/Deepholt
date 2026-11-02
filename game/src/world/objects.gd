@@ -129,12 +129,12 @@ func placement_problems(levels: Array[Level]) -> Array[String]:
 
 
 func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
-	var level: Level = World.get_level_by_depth(tile.depth)
+	var level: Level = WorldAutoload.get_level_by_depth(tile.depth)
 	if level == null:
 		request_refused.emit(actor, VERB.PLACE, tile, REFUSAL_REASON.LEVEL_NOT_EXISTS)
 		return
 
-	var above: Level = World.get_level_by_depth(tile.depth - 1)
+	var above: Level = WorldAutoload.get_level_by_depth(tile.depth - 1)
 	var tiles_above: LevelTiles = above.level_tiles if above != null else null
 	var reason: REFUSAL_REASON = placement_problem(
 		kind, Vector2i(tile.x, tile.y), level.level_tiles, level.level_fixtures, tiles_above)

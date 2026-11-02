@@ -102,7 +102,7 @@ func test_the_worked_example_from_the_lesson() -> void:
 	_surface.queue_free()
 	_below.queue_free()
 	await wait_physics_frames(1)
-	for level: Level in LevelGenerator.generate_levels(World.level_recipes):
+	for level: Level in LevelGenerator.generate_levels(LevelRecipes.TABLE):
 		add_child_autofree(level)
 	_assert_at(_target(14, -1, 1, Vector2i(0, -1)), WorldPos.new(14, -2, 2), "down from (14, -1) facing north")
 	_assert_at(_target(14, -2, 2, Vector2i(0, -1)), WorldPos.new(15, -2, 1),

@@ -482,7 +482,7 @@ static func _deserialize_levels(p_levels: Dictionary) -> Dictionary:
 		if not _is_valid_level_entry(level_key, p_levels[level_key]): continue
 		# A depth with no recipe row is refused here. Level.set_depth
 		# would clamp it onto the last level without a word.
-		if not World.level_recipes.has_recipe(level_key):
+		if not LevelRecipes.TABLE.has_recipe(level_key):
 			push_warning("Saved depth %d has no recipe row; skipped." % level_key)
 			continue
 		var level: Level = _deserialize_level(level_key, p_levels[level_key])
@@ -509,7 +509,7 @@ static func _deserialize_level(p_depth: int, p_level: Dictionary) -> Level:
 		level = Global.level_packed_scene.instantiate()
 		level.setup(p_depth)
 	else:
-		level = LevelGenerator.generate_level(World.level_recipes.get_recipe(p_depth))
+		level = LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(p_depth))
 	# Never use _set_level_seed() because it recomputes the seed. The save is the source of truth
 	level.level_seed = p_level["level_seed"]
 	

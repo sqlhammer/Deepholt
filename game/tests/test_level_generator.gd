@@ -14,7 +14,7 @@ func _generate(recipe: LevelRecipe) -> Level:
 # A copy of a real depth's recipe with its placements replaced, so a
 # test can't change the shared table.
 func _recipe_at(depth: int, placements: Array[PrefabPlacement]) -> LevelRecipe:
-	var recipe: LevelRecipe = LevelRecipe.new(World.level_recipes.get_bounds(depth))
+	var recipe: LevelRecipe = LevelRecipe.new(LevelRecipes.TABLE.get_bounds(depth))
 	recipe.fixed_placements = placements
 	return recipe
 
@@ -27,16 +27,16 @@ func _bare_level(depth: int) -> Level:
 
 
 func test_one_level_per_recipe_in_order() -> void:
-	var levels: Array[Level] = LevelGenerator.generate_levels(World.level_recipes)
+	var levels: Array[Level] = LevelGenerator.generate_levels(LevelRecipes.TABLE)
 	for level in levels: autofree(level)
-	assert_eq(levels.size(), World.level_recipes.rows.size(), "one level per recipe")
+	assert_eq(levels.size(), LevelRecipes.TABLE.rows.size(), "one level per recipe")
 	for index in levels.size():
 		assert_eq(levels[index].depth, index, "level %d is depth %d" % [index, index])
 
 
 func test_the_surface_recipe_stamps_the_start_prefab() -> void:
-	var level: Level = _generate(World.level_recipes.get_recipe(0))
-	var expected: LevelTiles = LevelTiles.new(World.level_recipes.get_bounds(0))
+	var level: Level = _generate(LevelRecipes.TABLE.get_recipe(0))
+	var expected: LevelTiles = LevelTiles.new(LevelRecipes.TABLE.get_bounds(0))
 	LevelGridLoader.stamp(expected, TilePrefabRegistry.get_prefab(&"surface_start"), Vector2i.ZERO)
 	# assert_true, not assert_eq: a failing assert_eq prints every byte.
 	assert_true(level.level_tiles.top == expected.top, "the Surface is surface_start at the axis")
@@ -44,7 +44,7 @@ func test_the_surface_recipe_stamps_the_start_prefab() -> void:
 
 
 func test_a_recipe_with_no_placements_is_the_default_fill() -> void:
-	var level: Level = _generate(World.level_recipes.get_recipe(3))
+	var level: Level = _generate(LevelRecipes.TABLE.get_recipe(3))
 	assert_eq(level.level_tiles.get_top(0, 0), TileKind.TOP.MINABLE_ROCK, "solid rock at the axis")
 
 
@@ -154,7 +154,7 @@ func test_a_hole_with_no_ladder_is_not_a_problem() -> void:
 func test_generating_a_world_restarts_fixture_ids() -> void:
 	Objects.next_id()
 	Objects.next_id()
-	var levels: Array[Level] = LevelGenerator.generate_levels(World.level_recipes)
+	var levels: Array[Level] = LevelGenerator.generate_levels(LevelRecipes.TABLE)
 	for level in levels: autofree(level)
 	assert_eq(Objects.next_id(), 1 + _fixture_count(levels), "ids restarted at 1 for the new world")
 

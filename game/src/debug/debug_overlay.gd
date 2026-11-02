@@ -19,7 +19,7 @@ var watched_actors: Dictionary[int, String] = {}
 func _ready() -> void:
 	$Timer.timeout.connect(_refresh_watched_actors)
 	Global.debug_event.connect(set_section)
-	set_section("World Seed",str(World.world_seed)) # World emits prior to this being ready. Once we implement a loading screen, World seed will update later and we can remove this.
+	set_section("World Seed",str(WorldAutoload.world_seed)) # World emits prior to this being ready. Once we implement a loading screen, World seed will update later and we can remove this.
 
 
 func _input(event: InputEvent) -> void:
@@ -130,7 +130,7 @@ func world_spawn_text() -> String:
 		return "%d of them (expected one)" % spawns.size()
 	var tile: WorldPos = spawns[0].tile
 	return "(%d, %d) depth %d [%s]  #%d" % [
-		tile.x, tile.y, tile.depth, World.depth_to_display(tile.depth), spawns[0].id]
+		tile.x, tile.y, tile.depth, DepthName.of(tile.depth), spawns[0].id]
 
 
 # What the world believes about the tiles around one actor, read straight out
@@ -146,7 +146,7 @@ func _tile_readout(pos: WorldPos) -> String:
 	var index: int = tiles.get_index(pos.x, pos.y)
 	var origin_index: int = tiles.get_index(0, 0)
 	var where: String = "(%d, %d) depth %d [%s]  index %d of %d" % [
-		pos.x, pos.y, pos.depth, World.depth_to_display(pos.depth), index, tiles.ground.size()]
+		pos.x, pos.y, pos.depth, DepthName.of(pos.depth), index, tiles.ground.size()]
 	var layers: String = "ground %s  top %s  ore %s" % [
 		_kind_name(TileKind.GROUND, tiles.get_ground(pos.x, pos.y)),
 		_kind_name(TileKind.TOP, tiles.get_top(pos.x, pos.y)),
@@ -262,7 +262,7 @@ func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:
 	if new_depth == View.NO_DEPTH:
 		set_section(VIEW_SECTION, "none")
 		return
-	set_section(VIEW_SECTION, "%d [%s]" % [new_depth, World.depth_to_display(new_depth)])
+	set_section(VIEW_SECTION, "%d [%s]" % [new_depth, DepthName.of(new_depth)])
 
 
 # Open floor prints '.', unless its ground is a ramp: then the letter

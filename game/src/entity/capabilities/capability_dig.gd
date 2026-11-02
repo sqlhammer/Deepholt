@@ -9,8 +9,8 @@ var current_tile: WorldPos = WorldPos.new(99,99,99)
 var actor: Actor
 
 func _ready() -> void:
-	World.tile_dug.connect(_on_tile_dug)
-	World.dig_refused.connect(_on_dig_refused)
+	WorldAutoload.tile_dug.connect(_on_tile_dug)
+	WorldAutoload.dig_refused.connect(_on_dig_refused)
 	actor.action_ended.connect(action_ended)
 
 
@@ -29,7 +29,7 @@ func dig(delta: float, tool_speed: float, target_tile: WorldPos, level: Level) -
 	
 	progress += tool_speed * delta
 	if _is_dig_complete(): 
-		World.dig_requested.emit(actor, target_tile)
+		WorldAutoload.dig_requested.emit(actor, target_tile)
 
 
 func _target_tile_changed(target_tile: WorldPos) -> bool:
@@ -40,7 +40,7 @@ func _matches_attached_actor(p_actor: Actor) -> bool:
 	return actor == p_actor
 
 
-func _on_dig_refused(p_actor: Actor, _tile: WorldPos, _reason: World.REFUSAL_REASON) -> void:
+func _on_dig_refused(p_actor: Actor, _tile: WorldPos, _reason: WorldAutoload.REFUSAL_REASON) -> void:
 	if not _matches_attached_actor(p_actor): return # Event not for this actor
 	_reset_progress()
 

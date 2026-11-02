@@ -24,7 +24,7 @@ config/icon="uid://d2ufv0rd2aoa"
 [autoload]
 
 Global="*uid://dhr1etdbio5wj"
-World="*uid://duqr4368qma7m"
+WorldAutoload="*res://src/world/world_autoload.gd"
 TilePrefabRegistry="*res://src/world/tile_prefab_registry.gd"
 Objects="*res://src/world/objects.gd"
 

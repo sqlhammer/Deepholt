@@ -30,7 +30,7 @@ func _ladder(depth: int, id: int, tile: Vector2i = SPOT) -> Fixture:
 
 
 func _following_actor_at(depth: int) -> Array:
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(SPOT.x, SPOT.y, depth), World.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(SPOT.x, SPOT.y, depth), WorldAutoload.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
 	add_child_autofree(actor)
 	var view: View = View.new()
 	add_child_autofree(view)
@@ -194,16 +194,16 @@ func test_tops_are_only_for_the_level_below_the_shown_one() -> void:
 func test_the_hand_made_hole_on_minus_one_shows_the_ladder_top() -> void:
 	for level in _levels: level.queue_free()
 	await wait_physics_frames(1)
-	for level: Level in LevelGenerator.generate_levels(World.level_recipes):
+	for level: Level in LevelGenerator.generate_levels(LevelRecipes.TABLE):
 		add_child_autofree(level)
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(14, -1, 1), World.get_level_by_depth(1), ActorKind.ACTOR.PLAYER)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(14, -1, 1), WorldAutoload.get_level_by_depth(1), ActorKind.ACTOR.PLAYER)
 	add_child_autofree(actor)
 	var view: View = View.new()
 	add_child_autofree(view)
 	view.follow(actor)
 	var renderer: FixtureRenderer = _renderer()
 	renderer.watch(view)
-	var ladder: Fixture = World.get_level_by_depth(2).level_fixtures.of_kind(ObjectKind.OBJECT.LADDER)[0]
+	var ladder: Fixture = WorldAutoload.get_level_by_depth(2).level_fixtures.of_kind(ObjectKind.OBJECT.LADDER)[0]
 	var top: Sprite2D = renderer.top_sprite_for(ladder.id)
 	assert_not_null(top, "from -1, the hole at (14, -2) shows its ladder")
 	if top: assert_eq(top.position, Vector2(14, -2) * 16.0, "in the hole")

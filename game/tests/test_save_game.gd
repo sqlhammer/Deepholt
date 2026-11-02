@@ -31,7 +31,7 @@ func _level(depth: int) -> Level:
 
 
 func _radius(depth: int) -> int:
-	return World.level_recipes.get_bounds(depth).radius
+	return LevelRecipes.TABLE.get_bounds(depth).radius
 
 
 func _size(depth: int) -> int:
@@ -340,7 +340,7 @@ func test_deserialize_skips_a_key_that_disagrees_with_its_bound() -> void:
 # level by Level.set_depth's clamp. The last row's level is the one it
 # would have overwritten.
 func test_deserialize_refuses_a_depth_with_no_recipe_row() -> void:
-	var last: int = World.level_recipes.rows.size() - 1
+	var last: int = LevelRecipes.TABLE.rows.size() - 1
 	var beyond: int = last + 1
 	var saved: Dictionary = _level_data(last)
 	saved["bound"]["depth"] = beyond
@@ -432,7 +432,7 @@ func _fixtures_of(level: Level) -> Array:
 # Every level, as generation builds it. Freed after the test.
 func _generated_world() -> Array[Level]:
 	var levels: Array[Level] = []
-	for recipe: LevelRecipe in World.level_recipes.rows:
+	for recipe: LevelRecipe in LevelRecipes.TABLE.rows:
 		levels.append(autofree(LevelGenerator.generate_level(recipe)))
 	return levels
 
@@ -475,7 +475,7 @@ func test_deserialize_with_an_empty_fixture_list_leaves_none() -> void:
 # A save written before fixtures were saved keeps what generation put
 # there, the way a missing tile layer keeps its default.
 func test_deserialize_without_a_fixtures_entry_keeps_the_generated() -> void:
-	var generated: Level = autofree(LevelGenerator.generate_level(World.level_recipes.get_recipe(0)))
+	var generated: Level = autofree(LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(0)))
 	var level: Level = _deserialize({0: _level_data(0)})[0]
 	assert_eq(_fixtures_of(level).size(), _fixtures_of(generated).size(),
 		"as many fixtures as generation places")
@@ -579,7 +579,7 @@ func _read(file: String) -> Variant:
 # Levels only: actors need levels in the tree, which these don't use.
 func _save(levels: Array[Level], slot: String = TEST_SLOT) -> SaveGame.REFUSAL_REASON:
 	var no_actors: Array[Node] = []
-	return SaveGame.save_game(slot, levels, no_actors, null, World.world_seed, "none",
+	return SaveGame.save_game(slot, levels, no_actors, null, WorldAutoload.world_seed, "none",
 		0.0, 0.0, TEST_ROOT)
 
 
@@ -806,7 +806,7 @@ func _write_raw_save(data: Dictionary) -> void:
 
 func _required_header() -> Dictionary:
 	return {
-		"world_seed": World.world_seed,
+		"world_seed": WorldAutoload.world_seed,
 		"game_version": Global.get_game_version(),
 		"saved_at": 1793569749,
 		"saved_at_utc_offset": -300,
@@ -954,7 +954,7 @@ func test_a_load_reports_a_ramp_problem() -> void:
 	var levels: Dictionary = _saved_levels()
 	var ground: PackedByteArray = _filled(_size(0), TileKind.GROUND.ROCK)
 	var top: PackedByteArray = _filled(_size(0), TileKind.TOP.MINABLE_ROCK)
-	var index: int = LevelTiles.new(World.level_recipes.get_bounds(0)).get_index(0, 0)
+	var index: int = LevelTiles.new(LevelRecipes.TABLE.get_bounds(0)).get_index(0, 0)
 	ground[index] = _a_down_ramp()
 	top[index] = TileKind.TOP.OPEN
 	levels[0]["tiles"]["ground"] = _packed(ground)
@@ -1092,7 +1092,7 @@ func test_two_actors_on_different_depths_round_trip_each_to_its_own() -> void:
 	var a: Actor = _player_on(tile_a, levels, "Upper", 10)
 	var b: Actor = _player_on(tile_b, levels, "Lower", 11)
 	var actors: Array[Node] = [a, b]
-	assert_eq(SaveGame.save_game(TEST_SLOT, levels, actors, a, World.world_seed, "none",
+	assert_eq(SaveGame.save_game(TEST_SLOT, levels, actors, a, WorldAutoload.world_seed, "none",
 		0.0, 0.0, TEST_ROOT),
 		SaveGame.REFUSAL_REASON.NONE, "the save succeeds")
 
@@ -1413,7 +1413,7 @@ func test_a_radius_at_the_cap_passes_the_check() -> void:
 
 
 func test_the_cap_is_past_every_recipe() -> void:
-	for recipe: LevelRecipe in World.level_recipes.rows:
+	for recipe: LevelRecipe in LevelRecipes.TABLE.rows:
 		assert_lt(recipe.bound.radius, SaveGame.MAX_SAVED_RADIUS,
 			"depth %d fits under the cap" % recipe.bound.depth)
 

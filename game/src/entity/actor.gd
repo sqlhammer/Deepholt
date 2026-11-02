@@ -181,7 +181,7 @@ func setup(p_name: String, world_pos: WorldPos, level: Level, p_kind: int, p_act
 	if p_actor_id != -1:
 		actor_id = p_actor_id
 	else:
-		actor_id = World.id_allocator.allocate()
+		actor_id = WorldAutoload.id_allocator.allocate()
 	actor_name = p_name
 	name = "Actor%s" % p_name
 	actor_kind = p_kind
@@ -191,7 +191,7 @@ func setup(p_name: String, world_pos: WorldPos, level: Level, p_kind: int, p_act
 func get_current_WorldPos() -> WorldPos:
 	if not current_level: return
 	var g_pos = get_world_box().get_center()
-	return World.get_worldpos_from_global_position(g_pos, current_level)
+	return TileSpace.world_pos_at(g_pos, current_level)
 
 
 func _update_WorldPos() -> void:
@@ -222,7 +222,7 @@ func _draw() -> void:
 # old tile, so nothing is announced.
 func set_depth(p_depth: int) -> void:
 	_depth = p_depth
-	current_level = World.get_level_by_depth(depth)
+	current_level = WorldAutoload.get_level_by_depth(depth)
 	assert(current_level != null, "Actor depth was change/set while current_level was NULL.")
 	_update_WorldPos()
 
@@ -241,7 +241,7 @@ func _set_level(level: Level) -> void:
 # announced once, with the final tile. Returns false, changing
 # nothing, if there is no level there or the landing is blocked.
 func move_to(target: WorldPos) -> bool:
-	var level: Level = World.get_level_by_depth(target.depth)
+	var level: Level = WorldAutoload.get_level_by_depth(target.depth)
 	if level == null: return false
 
 	var landing: Variant = _landing_on(level.level_tiles, target)

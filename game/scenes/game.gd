@@ -131,7 +131,7 @@ func save_game() -> bool:
 	# Save, timed: F3 shows whether it's short enough to go unfelt
 	# mid-play (D-110)
 	var started: int = Time.get_ticks_usec()
-	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor, World.world_seed, tuning_profile_id, active_play_time, total_play_time, saves_root)
+	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor, WorldAutoload.world_seed, tuning_profile_id, active_play_time, total_play_time, saves_root)
 	last_save_msec = (Time.get_ticks_usec() - started) / 1000.0
 	$DebugOverlay.show_save_time(last_save_msec)
 	if result != SaveGame.REFUSAL_REASON.NONE:
@@ -364,7 +364,7 @@ func _create_view() -> void:
 # Every level is built from its depth's recipe (D-084); the scene only
 # decides where they live.
 func _spawn_levels() -> void:
-	_attach_levels(LevelGenerator.generate_levels(World.level_recipes))
+	_attach_levels(LevelGenerator.generate_levels(LevelRecipes.TABLE))
 
 
 func _attach_levels(levels: Array[Level]) -> void:

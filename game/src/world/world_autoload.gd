@@ -1,8 +1,9 @@
 extends Node
 
+# Temporary: the World autoload, renamed so `World` can name the world
+# node's class (D-124). Deleted once the node holds all of this.
+
 var world_seed: int
-# One recipe per depth, each holding that level's bounds (D-085).
-var level_recipes: LevelRecipeTable = preload("res://src/world/level_recipes.tres")
 var id_allocator: IdAllocator = IdAllocator.new()
 
 signal tile_dug(actor: Actor, tile: WorldPos)
@@ -37,27 +38,8 @@ func get_level_by_depth(_depth: int) -> Level:
 	return level
 
 
-func get_worldpos_from_global_position(g_pos: Vector2, level: Level) -> WorldPos:
-	var world_pos: WorldPos
-	var _pos = level.to_local(g_pos)
-	var tile: Vector2i = Vector2i((_pos / TileSpace.TILE_PIXELS).floor())
-	world_pos = WorldPos.new(tile.x, tile.y, level.depth)
-	return world_pos
-
-
-func depth_to_display(depth: int) -> String:
-	if depth == 0: return "Surface"
-	return str(0-depth)
-
-
-func display_to_depth(depth: String) -> int:
-	if depth == "Surface": return 0
-	if depth.is_valid_int(): return abs(int(depth))
-	return -99
-
-
 func is_in_bounds(pos: WorldPos) -> bool:
-	var _bounds: LevelBound = level_recipes.get_bounds(pos.depth)
+	var _bounds: LevelBound = LevelRecipes.TABLE.get_bounds(pos.depth)
 	if not _bounds: return false
 	var _distance = Vector2(0,0).distance_to(Vector2(pos.x,pos.y))
 	return _distance <= _bounds.radius

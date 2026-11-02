@@ -19,13 +19,13 @@ func test_setup_sets_the_depth_and_name() -> void:
 
 
 func test_a_depth_past_the_recipes_is_clamped() -> void:
-	assert_eq(_level(99).depth, World.level_recipes.rows.size() - 1, "clamped to the deepest")
+	assert_eq(_level(99).depth, LevelRecipes.TABLE.rows.size() - 1, "clamped to the deepest")
 	assert_eq(_level(-5).depth, 0, "clamped to the Surface")
 
 
 func test_tile_data_has_the_recipes_shape() -> void:
 	var level: Level = _level(1)
-	assert_eq(level.level_tiles.level_bound, World.level_recipes.get_bounds(1), "-1's bounds")
+	assert_eq(level.level_tiles.level_bound, LevelRecipes.TABLE.get_bounds(1), "-1's bounds")
 
 
 func test_a_new_level_is_solid_rock_with_no_fixtures() -> void:

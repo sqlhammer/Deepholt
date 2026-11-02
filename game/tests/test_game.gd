@@ -223,7 +223,7 @@ func _slot_bytes(file: String) -> PackedByteArray:
 
 # A Surface tile the generator leaves as rock, to dig.
 func _a_rock_tile() -> Vector2i:
-	var tiles: LevelTiles = World.get_level_by_depth(0).level_tiles
+	var tiles: LevelTiles = WorldAutoload.get_level_by_depth(0).level_tiles
 	for x: int in range(-10, 11):
 		for y: int in range(-10, 11):
 			if tiles.get_top(x, y) == TileKind.TOP.MINABLE_ROCK: return Vector2i(x, y)
@@ -237,7 +237,7 @@ func test_the_command_line_flag_is_new_game_after_the_double_dash() -> void:
 func test_a_new_game_moves_the_save_and_backup_aside_and_starts_fresh() -> void:
 	var tile: Vector2i = _a_rock_tile()
 	assert_ne(tile, Vector2i(999, 999), "there's rock to dig")
-	World.get_level_by_depth(0).level_tiles.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
+	WorldAutoload.get_level_by_depth(0).level_tiles.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
 	assert_true(_game.save_game(), "saved once")
 	assert_true(_game.save_game(), "and again, so there's a backup")
 	var save_bytes: PackedByteArray = _slot_bytes(SaveGame.SAVE_BASE_NAME)
@@ -245,7 +245,7 @@ func test_a_new_game_moves_the_save_and_backup_aside_and_starts_fresh() -> void:
 	_relaunch(true)
 
 	assert_eq(_game.load_source, SaveGame.SOURCE.NEW, "a new world")
-	assert_eq(World.get_level_by_depth(0).level_tiles.get_top(tile.x, tile.y),
+	assert_eq(WorldAutoload.get_level_by_depth(0).level_tiles.get_top(tile.x, tile.y),
 		TileKind.TOP.MINABLE_ROCK, "fresh: the dig isn't in it")
 	assert_not_null(_game.active_actor, "with a player")
 	assert_false(FileAccess.file_exists(_save_file()), "world.save is moved aside")
@@ -368,7 +368,7 @@ func test_an_actor_saved_on_a_tile_made_impassable_loads_at_the_spawn() -> void:
 	var id: int = actor.actor_id
 	var actor_name: String = actor.actor_name
 	var stuck: WorldPos = actor.current_WorldPos
-	World.get_level_by_depth(1).level_tiles.set_top(
+	WorldAutoload.get_level_by_depth(1).level_tiles.set_top(
 		stuck.x, stuck.y, TileKind.TOP.MINABLE_ROCK)
 	assert_true(_game.save_game(), "saved, standing in rock")
 	var spawn: WorldPos = _world_spawn().tile
@@ -379,7 +379,7 @@ func test_an_actor_saved_on_a_tile_made_impassable_loads_at_the_spawn() -> void:
 	if loaded == null: return
 	assert_true(loaded.current_WorldPos.equals(spawn),
 		"at the world spawn %s, got %s" % [spawn, loaded.current_WorldPos])
-	assert_eq(loaded.current_level, World.get_level_by_depth(spawn.depth),
+	assert_eq(loaded.current_level, WorldAutoload.get_level_by_depth(spawn.depth),
 		"on the spawn's level")
 	assert_eq(_warnings_naming([actor_name, str(stuck)]), 1,
 		"one warning naming %s and %s" % [actor_name, stuck])
@@ -408,7 +408,7 @@ func test_moving_a_stuck_actor_on_load_does_not_save() -> void:
 	var actor: Actor = _player_on_minus_one()
 	var actor_name: String = actor.actor_name
 	var stuck: WorldPos = actor.current_WorldPos
-	World.get_level_by_depth(1).level_tiles.set_top(
+	WorldAutoload.get_level_by_depth(1).level_tiles.set_top(
 		stuck.x, stuck.y, TileKind.TOP.MINABLE_ROCK)
 	assert_true(_game.save_game(), "saved, standing in rock")
 	var saved: PackedByteArray = FileAccess.get_file_as_bytes(_save_file())
@@ -427,12 +427,12 @@ func test_moving_a_stuck_actor_on_load_does_not_save() -> void:
 func test_a_stuck_actor_is_moved_clear_of_an_npc_on_the_spawn() -> void:
 	var spawn: WorldPos = _world_spawn().tile
 	var npc: Actor = _game._create_actor(Actor.create(Global.actor_packed_scene, "Npc",
-		spawn, World.get_level_by_depth(spawn.depth), ActorKind.ACTOR.NULL))
+		spawn, WorldAutoload.get_level_by_depth(spawn.depth), ActorKind.ACTOR.NULL))
 	var player: Actor = _player_on_minus_one()
 	var id: int = player.actor_id
 	var player_name: String = player.actor_name
 	var stuck: WorldPos = player.current_WorldPos
-	World.get_level_by_depth(1).level_tiles.set_top(
+	WorldAutoload.get_level_by_depth(1).level_tiles.set_top(
 		stuck.x, stuck.y, TileKind.TOP.MINABLE_ROCK)
 	var order: Array[Node] = [npc, player]
 	_save_actors(order, player)
@@ -457,9 +457,9 @@ func test_a_stuck_actor_with_nowhere_to_go_stays_put_with_an_error() -> void:
 	var actor: Actor = _player_on_minus_one()
 	var id: int = actor.actor_id
 	var stuck: WorldPos = actor.current_WorldPos
-	World.get_level_by_depth(1).level_tiles.set_top(
+	WorldAutoload.get_level_by_depth(1).level_tiles.set_top(
 		stuck.x, stuck.y, TileKind.TOP.MINABLE_ROCK)
-	var surface: LevelFixtures = World.get_level_by_depth(0).level_fixtures
+	var surface: LevelFixtures = WorldAutoload.get_level_by_depth(0).level_fixtures
 	surface.remove(_world_spawn().id)
 	assert_true(_game.save_game(), "saved, in rock, with no spawn")
 
@@ -478,7 +478,7 @@ func test_a_stuck_actor_with_nowhere_to_go_stays_put_with_an_error() -> void:
 func test_a_save_with_no_player_gives_nobody_control() -> void:
 	var spawn: WorldPos = _world_spawn().tile
 	var npc: Actor = _game._create_actor(Actor.create(Global.actor_packed_scene, "Npc",
-		spawn, World.get_level_by_depth(spawn.depth), ActorKind.ACTOR.NULL))
+		spawn, WorldAutoload.get_level_by_depth(spawn.depth), ActorKind.ACTOR.NULL))
 	var order: Array[Node] = [npc]
 	_save_actors(order, null)
 
@@ -510,7 +510,7 @@ func _two_players() -> Array[Actor]:
 func _save_actors(order: Array[Node], local: Actor) -> void:
 	assert_true(_game.save_game(), "a slot exists")
 	assert_eq(SaveGame.save_game(_game.current_save_slot, _levels(), order, local,
-		World.world_seed, _game.tuning_profile_id, 0.0, 0.0, SAVES_ROOT),
+		WorldAutoload.world_seed, _game.tuning_profile_id, 0.0, 0.0, SAVES_ROOT),
 		SaveGame.REFUSAL_REASON.NONE, "saved in the chosen order")
 
 
@@ -610,13 +610,13 @@ func test_spawn_levels_adds_one_per_depth() -> void:
 
 func test_get_level_finds_every_depth() -> void:
 	for depth in range(8):
-		var level: Level = World.get_level_by_depth(depth)
+		var level: Level = WorldAutoload.get_level_by_depth(depth)
 		assert_not_null(level, "depth %d is resident" % depth)
 		if level: assert_eq(level.depth, depth, "and is the right one")
 
 
 func test_get_level_returns_null_for_a_missing_depth() -> void:
-	assert_null(World.get_level_by_depth(99), "no level exists at depth 99")
+	assert_null(WorldAutoload.get_level_by_depth(99), "no level exists at depth 99")
 
 
 # --- the player ---
@@ -634,14 +634,14 @@ func test_player_spawns_on_the_surface() -> void:
 # at depth 1, which is solid rock, while Surface was on screen.
 func test_player_spawns_on_open_floor() -> void:
 	var actor: Actor = _actors()[0]
-	var tiles: LevelTiles = World.get_level_by_depth(actor.depth).level_tiles
+	var tiles: LevelTiles = WorldAutoload.get_level_by_depth(actor.depth).level_tiles
 	var pos: WorldPos = actor.current_WorldPos
 	assert_eq(tiles.get_top(pos.x, pos.y), TileKind.TOP.OPEN,
 		"the spawn tile is open floor, not inside rock")
 
 
 func _world_spawn() -> Fixture:
-	return World.get_level_by_depth(0).level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN)[0]
+	return WorldAutoload.get_level_by_depth(0).level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN)[0]
 
 
 func test_player_spawns_on_the_world_spawn() -> void:
@@ -658,7 +658,7 @@ func test_a_second_player_spawns_beside_the_first() -> void:
 
 
 func test_spawn_player_with_no_world_spawn_adds_no_player() -> void:
-	var fixtures: LevelFixtures = World.get_level_by_depth(0).level_fixtures
+	var fixtures: LevelFixtures = WorldAutoload.get_level_by_depth(0).level_fixtures
 	fixtures.remove(_world_spawn().id)
 	var before: int = _actors().size()
 	_game._spawn_player("TestPlayer")
@@ -669,7 +669,7 @@ func test_spawn_player_with_no_world_spawn_adds_no_player() -> void:
 
 func test_create_actor_stands_on_the_tile_given() -> void:
 	var _pos: WorldPos = WorldPos.new(14, -2, 2)
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "TestPlayer", _pos, World.get_level_by_depth(_pos.depth), ActorKind.ACTOR.PLAYER)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "TestPlayer", _pos, WorldAutoload.get_level_by_depth(_pos.depth), ActorKind.ACTOR.PLAYER)
 	actor = _game._create_actor(actor)
 	assert_true(actor in _actors(), "the actor is added under Players")
 	assert_true(actor.current_WorldPos.equals(_pos),
@@ -680,7 +680,7 @@ func test_create_actor_stands_on_the_tile_given() -> void:
 
 func _actor_at_depth(depth: int) -> Actor:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, depth), World.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, depth), WorldAutoload.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
 	_game.get_node("GameViewport/Actors/Players").add_child(actor)
 	return actor
 
@@ -776,10 +776,10 @@ func test_a_load_onto_the_shown_depth_redraws_its_fixtures() -> void:
 	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "loaded")
 	assert_eq(_game.view.shown_depth, depth, "onto the same depth")
 	var renderer: FixtureRenderer = _game.get_node("GameViewport/FixtureRenderer")
-	var level: Level = World.get_level_by_depth(depth)
+	var level: Level = WorldAutoload.get_level_by_depth(depth)
 	assert_eq(renderer._fixtures, level.level_fixtures, "drawing the loaded level's fixtures")
 	assert_eq(renderer._shown_tiles, level.level_tiles, "and its tiles for the ladder tops")
-	var below: Level = World.get_level_by_depth(depth + 1)
+	var below: Level = WorldAutoload.get_level_by_depth(depth + 1)
 	if below != null:
 		assert_eq(renderer._below, below.level_fixtures, "and the loaded level below's ladders")
 
@@ -796,7 +796,7 @@ func test_user_control_draws_the_actors_level() -> void:
 	_game.set_user_control(actor)
 	var renderer: LevelRenderer = _game.get_node("GameViewport/LevelRenderer")
 	var top: Texture2D = renderer.material.get_shader_parameter("top_data")
-	var expected: int = LevelRenderer.level_width(World.get_level_by_depth(3).level_tiles)
+	var expected: int = LevelRenderer.level_width(WorldAutoload.get_level_by_depth(3).level_tiles)
 	assert_eq(top.get_width(), expected,
 		"the renderer shows depth 3, whose texture is %d tiles wide" % expected)
 
@@ -867,7 +867,7 @@ func test_the_screen_follows_the_player_down_a_level() -> void:
 	assert_true(actor.move_to(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
 	var renderer: LevelRenderer = _game.get_node("GameViewport/LevelRenderer")
 	var top: Texture2D = renderer.material.get_shader_parameter("top_data")
-	var expected: int = LevelRenderer.level_width(World.get_level_by_depth(1).level_tiles)
+	var expected: int = LevelRenderer.level_width(WorldAutoload.get_level_by_depth(1).level_tiles)
 	assert_eq(top.get_width(), expected, "the renderer shows -1, %d tiles wide" % expected)
 	assert_eq(_game.view.shown_depth, 1, "and the view says -1")
 

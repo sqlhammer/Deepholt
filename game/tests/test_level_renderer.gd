@@ -7,7 +7,7 @@ extends GutTest
 
 
 func _surface_with_start() -> LevelTiles:
-	var tiles: LevelTiles = LevelTiles.new(World.level_recipes.get_bounds(0))
+	var tiles: LevelTiles = LevelTiles.new(LevelRecipes.TABLE.get_bounds(0))
 	LevelGridLoader.stamp(tiles, TilePrefabRegistry.get_prefab(&"surface_start"), Vector2i.ZERO)
 	return tiles
 
@@ -166,7 +166,7 @@ func test_a_dig_reaches_the_screen() -> void:
 	level.level_tiles.set_ore(-1, 0, TileKind.ORE.COPPER)
 	var renderer: LevelRenderer = _renderer()
 	renderer.show_level(level.level_tiles)
-	World.dig_requested.emit(autofree(Actor.new()), WorldPos.new(-1, 0, 0))
+	WorldAutoload.dig_requested.emit(autofree(Actor.new()), WorldPos.new(-1, 0, 0))
 	assert_eq(_texel(renderer, level.level_tiles, "top", -1, 0), TileKind.TOP.OPEN,
 		"the dug tile is open on screen")
 	assert_eq(_texel(renderer, level.level_tiles, "ore", -1, 0), TileKind.ORE.NONE,

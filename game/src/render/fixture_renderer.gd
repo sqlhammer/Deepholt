@@ -51,12 +51,12 @@ func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:
 # below, from whatever levels are in the world now. Also for a load
 # that replaces the levels under a depth already shown.
 func show_depth(depth: int) -> void:
-	var level: Level = World.get_level_by_depth(depth)
+	var level: Level = WorldAutoload.get_level_by_depth(depth)
 	if level == null:
 		push_error("No level at depth %d to draw fixtures for." % depth)
 		return
 	show_fixtures(level.level_fixtures)
-	var below: Level = World.get_level_by_depth(depth + 1)
+	var below: Level = WorldAutoload.get_level_by_depth(depth + 1)
 	show_ladder_tops(level.level_tiles, below.level_fixtures if below != null else null)
 
 

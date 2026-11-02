@@ -10,7 +10,7 @@ const LADDER: Vector2i = Vector2i(14, -2)
 
 
 func before_each() -> void:
-	for level: Level in LevelGenerator.generate_levels(World.level_recipes):
+	for level: Level in LevelGenerator.generate_levels(LevelRecipes.TABLE):
 		add_child_autofree(level)
 
 
@@ -19,7 +19,7 @@ func after_each() -> void:
 
 
 func _actor_at(tile: Vector2i, depth: int, facing: Vector2i) -> Actor:
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth), World.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth), WorldAutoload.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
 	add_child_autofree(actor)
 	actor.facing = facing
 	return actor
@@ -58,7 +58,7 @@ func test_interact_away_from_any_ladder_does_nothing() -> void:
 
 
 func test_a_landing_closed_since_load_refuses_the_climb() -> void:
-	World.get_level_by_depth(2).level_tiles.set_top(LADDER.x, LADDER.y, TileKind.TOP.MINABLE_ROCK)
+	WorldAutoload.get_level_by_depth(2).level_tiles.set_top(LADDER.x, LADDER.y, TileKind.TOP.MINABLE_ROCK)
 	var actor: Actor = _actor_at(BESIDE_HOLE, 1, Vector2i(0, -1))
 	assert_false(actor.interact(), "the ladder's tile is rock now")
 	assert_eq(actor.depth, 1, "still on -1")

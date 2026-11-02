@@ -16,6 +16,16 @@ static func tile_center(tile: Vector2i) -> Vector2:
 	return corner + Vector2(half_tile, half_tile)
 
 
+# The tile under a point on a level. The point is taken as global and
+# converted through the level's transforms, which works out of the
+# tree too. An actor's position is passed as one, which is right only
+# while every transform between the two is the identity (D-128).
+static func world_pos_at(point: Vector2, level: Level) -> WorldPos:
+	var local: Vector2 = level.to_local(point)
+	var tile: Vector2i = Vector2i((local / TILE_PIXELS).floor())
+	return WorldPos.new(tile.x, tile.y, level.depth)
+
+
 static func get_tile_coordinate_from_pixels(pos_coord: float) -> int:
 	return floori(pos_coord / TILE_PIXELS)
 

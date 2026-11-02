@@ -10,7 +10,7 @@ const LADDER: Vector2i = Vector2i(14, -2)
 
 
 func _level(depth: int) -> Level:
-	var level: Level = LevelGenerator.generate_level(World.level_recipes.get_recipe(depth))
+	var level: Level = LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(depth))
 	autofree(level)
 	return level
 
@@ -53,7 +53,7 @@ func test_minus_two_has_a_ladder_at_the_ladder_spot() -> void:
 
 
 func test_the_hand_made_levels_have_no_ladder_problems() -> void:
-	var levels: Array[Level] = LevelGenerator.generate_levels(World.level_recipes)
+	var levels: Array[Level] = LevelGenerator.generate_levels(LevelRecipes.TABLE)
 	for level in levels: autofree(level)
 	assert_eq(LevelGenerator.ladder_problems(levels), [] as Array[String], "the ladder has its hole")
 
@@ -114,7 +114,7 @@ func _reachable(level: Level, from: Vector2i, to: Vector2i) -> bool:
 
 
 func test_from_the_spawn_you_can_walk_to_the_ramp() -> void:
-	var levels: Array[Level] = LevelGenerator.generate_levels(World.level_recipes)
+	var levels: Array[Level] = LevelGenerator.generate_levels(LevelRecipes.TABLE)
 	for level in levels: autofree(level)
 	var spawn: Fixture = Spawning.world_spawn(levels)
 	assert_true(_reachable(levels[0], Vector2i(spawn.tile.x, spawn.tile.y), Vector2i(6, 0)),

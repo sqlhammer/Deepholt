@@ -243,7 +243,7 @@ func watch(view: View) -> void:
 
 
 func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:
-	var level: Level = World.get_level_by_depth(new_depth)
+	var level: Level = WorldAutoload.get_level_by_depth(new_depth)
 	if level == null:
 		push_error("No level at depth %d to show." % new_depth)
 		return

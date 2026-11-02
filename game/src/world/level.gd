@@ -17,7 +17,7 @@ func setup(p_depth: int) -> void:
 	set_depth(p_depth)
 	self.name = "Level%d" % depth
 
-	level_tiles = LevelTiles.new(World.level_recipes.get_bounds(depth))
+	level_tiles = LevelTiles.new(LevelRecipes.TABLE.get_bounds(depth))
 	level_fixtures = LevelFixtures.new()
 
 
@@ -28,12 +28,12 @@ func set_depth(_d: int) -> void:
 
 func clamp_depth(_d: int) -> int:
 	var _min: int = 0
-	var _max: int = World.level_recipes.rows.size() - 1
+	var _max: int = LevelRecipes.TABLE.rows.size() - 1
 	return clamp(_d,_min,_max)
 
 
 func _set_level_seed() -> void:
-	level_seed = hash("%s|%d" % [World.world_seed, _depth])
+	level_seed = hash("%s|%d" % [WorldAutoload.world_seed, _depth])
 	Global.emit_signal("debug_event","Level Seed",str(level_seed))
 
 

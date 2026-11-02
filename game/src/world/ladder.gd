@@ -24,7 +24,7 @@ const ARRIVAL_ORDER: Array[Vector2i] = [
 # Where interact takes an actor standing on `here` and facing `facing`,
 # or null if it doesn't take a ladder.
 static func target_for(here: WorldPos, facing: Vector2i) -> WorldPos:
-	var level: Level = World.get_level_by_depth(here.depth)
+	var level: Level = WorldAutoload.get_level_by_depth(here.depth)
 	if level == null: return null
 	var tile: Vector2i = Vector2i(here.x, here.y)
 
@@ -36,14 +36,14 @@ static func target_for(here: WorldPos, facing: Vector2i) -> WorldPos:
 static func _down(level: Level, here: WorldPos, facing: Vector2i) -> WorldPos:
 	var faced: Vector2i = Vector2i(here.x, here.y) + facing
 	if level.level_tiles.get_ground(faced.x, faced.y) != TileKind.GROUND.HOLE: return null
-	var below: Level = World.get_level_by_depth(here.depth + 1)
+	var below: Level = WorldAutoload.get_level_by_depth(here.depth + 1)
 	if below == null: return null
 	if not below.level_fixtures.has_kind_at(faced, ObjectKind.OBJECT.LADDER): return null
 	return WorldPos.new(faced.x, faced.y, here.depth + 1)
 
 
 static func _up(here: WorldPos, facing: Vector2i) -> WorldPos:
-	var above: Level = World.get_level_by_depth(here.depth - 1)
+	var above: Level = WorldAutoload.get_level_by_depth(here.depth - 1)
 	if above == null: return null
 	var tiles: LevelTiles = above.level_tiles
 	if tiles.get_ground(here.x, here.y) != TileKind.GROUND.HOLE: return null
