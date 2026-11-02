@@ -49,13 +49,18 @@ No forks.
 
 ## C. Saves on disk
 
-- [ ] *Decide:* format version 1, settled now or left open.
-- [ ] *Decide:* the pruning rule: what's kept, how many or how long, and when it runs (trap 5).
-- [ ] Pruning built to that rule. Test it against a folder with the live save, the backup, and
+- [x] *Decide:* format version 1, settled now or left open. *Open until the first build goes to
+  someone else
+  ([D-133](../docs/design-decisions.md#d-133--save-format-version-1-is-settled-when-the-first-build-goes-to-someone-else)).*
+- [x] *Decide:* the pruning rule: what's kept, how many or how long, and when it runs (trap 5).
+  *The newest of each kind, each kind with its own count (three for now), at launch once the
+  game has started
+  ([D-134](../docs/design-decisions.md#d-134--kept-saves-are-pruned-to-a-newest-few-of-each-kind-each-kind-its-own-count-at-launch)).*
+- [x] Pruning built to that rule. Test it against a folder with the live save, the backup, and
   one of each kind of moved-aside and broken save
   ([D-111](../docs/design-decisions.md#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves),
   [D-123](../docs/design-decisions.md)). [5]
-- [ ] [save-files.md](../docs/tech/save-files.md) caught up: the two playtime clocks (D-120),
+- [x] [save-files.md](../docs/tech/save-files.md) caught up: the two playtime clocks (D-120),
   the required keys (D-121, D-122), the file-name timestamp (D-123), the two counters and
   `SaveSession` (D-130), and whatever C decides. [13]
 - [ ] By hand: save and relaunch until saves are moved aside, and see the folder pruned. [5]

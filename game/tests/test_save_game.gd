@@ -1291,6 +1291,86 @@ func test_a_file_timestamp_is_utc_in_iso_basic_format() -> void:
 	assert_eq(SaveGame.file_timestamp(0), "19700101T000000Z", "zero padded")
 
 
+# --- pruning kept saves (D-134) ---
+
+func _touch(file: String) -> void:
+	DirAccess.make_dir_recursive_absolute(TEST_SLOT)
+	var f: FileAccess = FileAccess.open(_path(file), FileAccess.WRITE)
+	f.store_string("kept")
+	f.close()
+
+
+func _kept_name(label: String, day: int, n: int = 1) -> String:
+	var stem: String = "world.%s" % label if label else "world"
+	var suffix: String = "-%d" % n if n > 1 else ""
+	return "%s.202611%02dT120000Z%s.save" % [stem, day, suffix]
+
+
+func _kept_files() -> Array:
+	var files: Array = Array(DirAccess.get_files_at(TEST_SLOT))
+	files.sort()
+	return files
+
+
+func test_each_kind_keeps_its_own_count_newest_first() -> void:
+	for label: String in ["", "backup", "broken"]:
+		for day: int in [1, 2, 3, 4]:
+			_touch(_kept_name(label, day))
+	var keep: Dictionary[SaveGame.KEPT_KIND, int] = {
+		SaveGame.KEPT_KIND.OLD_WORLD: 1,
+		SaveGame.KEPT_KIND.OLD_BACKUP: 2,
+		SaveGame.KEPT_KIND.BROKEN: 3,
+	}
+	var deleted: Array[String] = SaveGame.prune_kept(TEST_SLOT, keep)
+	assert_eq(deleted.size(), 3 + 2 + 1, "the older ones past each kind's count")
+	var expected: Array = [
+		_kept_name("", 4),
+		_kept_name("backup", 3), _kept_name("backup", 4),
+		_kept_name("broken", 2), _kept_name("broken", 3), _kept_name("broken", 4),
+	]
+	expected.sort()
+	assert_eq(_kept_files(), expected, "the newest of each kind, by its own count")
+
+
+func test_pruning_never_touches_the_save_its_backup_or_other_files() -> void:
+	var untouched: Array = [SaveGame.SAVE_BASE_NAME, SaveGame.BACKUP_NAME,
+		SaveGame.SAVE_BASE_NAME + ".tmp", "notes.txt",
+		"world.other.20261101T120000Z.save", "world.20261101T120000Z.save.bak"]
+	for file: String in untouched:
+		_touch(file)
+	var keep: Dictionary[SaveGame.KEPT_KIND, int] = {
+		SaveGame.KEPT_KIND.OLD_WORLD: 0,
+		SaveGame.KEPT_KIND.OLD_BACKUP: 0,
+		SaveGame.KEPT_KIND.BROKEN: 0,
+	}
+	assert_eq(SaveGame.prune_kept(TEST_SLOT, keep), [] as Array[String], "nothing pruned")
+	untouched.sort()
+	assert_eq(_kept_files(), untouched, "every file still there")
+
+
+# Two moved aside in the same second get -2, -3, ... (D-123): -10 is
+# newer than -2, so the order is numeric, not by the name's text.
+func test_files_from_the_same_second_are_ordered_by_their_number() -> void:
+	for n: int in [1, 2, 10]:
+		_touch(_kept_name("broken", 5, n))
+	var keep: Dictionary[SaveGame.KEPT_KIND, int] = {SaveGame.KEPT_KIND.BROKEN: 1}
+	SaveGame.prune_kept(TEST_SLOT, keep)
+	assert_eq(_kept_files(), [_kept_name("broken", 5, 10)], "the last one moved aside")
+
+
+func test_a_kind_with_no_count_is_never_pruned() -> void:
+	for day: int in [1, 2, 3, 4, 5]:
+		_touch(_kept_name("broken", day))
+	var keep: Dictionary[SaveGame.KEPT_KIND, int] = {SaveGame.KEPT_KIND.OLD_WORLD: 0}
+	assert_eq(SaveGame.prune_kept(TEST_SLOT, keep), [] as Array[String], "none pruned")
+	assert_eq(_kept_files().size(), 5, "all five broken saves kept")
+
+
+func test_by_default_three_of_each_kind_are_kept() -> void:
+	for kind: SaveGame.KEPT_KIND in SaveGame.KEPT_KIND.values():
+		assert_eq(SaveGame.KEEP_PER_KIND.get(kind), 3, "%s" % SaveGame.KEPT_KIND.keys()[kind])
+
+
 # Only the required keys refuse a save; the rest load as their
 # defaults (D-121).
 func test_a_save_with_optional_keys_missing_loads_them_as_their_defaults() -> void:

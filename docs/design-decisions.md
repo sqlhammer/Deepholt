@@ -2824,3 +2824,49 @@ in one place, a world with no player is shown like any other.
 
 *Considered:* only when there's no player, show the first actor's depth (the world would then
 be announced from two places), or always the Surface (which isn't always where anything is).
+
+---
+
+### D-133 — Save format version 1 is settled when the first build goes to someone else
+**Decided** (by Derik, slice 005 section C, 2026-11-02). Puts a trigger on what
+[D-121](#d-121--three-header-keys-are-required-the-rest-load-as-their-defaults) left open.
+
+- **Until then, version 1 stays open.** A format change edits v1 in place, with no version bump
+  and no migration, and a save from an older build may be refused.
+- **The first build that anyone other than Derik plays settles v1.** From then on every format
+  change bumps the version and ships a migration from the version before
+  ([world-runtime §7](./tech/world-runtime-and-persistence.md)), and old saves have to keep
+  loading.
+
+*Why:* that build writes the first save that has to survive an update. Slices 006 (a
+tunnel-memory layer) and 007 (fixtures made at runtime) both change the format, and migrations
+before then would only be paid for, never used.
+
+*Considered:* settling now (006's layer would become v2 with a migration; it builds the habit,
+but every slice pays for it); leaving it open with no trigger.
+
+---
+
+### D-134 — Kept saves are pruned to a newest few of each kind, each kind its own count, at launch
+**Decided** (by Derik, slice 005 section C, 2026-11-02). Ends the pile-up that
+[D-111](#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves) and
+[D-123](#d-123--moved-aside-saves-are-named-with-a-utc-time-in-iso-basic-format) left in each slot.
+
+- **Three kinds of kept file, pruned separately:** old worlds (`world.<time>.save`), their
+  backups (`world.backup.<time>.save`), and broken saves (`world.broken.<time>.save`). The
+  newest of each are kept, by the UTC time in the name, then the `-n` that `move_aside` adds
+  when two share a second.
+- **Each kind has its own count** (Derik, while it was being built), so one kind can be kept
+  longer than another without changing the rest. Three of each to start.
+  Pruning takes the counts as a parameter, so a test or a later setting can pass others.
+- **`world.save` and `world.save.bak` are never pruned,** and neither is any file whose name
+  isn't exactly one of those three patterns.
+- **Pruning runs once, at launch, once the game has started:** after the slot loaded, or after
+  a new game moved the old world aside. Never during a load, and never when the game refused to
+  start, because those files are the evidence D-111 keeps.
+
+*Why:* by kind, so a run of new games can't push out the only broken save, which is what a bug
+report needs.
+
+*Considered:* by age (a burst of new games in one day keeps everything); the newest N of any
+kind (a run of new games pushes out the broken save); not pruning until a save-slot menu exists.

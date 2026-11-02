@@ -26,6 +26,9 @@ var _saving_refused: bool = false
 # arguments, starts a fresh world (D-111). Set it before _ready to
 # choose; tests do.
 var new_game: bool = OS.get_cmdline_user_args().has("--new-game")
+# How many kept saves of each kind survive pruning at launch (D-134).
+# Each kind its own count; set it before _ready to choose.
+var keep_per_kind: Dictionary[SaveGame.KEPT_KIND, int] = SaveGame.KEEP_PER_KIND
 var _autosave_timer: Timer
 # How long the last save and the last load took, from the game's side:
 # the whole world, read or written
@@ -262,6 +265,7 @@ func _ready() -> void:
 	else:
 		var loaded: REFUSAL_REASON = load_game()
 		if loaded == REFUSAL_REASON.NONE:
+			_prune_kept_saves()
 			_start_autosave()
 			return
 		# No world, and no saving: the refused files stay as they are
@@ -273,6 +277,7 @@ func _ready() -> void:
 	$DebugOverlay.show_load_source(load_source, SaveGame.FORMAT_VERSION)
 	_swap_world(LevelGenerator.generate_world(hash(WORLD_SEED_TEXT)))
 	_spawn_player("DefaultName")
+	_prune_kept_saves()
 	_start_autosave()
 
 
@@ -305,6 +310,15 @@ func _move_old_world_aside() -> bool:
 
 # Saves on a timer while playing (D-110). Pausable, so a paused game
 # doesn't save, and only started once there's a world.
+# Once per launch, and only once the game has started: never during
+# a load, and never when it refused to start, since those files are
+# what D-111 keeps (D-134).
+func _prune_kept_saves() -> void:
+	if current_save_slot == "": return
+	for path: String in SaveGame.prune_kept(current_save_slot, keep_per_kind):
+		print("Pruned %s" % _shown_path(path))
+
+
 func _start_autosave() -> void:
 	_autosave_timer = Timer.new()
 	_autosave_timer.name = "AutosaveTimer"

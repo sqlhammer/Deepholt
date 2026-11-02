@@ -207,6 +207,49 @@ func test_a_launch_with_both_saves_refused_does_not_start_or_save() -> void:
 	assert_eq(_f3_save_line(), "refused: nothing loaded", "F3 says so")
 
 
+# --- pruning at launch (D-134) ---
+
+func _put_in_slot(file: String) -> void:
+	var f: FileAccess = FileAccess.open(SAVES_ROOT.path_join("slot-001").path_join(file),
+		FileAccess.WRITE)
+	f.store_string("kept")
+	f.close()
+
+
+func test_a_launch_that_loads_prunes_each_kind_to_its_count() -> void:
+	assert_true(_game.save_game(), "saved")
+	for day: int in [1, 2, 3]:
+		_put_in_slot("world.broken.202611%02dT120000Z.save" % day)
+		_put_in_slot("world.202611%02dT120000Z.save" % day)
+	_game.free()
+	_game = load("res://scenes/game.tscn").instantiate()
+	_game.saves_root = SAVES_ROOT
+	var keep: Dictionary[SaveGame.KEPT_KIND, int] = {
+		SaveGame.KEPT_KIND.OLD_WORLD: 1, SaveGame.KEPT_KIND.BROKEN: 2}
+	_game.keep_per_kind = keep
+	add_child_autofree(_game)
+
+	assert_eq(_game.load_source, SaveGame.SOURCE.SAVE, "the save loaded")
+	assert_eq(_slot_files("world.broken.").size(), 2, "two broken saves kept")
+	assert_eq(_slot_files("world.2026").size(), 1, "one old world kept")
+	assert_true(FileAccess.file_exists(_save_file()), "and world.save is still there")
+
+
+# The refused files are what D-111 keeps: a game that didn't start
+# prunes nothing.
+func test_a_launch_that_refuses_to_start_prunes_nothing() -> void:
+	assert_true(_game.save_game(), "saved once")
+	assert_true(_game.save_game(), "and again, so there's a backup")
+	_truncate(_save_file())
+	_truncate(_backup_file())
+	for day: int in [1, 2, 3, 4, 5]:
+		_put_in_slot("world.broken.202611%02dT120000Z.save" % day)
+	_relaunch()
+	assert_push_error("No save could be loaded")
+	assert_eq(_game.load_source, SaveGame.SOURCE.REFUSED, "nothing loads")
+	assert_eq(_slot_files("world.broken.").size(), 5, "every broken save kept")
+
+
 # --- a new game, and the autosave timer (D-110, D-111) ---
 
 func _slot_files(prefix: String) -> PackedStringArray:

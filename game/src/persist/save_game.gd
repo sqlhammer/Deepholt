@@ -25,6 +25,24 @@ const TILE_LAYERS: Array[String] = ["ground", "top", "ore"]
 const MAX_SAVED_RADIUS: int = 1024
 const DEFAULT_TUNING_PROFILE_ID: String = "none"
 const BACKUP_NAME: String = SAVE_BASE_NAME + ".bak"
+# The kinds of file a slot keeps beside its save (D-111, D-123), each
+# pruned on its own (D-134).
+enum KEPT_KIND {
+	OLD_WORLD, # world.<time>.save, moved aside by a new game
+	OLD_BACKUP, # world.backup.<time>.save, its backup
+	BROKEN, # world.broken.<time>.save, a refused save
+}
+# How many of each kind pruning keeps, newest first (D-134). Each kind
+# has its own count; a kind missing here is never pruned.
+const KEEP_PER_KIND: Dictionary[KEPT_KIND, int] = {
+	KEPT_KIND.OLD_WORLD: 3,
+	KEPT_KIND.OLD_BACKUP: 3,
+	KEPT_KIND.BROKEN: 3,
+}
+# A kept file's name: an optional label, the UTC time (D-123), and the
+# -n move_aside adds when two share a second. Nothing else matches,
+# so world.save and world.save.bak can't be pruned.
+const KEPT_NAME_PATTERN: String = r"^world\.(?:(backup|broken)\.)?(\d{8}T\d{6}Z)(?:-(\d+))?\.save$"
 # The header keys a save is refused without, and the type each must be
 # (D-121, D-122). Every other key loads as its default.
 const REQUIRED_HEADER: Dictionary = {
@@ -312,6 +330,46 @@ static func move_aside(file_path: String, label: String, unix_time: int) -> Stri
 		push_error("Couldn't move %s aside: %s" % [file_path, error_string(err)])
 		return ""
 	return target
+
+
+# Deletes the oldest kept files of each kind past that kind's count
+# in `keep` (D-134). Only names that match KEPT_NAME_PATTERN are
+# touched. Returns the paths deleted.
+static func prune_kept(slot_path: String,
+		keep: Dictionary[KEPT_KIND, int] = KEEP_PER_KIND) -> Array[String]:
+	var regex: RegEx = RegEx.create_from_string(KEPT_NAME_PATTERN)
+	var by_kind: Dictionary = {}
+	for file: String in DirAccess.get_files_at(slot_path):
+		var found: RegExMatch = regex.search(file)
+		if found == null: continue
+		var kind: KEPT_KIND = _kept_kind(found.get_string(1))
+		var n: int = int(found.get_string(3)) if found.get_string(3) else 1
+		# Sorts oldest first: the time, then the -n
+		var order: String = "%s-%06d" % [found.get_string(2), n]
+		if not by_kind.has(kind): by_kind[kind] = []
+		by_kind[kind].append([order, file])
+
+	var deleted: Array[String] = []
+	for kind: KEPT_KIND in by_kind:
+		if not keep.has(kind): continue
+		var files: Array = by_kind[kind]
+		files.sort_custom(func(a: Array, b: Array) -> bool: return a[0] < b[0])
+		var excess: int = files.size() - maxi(keep[kind], 0)
+		for i: int in range(excess):
+			var path: String = slot_path.path_join(files[i][1])
+			var err: Error = DirAccess.remove_absolute(path)
+			if err != OK:
+				push_warning("Couldn't prune %s: %s" % [path, error_string(err)])
+				continue
+			deleted.append(path)
+	return deleted
+
+
+static func _kept_kind(label: String) -> KEPT_KIND:
+	match label:
+		"backup": return KEPT_KIND.OLD_BACKUP
+		"broken": return KEPT_KIND.BROKEN
+	return KEPT_KIND.OLD_WORLD
 
 
 # A UTC time as YYYYMMDDTHHMMSSZ, for file names (D-123).
