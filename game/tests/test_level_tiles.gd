@@ -240,9 +240,10 @@ func test_bounds_come_from_the_tiles_own_shape() -> void:
 		"(2, 3) is outside radius 3, though well inside 64")
 
 
-# The disc a level reads is the one WorldAutoload.is_in_bounds describes,
+# The disc a level reads is the one World.is_in_bounds describes,
 # tile for tile, at every real depth's radius.
 func test_the_disc_matches_world_is_in_bounds() -> void:
+	var world: World = autofree(preload("res://tests/worlds.gd").with_levels([0, 1, 2, 6]))
 	for depth in [0, 1, 2, 6]:
 		var tiles: LevelTiles = LevelTiles.new(LevelRecipes.TABLE.get_bounds(depth))
 		var radius: int = tiles.level_bound.radius
@@ -250,7 +251,7 @@ func test_the_disc_matches_world_is_in_bounds() -> void:
 		for y in range(-radius, radius + 1):
 			for x in range(-radius, radius + 1):
 				var outside: bool = tiles.get_top(x, y) == TileKind.SENTINEL_OUT_OF_BOUNDS
-				if outside == WorldAutoload.is_in_bounds(WorldPos.new(x, y, depth)):
+				if outside == world.is_in_bounds(WorldPos.new(x, y, depth)):
 					mismatches += 1
 		assert_eq(mismatches, 0, "depth %d's disc matches World's" % depth)
 

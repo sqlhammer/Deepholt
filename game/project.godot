@@ -24,9 +24,7 @@ config/icon="uid://d2ufv0rd2aoa"
 [autoload]
 
 Global="*uid://dhr1etdbio5wj"
-WorldAutoload="*res://src/world/world_autoload.gd"
 TilePrefabRegistry="*res://src/world/tile_prefab_registry.gd"
-Objects="*res://src/world/objects.gd"
 
 [debug]
 
@@ -44,12 +42,6 @@ window/size/window_height_override=800
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/gut/plugin.cfg")
-
-[global_group]
-
-levels="Every Level currently resident, one per depth."
-players="A collection of all players logged into the game."
-actors=""
 
 [input]
 

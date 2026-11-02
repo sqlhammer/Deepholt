@@ -5,19 +5,23 @@ extends GutTest
 # the center of its feet box, not under its origin, so collision,
 # the overlay and digging all agree on where it stands.
 #
-# Setting an actor's depth looks its level up in the "levels" group,
-# so the levels these tests use are put in the tree first.
+# Setting an actor's depth asks the world of the level it stands on
+# (D-126), so the levels these tests use are in one world, in the tree.
 
 # A known feet box, so the pixel cases below don't depend on the
 # scene's default. Its center sits 4 px below the actor's origin.
 const FEET: Rect2 = Rect2(-5, 1, 10, 6)
 
 
+var _world: World
+
+
 func before_each() -> void:
+	_world = add_child_autofree(World.new())
 	for depth in [0, 1]:
 		var level: Level = Global.level_packed_scene.instantiate()
 		level.setup(depth)
-		add_child_autofree(level)
+		_world.add_level(level)
 
 
 func _actor() -> Actor:
@@ -30,7 +34,7 @@ func _actor() -> Actor:
 func _actor_with_feet_at(feet_center: Vector2, depth: int) -> Actor:
 	var actor: Actor = _actor()
 	actor.feet_box = FEET
-	actor.depth = depth
+	actor._set_level(_world.level_at(depth))
 	actor.position = feet_center - FEET.get_center()
 	return actor
 
@@ -49,7 +53,7 @@ func test_the_actor_scene_is_an_actor() -> void:
 
 func test_create_places_the_actor_on_the_tile_center() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), WorldAutoload.get_level_by_depth(1), ActorKind.ACTOR.PLAYER)
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), _world.level_at(1), ActorKind.ACTOR.PLAYER)
 	autofree(actor)
 	assert_eq(actor.position, Vector2(56, -24),
 		"tile (3, -2) is centered at (56, -24)")
@@ -57,9 +61,19 @@ func test_create_places_the_actor_on_the_tile_center() -> void:
 
 # The feet box sits below the origin, so this also checks that the
 # scene's default box still fits inside the spawn tile.
+# With no id given, it takes the next from its level's world (D-118).
+func test_create_takes_an_id_from_the_levels_world() -> void:
+	var first: Actor = autofree(Actor.create(Global.actor_packed_scene, "A", WorldPos.new(0, 0, 0),
+		_world.level_at(0), ActorKind.ACTOR.PLAYER))
+	var second: Actor = autofree(Actor.create(Global.actor_packed_scene, "B", WorldPos.new(0, 0, 0),
+		_world.level_at(0), ActorKind.ACTOR.PLAYER))
+	assert_eq(first.actor_id, IdAllocator.FIRST_ID, "a fresh world's first actor is 1")
+	assert_eq(second.actor_id, IdAllocator.FIRST_ID + 1, "and the next is 2")
+
+
 func test_create_records_the_world_pos() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), WorldAutoload.get_level_by_depth(1), ActorKind.ACTOR.PLAYER)
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), _world.level_at(1), ActorKind.ACTOR.PLAYER)
 	autofree(actor)
 	assert_true(actor.current_WorldPos.equals(WorldPos.new(3, -2, 1)),
 		"current_WorldPos is the tile it was created on, depth included")
@@ -67,7 +81,7 @@ func test_create_records_the_world_pos() -> void:
 
 func test_setup_returns_the_actor_for_chaining() -> void:
 	var actor: Actor = _actor()
-	assert_eq(actor.setup("TestPlayer", WorldPos.new(0, 0, 0), WorldAutoload.get_level_by_depth(0), ActorKind.ACTOR.PLAYER), actor,
+	assert_eq(actor.setup("TestPlayer", WorldPos.new(0, 0, 0), _world.level_at(0), ActorKind.ACTOR.PLAYER), actor,
 		"setup returns self so instantiate().setup() chains")
 
 
@@ -77,22 +91,23 @@ func test_setup_returns_the_actor_for_chaining() -> void:
 func test_setup_stands_on_the_level_given_not_the_trees() -> void:
 	var loaded: Level = autofree(Global.level_packed_scene.instantiate())
 	loaded.setup(1)
+	# A load gives the saved id, so no world is asked for one
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), loaded, ActorKind.ACTOR.PLAYER)
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), loaded, ActorKind.ACTOR.PLAYER, 5)
 	autofree(actor)
 	assert_eq(actor.current_level, loaded, "the given level, outside the tree")
-	assert_ne(actor.current_level, WorldAutoload.get_level_by_depth(1),
+	assert_ne(actor.current_level, _world.level_at(1),
 		"not the depth-1 level that is in the tree")
 	assert_true(actor.current_WorldPos.equals(WorldPos.new(3, -2, 1)),
 		"and on its tile, worked out without the tree")
 
 
-func test_setting_depth_finds_that_level() -> void:
+# The level comes from the actor's own world (D-126), never a search.
+func test_setting_depth_finds_that_level_in_its_world() -> void:
 	var actor: Actor = _actor()
+	actor._set_level(_world.level_at(0))
 	actor.depth = 1
-	assert_not_null(actor.current_level, "a level is resident at depth 1")
-	if actor.current_level:
-		assert_eq(actor.current_level.depth, 1, "and it is depth 1's level")
+	assert_eq(actor.current_level, _world.level_at(1), "its world's level at depth 1")
 
 
 # --- position -> WorldPos ---
@@ -100,7 +115,7 @@ func test_setting_depth_finds_that_level() -> void:
 func test_world_pos_is_under_the_feet_not_the_origin() -> void:
 	var actor: Actor = _actor()
 	actor.feet_box = FEET
-	actor.depth = 0
+	actor._set_level(_world.level_at(0))
 	# Origin in tile (0, 0); feet center 4 px lower, in tile (0, 1).
 	actor.position = Vector2(8, 14)
 	var pos: WorldPos = actor.get_current_WorldPos()
@@ -185,16 +200,16 @@ func test_crossing_a_tile_boundary_emits_actor_old_and_new() -> void:
 # two already agree, so entering the tree must change nothing.
 func test_entering_the_tree_keeps_the_spawn_tile() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), WorldAutoload.get_level_by_depth(1), ActorKind.ACTOR.PLAYER)
-	add_child_autofree(actor)
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), _world.level_at(1), ActorKind.ACTOR.PLAYER)
+	_world.add_actor(actor)
 	assert_true(actor.current_WorldPos.equals(WorldPos.new(3, -2, 1)),
 		"still on tile (3, -2) at depth 1 after _ready")
 
 
 func test_entering_the_tree_does_not_move_the_actor() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), WorldAutoload.get_level_by_depth(1), ActorKind.ACTOR.PLAYER)
-	add_child_autofree(actor)
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(3, -2, 1), _world.level_at(1), ActorKind.ACTOR.PLAYER)
+	_world.add_actor(actor)
 	assert_eq(actor.position, Vector2(56, -24),
 		"_ready leaves the spawn position alone")
 
@@ -272,12 +287,12 @@ func test_target_tile_is_the_feet_tile_plus_facing() -> void:
 # (0, 0) and (1, 0) opened. Everything else is rock, so the room is
 # two tiles wide (pixels 0..32) and one tall.
 func _actor_in_room() -> Actor:
-	var tiles: LevelTiles = WorldAutoload.get_level_by_depth(0).level_tiles
+	var tiles: LevelTiles = _world.level_at(0).level_tiles
 	tiles.set_top(0, 0, TileKind.TOP.OPEN)
 	tiles.set_top(1, 0, TileKind.TOP.OPEN)
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "Mover", WorldPos.new(0, 0, 0), WorldAutoload.get_level_by_depth(0), ActorKind.ACTOR.PLAYER)
-	add_child_autofree(actor)
+		Global.actor_packed_scene, "Mover", WorldPos.new(0, 0, 0), _world.level_at(0), ActorKind.ACTOR.PLAYER)
+	_world.add_actor(actor)
 	return actor
 
 
@@ -393,7 +408,7 @@ func test_primary_without_a_dig_capability_does_nothing() -> void:
 func test_holding_dig_opens_the_faced_tile_on_screen() -> void:
 	var actor: Actor = _actor_in_room()
 	_give_dig(actor)
-	var tiles: LevelTiles = WorldAutoload.get_level_by_depth(0).level_tiles
+	var tiles: LevelTiles = _world.level_at(0).level_tiles
 	var renderer: LevelRenderer = LevelRenderer.new()
 	renderer.mesh = QuadMesh.new()
 	var shader_material: ShaderMaterial = ShaderMaterial.new()
@@ -401,7 +416,7 @@ func test_holding_dig_opens_the_faced_tile_on_screen() -> void:
 	renderer.material = shader_material
 	add_child_autofree(renderer)
 	renderer.show_level(tiles)
-	watch_signals(WorldAutoload)
+	watch_signals(_world)
 
 	# Facing down from (0, 0) at rock (0, 1). Hold until it's dug. The
 	# limit is the dig time from the data plus a margin, so a broken
@@ -412,11 +427,11 @@ func test_holding_dig_opens_the_faced_tile_on_screen() -> void:
 	var limit: int = ceili(dig_seconds * 60.0) + 10
 	actor.primary_action(true)
 	var ticks: int = 0
-	while get_signal_emit_count(WorldAutoload, "tile_dug") == 0 and ticks < limit:
+	while get_signal_emit_count(_world, "tile_dug") == 0 and ticks < limit:
 		actor._physics_process(1.0 / 60.0)
 		ticks += 1
 
-	assert_signal_emit_count(WorldAutoload, "tile_dug", 1, "the faced tile is dug, once")
+	assert_signal_emit_count(_world, "tile_dug", 1, "the faced tile is dug, once")
 	assert_eq(tiles.get_top(0, 1), TileKind.TOP.OPEN, "open in the data")
 	var radius: int = tiles.level_bound.radius
 	var image: Image = renderer._layer_data_images["top"]

@@ -129,7 +129,7 @@ func primary_action(p_action_intent: bool) -> void:
 # rule says where, and the actor moves itself (D-093). Returns whether
 # anything happened.
 func interact() -> bool:
-	var target: WorldPos = Ladder.target_for(current_WorldPos, facing)
+	var target: WorldPos = Ladder.target_for(current_level, current_WorldPos, facing)
 	if target == null: return false
 	return move_to(target)
 
@@ -169,7 +169,8 @@ func _physics_process(delta: float) -> void:
 
 # The actor is handed the level it starts on rather than finding it
 # in the tree: a load builds actors before its levels are in the
-# tree, where a lookup finds the old world's level, or none.
+# tree, where a lookup finds the old world's level, or none. With no
+# id given, it takes the next from that level's world (D-114, D-118).
 func setup(p_name: String, world_pos: WorldPos, level: Level, p_kind: int, p_actor_id: int = -1) -> Actor:
 	assert(level != null and level.depth == world_pos.depth,
 		"Actor setup needs the level at the depth it starts on.")
@@ -180,8 +181,10 @@ func setup(p_name: String, world_pos: WorldPos, level: Level, p_kind: int, p_act
 	actor_worldpos_changed.emit(self, old_pos, current_WorldPos)
 	if p_actor_id != -1:
 		actor_id = p_actor_id
+	elif level.world != null:
+		actor_id = level.world.actor_ids.allocate()
 	else:
-		actor_id = WorldAutoload.id_allocator.allocate()
+		push_error("Actor %s has no id and its level no world to take one from." % p_name)
 	actor_name = p_name
 	name = "Actor%s" % p_name
 	actor_kind = p_kind
@@ -218,13 +221,21 @@ func _draw() -> void:
 
 # A depth change is announced like any other change of tile (D-093):
 # through actor_worldpos_changed, whose WorldPos carries the depth.
-# Before the actor has a first position (during setup) there is no
-# old tile, so nothing is announced.
+# The level comes from the world of the level the actor is on (D-126),
+# so an actor must have been set up on one first.
 func set_depth(p_depth: int) -> void:
-	_depth = p_depth
-	current_level = WorldAutoload.get_level_by_depth(depth)
-	assert(current_level != null, "Actor depth was change/set while current_level was NULL.")
-	_update_WorldPos()
+	var level: Level = _level_in_my_world(p_depth)
+	assert(level != null, "Actor depth was set to %d, which its world has no level at." % p_depth)
+	if level == null: return
+	_set_level(level)
+
+
+# The level at a depth in the world the actor is in, or null if the
+# actor is on no level, its level is in no world, or the world has no
+# level there.
+func _level_in_my_world(p_depth: int) -> Level:
+	if current_level == null or current_level.world == null: return null
+	return current_level.world.level_at(p_depth)
 
 
 # Puts the actor on a level it has been given, with no lookup.
@@ -241,7 +252,7 @@ func _set_level(level: Level) -> void:
 # announced once, with the final tile. Returns false, changing
 # nothing, if there is no level there or the landing is blocked.
 func move_to(target: WorldPos) -> bool:
-	var level: Level = WorldAutoload.get_level_by_depth(target.depth)
+	var level: Level = _level_in_my_world(target.depth)
 	if level == null: return false
 
 	var landing: Variant = _landing_on(level.level_tiles, target)

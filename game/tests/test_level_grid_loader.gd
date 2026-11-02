@@ -357,8 +357,7 @@ const OPEN_ORE: String = "...\n.0.\n..."
 func _stamp_with_objects(objects: String, fixtures: LevelFixtures, top: String = OPEN_TOP) -> Array:
 	var tiles: LevelTiles = LevelTiles.new(LevelBound.new(1, "Unit Test", 4))
 	var prefab: TilePrefab = TilePrefab.from_grids(&"test_objects", OPEN_GROUND, top, OPEN_ORE, objects)
-	Objects.reset_ids()
-	var ok: bool = LevelGridLoader.stamp(tiles, prefab, Vector2i(2, 0), fixtures)
+	var ok: bool = LevelGridLoader.stamp(tiles, prefab, Vector2i(2, 0), fixtures, IdAllocator.new())
 	return [ok, tiles]
 
 

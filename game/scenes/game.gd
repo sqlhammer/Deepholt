@@ -4,6 +4,9 @@ extends Node
 @onready var game_viewport: SubViewport = $GameViewport
 
 var view: View
+# The world being played, inside GameViewport at the origin (D-128).
+# Handed by reference to whatever needs it; nothing looks it up.
+var world: World
 # The folder every save slot sits in. Set it before _ready to point
 # the game elsewhere; tests do, so they never touch real saves.
 var saves_root: String = SaveGame.SAVES_DIR
@@ -32,6 +35,9 @@ var last_load_msec: float = -1.0
 # How often the game saves while playing (D-110). A tuning number: the
 # first to move into the tuning profile when it's built (D-116).
 const AUTOSAVE_INTERVAL_SECONDS: float = 300.0
+# A new world's seed, hashed. One fixed seed until there is a menu to
+# choose one.
+const WORLD_SEED_TEXT: String = "Default Seed"
 
 enum REFUSAL_REASON {
 	NONE,
@@ -47,19 +53,6 @@ func get_view_camera() -> Camera2D:
 
 func get_level_renderer() -> LevelRenderer:
 	return $GameViewport/LevelRenderer
-
-
-func refresh_current_view() -> void:
-	for _lvl in get_tree().get_nodes_in_group("levels"):
-		if _lvl is not Level: continue
-		if _lvl.depth == view.shown_depth:
-			get_level_renderer().show_level(_lvl.level_tiles)
-			break
-	# The view only announces a depth that changed, so a load onto the
-	# depth already shown would leave the fixtures drawn from the old
-	# world, and listening to it (R-B9)
-	if view.shown_depth != View.NO_DEPTH:
-		$GameViewport/FixtureRenderer.show_depth(view.shown_depth)
 
 
 func grant_player_capabilities(actor: Actor) -> void:
@@ -117,12 +110,11 @@ func save_game() -> bool:
 		if current_save_slot == "": return false
 	
 	# Levels
-	var levels: Array[Level] = []
-	for level in get_tree().get_nodes_in_group("levels"):
-		if level is Level: levels.append(level)
-	
+	var levels: Array[Level] = world.levels()
+
 	# Actors
-	var actors: Array[Node] = get_tree().get_nodes_in_group("actors")
+	var actors: Array[Node] = []
+	actors.assign(world.actors())
 	
 	# Game Stats
 	var active_play_time: float = $ActivePlayTimer.seconds
@@ -131,7 +123,7 @@ func save_game() -> bool:
 	# Save, timed: F3 shows whether it's short enough to go unfelt
 	# mid-play (D-110)
 	var started: int = Time.get_ticks_usec()
-	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor, WorldAutoload.world_seed, tuning_profile_id, active_play_time, total_play_time, saves_root)
+	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor, world.world_seed, tuning_profile_id, active_play_time, total_play_time, saves_root)
 	last_save_msec = (Time.get_ticks_usec() - started) / 1000.0
 	$DebugOverlay.show_save_time(last_save_msec)
 	if result != SaveGame.REFUSAL_REASON.NONE:
@@ -164,22 +156,19 @@ func load_game() -> REFUSAL_REASON:
 	
 	
 	# clean up objects
-	_free_actors()
-	_free_levels()
+	_free_world()
 	_free_inputhandlers()
-	
+
 	# load levels
 	var _lvls: Array[Level] = _get_levels_from_save_data(game_data)
-	_attach_levels(_lvls)
-	Objects.reserve_ids_through(SaveGame.highest_fixture_id(_lvls))
-	
-	# Trigger the view to refresh the tiles
+	var loaded: World = World.new()
+	loaded.world_seed = game_data.world_seed
+	for level: Level in _lvls:
+		loaded.add_level(level)
+	loaded.fixture_ids.claim(SaveGame.highest_fixture_id(_lvls))
+	_attach_world(loaded)
 	if not view: _create_view()
-	refresh_current_view()
-	
-	# load objects
-	
-	
+
 	# load actors
 	var raw_id: Variant = game_data.get("local_actor_id", -1)
 	var local_actor_id: int = int(raw_id) if raw_id is int or raw_id is float else -1
@@ -301,7 +290,7 @@ func _ready() -> void:
 
 	load_source = SaveGame.SOURCE.NEW
 	$DebugOverlay.show_load_source(load_source, SaveGame.FORMAT_VERSION)
-	_spawn_levels()
+	_attach_world(LevelGenerator.generate_world(hash(WORLD_SEED_TEXT)))
 	_create_view()
 	_spawn_player("DefaultName")
 	_start_autosave()
@@ -361,16 +350,13 @@ func _create_view() -> void:
 	$DebugOverlay.watch_view(view)
 
 
-# Every level is built from its depth's recipe (D-084); the scene only
-# decides where they live.
-func _spawn_levels() -> void:
-	_attach_levels(LevelGenerator.generate_levels(LevelRecipes.TABLE))
-
-
-func _attach_levels(levels: Array[Level]) -> void:
-	for level: Level in levels:
-		$Levels.add_child(level)
-		level.level_tiles.tiles_replaced.emit(level.level_tiles)
+# Puts a world built outside the tree at the origin inside the game
+# viewport (D-128), drawn after the renderers so its actors stand over
+# the level.
+func _attach_world(new_world: World) -> void:
+	world = new_world
+	game_viewport.add_child(world)
+	game_viewport.move_child(world, $GameViewport/FixtureRenderer.get_index() + 1)
 
 
 func _set_current_save_slot() -> void:
@@ -389,16 +375,11 @@ func _get_levels_from_save_data(data: Dictionary) -> Array[Level]:
 	return levels
 
 
-func _free_levels() -> void:
-	for level in get_tree().get_nodes_in_group("levels"):
-		if level is not Level: continue
-		level.free()
-
-
-func _free_actors() -> void:
-	for actor in get_tree().get_nodes_in_group("actors"):
-		if actor is not Actor: continue
-		actor.free()
+# Frees the world, and with it every level and actor in it (D-128).
+func _free_world() -> void:
+	if world != null:
+		world.free()
+		world = null
 	# Nothing may reach the freed player, a save least of all
 	_active_actor = null
 
@@ -415,51 +396,20 @@ func _free_inputhandlers() -> void:
 
 
 func _spawn_player(_name: String) -> void:
-	var tile: WorldPos = Spawning.spawn_tile_for(null, _levels(), _actors())
+	var tile: WorldPos = Spawning.spawn_tile_for(null, world.levels(), world.actors())
 	if tile == null:
 		push_error("Nowhere to spawn %s." % _name)
 		return
-	var actor = Actor.create(Global.actor_packed_scene, _name, tile, _level_at(tile.depth), ActorKind.ACTOR.PLAYER)
-	
+	var actor = Actor.create(Global.actor_packed_scene, _name, tile, world.level_at(tile.depth), ActorKind.ACTOR.PLAYER)
+
 	_create_actor(actor)
 	set_user_control(actor)
 
 
-func _levels() -> Array[Level]:
-	var levels: Array[Level] = []
-	for child in $Levels.get_children():
-		if child is Level: levels.append(child)
-	return levels
-
-
-func _level_at(depth: int) -> Level:
-	for level: Level in _levels():
-		if level.depth == depth: return level
-	return null
-
-
-func _players() -> Array[Actor]:
-	var actors: Array[Actor] = []
-	for child in $GameViewport/Actors/Players.get_children():
-		if child is Actor: actors.append(child)
-	return actors
-
-
-func _actors() -> Array[Actor]:
-	var actors: Array[Actor] = []
-	for node in get_tree().get_nodes_in_group("actors"):
-		if node is Actor: actors.append(node as Actor)
-	return actors
-
-
 func _create_actor(actor: Actor) -> Actor:
-	match actor.actor_kind:
-		ActorKind.ACTOR.NULL:
-			$GameViewport/Actors/NPCs.add_child(actor)
-		ActorKind.ACTOR.PLAYER:
-			actor.add_to_group("players")
-			$GameViewport/Actors/Players.add_child(actor)
-			grant_player_capabilities(actor)
+	world.add_actor(actor)
+	if actor.actor_kind == ActorKind.ACTOR.PLAYER:
+		grant_player_capabilities(actor)
 	
 	view.track(actor)
 	actor.actor_worldpos_changed.connect(_on_actor_moved)
@@ -502,7 +452,7 @@ func _move_if_stuck(actor: Actor) -> void:
 	if TileKind.is_passable(tiles.get_top(stuck.x, stuck.y), tiles.get_ground(stuck.x, stuck.y)):
 		return
 	
-	var target: WorldPos = Spawning.spawn_tile_for(null, _levels(), _actors())
+	var target: WorldPos = Spawning.spawn_tile_for(null, world.levels(), world.actors())
 	if target == null or not actor.move_to(target):
 		push_error("%s is stuck on %s, which is impassable, with nowhere to go." % [
 			actor.actor_name, stuck])
@@ -515,7 +465,7 @@ func _move_if_stuck(actor: Actor) -> void:
 # that names no loaded player, falls back to the lowest-id player,
 # with a warning.
 func _local_player(local_actor_id: int) -> Actor:
-	var players: Array[Actor] = _players()
+	var players: Array[Actor] = world.players()
 	if players.is_empty():
 		push_error("The save has no player to control.")
 		return null

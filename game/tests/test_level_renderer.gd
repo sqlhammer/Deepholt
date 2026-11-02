@@ -156,17 +156,18 @@ func test_every_byte_survives_being_written_as_a_pixel() -> void:
 		assert_eq(data[value], value, "byte %d is written as itself" % value)
 
 
-# Outcome 3, the screen half: a dig through World reaches the images
-# with no code in World or the dig knowing a renderer exists.
+# Outcome 3, the screen half: a dig through the world reaches the
+# images with no code in the world or the dig knowing a renderer exists.
 func test_a_dig_reaches_the_screen() -> void:
+	var world: World = autofree(World.new())
 	var level: Level = Global.level_packed_scene.instantiate()
 	level.setup(0)
 	LevelGridLoader.stamp(level.level_tiles, TilePrefabRegistry.get_prefab(&"surface_start"), Vector2i.ZERO)
-	add_child_autofree(level)
+	world.add_level(level)
 	level.level_tiles.set_ore(-1, 0, TileKind.ORE.COPPER)
 	var renderer: LevelRenderer = _renderer()
 	renderer.show_level(level.level_tiles)
-	WorldAutoload.dig_requested.emit(autofree(Actor.new()), WorldPos.new(-1, 0, 0))
+	world.dig_requested.emit(autofree(Actor.new()), WorldPos.new(-1, 0, 0))
 	assert_eq(_texel(renderer, level.level_tiles, "top", -1, 0), TileKind.TOP.OPEN,
 		"the dug tile is open on screen")
 	assert_eq(_texel(renderer, level.level_tiles, "ore", -1, 0), TileKind.ORE.NONE,

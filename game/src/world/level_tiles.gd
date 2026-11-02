@@ -163,7 +163,7 @@ func _is_out_of_array(x: int, y: int) -> int:
 
 # The radial bounds of this level's own shape: distance from the axis
 # <= radius, compared squared so a read allocates nothing and asks
-# nothing outside (the same disc WorldAutoload.is_in_bounds draws). Every tile
+# nothing outside (the same disc World.is_in_bounds draws). Every tile
 # read passes through here, so building a level's textures calls it
 # about 100,000 times at the Surface.
 func _is_out_of_bounds(x: int, y: int) -> int:

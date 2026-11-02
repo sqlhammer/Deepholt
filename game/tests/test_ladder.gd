@@ -7,11 +7,13 @@ extends GutTest
 # The shaft: a hole on the Surface at (0, 0), a ladder under it on -1.
 const SHAFT: Vector2i = Vector2i.ZERO
 
+var _world: World
 var _surface: Level
 var _below: Level
 
 
 func before_each() -> void:
+	_world = autofree(World.new())
 	_surface = _level(0)
 	_below = _level(1)
 	for y in range(-2, 3):
@@ -25,12 +27,12 @@ func before_each() -> void:
 func _level(depth: int) -> Level:
 	var level: Level = Global.level_packed_scene.instantiate()
 	level.setup(depth)
-	add_child_autofree(level)
+	_world.add_level(level)
 	return level
 
 
 func _target(x: int, y: int, depth: int, facing: Vector2i) -> WorldPos:
-	return Ladder.target_for(WorldPos.new(x, y, depth), facing)
+	return Ladder.target_for(_world.level_at(depth), WorldPos.new(x, y, depth), facing)
 
 
 func _assert_at(target: WorldPos, expected: WorldPos, message: String) -> void:
@@ -99,11 +101,7 @@ func test_standing_next_to_the_ladder_doesnt_climb() -> void:
 
 func test_the_worked_example_from_the_lesson() -> void:
 	# Real levels: hole on -1 at (14, -2), ladder on -2 under it.
-	_surface.queue_free()
-	_below.queue_free()
-	await wait_physics_frames(1)
-	for level: Level in LevelGenerator.generate_levels(LevelRecipes.TABLE):
-		add_child_autofree(level)
+	_world = autofree(LevelGenerator.generate_world(0))
 	_assert_at(_target(14, -1, 1, Vector2i(0, -1)), WorldPos.new(14, -2, 2), "down from (14, -1) facing north")
 	_assert_at(_target(14, -2, 2, Vector2i(0, -1)), WorldPos.new(15, -2, 1),
 		"still facing north, (14, -3) is rock: up at (15, -2), east")

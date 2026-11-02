@@ -68,17 +68,18 @@ func test_a_box_cant_be_placed_on_a_hole() -> void:
 
 
 func test_an_actor_walking_at_a_hole_stops_beside_it() -> void:
+	var world: World = add_child_autofree(World.new())
 	for depth in [0]:
 		var level: Level = Global.level_packed_scene.instantiate()
 		level.setup(depth)
-		add_child_autofree(level)
+		world.add_level(level)
 		for y in range(-3, 4):
 			for x in range(-3, 4):
 				level.level_tiles.set_top(x, y, TileKind.TOP.OPEN)
 		level.level_tiles.set_ground(0, 0, TileKind.GROUND.HOLE)
 	for side: Vector2i in [Vector2i(2, 0), Vector2i(-2, 0), Vector2i(0, 2), Vector2i(0, -2)]:
-		var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(side.x, side.y, 0), WorldAutoload.get_level_by_depth(0), ActorKind.ACTOR.PLAYER)
-		add_child_autofree(actor)
+		var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(side.x, side.y, 0), world.level_at(0), ActorKind.ACTOR.PLAYER)
+		world.add_actor(actor)
 		var toward: Vector2 = Vector2(-side) / 2.0 * 1.4
 		for i in 40:
 			actor._move(toward)
@@ -118,13 +119,13 @@ func test_h_under_a_top_the_grid_never_mentions_fails_to_load() -> void:
 # --- seeing it ---
 
 func test_f3_names_a_hole() -> void:
-	var level: Level = Global.level_packed_scene.instantiate()
-	level.setup(0)
-	add_child_autofree(level)
+	var world: World = autofree(preload("res://tests/worlds.gd").with_levels([0]))
+	var level: Level = world.level_at(0)
 	level.level_tiles.set_top(0, 0, TileKind.TOP.OPEN)
 	level.level_tiles.set_ground(0, 0, TileKind.GROUND.HOLE)
 	var overlay: CanvasLayer = preload("res://src/debug/debug_overlay.tscn").instantiate()
 	add_child_autofree(overlay)
+	overlay.world = world
 	assert_string_contains(overlay._tile_readout(WorldPos.new(0, 0, 0)), "ground HOLE",
 		"the readout names the hole")
 

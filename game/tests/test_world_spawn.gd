@@ -7,7 +7,8 @@ extends GutTest
 
 
 func _surface_spawns() -> Array[Fixture]:
-	var level: Level = LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(0))
+	var level: Level = LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(0), 0,
+		IdAllocator.new())
 	autofree(level)
 	return level.level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN)
 
@@ -30,7 +31,7 @@ func _spawn_on(open: Array[Vector2i], radius: int, seed_level_seed: int = 1234) 
 	recipe.fixed_placements = [PrefabPlacement.new(&"", Vector2i.ZERO, radius)] as Array[PrefabPlacement]
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = seed_level_seed
-	LevelGenerator.place_world_spawns(level, recipe, rng)
+	LevelGenerator.place_world_spawns(level, recipe, rng, IdAllocator.new())
 	return level
 
 
@@ -45,7 +46,8 @@ func test_the_same_seed_gives_the_same_spawn() -> void:
 
 
 func test_the_surface_spawn_is_in_the_start_room_on_open_floor() -> void:
-	var level: Level = LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(0))
+	var level: Level = LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(0), 0,
+		IdAllocator.new())
 	autofree(level)
 	var spawn: Fixture = level.level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN)[0]
 	var tiles: LevelTiles = level.level_tiles
@@ -99,6 +101,7 @@ func test_a_placement_without_a_radius_places_no_spawn() -> void:
 
 func test_the_other_levels_have_no_world_spawn() -> void:
 	for depth in [1, 2]:
-		var level: Level = LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(depth))
+		var level: Level = LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(depth), 0,
+			IdAllocator.new())
 		autofree(level)
 		assert_eq(level.level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN).size(), 0, "depth %d" % depth)

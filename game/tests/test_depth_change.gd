@@ -10,19 +10,23 @@ extends GutTest
 const OPEN_TILE: Vector2i = Vector2i(2, -3)
 
 
+var _world: World
+
+
 func before_each() -> void:
+	_world = add_child_autofree(World.new())
 	for depth in [0, 1, 2]:
 		var level: Level = Global.level_packed_scene.instantiate()
 		level.setup(depth)
-		add_child_autofree(level)
+		_world.add_level(level)
 		# Solid rock everywhere but one tile, open on every level.
 		level.level_tiles.set_top(OPEN_TILE.x, OPEN_TILE.y, TileKind.TOP.OPEN)
 
 
 func _actor_at(tile: Vector2i, depth: int) -> Actor:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth), WorldAutoload.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
-	add_child_autofree(actor)
+		Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth), _world.level_at(depth), ActorKind.ACTOR.PLAYER)
+	_world.add_actor(actor)
 	return actor
 
 
@@ -42,7 +46,7 @@ func test_changing_depth_keeps_x_and_y() -> void:
 	assert_eq(actor.current_WorldPos.x, OPEN_TILE.x, "same x")
 	assert_eq(actor.current_WorldPos.y, OPEN_TILE.y, "same y")
 	assert_eq(actor.current_WorldPos.depth, 1, "and its WorldPos says -1")
-	assert_eq(actor.current_level, WorldAutoload.get_level_by_depth(1), "it collides with -1 now")
+	assert_eq(actor.current_level, _world.level_at(1), "it collides with -1 now")
 
 
 func test_a_depth_change_is_announced_once_with_the_final_tile() -> void:
@@ -58,7 +62,7 @@ func test_a_depth_change_is_announced_once_with_the_final_tile() -> void:
 
 func test_a_blocked_landing_is_refused_and_changes_nothing() -> void:
 	var actor: Actor = _actor_at(OPEN_TILE, 0)
-	WorldAutoload.get_level_by_depth(1).level_tiles.set_top(OPEN_TILE.x, OPEN_TILE.y, TileKind.TOP.MINABLE_ROCK)
+	_world.level_at(1).level_tiles.set_top(OPEN_TILE.x, OPEN_TILE.y, TileKind.TOP.MINABLE_ROCK)
 	var position_before: Vector2 = actor.position
 	watch_signals(actor)
 	assert_false(actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1)), "refused")
@@ -109,7 +113,7 @@ func test_another_actor_changing_depth_does_not_move_the_view() -> void:
 
 func test_an_ordinary_step_does_not_change_the_shown_depth() -> void:
 	var actor: Actor = _actor_at(OPEN_TILE, 0)
-	WorldAutoload.get_level_by_depth(0).level_tiles.set_top(OPEN_TILE.x + 1, OPEN_TILE.y, TileKind.TOP.OPEN)
+	_world.level_at(0).level_tiles.set_top(OPEN_TILE.x + 1, OPEN_TILE.y, TileKind.TOP.OPEN)
 	var view: View = _view_following(actor)
 	watch_signals(view)
 	actor.position.x += TileSpace.TILE_PIXELS
@@ -140,18 +144,18 @@ func test_the_followed_actor_is_always_drawn() -> void:
 
 func test_a_dig_on_one_depth_changes_only_that_depth() -> void:
 	var tile: Vector2i = Vector2i(5, 5)
-	WorldAutoload.dig_requested.emit(autofree(Actor.new()), WorldPos.new(tile.x, tile.y, 1))
-	assert_eq(WorldAutoload.get_level_by_depth(1).level_tiles.get_top(tile.x, tile.y), TileKind.TOP.OPEN,
+	_world.dig_requested.emit(autofree(Actor.new()), WorldPos.new(tile.x, tile.y, 1))
+	assert_eq(_world.level_at(1).level_tiles.get_top(tile.x, tile.y), TileKind.TOP.OPEN,
 		"dug on -1")
 	for depth in [0, 2]:
-		assert_eq(WorldAutoload.get_level_by_depth(depth).level_tiles.get_top(tile.x, tile.y),
+		assert_eq(_world.level_at(depth).level_tiles.get_top(tile.x, tile.y),
 			TileKind.TOP.MINABLE_ROCK, "untouched at depth %d" % depth)
 
 
 func test_a_freed_actor_is_dropped_from_the_view() -> void:
 	var followed: Actor = _actor_at(OPEN_TILE, 0)
-	var other: Actor = Actor.create(Global.actor_packed_scene, "Gone", WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 0), WorldAutoload.get_level_by_depth(0), ActorKind.ACTOR.PLAYER)
-	add_child(other)
+	var other: Actor = Actor.create(Global.actor_packed_scene, "Gone", WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 0), _world.level_at(0), ActorKind.ACTOR.PLAYER)
+	_world.add_actor(other)
 	var view: View = _view_following(followed)
 	view.track(other)
 	other.free()

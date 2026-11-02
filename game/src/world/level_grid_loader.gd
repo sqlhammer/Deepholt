@@ -51,11 +51,12 @@ const ORIGIN_CHAR: String = "0"
 const MINABLE_ROCK_CHAR: String = "#"
 
 
-# `fixtures` is the level's fixture store, needed only when the prefab
-# has an objects grid (D-104). A prefab with fixtures and no store to
-# put them in fails to load rather than dropping them.
+# `fixtures` is the level's fixture store, and `fixture_ids` the
+# counter of the world it is built for, both needed only when the
+# prefab has an objects grid (D-104, D-118). A prefab with fixtures
+# and no store to put them in fails to load rather than dropping them.
 static func stamp(tiles: LevelTiles, prefab: TilePrefab, anchor: Vector2i,
-		fixtures: LevelFixtures = null) -> bool:
+		fixtures: LevelFixtures = null, fixture_ids: IdAllocator = null) -> bool:
 	# Validate characters in grids
 	if not are_valid_characters(prefab.ground,GROUND_CHARS): return false
 	if not are_valid_characters(prefab.top,TOP_CHARS): return false
@@ -87,7 +88,7 @@ static func stamp(tiles: LevelTiles, prefab: TilePrefab, anchor: Vector2i,
 		if not _has_valid_anchor(prefab.objects): return false
 		object_tiles = _to_anchored_tiles(prefab.objects)
 		if not _fixtures_stand_on_floor(object_tiles, ground_tiles, top_tiles): return false
-		if fixtures == null and _has_fixtures(object_tiles):
+		if (fixtures == null or fixture_ids == null) and _has_fixtures(object_tiles):
 			push_error("Prefab '%s' has fixtures, but no fixture store was given." % prefab.id)
 			return false
 
@@ -103,7 +104,7 @@ static func stamp(tiles: LevelTiles, prefab: TilePrefab, anchor: Vector2i,
 		if kind == ObjectKind.OBJECT.NULL: continue
 		var tile: WorldPos = WorldPos.new(coord.x + anchor.x, coord.y + anchor.y,
 			tiles.level_bound.depth)
-		fixtures.add(Fixture.new(kind, tile, Objects.next_id()))
+		fixtures.add(Fixture.new(kind, tile, fixture_ids.allocate()))
 
 	return true
 

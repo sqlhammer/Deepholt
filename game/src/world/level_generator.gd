@@ -1,9 +1,9 @@
 class_name LevelGenerator
 extends RefCounted
 
-# Builds the levels from their recipes (D-084): fixed placements first,
-# then -- once they exist -- rules, then validation. Returns levels not
-# yet in the tree; the caller decides where they live.
+# Builds a world from its recipes (D-084, D-127): fixed placements
+# first, then -- once they exist -- rules, then validation. Returns a
+# World not yet in the tree; the caller decides where it lives.
 #
 # Anything random in generation draws from the level's own generator,
 # never the global randi(), and never depends on node or dictionary
@@ -11,16 +11,18 @@ extends RefCounted
 # (NOW.md trap 8). Fixed placements use no randomness.
 
 
-static func generate_levels(recipes: LevelRecipeTable) -> Array[Level]:
-	# A new world: fixture ids start again, so the same seed gives the
-	# same ids even when one process builds several worlds (D-104).
-	Objects.reset_ids()
-	var levels: Array[Level] = []
+# A new world for a seed, with a level per recipe and its own fresh
+# id counters, so the same seed gives the same fixture ids however
+# many worlds one process builds (D-104, D-118).
+static func generate_world(world_seed: int, recipes: LevelRecipeTable = LevelRecipes.TABLE) -> World:
+	var world: World = World.new()
+	world.world_seed = world_seed
 	for recipe: LevelRecipe in recipes.rows:
-		levels.append(generate_level(recipe))
+		world.add_level(generate_level(recipe, world_seed, world.fixture_ids))
+	var levels: Array[Level] = world.levels()
 	for problem: String in ramp_problems(levels) + ladder_problems(levels):
 		push_error(problem)
-	return levels
+	return world
 
 
 # Every ladder needs a hole directly above it, on the level one depth up
@@ -96,12 +98,13 @@ static func _tiles_with_ground(tiles: LevelTiles, kind: int) -> Array[Vector2i]:
 # The level's one source of randomness is made here, once, and handed
 # to each step that needs it in a fixed order. Two steps each calling
 # rng_for() would get the same sequence and correlated results.
-static func generate_level(recipe: LevelRecipe) -> Level:
+# `fixture_ids` is the counter of the world the level is built for.
+static func generate_level(recipe: LevelRecipe, world_seed: int, fixture_ids: IdAllocator) -> Level:
 	var level: Level = Global.level_packed_scene.instantiate()
-	level.setup(recipe.bound.depth)
+	level.setup(recipe.bound.depth, world_seed)
 	var rng: RandomNumberGenerator = rng_for(level)
-	apply_fixed_placements(level, recipe)
-	place_world_spawns(level, recipe, rng)
+	apply_fixed_placements(level, recipe, fixture_ids)
+	place_world_spawns(level, recipe, rng, fixture_ids)
 	return level
 
 
@@ -111,7 +114,8 @@ static func generate_level(recipe: LevelRecipe) -> Level:
 # that isn't a ramp, and that the fixture rules allow. Candidates are
 # gathered row by row, then column, so the same seed picks the same
 # tile. No candidate is reported, and nothing is placed.
-static func place_world_spawns(level: Level, recipe: LevelRecipe, rng: RandomNumberGenerator) -> void:
+static func place_world_spawns(level: Level, recipe: LevelRecipe, rng: RandomNumberGenerator,
+		fixture_ids: IdAllocator) -> void:
 	for placement: PrefabPlacement in recipe.fixed_placements:
 		if placement.spawn_radius <= 0: continue
 		var candidates: Array[Vector2i] = spawn_candidates(level, placement.anchor, placement.spawn_radius)
@@ -121,7 +125,7 @@ static func place_world_spawns(level: Level, recipe: LevelRecipe, rng: RandomNum
 			continue
 		var tile: Vector2i = candidates[rng.randi_range(0, candidates.size() - 1)]
 		level.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.WORLD_SPAWN,
-			WorldPos.new(tile.x, tile.y, level.depth), Objects.next_id()))
+			WorldPos.new(tile.x, tile.y, level.depth), fixture_ids.allocate()))
 
 
 static func spawn_candidates(level: Level, center: Vector2i, radius: int) -> Array[Vector2i]:
@@ -134,9 +138,9 @@ static func spawn_candidates(level: Level, center: Vector2i, radius: int) -> Arr
 			if TileKind.is_ramp(tiles.get_ground(tile.x, tile.y)): continue
 			# Generation has no level above at hand; a world spawn
 			# doesn't need one.
-			var problem: int = Objects.placement_problem(ObjectKind.OBJECT.WORLD_SPAWN,
-				tile, tiles, level.level_fixtures, null)
-			if problem == Objects.REFUSAL_REASON.NONE:
+			var problem: World.FIXTURE_REFUSAL = FixturePlacement.problem(
+				ObjectKind.OBJECT.WORLD_SPAWN, tile, tiles, level.level_fixtures, null)
+			if problem == World.FIXTURE_REFUSAL.NONE:
 				candidates.append(tile)
 	return candidates
 
@@ -145,7 +149,8 @@ static func spawn_candidates(level: Level, center: Vector2i, radius: int) -> Arr
 # that doesn't exist, or one that fails to stamp, is an authoring
 # error: it is reported, and the rest of the recipe still applies.
 # Returns false if any placement failed.
-static func apply_fixed_placements(level: Level, recipe: LevelRecipe) -> bool:
+static func apply_fixed_placements(level: Level, recipe: LevelRecipe,
+		fixture_ids: IdAllocator) -> bool:
 	var all_placed: bool = true
 	for placement: PrefabPlacement in recipe.fixed_placements:
 		var prefab: TilePrefab = TilePrefabRegistry.get_prefab(placement.prefab_id)
@@ -154,7 +159,8 @@ static func apply_fixed_placements(level: Level, recipe: LevelRecipe) -> bool:
 				recipe.bound.depth, placement.prefab_id])
 			all_placed = false
 			continue
-		if not LevelGridLoader.stamp(level.level_tiles, prefab, placement.anchor, level.level_fixtures):
+		if not LevelGridLoader.stamp(level.level_tiles, prefab, placement.anchor,
+				level.level_fixtures, fixture_ids):
 			push_error("Prefab '%s' failed to stamp at depth %d." % [
 				placement.prefab_id, recipe.bound.depth])
 			all_placed = false

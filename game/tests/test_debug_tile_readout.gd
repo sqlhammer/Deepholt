@@ -7,16 +7,20 @@ extends GutTest
 
 
 var _overlay: CanvasLayer
+var _world: World
 
 
 func before_each() -> void:
+	_world = autofree(World.new())
 	var level: Level = preload("res://src/world/level.tscn").instantiate()
 	level.setup(0)
 	LevelGridLoader.stamp(level.level_tiles, TilePrefabRegistry.get_prefab(&"surface_start"), Vector2i.ZERO)
-	add_child_autofree(level)
+	_world.add_level(level)
 
 	_overlay = preload("res://src/debug/debug_overlay.tscn").instantiate()
 	add_child_autofree(_overlay)
+	# As the view would announce it (D-129)
+	_overlay.world = _world
 
 
 func test_window_prints_back_the_authored_grid_around_the_anchor() -> void:
@@ -52,7 +56,7 @@ func test_readout_reports_the_array_index_of_the_origin() -> void:
 func test_a_level_with_no_prefab_reads_as_solid_rock() -> void:
 	var level: Level = preload("res://src/world/level.tscn").instantiate()
 	level.setup(3)
-	add_child_autofree(level)
+	_world.add_level(level)
 
 	var readout: String = _overlay._tile_readout(WorldPos.new(0, 0, 3))
 
@@ -71,7 +75,7 @@ func test_a_depth_with_no_resident_level_says_so() -> void:
 # them to move, so a fresh actor shows up without taking a step.
 func test_a_watched_actor_shows_before_it_moves() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0), WorldAutoload.get_level_by_depth(0), ActorKind.ACTOR.PLAYER)
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0), _world.level_at(0), ActorKind.ACTOR.PLAYER)
 	autofree(actor)
 	_overlay.visible = true
 	_overlay.watch(actor)
@@ -81,7 +85,7 @@ func test_a_watched_actor_shows_before_it_moves() -> void:
 
 func test_a_hidden_overlay_does_not_build_readouts() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0), WorldAutoload.get_level_by_depth(0), ActorKind.ACTOR.PLAYER)
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0), _world.level_at(0), ActorKind.ACTOR.PLAYER)
 	autofree(actor)
 	_overlay.visible = false
 	_overlay.watch(actor)
@@ -91,7 +95,7 @@ func test_a_hidden_overlay_does_not_build_readouts() -> void:
 
 func test_a_freed_actor_loses_its_section() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0), WorldAutoload.get_level_by_depth(0), ActorKind.ACTOR.PLAYER)
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0), _world.level_at(0), ActorKind.ACTOR.PLAYER)
 	_overlay.visible = true
 	_overlay.watch(actor)
 	assert_true(_overlay.debug_text.has("Player: TestPlayer"),
@@ -116,7 +120,7 @@ func test_toggling_flips_visibility() -> void:
 
 func test_toggling_on_shows_a_watched_actor_straight_away() -> void:
 	var actor: Actor = Actor.create(
-		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0), WorldAutoload.get_level_by_depth(0), ActorKind.ACTOR.PLAYER)
+		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, 0), _world.level_at(0), ActorKind.ACTOR.PLAYER)
 	autofree(actor)
 	_overlay.visible = false
 	_overlay.watch(actor)
@@ -202,8 +206,7 @@ func test_minable_dirt_draws_as_a_percent_sign() -> void:
 # --- the world spawn (D-105: the one fixture F3 shows) ---
 
 func _surface() -> Level:
-	return get_tree().get_nodes_in_group("levels").filter(
-		func(level: Level) -> bool: return level.depth == 0)[0]
+	return _world.level_at(0)
 
 
 func test_no_world_spawn_reads_none() -> void:

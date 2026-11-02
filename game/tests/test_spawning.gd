@@ -5,10 +5,17 @@ extends GutTest
 # ring, in a fixed order. Actors on other depths aren't in the way.
 
 
+var _world: World
+
+
+func before_each() -> void:
+	_world = add_child_autofree(World.new())
+
+
 func _open_level(depth: int, open: Array[Vector2i]) -> Level:
 	var level: Level = Global.level_packed_scene.instantiate()
 	level.setup(depth)
-	add_child_autofree(level)
+	_world.add_level(level)
 	for tile in open:
 		level.level_tiles.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
 	return level
@@ -23,8 +30,8 @@ func _square(radius: int) -> Array[Vector2i]:
 
 
 func _actor_at(tile: Vector2i, depth: int) -> Actor:
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth), WorldAutoload.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
-	add_child_autofree(actor)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(tile.x, tile.y, depth), _world.level_at(depth), ActorKind.ACTOR.PLAYER)
+	_world.add_actor(actor)
 	return actor
 
 

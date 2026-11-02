@@ -6,15 +6,17 @@ extends GutTest
 
 const SPOT: Vector2i = Vector2i(2, -3)
 
+var _world: World
 var _levels: Array[Level] = []
 
 
 func before_each() -> void:
 	_levels.clear()
+	_world = add_child_autofree(World.new())
 	for depth in [0, 1]:
 		var level: Level = Global.level_packed_scene.instantiate()
 		level.setup(depth)
-		add_child_autofree(level)
+		_world.add_level(level)
 		level.level_tiles.set_top(SPOT.x, SPOT.y, TileKind.TOP.OPEN)
 		_levels.append(level)
 
@@ -30,8 +32,8 @@ func _ladder(depth: int, id: int, tile: Vector2i = SPOT) -> Fixture:
 
 
 func _following_actor_at(depth: int) -> Array:
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(SPOT.x, SPOT.y, depth), WorldAutoload.get_level_by_depth(depth), ActorKind.ACTOR.PLAYER)
-	add_child_autofree(actor)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(SPOT.x, SPOT.y, depth), _world.level_at(depth), ActorKind.ACTOR.PLAYER)
+	_world.add_actor(actor)
 	var view: View = View.new()
 	add_child_autofree(view)
 	view.follow(actor)
@@ -116,8 +118,8 @@ func test_the_game_draws_fixtures_below_actors() -> void:
 	game.saves_root = "user://test_saves/fixture_renderer"
 	add_child_autofree(game)
 	var viewport: Node = game.get_node("GameViewport")
-	assert_lt(viewport.get_node("FixtureRenderer").get_index(), viewport.get_node("Actors").get_index(),
-		"fixtures draw before actors, so actors stand over a ladder")
+	assert_lt(viewport.get_node("FixtureRenderer").get_index(), viewport.get_node("World").get_index(),
+		"fixtures draw before the world's actors, so actors stand over a ladder")
 
 
 func test_moving_to_another_level_clears_the_old_levels_sprites() -> void:
@@ -192,18 +194,15 @@ func test_tops_are_only_for_the_level_below_the_shown_one() -> void:
 
 
 func test_the_hand_made_hole_on_minus_one_shows_the_ladder_top() -> void:
-	for level in _levels: level.queue_free()
-	await wait_physics_frames(1)
-	for level: Level in LevelGenerator.generate_levels(LevelRecipes.TABLE):
-		add_child_autofree(level)
-	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(14, -1, 1), WorldAutoload.get_level_by_depth(1), ActorKind.ACTOR.PLAYER)
-	add_child_autofree(actor)
+	_world = add_child_autofree(LevelGenerator.generate_world(0))
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(14, -1, 1), _world.level_at(1), ActorKind.ACTOR.PLAYER)
+	_world.add_actor(actor)
 	var view: View = View.new()
 	add_child_autofree(view)
 	view.follow(actor)
 	var renderer: FixtureRenderer = _renderer()
 	renderer.watch(view)
-	var ladder: Fixture = WorldAutoload.get_level_by_depth(2).level_fixtures.of_kind(ObjectKind.OBJECT.LADDER)[0]
+	var ladder: Fixture = _world.level_at(2).level_fixtures.of_kind(ObjectKind.OBJECT.LADDER)[0]
 	var top: Sprite2D = renderer.top_sprite_for(ladder.id)
 	assert_not_null(top, "from -1, the hole at (14, -2) shows its ladder")
 	if top: assert_eq(top.position, Vector2(14, -2) * 16.0, "in the hole")

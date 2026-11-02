@@ -15,11 +15,13 @@ var debug_text : Dictionary = {}
 # title is kept so the section can still be removed after the
 # actor is gone and its name can't be read.
 var watched_actors: Dictionary[int, String] = {}
+# The world on screen, as the view announces it (D-129). Every level
+# the overlay reads comes from here; nothing searches the tree.
+var world: World
 
 func _ready() -> void:
 	$Timer.timeout.connect(_refresh_watched_actors)
 	Global.debug_event.connect(set_section)
-	set_section("World Seed",str(WorldAutoload.world_seed)) # World emits prior to this being ready. Once we implement a loading screen, World seed will update later and we can remove this.
 
 
 func _input(event: InputEvent) -> void:
@@ -122,7 +124,8 @@ const WORLD_SPAWN_SECTION: String = "World spawn"
 # the overlay is how you'd find that out.
 func world_spawn_text() -> String:
 	var spawns: Array[Fixture] = []
-	for level: Level in get_tree().get_nodes_in_group("levels"):
+	if world == null: return "none"
+	for level: Level in world.levels():
 		spawns.append_array(level.level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN))
 	if spawns.is_empty():
 		return "none"
@@ -194,9 +197,9 @@ func _tile_char(tiles: LevelTiles, x: int, y: int, actor_pos: WorldPos) -> Strin
 
 
 func _find_level_tiles(depth: int) -> LevelTiles:
-	for level: Level in get_tree().get_nodes_in_group("levels"):
-		if level.depth == depth: return level.level_tiles
-	return null
+	if world == null: return null
+	var level: Level = world.level_at(depth)
+	return level.level_tiles if level != null else null
 
 
 func _kind_name(table: Dictionary, id: int) -> String:
@@ -255,7 +258,15 @@ const VIEW_SECTION: String = "Shown depth"
 # disagreement between the two is visible (outcome 7).
 func watch_view(view: View) -> void:
 	view.shown_depth_changed.connect(_on_shown_depth_changed)
-	_on_shown_depth_changed(View.NO_DEPTH, view.shown_depth)
+	view.shown_world_changed.connect(_on_shown_world_changed)
+	_on_shown_world_changed(view.shown_world, view.shown_depth)
+
+
+func _on_shown_world_changed(p_world: World, depth: int) -> void:
+	world = p_world
+	if world != null:
+		set_section("World Seed", str(world.world_seed))
+	_on_shown_depth_changed(View.NO_DEPTH, depth)
 
 
 func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:

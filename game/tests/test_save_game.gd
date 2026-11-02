@@ -432,8 +432,9 @@ func _fixtures_of(level: Level) -> Array:
 # Every level, as generation builds it. Freed after the test.
 func _generated_world() -> Array[Level]:
 	var levels: Array[Level] = []
+	var fixture_ids: IdAllocator = IdAllocator.new()
 	for recipe: LevelRecipe in LevelRecipes.TABLE.rows:
-		levels.append(autofree(LevelGenerator.generate_level(recipe)))
+		levels.append(autofree(LevelGenerator.generate_level(recipe, 0, fixture_ids)))
 	return levels
 
 
@@ -475,7 +476,8 @@ func test_deserialize_with_an_empty_fixture_list_leaves_none() -> void:
 # A save written before fixtures were saved keeps what generation put
 # there, the way a missing tile layer keeps its default.
 func test_deserialize_without_a_fixtures_entry_keeps_the_generated() -> void:
-	var generated: Level = autofree(LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(0)))
+	var generated: Level = autofree(LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(0), 0,
+		IdAllocator.new()))
 	var level: Level = _deserialize({0: _level_data(0)})[0]
 	assert_eq(_fixtures_of(level).size(), _fixtures_of(generated).size(),
 		"as many fixtures as generation places")
@@ -579,7 +581,7 @@ func _read(file: String) -> Variant:
 # Levels only: actors need levels in the tree, which these don't use.
 func _save(levels: Array[Level], slot: String = TEST_SLOT) -> SaveGame.REFUSAL_REASON:
 	var no_actors: Array[Node] = []
-	return SaveGame.save_game(slot, levels, no_actors, null, WorldAutoload.world_seed, "none",
+	return SaveGame.save_game(slot, levels, no_actors, null, TEST_SEED, "none",
 		0.0, 0.0, TEST_ROOT)
 
 
@@ -806,7 +808,7 @@ func _write_raw_save(data: Dictionary) -> void:
 
 func _required_header() -> Dictionary:
 	return {
-		"world_seed": WorldAutoload.world_seed,
+		"world_seed": TEST_SEED,
 		"game_version": Global.get_game_version(),
 		"saved_at": 1793569749,
 		"saved_at_utc_offset": -300,
@@ -1092,7 +1094,7 @@ func test_two_actors_on_different_depths_round_trip_each_to_its_own() -> void:
 	var a: Actor = _player_on(tile_a, levels, "Upper", 10)
 	var b: Actor = _player_on(tile_b, levels, "Lower", 11)
 	var actors: Array[Node] = [a, b]
-	assert_eq(SaveGame.save_game(TEST_SLOT, levels, actors, a, WorldAutoload.world_seed, "none",
+	assert_eq(SaveGame.save_game(TEST_SLOT, levels, actors, a, TEST_SEED, "none",
 		0.0, 0.0, TEST_ROOT),
 		SaveGame.REFUSAL_REASON.NONE, "the save succeeds")
 
@@ -1347,9 +1349,7 @@ func test_the_headers_version_wins_over_the_bodys() -> void:
 func test_a_whole_saved_level_is_built_without_generating() -> void:
 	var saved: Dictionary = _level_data(0)
 	saved["fixtures"] = []
-	var before: int = Objects._next_fixture_id
 	var levels: Dictionary = _deserialize({0: saved})
-	assert_eq(Objects._next_fixture_id, before, "no fixture id was drawn")
 	assert_eq(levels[0].level_fixtures.all(), [] as Array[Fixture],
 		"and no world spawn was placed: the saved list is all there is")
 	assert_eq(levels[0].level_seed, TEST_SEED, "with the saved seed")
@@ -1367,9 +1367,9 @@ func test_a_saved_level_missing_a_layer_is_generated_first() -> void:
 	var saved: Dictionary = _level_data(0)
 	saved["fixtures"] = []
 	saved["tiles"].erase("ore")
-	var before: int = Objects._next_fixture_id
-	_deserialize({0: saved})
-	assert_gt(Objects._next_fixture_id, before, "generated, so ids were drawn")
+	var levels: Dictionary = _deserialize({0: saved})
+	assert_eq(levels[0].level_tiles.get_ore(0, 0), TileKind.ORE.NONE,
+		"generated, so the missing ore layer is the prefab's, not all copper")
 
 
 func test_the_highest_fixture_id_is_found_across_levels() -> void:

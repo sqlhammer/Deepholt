@@ -257,7 +257,7 @@ static func file_timestamp(unix_time: int) -> String:
 # generation runs, on the fixtures and the levels as they came out of
 # the save. A report only; nothing is changed (D-113).
 static func load_problems(levels: Array[Level]) -> Array[String]:
-	return Objects.placement_problems(levels) \
+	return FixturePlacement.problems(levels) \
 		+ LevelGenerator.ramp_problems(levels) \
 		+ LevelGenerator.ladder_problems(levels)
 
@@ -477,6 +477,8 @@ static func _deserialize_actor(p_actor: Dictionary, p_actor_id: int, p_levels: D
 
 static func _deserialize_levels(p_levels: Dictionary) -> Dictionary:
 	var levels: Dictionary = {}
+	# For levels generated because the save holds them only in part
+	var fixture_ids: IdAllocator = IdAllocator.new()
 	
 	for level_key in p_levels:
 		if not _is_valid_level_entry(level_key, p_levels[level_key]): continue
@@ -485,7 +487,7 @@ static func _deserialize_levels(p_levels: Dictionary) -> Dictionary:
 		if not LevelRecipes.TABLE.has_recipe(level_key):
 			push_warning("Saved depth %d has no recipe row; skipped." % level_key)
 			continue
-		var level: Level = _deserialize_level(level_key, p_levels[level_key])
+		var level: Level = _deserialize_level(level_key, p_levels[level_key], fixture_ids)
 		if not level: continue
 		levels[level_key] = level
 	
@@ -493,7 +495,8 @@ static func _deserialize_levels(p_levels: Dictionary) -> Dictionary:
 
 
 # p_level must already have passed _is_valid_level_entry.
-static func _deserialize_level(p_depth: int, p_level: Dictionary) -> Level:
+static func _deserialize_level(p_depth: int, p_level: Dictionary,
+		fixture_ids: IdAllocator) -> Level:
 	# Build layer arrays
 	var layers: Dictionary = {}
 	if p_level.has("tiles"):
@@ -509,7 +512,8 @@ static func _deserialize_level(p_depth: int, p_level: Dictionary) -> Level:
 		level = Global.level_packed_scene.instantiate()
 		level.setup(p_depth)
 	else:
-		level = LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(p_depth))
+		level = LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(p_depth), 0,
+			fixture_ids)
 	# Never use _set_level_seed() because it recomputes the seed. The save is the source of truth
 	level.level_seed = p_level["level_seed"]
 	

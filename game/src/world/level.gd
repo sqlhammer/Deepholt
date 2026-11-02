@@ -7,23 +7,29 @@ var depth: int:
 var level_seed: int
 var level_tiles: LevelTiles
 var level_fixtures: LevelFixtures
+# The world this level belongs to, set by the world when it takes the
+# level in (D-126). Null until then. A level never moves between
+# worlds.
+var world: World
 
 
-func _ready() -> void:
-	pass
-
-
-func setup(p_depth: int) -> void:
-	set_depth(p_depth)
+# `world_seed` is the seed of the world the level is built for; the
+# level's own seed is derived from it and the depth. `bound` is the
+# level's shape: a load passes the saved one, which wins over the
+# recipe's (D-112); with none, the recipe's is used.
+func setup(p_depth: int, world_seed: int = 0, bound: LevelBound = null) -> void:
+	set_depth(p_depth, world_seed)
 	self.name = "Level%d" % depth
 
-	level_tiles = LevelTiles.new(LevelRecipes.TABLE.get_bounds(depth))
+	if bound == null:
+		bound = LevelRecipes.TABLE.get_bounds(depth)
+	level_tiles = LevelTiles.new(bound)
 	level_fixtures = LevelFixtures.new()
 
 
-func set_depth(_d: int) -> void:
+func set_depth(_d: int, world_seed: int = 0) -> void:
 	_depth = clamp_depth(_d)
-	_set_level_seed()
+	_set_level_seed(world_seed)
 
 
 func clamp_depth(_d: int) -> int:
@@ -32,15 +38,6 @@ func clamp_depth(_d: int) -> int:
 	return clamp(_d,_min,_max)
 
 
-func _set_level_seed() -> void:
-	level_seed = hash("%s|%d" % [WorldAutoload.world_seed, _depth])
+func _set_level_seed(world_seed: int) -> void:
+	level_seed = hash("%s|%d" % [world_seed, _depth])
 	Global.emit_signal("debug_event","Level Seed",str(level_seed))
-
-
-
-
-
-
-
-
-

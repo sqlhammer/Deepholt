@@ -37,10 +37,21 @@ var _shown_tiles: LevelTiles
 var _top_sprites: Dictionary[int, Sprite2D] = {}
 
 
+# The world whose fixtures are drawn, set only by the view's signal
+var _world: World
+
+
+# Follows the view's depth and world (D-094, D-129).
 func watch(view: View) -> void:
 	view.shown_depth_changed.connect(_on_shown_depth_changed)
-	if view.shown_depth != View.NO_DEPTH:
-		_on_shown_depth_changed(View.NO_DEPTH, view.shown_depth)
+	view.shown_world_changed.connect(_on_shown_world_changed)
+	if view.shown_world != null:
+		_on_shown_world_changed(view.shown_world, view.shown_depth)
+
+
+func _on_shown_world_changed(world: World, depth: int) -> void:
+	_world = world
+	show_depth(depth)
 
 
 func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:
@@ -48,15 +59,15 @@ func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:
 
 
 # Draws the level at this depth, and the ladder tops from the one
-# below, from whatever levels are in the world now. Also for a load
-# that replaces the levels under a depth already shown.
+# below, from the shown world's levels. Also when a new world is
+# shown at the depth already shown.
 func show_depth(depth: int) -> void:
-	var level: Level = WorldAutoload.get_level_by_depth(depth)
+	var level: Level = _world.level_at(depth) if _world != null else null
 	if level == null:
 		push_error("No level at depth %d to draw fixtures for." % depth)
 		return
 	show_fixtures(level.level_fixtures)
-	var below: Level = WorldAutoload.get_level_by_depth(depth + 1)
+	var below: Level = _world.level_at(depth + 1)
 	show_ladder_tops(level.level_tiles, below.level_fixtures if below != null else null)
 
 

@@ -40,6 +40,8 @@ var _layer_data_images: Dictionary[String, Image] = {}
 # layer, because an upload re-sends the whole layer (D-065).
 var _tiles: LevelTiles
 var _dirty_layers: Dictionary[String, bool] = {}
+# The world whose levels are drawn, set only by the view's signal
+var _world: World
 
 const LAYER_NAMES: Dictionary = {
 	LevelTiles.LAYER.GROUND: "ground",
@@ -235,16 +237,27 @@ func _read(layer: LevelTiles.LAYER, x: int, y: int) -> int:
 
 
 # Shows whichever level the view is showing, now and whenever it
-# changes (D-094). The renderer never decides what depth is shown.
+# changes (D-094), from whichever world it shows (D-129). The renderer
+# never decides what depth or world is shown.
 func watch(view: View) -> void:
 	view.shown_depth_changed.connect(_on_shown_depth_changed)
-	if view.shown_depth != View.NO_DEPTH:
-		_on_shown_depth_changed(View.NO_DEPTH, view.shown_depth)
+	view.shown_world_changed.connect(_on_shown_world_changed)
+	if view.shown_world != null:
+		_on_shown_world_changed(view.shown_world, view.shown_depth)
+
+
+func _on_shown_world_changed(world: World, depth: int) -> void:
+	_world = world
+	_show_depth(depth)
 
 
 func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:
-	var level: Level = WorldAutoload.get_level_by_depth(new_depth)
+	_show_depth(new_depth)
+
+
+func _show_depth(depth: int) -> void:
+	var level: Level = _world.level_at(depth) if _world != null else null
 	if level == null:
-		push_error("No level at depth %d to show." % new_depth)
+		push_error("No level at depth %d to show." % depth)
 		return
 	show_level(level.level_tiles)

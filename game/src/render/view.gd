@@ -10,12 +10,20 @@ extends Node
 # hidden, or it would stand in the shown level's rock (trap 2).
 
 signal shown_depth_changed(old_depth: int, new_depth: int)
+# A different world is shown: the followed actor's (D-129). The world
+# and the depth come together, even when the depth is the one already
+# shown, so a listener re-points to both at once. shown_depth_changed
+# isn't also emitted for the same move.
+signal shown_world_changed(world: World, depth: int)
 
 # No depth is shown until an actor is followed.
 const NO_DEPTH: int = -1
 
 var actor: Actor
 var shown_depth: int = NO_DEPTH
+# The world the followed actor is in, reached through its level
+# (D-126). Null until an actor is followed.
+var shown_world: World
 
 # Actors whose visibility follows the shown depth. Keyed by instance
 # id, so a freed actor is skipped rather than looked up.
@@ -23,11 +31,16 @@ var _tracked: Dictionary[int, bool] = {}
 
 
 func follow(p_actor: Actor) -> void:
-	if actor != null and actor.actor_worldpos_changed.is_connected(_on_followed_actor_moved):
+	# The actor followed before may have been freed with its world
+	if is_instance_valid(actor) and actor.actor_worldpos_changed.is_connected(_on_followed_actor_moved):
 		actor.actor_worldpos_changed.disconnect(_on_followed_actor_moved)
 	actor = p_actor
 	actor.actor_worldpos_changed.connect(_on_followed_actor_moved)
 	track(actor)
+	var world: World = actor.current_level.world if actor.current_level else null
+	if world != shown_world:
+		_show_world(world, actor.depth)
+		return
 	_show(actor.depth)
 
 
@@ -54,6 +67,17 @@ func _show(depth: int) -> void:
 	var old_depth: int = shown_depth
 	shown_depth = depth
 	shown_depth_changed.emit(old_depth, shown_depth)
+	_update_all_visibility()
+
+
+func _show_world(world: World, depth: int) -> void:
+	shown_world = world
+	shown_depth = depth
+	shown_world_changed.emit(shown_world, shown_depth)
+	_update_all_visibility()
+
+
+func _update_all_visibility() -> void:
 	for id: int in _tracked.keys():
 		var tracked: Actor = instance_from_id(id) as Actor
 		if tracked == null:

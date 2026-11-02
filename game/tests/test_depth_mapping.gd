@@ -16,3 +16,9 @@ func test_round_trip_for_all_eight_depths() -> void:
 		assert_eq(round_tripped, depth,
 			"display(internal(%d)) should equal %d" % [depth, depth])
 
+
+
+func test_an_unreadable_display_name_is_not_a_depth() -> void:
+	assert_eq(DepthName.to_depth("Basement"), -99,
+		"a name that is neither Surface nor a number gives -99")
+	assert_eq(DepthName.to_depth(""), -99, "and so does an empty one")

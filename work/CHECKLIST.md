@@ -38,29 +38,32 @@ Slice 003's checklist is in git history (last at `466f939`).
 The game runs on one `World` node, built by the generator, with no autoload holding world state
 and nothing searching the tree for levels or actors.
 
-- [ ] Rename first, in its own commit: the `World` autoload goes, its recipes become a static
+- [x] Rename first, in its own commit: the `World` autoload goes, its recipes become a static
   class's preloaded constant, and its stateless helpers (depth display names, position to tile)
   become static functions. Nothing else changes in that commit (trap 1, D-124).
-- [ ] `class_name World`, a `Node2D` with `Levels` and `Actors` (`Players`, `NPCs`) children,
+- [x] `class_name World`, a `Node2D` with `Levels` and `Actors` (`Players`, `NPCs`) children,
   holding its seed and its levels by depth. `add_level` sets `level.world`; `level_at(depth)`
   replaces `get_level_by_depth` (D-124, D-126, D-128).
-- [ ] `LevelGenerator` returns a `World` for a seed, outside the tree (D-127).
-- [ ] `game.gd` puts the generated world at the origin inside `GameViewport`, replacing
+- [x] `LevelGenerator` returns a `World` for a seed, outside the tree (D-127).
+- [x] `game.gd` puts the generated world at the origin inside `GameViewport`, replacing
   `$Levels` and `GameViewport/Actors`. Actors are added to the world's `Actors` (D-128, trap 5).
-- [ ] The tile gatekeeper's signals and handling move onto `World` (D-125). The dig capability
+- [x] The tile gatekeeper's signals and handling move onto `World` (D-125). The dig capability
   emits on `actor.current_level.world` and listens there (D-126).
-- [ ] The fixture gatekeeper's signals and handling move onto `World`, and the `Objects`
-  autoload goes. The placement rules become static functions (D-125).
-- [ ] The two refusal enums get distinct names (D-125).
-- [ ] The actor's depth change, `move_to` and the Ladder rule ask `current_level.world` for the
+- [x] The fixture gatekeeper's signals and handling move onto `World`, and the `Objects`
+  autoload goes. The placement rules become static functions (D-125). *The fixture
+  counter had to move with it, so both counters became `IdAllocator`s on the world here
+  (most of C's first item).*
+- [x] The two refusal enums get distinct names (D-125).
+- [x] The actor's depth change, `move_to` and the Ladder rule ask `current_level.world` for the
   level at a depth ([D-117](../docs/design-decisions.md), D-126).
-- [ ] The renderers and F3 get levels from the followed actor's world, through the view
-  (D-126, D-129).
-- [ ] `is_in_bounds` reads the level's own bound, not the recipe table
+- [x] The renderers and F3 get levels from the followed actor's world, through the view
+  (D-126, D-129). *Done with `shown_world_changed` itself (E's second item), since the
+  renderers need a world as soon as the lookup goes.*
+- [x] `is_in_bounds` reads the level's own bound, not the recipe table
   ([D-112](../docs/design-decisions.md)).
-- [ ] No `get_nodes_in_group`, `get_first_node_in_group`, `get_parent()` or `owner` lookup of
+- [x] No `get_nodes_in_group`, `get_first_node_in_group`, `get_parent()` or `owner` lookup of
   levels or actors left in `src/` or `scenes/` (trap 2). Grep it at the end of the section.
-- [ ] Tests follow the new shape. Grep the run for `Ignoring` and `Parse Error` (trap 7).
+- [x] Tests follow the new shape. Grep the run for `Ignoring` and `Parse Error` (trap 7).
 - [ ] By hand: dig on two levels, the ramp and the ladder both ways, F3 reads. [4]
 
 ## C. The world's id counters

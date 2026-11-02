@@ -16,25 +16,27 @@ const ROCK_TILE: Vector2i = Vector2i(1, 0)
 const DIRT_TILE: Vector2i = Vector2i(2, 0)
 const OPEN_TILE: Vector2i = Vector2i(3, 0)
 
+var _world: World
 var _level: Level
 var _actor: Actor
 var _dig: CapabilityDig
 
 
 func before_each() -> void:
+	_world = add_child_autofree(World.new())
 	_level = Global.level_packed_scene.instantiate()
 	_level.setup(0)
-	add_child_autofree(_level)
+	_world.add_level(_level)
 	_level.level_tiles.set_top(DIRT_TILE.x, DIRT_TILE.y, TileKind.TOP.MINABLE_DIRT)
 	_level.level_tiles.set_top(OPEN_TILE.x, OPEN_TILE.y, TileKind.TOP.OPEN)
 
-	_actor = Actor.create(Global.actor_packed_scene, "Digger", WorldPos.new(0, 0, 0), WorldAutoload.get_level_by_depth(0), ActorKind.ACTOR.PLAYER)
-	add_child_autofree(_actor)
+	_actor = Actor.create(Global.actor_packed_scene, "Digger", WorldPos.new(0, 0, 0), _world.level_at(0), ActorKind.ACTOR.PLAYER)
+	_world.add_actor(_actor)
 	_dig = _new_capability(_actor)
 
 
 # A dig capability on `actor`, in the tree so its _ready connects
-# to the actor's action_ended and to WorldAutoload.dig_requested.
+# to the actor's action_ended and to its world's outcomes.
 func _new_capability(actor: Actor) -> CapabilityDig:
 	var capability: CapabilityDig = Global.get_capability_packedscene(
 		Global.CAPABILITY.DIG).instantiate()
@@ -119,17 +121,17 @@ func test_every_place_agrees_on_what_is_diggable() -> void:
 
 func test_a_dig_completes_at_density_over_speed() -> void:
 	var ticks: int = ceili(_density("MINABLE_ROCK") / (SPEED * TICK))
-	watch_signals(WorldAutoload)
+	watch_signals(_world)
 	_tick(ROCK_TILE, ticks - 1)
-	assert_signal_not_emitted(WorldAutoload, "dig_requested", "not done one tick early")
+	assert_signal_not_emitted(_world, "dig_requested", "not done one tick early")
 	_tick(ROCK_TILE)
-	assert_signal_emitted(WorldAutoload, "dig_requested", "done on the tick progress reaches density")
+	assert_signal_emitted(_world, "dig_requested", "done on the tick progress reaches density")
 
 
 func test_a_completed_dig_names_the_actor_and_the_tile() -> void:
-	watch_signals(WorldAutoload)
+	watch_signals(_world)
 	_tick(ROCK_TILE, ceili(_density("MINABLE_ROCK") / (SPEED * TICK)))
-	var params: Array = get_signal_parameters(WorldAutoload, "dig_requested")
+	var params: Array = get_signal_parameters(_world, "dig_requested")
 	assert_eq(params.size(), 2, "dig_requested carries (actor, tile)")
 	if params.size() == 2:
 		assert_eq(params[0], _actor, "the digging actor")
@@ -138,9 +140,9 @@ func test_a_completed_dig_names_the_actor_and_the_tile() -> void:
 
 func test_softer_ground_digs_faster() -> void:
 	var dirt_ticks: int = ceili(_density("MINABLE_DIRT") / (SPEED * TICK))
-	watch_signals(WorldAutoload)
+	watch_signals(_world)
 	_tick(DIRT_TILE, dirt_ticks)
-	assert_signal_emitted(WorldAutoload, "dig_requested", "dirt is done in fewer ticks than rock")
+	assert_signal_emitted(_world, "dig_requested", "dirt is done in fewer ticks than rock")
 
 
 # Ore makes a tile 1.5x as hard (D-081): copper in rock takes 9
@@ -150,11 +152,11 @@ func test_a_tile_with_ore_takes_one_and_a_half_times_as_long() -> void:
 	var rock_ticks: int = ceili(_density("MINABLE_ROCK") / (SPEED * TICK))
 	var ore_ticks: int = ceili(_density("MINABLE_ROCK") * TileKind.ORE_DIG_MULTIPLIER
 		/ (SPEED * TICK))
-	watch_signals(WorldAutoload)
+	watch_signals(_world)
 	_tick(ROCK_TILE, rock_ticks)
-	assert_signal_not_emitted(WorldAutoload, "dig_requested", "not done when plain rock would be")
+	assert_signal_not_emitted(_world, "dig_requested", "not done when plain rock would be")
 	_tick(ROCK_TILE, ore_ticks - rock_ticks)
-	assert_signal_emitted(WorldAutoload, "dig_requested", "done at 1.5x")
+	assert_signal_emitted(_world, "dig_requested", "done at 1.5x")
 
 
 func test_progress_resets_after_completing_a_dig() -> void:
@@ -164,7 +166,7 @@ func test_progress_resets_after_completing_a_dig() -> void:
 
 func test_another_actors_completed_dig_leaves_progress_alone() -> void:
 	_tick(ROCK_TILE, 2)
-	var other: Actor = Actor.create(Global.actor_packed_scene, "Other", WorldPos.new(0, 0, 0), WorldAutoload.get_level_by_depth(0), ActorKind.ACTOR.PLAYER)
+	var other: Actor = Actor.create(Global.actor_packed_scene, "Other", WorldPos.new(0, 0, 0), _world.level_at(0), ActorKind.ACTOR.PLAYER)
 	autofree(other)
 	_dig._on_tile_dug(other, _at(DIRT_TILE))
 	assert_almost_eq(_dig.progress, 2 * SPEED * TICK, 0.0001,
@@ -213,9 +215,9 @@ func test_digging_rock_to_completion_opens_it() -> void:
 
 func test_digging_on_after_completion_does_nothing_more() -> void:
 	_tick(ROCK_TILE, ceili(_density("MINABLE_ROCK") / (SPEED * TICK)))
-	watch_signals(WorldAutoload)
+	watch_signals(_world)
 	_tick(ROCK_TILE, 3)
-	assert_signal_not_emitted(WorldAutoload, "dig_requested",
+	assert_signal_not_emitted(_world, "dig_requested",
 		"the tile is open now, so holding on asks for nothing")
 	assert_eq(_dig.progress, 0.0, "and builds no progress")
 
@@ -224,8 +226,8 @@ func test_digging_on_after_completion_does_nothing_more() -> void:
 
 func test_a_refused_dig_resets_progress() -> void:
 	_tick(ROCK_TILE, 3)
-	WorldAutoload.dig_refused.emit(_actor, _at(ROCK_TILE),
-		WorldAutoload.REFUSAL_REASON.TILE_NOT_DIGGABLE)
+	_world.dig_refused.emit(_actor, _at(ROCK_TILE),
+		World.DIG_REFUSAL.TILE_NOT_DIGGABLE)
 	assert_eq(_dig.progress, 0.0,
 		"refused, so it doesn't sit at full progress and ask every tick")
 
@@ -233,8 +235,8 @@ func test_a_refused_dig_resets_progress() -> void:
 func test_another_actors_refusal_leaves_progress_alone() -> void:
 	_tick(ROCK_TILE, 3)
 	var other: Actor = autofree(Actor.new())
-	WorldAutoload.dig_refused.emit(other, _at(ROCK_TILE),
-		WorldAutoload.REFUSAL_REASON.TILE_NOT_DIGGABLE)
+	_world.dig_refused.emit(other, _at(ROCK_TILE),
+		World.DIG_REFUSAL.TILE_NOT_DIGGABLE)
 	assert_almost_eq(_dig.progress, 3 * SPEED * TICK, 0.0001,
 		"someone else's refusal is not this actor's")
 
@@ -255,7 +257,7 @@ func test_dig_is_complete_exactly_at_density() -> void:
 func test_a_depth_change_mid_dig_resets_progress() -> void:
 	var below: Level = Global.level_packed_scene.instantiate()
 	below.setup(1)
-	add_child_autofree(below)
+	_world.add_level(below)
 	_dig.dig(TICK, SPEED, WorldPos.new(ROCK_TILE.x, ROCK_TILE.y, 0), _level)
 	_dig.dig(TICK, SPEED, WorldPos.new(ROCK_TILE.x, ROCK_TILE.y, 0), _level)
 	assert_almost_eq(_dig.progress, 2.0, 0.001, "two ticks on the Surface")

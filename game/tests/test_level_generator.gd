@@ -1,12 +1,12 @@
 extends GutTest
 
-# LevelGenerator -- builds each level from its depth's recipe (D-084):
-# fixed placements now; rules and validation once procedural
-# generation arrives. Levels come back out of the tree.
+# LevelGenerator -- builds a world, each level from its depth's recipe
+# (D-084, D-127): fixed placements now; rules and validation once
+# procedural generation arrives. The world comes back out of the tree.
 
 
 func _generate(recipe: LevelRecipe) -> Level:
-	var level: Level = LevelGenerator.generate_level(recipe)
+	var level: Level = LevelGenerator.generate_level(recipe, 0, IdAllocator.new())
 	autofree(level)
 	return level
 
@@ -27,8 +27,7 @@ func _bare_level(depth: int) -> Level:
 
 
 func test_one_level_per_recipe_in_order() -> void:
-	var levels: Array[Level] = LevelGenerator.generate_levels(LevelRecipes.TABLE)
-	for level in levels: autofree(level)
+	var levels: Array[Level] = autofree(LevelGenerator.generate_world(0)).levels()
 	assert_eq(levels.size(), LevelRecipes.TABLE.rows.size(), "one level per recipe")
 	for index in levels.size():
 		assert_eq(levels[index].depth, index, "level %d is depth %d" % [index, index])
@@ -57,7 +56,8 @@ func test_a_placement_lands_on_its_anchor() -> void:
 
 func test_a_recipe_naming_a_missing_prefab_fails_loudly() -> void:
 	var placements: Array[PrefabPlacement] = [PrefabPlacement.new(&"no_such_prefab")]
-	var ok: bool = LevelGenerator.apply_fixed_placements(_bare_level(0), _recipe_at(0, placements))
+	var ok: bool = LevelGenerator.apply_fixed_placements(_bare_level(0), _recipe_at(0, placements),
+		IdAllocator.new())
 	assert_false(ok, "the placement is reported as failed")
 	assert_push_error("No tile prefab with id 'no_such_prefab'.")
 	assert_push_error("Recipe for depth 0 names missing prefab 'no_such_prefab'.")
@@ -78,7 +78,8 @@ func test_a_prefab_that_fails_to_stamp_fails_loudly() -> void:
 	TilePrefabRegistry._prefabs[&"test_malformed"] = TilePrefab.from_grids(
 		&"test_malformed", "r", "0", "0")
 	var placements: Array[PrefabPlacement] = [PrefabPlacement.new(&"test_malformed")]
-	var ok: bool = LevelGenerator.apply_fixed_placements(_bare_level(0), _recipe_at(0, placements))
+	var ok: bool = LevelGenerator.apply_fixed_placements(_bare_level(0), _recipe_at(0, placements),
+		IdAllocator.new())
 	TilePrefabRegistry._prefabs.erase(&"test_malformed")
 	assert_false(ok, "a malformed prefab fails the placement")
 	assert_push_error("Prefab 'test_malformed' failed to stamp at depth 0.")
@@ -110,7 +111,7 @@ func _bare_levels(depths: Array[int]) -> Array[Level]:
 
 func _add_ladder(level: Level, tile: Vector2i) -> void:
 	level.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.LADDER,
-		WorldPos.new(tile.x, tile.y, level.depth), Objects.next_id()))
+		WorldPos.new(tile.x, tile.y, level.depth), 100 + level.level_fixtures.all().size()))
 
 
 func test_a_ladder_under_a_hole_is_fine() -> void:
@@ -151,12 +152,26 @@ func test_a_hole_with_no_ladder_is_not_a_problem() -> void:
 	assert_eq(LevelGenerator.ladder_problems(levels).size(), 0, "a dead hole is legal")
 
 
-func test_generating_a_world_restarts_fixture_ids() -> void:
-	Objects.next_id()
-	Objects.next_id()
-	var levels: Array[Level] = LevelGenerator.generate_levels(LevelRecipes.TABLE)
-	for level in levels: autofree(level)
-	assert_eq(Objects.next_id(), 1 + _fixture_count(levels), "ids restarted at 1 for the new world")
+func test_a_new_world_numbers_its_fixtures_from_one() -> void:
+	var world: World = autofree(LevelGenerator.generate_world(0))
+	assert_eq(world.fixture_ids.peek(), 1 + _fixture_count(world.levels()),
+		"its counter is just past the fixtures it placed, from 1")
+
+
+func test_the_world_is_built_outside_the_tree_with_its_seed() -> void:
+	var world: World = autofree(LevelGenerator.generate_world(1234))
+	assert_false(world.is_inside_tree(), "the caller decides where it lives (D-127)")
+	assert_eq(world.world_seed, 1234, "it holds its seed")
+	for level: Level in world.levels():
+		assert_eq(level.world, world, "every level knows its world (D-126)")
+
+
+func test_the_same_seed_gives_the_same_level_seeds() -> void:
+	var first: World = autofree(LevelGenerator.generate_world(1234))
+	var second: World = autofree(LevelGenerator.generate_world(1234))
+	for depth in [0, 3]:
+		assert_eq(first.level_at(depth).level_seed, second.level_at(depth).level_seed,
+			"depth %d" % depth)
 
 
 func _fixture_count(levels: Array[Level]) -> int:
