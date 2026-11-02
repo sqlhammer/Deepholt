@@ -60,6 +60,18 @@ func test_a_fixture_added_while_shown_appears_and_removed_disappears() -> void:
 	assert_null(renderer.sprite_for(3), "removed")
 
 
+# D-138: a move is the same fixture, so the sprite goes with it.
+func test_a_fixture_moved_on_the_shown_level_moves_its_sprite() -> void:
+	_levels[1].level_fixtures.add(_ladder(1, 4))
+	var renderer: FixtureRenderer = _renderer()
+	renderer.show_fixtures(_levels[1].level_fixtures)
+	_levels[1].level_fixtures.move(4, WorldPos.new(SPOT.x + 1, SPOT.y, 1))
+	var sprite: Sprite2D = renderer.sprite_for(4)
+	assert_not_null(sprite, "still drawn")
+	if sprite: assert_eq(sprite.position, Vector2(48, -56), "on tile (3, -3) now")
+	assert_eq(renderer._sprites.size(), 1, "one sprite, not two")
+
+
 func test_removing_one_of_two_fixtures_on_a_tile_removes_only_its_sprite() -> void:
 	var renderer: FixtureRenderer = _renderer()
 	renderer.show_fixtures(_levels[1].level_fixtures)
@@ -175,6 +187,19 @@ func test_a_ladder_placed_below_adds_its_top_and_removing_it_takes_it_away() -> 
 	assert_not_null(renderer.top_sprite_for(22), "appears when the ladder is placed")
 	_levels[1].level_fixtures.remove(22)
 	assert_null(renderer.top_sprite_for(22), "and goes when it's removed: the hole reads as dead")
+
+
+func test_a_ladder_moved_below_moves_its_top() -> void:
+	_hole_over_spot()
+	var other: Vector2i = SPOT + Vector2i(1, 0)
+	_levels[0].level_tiles.set_top(other.x, other.y, TileKind.TOP.OPEN)
+	_levels[0].level_tiles.set_ground(other.x, other.y, TileKind.GROUND.HOLE)
+	_levels[1].level_fixtures.add(_ladder(1, 23))
+	var renderer: FixtureRenderer = _surface_view_renderer()[1]
+	_levels[1].level_fixtures.move(23, WorldPos.new(other.x, other.y, 1))
+	var top: Sprite2D = renderer.top_sprite_for(23)
+	assert_not_null(top, "the top follows the ladder")
+	if top: assert_eq(top.position, Vector2(48, -48), "into the other hole")
 
 
 func test_a_ladder_below_with_no_hole_over_it_shows_no_top() -> void:

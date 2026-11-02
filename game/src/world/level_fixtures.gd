@@ -5,9 +5,12 @@ extends RefCounted
 # a tile. Storage only: it decides nothing, and announces every change
 # -- generation, placing, removing, later burial -- as
 # fixture_changed, the way LevelTiles announces tile_changed (D-065).
-# Whether a change is allowed is the Objects gatekeeper's business.
+# Whether a change is allowed is the world's fixture gatekeeper's
+# business (D-125).
 
 signal fixture_changed(fixture: Fixture, added: bool)
+# A fixture re-filed under another tile of this level (D-138).
+signal fixture_moved(fixture: Fixture, from: WorldPos)
 
 # Keyed by Vector2i, a value type: two equal coordinates are one key.
 # (A WorldPos is a reference, so two equal ones would be two keys.)
@@ -22,10 +25,7 @@ func add(fixture: Fixture) -> bool:
 	if find(fixture.id) != null:
 		push_error("Fixture id %d is already on this level; %s refused." % [fixture.id, fixture])
 		return false
-	var key: Vector2i = _key(fixture.tile)
-	if not _by_tile.has(key):
-		_by_tile[key] = []
-	_by_tile[key].append(fixture)
+	_file(fixture)
 	fixture_changed.emit(fixture, true)
 	return true
 
@@ -35,12 +35,44 @@ func add(fixture: Fixture) -> bool:
 func remove(id: int) -> Fixture:
 	var fixture: Fixture = find(id)
 	if fixture == null: return null
+	_unfile(fixture)
+	fixture_changed.emit(fixture, false)
+	return fixture
+
+
+# Re-files the fixture with this id under `to`, a tile on this level,
+# and returns it; null if there is none. Whether the move is allowed
+# is the gatekeeper's to say (D-138).
+func move(id: int, to: WorldPos) -> Fixture:
+	var fixture: Fixture = find(id)
+	if fixture == null: return null
+	var from: WorldPos = fixture.tile
+	_unfile(fixture)
+	fixture._set_tile(to)
+	_file(fixture)
+	fixture_moved.emit(fixture, from)
+	return fixture
+
+
+# Takes in a fixture removed from another level's store, at `to` on
+# this one: a move between depths, announced here as an addition.
+func receive(fixture: Fixture, to: WorldPos) -> bool:
+	fixture._set_tile(to)
+	return add(fixture)
+
+
+func _file(fixture: Fixture) -> void:
+	var key: Vector2i = _key(fixture.tile)
+	if not _by_tile.has(key):
+		_by_tile[key] = []
+	_by_tile[key].append(fixture)
+
+
+func _unfile(fixture: Fixture) -> void:
 	var key: Vector2i = _key(fixture.tile)
 	_by_tile[key].erase(fixture)
 	if _by_tile[key].is_empty():
 		_by_tile.erase(key)
-	fixture_changed.emit(fixture, false)
-	return fixture
 
 
 func find(id: int) -> Fixture:

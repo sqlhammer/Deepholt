@@ -25,8 +25,11 @@ signal dig_refused(actor: Actor, tile: WorldPos, reason: DIG_REFUSAL)
 
 signal place_requested(actor: Actor, kind: int, tile: WorldPos)
 signal remove_requested(actor: Actor, fixture_id: int)
+signal move_requested(actor: Actor, fixture_id: int, to: WorldPos)
 signal fixture_placed(actor: Actor, fixture: Fixture)
 signal fixture_removed(actor: Actor, fixture: Fixture)
+# The same fixture, same id, on another tile (D-138)
+signal fixture_moved(actor: Actor, fixture: Fixture, from: WorldPos)
 signal request_refused(actor: Actor, verb: FIXTURE_VERB, tile: WorldPos, reason: FIXTURE_REFUSAL)
 
 # Why a dig was refused.
@@ -40,6 +43,7 @@ enum DIG_REFUSAL {
 enum FIXTURE_VERB {
 	PLACE,
 	REMOVE,
+	MOVE,
 }
 
 # Why a fixture request was refused, or why a placement breaks a rule
@@ -93,6 +97,7 @@ func _init(p_tuning: TuningProfile = null) -> void:
 	dig_requested.connect(_on_dig_requested)
 	place_requested.connect(_on_place_requested)
 	remove_requested.connect(_on_remove_requested)
+	move_requested.connect(_on_move_requested)
 
 
 # Takes a level in, and tells it which world it belongs to (D-126).
@@ -227,3 +232,41 @@ func _on_remove_requested(actor: Actor, fixture_id: int) -> void:
 			fixture_removed.emit(actor, fixture)
 			return
 	request_refused.emit(actor, FIXTURE_VERB.REMOVE, null, FIXTURE_REFUSAL.FIXTURE_NOT_EXISTS)
+
+
+# Checked by the placement rules at `to`, as a placement would be,
+# with the fixture itself not counting against its own new tile
+# (D-138). Within a level the store re-files it; between depths it
+# leaves one store and joins the other.
+func _on_move_requested(actor: Actor, fixture_id: int, to: WorldPos) -> void:
+	var source: Level = _level_holding(fixture_id)
+	if source == null:
+		request_refused.emit(actor, FIXTURE_VERB.MOVE, to, FIXTURE_REFUSAL.FIXTURE_NOT_EXISTS)
+		return
+	var target: Level = level_at(to.depth)
+	if target == null:
+		request_refused.emit(actor, FIXTURE_VERB.MOVE, to, FIXTURE_REFUSAL.LEVEL_NOT_EXISTS)
+		return
+
+	var fixture: Fixture = source.level_fixtures.find(fixture_id)
+	var above: Level = level_at(to.depth - 1)
+	var tiles_above: LevelTiles = above.level_tiles if above != null else null
+	var reason: FIXTURE_REFUSAL = FixturePlacement.problem(fixture.kind,
+		Vector2i(to.x, to.y), target.level_tiles, target.level_fixtures, tiles_above, fixture)
+	if reason != FIXTURE_REFUSAL.NONE:
+		request_refused.emit(actor, FIXTURE_VERB.MOVE, to, reason)
+		return
+
+	var from: WorldPos = fixture.tile
+	if source == target:
+		source.level_fixtures.move(fixture_id, to)
+	else:
+		source.level_fixtures.remove(fixture_id)
+		target.level_fixtures.receive(fixture, to)
+	fixture_moved.emit(actor, fixture, from)
+
+
+func _level_holding(fixture_id: int) -> Level:
+	for level: Level in levels():
+		if level.level_fixtures.find(fixture_id) != null: return level
+	return null

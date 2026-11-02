@@ -85,17 +85,22 @@ No forks.
 
 ## E. Fixtures and ladders
 
-- [ ] *Decide:* moving a fixture: a read-only `Fixture.tile`, and announced as removal plus
-  placement or as its own event.
-- [ ] A fixture moves only through the world's fixture gatekeeper. Test: the move is announced
+- [x] *Decide:* moving a fixture: a read-only `Fixture.tile`, and announced as removal plus
+  placement or as its own event. *Its own event, `fixture_moved`
+  ([D-138](../docs/design-decisions.md#d-138--a-fixture-moves-through-the-gatekeeper-and-the-move-is-its-own-event)).*
+- [x] A fixture moves only through the world's fixture gatekeeper. Test: the move is announced
   as decided, and the fixture renderer follows it. [11]
-- [ ] *Decide:* which way a ladder goes when both directions apply
+- [x] *Decide:* which way a ladder goes when both directions apply
   ([D-106](../docs/design-decisions.md#d-106--interact-is-polled-on-the-physics-tick)).
-- [ ] Test: in a built world with neighboring shafts at −2 and −3, the actor goes the way that
+  *Facing a usable hole goes down
+  ([D-139](../docs/design-decisions.md#d-139--on-a-ladder-facing-a-usable-hole-interact-goes-down)).*
+- [x] Test: in a built world with neighboring shafts at −2 and −3, the actor goes the way that
   was decided. [10]
-- [ ] *Decide:* the temporary Surface hole at (0, 2), removed now or kept.
-- [ ] If removed: by hand, `--new-game` starts without it (trap 4). [4]
-- [ ] *Decide:* the refusal reasons: shown in F3 now, or left for feedback.
+- [x] *Decide:* the temporary Surface hole at (0, 2), removed now or kept. *Kept until 007
+  ([D-140](../docs/design-decisions.md#d-140--the-temporary-surface-hole-stays-until-slice-007)).*
+- [x] ~~If removed: by hand, `--new-game` starts without it (trap 4).~~ Not removed. [4]
+- [x] *Decide:* the refusal reasons: shown in F3 now, or left for feedback. *Left for feedback
+  ([D-141](../docs/design-decisions.md#d-141--refusal-reasons-wait-for-the-feedback-that-will-use-them)).*
 
 ## F. The level-change transition
 

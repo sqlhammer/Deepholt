@@ -110,6 +110,33 @@ func test_the_worked_example_from_the_lesson() -> void:
 
 
 
+# D-139: on the ladder up from -1, facing a neighboring hole with a
+# ladder down to -2 under it. Facing the hole goes down; turning away
+# climbs.
+func _neighboring_shafts() -> Vector2i:
+	var deeper: Level = _level(2)
+	for y in range(-2, 3):
+		for x in range(-2, 3):
+			deeper.level_tiles.set_top(x, y, TileKind.TOP.OPEN)
+	var shaft: Vector2i = SHAFT + Vector2i(1, 0)
+	_below.level_tiles.set_ground(shaft.x, shaft.y, TileKind.GROUND.HOLE)
+	deeper.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.LADDER,
+		WorldPos.new(shaft.x, shaft.y, 2), 2))
+	return shaft
+
+
+func test_on_a_ladder_facing_a_usable_hole_goes_down() -> void:
+	var shaft: Vector2i = _neighboring_shafts()
+	_assert_at(_target(SHAFT.x, SHAFT.y, 1, Vector2i(1, 0)),
+		WorldPos.new(shaft.x, shaft.y, 2), "facing the other shaft: down it")
+
+
+func test_on_a_ladder_turned_away_from_the_hole_climbs() -> void:
+	_neighboring_shafts()
+	_assert_at(_target(SHAFT.x, SHAFT.y, 1, Vector2i(-1, 0)),
+		WorldPos.new(SHAFT.x - 1, SHAFT.y, 0), "facing west: up, arriving west")
+
+
 func test_a_level_in_no_world_has_no_ladder_target() -> void:
 	var loose: Level = autofree(Global.level_packed_scene.instantiate())
 	loose.setup(1)

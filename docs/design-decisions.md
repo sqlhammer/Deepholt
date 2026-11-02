@@ -2949,3 +2949,67 @@ fails on an accepted number gets switched off.
 *Considered:* the dig band now, with the Surface as an exception (it checks one accepted
 exception); a skeleton now with only the checks that have content (prefab ids resolve, kind ids
 are unique), which the existing tests mostly cover already.
+
+---
+
+### D-138 — A fixture moves through the gatekeeper, and the move is its own event
+**Decided** (by Derik, slice 005 section E, 2026-11-02). Settles moving a fixture, discussed in
+slice 002 and not recorded then. A bed (M6) is the first thing that will move.
+
+- **A move is a request on the world:** `move_requested(actor, fixture_id, to)`. It's checked
+  by the same placement rules as a placement
+  ([D-103](#d-103--fixtures-names-signals-refusal-reasons-and-the-conflict-table)), ignoring the
+  fixture being moved, on whatever level `to` names.
+- **It's announced as `fixture_moved(actor, fixture, from)`.** The fixture keeps its id and is
+  the same object. A refusal is `request_refused` with the verb `MOVE`.
+- **`Fixture.tile` is read-only.** Only the store re-files a fixture, so the store and the
+  fixture can't disagree about where it is.
+
+*Why:* a fixture that's moved is the same fixture, so a renderer moves one sprite, and anything
+that tracks it by id (a bed someone owns) isn't told it was destroyed.
+
+*Considered:* a removal then a placement with the same id (no new signal, but a listener can't
+tell a move from a rebuild, and between the two signals the fixture is in neither place).
+
+---
+
+### D-139 — On a ladder facing a usable hole, interact goes down
+**Decided** (by Derik, slice 005 section E, 2026-11-02). Settles what
+[D-106](#d-106--interact-is-polled-on-the-physics-tick) left open.
+
+When an actor stands on a ladder (which leads up) and faces a hole with a ladder under it
+(which leads down), interact goes **down**. To climb instead, the actor turns away from the
+hole.
+
+*Why:* facing a usable hole is a choice the player made, while standing on a ladder is only
+where the last climb left them. It needs no new input, and it reads like walking toward a ramp.
+
+*Considered:* up wins, as the code did before (going down the other shaft means stepping off
+first); separate up and down inputs (never ambiguous, but two new bindings in a game with one
+interact).
+
+---
+
+### D-140 — The temporary Surface hole stays until slice 007
+**Decided** (by Derik, slice 005 section E, 2026-11-02).
+
+The hole at (0, 2) in `surface_start`, the Surface's only hole and one with no ladder under it,
+stays until slice 007, where a player digs their own holes.
+
+*Why:* it's the only dead hole on the Surface to judge against
+([D-107](#d-107--a-hole-with-a-ladder-under-it-shows-the-ladders-top)), including how it reads
+in the dark in 006.
+
+---
+
+### D-141 — Refusal reasons wait for the feedback that will use them
+**Decided** (by Derik, slice 005 section E, 2026-11-02).
+
+The reasons carried by `dig_refused` and `request_refused` stay without a reader until sound and
+UI feedback is built. Nothing shows them in F3 meanwhile.
+
+*Why:* the signals already carry what that feedback needs. A debug readout now would be built
+only to be removed.
+
+*Considered:* showing the last refusal in F3.
+
