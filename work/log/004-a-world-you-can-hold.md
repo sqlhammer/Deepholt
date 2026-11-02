@@ -122,3 +122,14 @@ It was caught on reading the script. A GUT call passed a message where
   `SaveSession`).
 - **The load time wasn't measured this slice.** It was about 100 ms at the end of 003. F3's
   "Last load" will show whether building a whole `World` changed that.
+
+---
+
+## Closed
+
+*Added by Claude, 2026-11-02, when the slice was closed.*
+
+Derik walked outcomes 1, 3 and 4 by hand on 2026-11-02, and nothing turned up. He skipped
+outcome 2 by hand, because `test_f6_on_a_truncated_save_changes_nothing` already covers it. All
+of the checklist is ticked (last at `c8e5d62`). The load time still wasn't measured, and that
+moves to slice 005 along with the rest of "Open, carried forward".

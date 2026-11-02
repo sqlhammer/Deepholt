@@ -1,146 +1,112 @@
-# Slice 004 checklist
+# Slice 005 checklist
 
-Working list for [NOW.md](./NOW.md). **Agent mode for the whole slice** (Derik, 2026-11-01):
-Claude builds, Derik verifies by hand. Every fork the brief raised was settled upfront on
-2026-11-01 as
-[D-124](../docs/design-decisions.md#d-124--the-world-and-objects-autoloads-are-deleted-world-is-the-world-nodes-class)
-to [D-130](../docs/design-decisions.md#d-130--a-save-takes-the-world-and-a-typed-session-the-worlds-counters-go-in-the-header);
-items below carry them out, and each names the decision. Numbers in brackets are the brief's
-outcomes.
+Working list for [NOW.md](./NOW.md). **Agent mode for the whole slice** (Derik, 2026-11-02):
+Claude builds on the `slice-005` branch, in small commits, and Derik merges it as a PR. Derik
+verifies by hand. Forks are taken one at a time, just before the section that needs them, and
+each lands as a `D-nnn`. Numbers in brackets are the brief's outcomes.
 
-Ordered so the game runs at the end of every section: the world node first, then its counters,
-then saving and loading a world, then the swap. The game is launched by hand at the end of each
-section, not only at the end of the slice (002's log).
+Ordered cheapest and least coupled first, so that the tidy-ups are off the table before the
+transition, which touches the actor, the view and saving at once. The game is launched by hand
+at the end of every section that changes something you can see.
 
-Slice 003's checklist is in git history (last at `466f939`).
+Slice 004's checklist is in git history (last at `c8e5d62`).
 
 ---
 
-## A. Decided upfront
+## A. Tidy-ups
 
-*No mode: settled in conversation, 2026-11-01.*
+No forks.
 
-- [x] The `World` and `Objects` autoloads are deleted; `class_name World` is the world node; the
-  recipes and stateless helpers move onto static classes (D-124).
-- [x] The gatekeepers are the same request and outcome signals, on the world instance, with
-  distinct names for the two refusal enums (D-125).
-- [x] `World` sets `level.world` when it takes a level in; everything else reaches the world
-  through a level (D-126).
-- [x] `LevelGenerator` and `SaveGame` each return a whole `World`, built outside the tree (D-127).
-- [x] The world sits at the origin inside `GameViewport` and owns `Levels` and `Actors` (D-128).
-- [x] A swap happens at the end of the frame; the view announces a new world and the
-  renderers and F3 re-point on it (D-129).
-- [x] `save_game(slot, world, session, saves_root)`, with a typed `SaveSession`; both id
-  counters in the header, restored last, then moved past every loaded id (D-130).
+- [ ] `density` → `hardness` in code (`TileKind.MINABLE_DENSITY` and its readers). Names only
+  ([D-081](../docs/design-decisions.md)). [13]
+- [ ] The dead tool-loading code goes: `_load_tool`, `TOOL_DIR`, and the `equipped` check in the
+  actor validator (R-B5). [13]
+- [ ] Save slots are listed sorted, not in `get_directories()` order (R-P6). Test it with slots
+  created out of order. [13]
+- [ ] "it's" → "its" in three comments, and every comment wrapped to 70 characters (R-S4). [13]
+- [ ] F3's tile window prints a hole as its own character, not `.`. [3]
+- [ ] Test the playtime clocks: active and total, across a save, a load and a pause
+  ([D-120](../docs/design-decisions.md)). [7]
+- [ ] By hand: F3 shows a hole distinctly. [3]
 
-## B. The world node, generated
+## B. Loads
 
-The game runs on one `World` node, built by the generator, with no autoload holding world state
-and nothing searching the tree for levels or actors.
+- [ ] The load returns a typed result instead of a dictionary with the world under `"world"`.
+  Grep the run for `Ignoring` and `Parse Error` (trap 3). [8]
+- [ ] The view can show a world with no followed actor and announces `shown_world_changed` for
+  it ([D-129](../docs/design-decisions.md)). Test: a save with only NPCs loads, and the
+  renderers and F3 draw the new world. [9]
+- [ ] By hand: measure F3's "Last load" after F6 and record it for the log (003 closed at about
+  100 ms). [6]
 
-- [x] Rename first, in its own commit: the `World` autoload goes, its recipes become a static
-  class's preloaded constant, and its stateless helpers (depth display names, position to tile)
-  become static functions. Nothing else changes in that commit (trap 1, D-124).
-- [x] `class_name World`, a `Node2D` with `Levels` and `Actors` (`Players`, `NPCs`) children,
-  holding its seed and its levels by depth. `add_level` sets `level.world`; `level_at(depth)`
-  replaces `get_level_by_depth` (D-124, D-126, D-128).
-- [x] `LevelGenerator` returns a `World` for a seed, outside the tree (D-127).
-- [x] `game.gd` puts the generated world at the origin inside `GameViewport`, replacing
-  `$Levels` and `GameViewport/Actors`. Actors are added to the world's `Actors` (D-128, trap 5).
-- [x] The tile gatekeeper's signals and handling move onto `World` (D-125). The dig capability
-  emits on `actor.current_level.world` and listens there (D-126).
-- [x] The fixture gatekeeper's signals and handling move onto `World`, and the `Objects`
-  autoload goes. The placement rules become static functions (D-125). *The fixture
-  counter had to move with it, so both counters became `IdAllocator`s on the world here
-  (most of C's first item).*
-- [x] The two refusal enums get distinct names (D-125).
-- [x] The actor's depth change, `move_to` and the Ladder rule ask `current_level.world` for the
-  level at a depth ([D-117](../docs/design-decisions.md), D-126).
-- [x] The renderers and F3 get levels from the followed actor's world, through the view
-  (D-126, D-129). *Done with `shown_world_changed` itself (E's second item), since the
-  renderers need a world as soon as the lookup goes.*
-- [x] `is_in_bounds` reads the level's own bound, not the recipe table
-  ([D-112](../docs/design-decisions.md)).
-- [x] No `get_nodes_in_group`, `get_first_node_in_group`, `get_parent()` or `owner` lookup of
-  levels or actors left in `src/` or `scenes/` (trap 2). Grep it at the end of the section.
-- [x] Tests follow the new shape. Grep the run for `Ignoring` and `Parse Error` (trap 7).
-- [x] By hand: dig on two levels, the ramp and the ladder both ways, F3 reads. [4]
+## C. Saves on disk
 
-## C. The world's id counters
+- [ ] *Decide:* format version 1, settled now or left open.
+- [ ] *Decide:* the pruning rule: what's kept, how many or how long, and when it runs (trap 5).
+- [ ] Pruning built to that rule. Test it against a folder with the live save, the backup, and
+  one of each kind of moved-aside and broken save
+  ([D-111](../docs/design-decisions.md#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves),
+  [D-123](../docs/design-decisions.md)). [5]
+- [ ] [save-files.md](../docs/tech/save-files.md) caught up: the two playtime clocks (D-120),
+  the required keys (D-121, D-122), the file-name timestamp (D-123), the two counters and
+  `SaveSession` (D-130), and whatever C decides. [13]
+- [ ] By hand: save and relaunch until saves are moved aside, and see the folder pruned. [5]
 
-- [x] The next fixture id and the next actor id live on the world (D-118). `Objects`' counter
-  and `World.id_allocator` are gone; the generator and actor creation draw from the world they
-  build into.
-- [x] A new world starts its own counters; generating a second world leaves the first world's
-  untouched. [6]
-- [x] F3 shows the running world's next fixture id and next actor id. [3]
-- [x] Test: a second generated world doesn't change the first's counters. [6]
+## D. The tuning profile
 
-## D. Saving and loading a `World`
+- [ ] *Decide:* how the profile is reached, and how much moves into it now
+  ([D-037](../docs/design-decisions.md#d-037--one-tuningprofile-resource-holds-every-global-constant)).
+- [ ] *Decide:* the content validator: built now and with which checks, or left for when the
+  strata are built. The Surface's accepted 0.375 s needs a recorded exception (trap 6,
+  [D-038](../docs/design-decisions.md), [D-081](../docs/design-decisions.md)).
+- [ ] `TuningProfile` built to that decision. The autosave interval comes from it, and a save
+  writes its id instead of `"none"`
+  ([D-116](../docs/design-decisions.md)). [12]
+- [ ] The validator, if it was decided in.
 
-- [x] `SaveSession`, a typed class with the local actor's id, the tuning profile id and the two
-  playtime clocks; `save_game(slot, world, session, saves_root)` (D-130).
-- [x] Both counters written to the header from the world, with no format version bump (D-130,
-  [D-116](../docs/design-decisions.md)).
-- [x] `SaveGame`'s load returns a `World` in the slot result, outside the tree, with its
-  levels, seed and actors (D-127). A refused load frees that one world and nothing else.
-- [x] A loaded level is built from its **saved** bound, so a level whose radius was tuned isn't
-  lost ([D-112](../docs/design-decisions.md); 003's review, R-B4).
-- [x] The counters are restored last, then moved past every id the load brought back; a save
-  with no counters gets them from the ids alone. `Objects.reserve_ids_through` goes, and the
-  actor counter is moved too (D-130, trap 6).
-- [x] `_get_levels_from_save_data` goes (003's review, R-S3).
-- [x] Test: after a load, the next fixture id and the next actor id are each past every loaded
-  one; a player created after a fresh launch's load gets a new id (trap 6).
-- [x] Test: a level saved with another radius loads with that radius.
-- [x] Test: a refused load leaves no orphan nodes. [7]
-- [x] By hand: dig, quit, relaunch: the world comes back, and F3's next ids carry on. [3]
+## E. Fixtures and ladders
 
-## E. The swap
+- [ ] *Decide:* moving a fixture: a read-only `Fixture.tile`, and announced as removal plus
+  placement or as its own event.
+- [ ] A fixture moves only through the world's fixture gatekeeper. Test: the move is announced
+  as decided, and the fixture renderer follows it. [11]
+- [ ] *Decide:* which way a ladder goes when both directions apply
+  ([D-106](../docs/design-decisions.md#d-106--interact-is-polled-on-the-physics-tick)).
+- [ ] Test: in a built world with neighboring shafts at −2 and −3, the actor goes the way that
+  was decided. [10]
+- [ ] *Decide:* the temporary Surface hole at (0, 2), removed now or kept.
+- [ ] If removed: by hand, `--new-game` starts without it (trap 4). [4]
+- [ ] *Decide:* the refusal reasons: shown in F3 now, or left for feedback.
 
-- [x] `game.gd` swaps a built world in at the end of the frame: the old world freed, the new one
-  added, control given to its local player (D-129, trap 4). Launch, `--new-game` and F6 all go
-  through it.
-- [x] `view.follow` announces `shown_world_changed` (world and depth) when the followed actor's
-  world isn't the one shown, even at the same depth (D-129). *Built in section B; tested
-  here.*
-- [x] The level renderer, the fixture renderer and F3 re-point on `shown_world_changed`, and stop
-  listening to the old world (trap 3).
-- [x] The load runs in phases: validate, build the world to one side, swap it in, re-point
-  (003's review, R-S1).
-- [x] Test: after a swap, each renderer and F3 hears a change made in the new world, and nothing
-  made in the old one (trap 3).
-- [x] Test: F6 on a truncated save leaves the screen, F3 and the ids as they were. [2]
-- [x] By hand: dig on two levels, F5, dig more, F6: every level shows the saved world. [1]
-- [x] ~~By hand: F6 on a truncated save changes nothing.~~ Skipped: covered by
-  `test_f6_on_a_truncated_save_changes_nothing`. [2]
-- [x] By hand: F6 twice in a row: F3's next ids are the same both times. [3]
+## F. The level-change transition
 
-## F. Two worlds
-
-- [x] Test: two worlds in one process, at the same depths, each with an actor. A dig, a depth
-  change and a fixture placed in one leave the other untouched. [5]
-- [x] Test: freeing a world leaves no orphan nodes. [7]
-- [x] Test (or a grep in a test): no code in `src/` searches the tree for levels. [7]
+- [ ] *Decide:* how it looks and how long it takes; whether the move is delayed in the
+  simulation or the view only plays the effect; what a held dig does during it; whether input
+  and the level-change save wait for it
+  ([D-108](../docs/design-decisions.md#d-108--a-held-dig-carries-across-a-level-change-level-changes-are-instant-for-now),
+  traps 1 and 2).
+- [ ] Built between the request and `Actor.move_to`, never in the `Ramp` or `Ladder` rules
+  ([D-119](../docs/design-decisions.md#d-119--move_to-is-the-one-way-an-actor-is-put-somewhere-else)).
+- [ ] Per actor, not global: two actors in one world each take their own transition
+  (pillar [P5](../docs/game-overview.md)). Test it.
+- [ ] A swap cancels a transition in progress, and nothing fires against a freed actor. Test it
+  (trap 1). [2]
+- [ ] By hand: the ramp and the ladder, both ways, with a held dig. [1]
+- [ ] By hand: F5 during a transition, then F6. [2]
 
 ## G. Done
 
-- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-- [x] `python scripts/coverage.py` run; uncovered lines looked at. (003 closed at 95.1%; 004
-  at 95.7%.)
-- [x] By hand: outcomes 1–4 walked through in one sitting, launched outside the editor at least
+- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
+- [ ] `python scripts/coverage.py` run; uncovered lines looked at (004 closed at 95.7%).
+- [ ] By hand: every by-hand outcome walked in one sitting, launched outside the editor at least
   once.
-- [x] Claude writes `log/004-a-world-you-can-hold.md`.
-- [x] Claude re-sketches [NEXT.md](./NEXT.md).
+- [ ] Claude writes `log/005-clearing-the-backlog.md`.
+- [ ] Claude re-sketches [NEXT.md](./NEXT.md).
 
 ---
 
 ### Not in this slice, worth knowing
 
-- **Generation on first descent** (world-runtime §8) isn't how the code works: all eight levels
-  are built at launch. A save of a world where some levels don't exist yet is a missing key, and
-  the load needs that case when generation changes.
-- **Nothing prunes old saves.** Moved-aside and broken saves pile up in the slot folder.
-- **003's small leftovers** are in [NEXT.md](./NEXT.md)'s "Deferred from 003": slot sorting,
-  dead tool-loading code, comment tidy-ups, save-files.md, untested playtime clocks. Fold any
-  into 004 only if the code they touch is being rewritten anyway.
+- **Generation on first descent** (world-runtime §8) still isn't how the code works. All eight
+  levels are built at launch. When that changes, a save in which some levels don't exist yet
+  is a missing key, and the load needs that case. Carried in [NEXT.md](./NEXT.md).
