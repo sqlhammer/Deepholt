@@ -78,22 +78,22 @@ and nothing searching the tree for levels or actors.
 
 ## D. Saving and loading a `World`
 
-- [ ] `SaveSession`, a typed class with the local actor's id, the tuning profile id and the two
+- [x] `SaveSession`, a typed class with the local actor's id, the tuning profile id and the two
   playtime clocks; `save_game(slot, world, session, saves_root)` (D-130).
-- [ ] Both counters written to the header from the world, with no format version bump (D-130,
+- [x] Both counters written to the header from the world, with no format version bump (D-130,
   [D-116](../docs/design-decisions.md)).
-- [ ] `SaveGame`'s load returns a `World` in the slot result, outside the tree, with its
+- [x] `SaveGame`'s load returns a `World` in the slot result, outside the tree, with its
   levels, seed and actors (D-127). A refused load frees that one world and nothing else.
-- [ ] A loaded level is built from its **saved** bound, so a level whose radius was tuned isn't
+- [x] A loaded level is built from its **saved** bound, so a level whose radius was tuned isn't
   lost ([D-112](../docs/design-decisions.md); 003's review, R-B4).
-- [ ] The counters are restored last, then moved past every id the load brought back; a save
+- [x] The counters are restored last, then moved past every id the load brought back; a save
   with no counters gets them from the ids alone. `Objects.reserve_ids_through` goes, and the
   actor counter is moved too (D-130, trap 6).
-- [ ] `_get_levels_from_save_data` goes (003's review, R-S3).
-- [ ] Test: after a load, the next fixture id and the next actor id are each past every loaded
+- [x] `_get_levels_from_save_data` goes (003's review, R-S3).
+- [x] Test: after a load, the next fixture id and the next actor id are each past every loaded
   one; a player created after a fresh launch's load gets a new id (trap 6).
-- [ ] Test: a level saved with another radius loads with that radius.
-- [ ] Test: a refused load leaves no orphan nodes. [7]
+- [x] Test: a level saved with another radius loads with that radius.
+- [x] Test: a refused load leaves no orphan nodes. [7]
 - [ ] By hand: dig, quit, relaunch: the world comes back, and F3's next ids carry on. [3]
 
 ## E. The swap

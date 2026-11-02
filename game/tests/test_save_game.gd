@@ -72,13 +72,22 @@ func _serialize(levels: Array[Level]) -> Dictionary:
 	return SaveGame._serialize_levels(levels)
 
 
-# Saved levels to live ones, by depth. Every level built is freed
-# after the test.
+# Saved levels to live ones, by depth, built into a world that is
+# freed after the test, with every level in it.
 func _deserialize(levels_data: Dictionary) -> Dictionary:
-	var levels: Dictionary = SaveGame._deserialize_levels(levels_data)
-	for depth: Variant in levels:
-		autofree(levels[depth])
+	var world: World = _loaded_world(levels_data)
+	var levels: Dictionary = {}
+	for level: Level in world.levels():
+		levels[level.depth] = level
 	return levels
+
+
+# A world built from saved levels, as a load builds it; freed after
+# the test.
+func _loaded_world(levels_data: Dictionary) -> World:
+	var world: World = autofree(World.new())
+	SaveGame._deserialize_levels(levels_data, world)
+	return world
 
 
 func _sorted_keys(dict: Dictionary) -> Array:
@@ -227,20 +236,6 @@ func test_deserialize_skips_a_level_whose_layer_is_the_wrong_size() -> void:
 	assert_true(levels.has(0), "the good level still is")
 
 
-# B's staging: a saved radius that doesn't match the recipe can't be
-# taken yet, so the level is skipped. C builds from the saved bound
-# instead (D-112), and this test changes then.
-func test_deserialize_skips_a_level_saved_with_another_radius() -> void:
-	var radius: int = _radius(1) + 1
-	var width: int = 2 * radius + 1
-	var saved: Dictionary = {
-		"level_seed": TEST_SEED,
-		"bound": {"depth": 1, "radius": radius},
-		"tiles": {"top": _packed(_filled(width * width, TileKind.TOP.OPEN))},
-	}
-	assert_eq(_deserialize({1: saved}), {}, "skipped, not resized")
-
-
 func test_deserialize_skips_a_key_that_is_not_an_int() -> void:
 	var levels: Dictionary = _deserialize({"1": _level_data(1)})
 	assert_eq(levels, {}, "a depth key must be an int")
@@ -344,9 +339,12 @@ func test_deserialize_refuses_a_depth_with_no_recipe_row() -> void:
 	var beyond: int = last + 1
 	var saved: Dictionary = _level_data(last)
 	saved["bound"]["depth"] = beyond
-	assert_eq(_deserialize({beyond: saved}), {}, "no level for a depth with no recipe")
+	var world: World = autofree(World.new())
+	var before: int = _orphans()
+	SaveGame._deserialize_levels({beyond: saved}, world)
+	assert_eq(world.levels(), [] as Array[Level], "no level for a depth with no recipe")
 	assert_push_warning("Saved depth %d has no recipe row" % beyond)
-	assert_no_new_orphans("nothing was built for the refused depth")
+	assert_eq(_orphans(), before, "nothing was built for the refused depth")
 
 
 func test_deserialize_with_no_levels_is_empty() -> void:
@@ -358,8 +356,11 @@ func test_deserialize_with_no_levels_is_empty() -> void:
 func test_deserialize_frees_a_level_it_refuses() -> void:
 	var bad: Dictionary = _level_data(1)
 	bad["tiles"]["ore"] = _packed(_filled(_size(1) - 1, TileKind.ORE.NONE))
-	_deserialize({1: bad})
-	assert_no_new_orphans("a refused level is freed")
+	var world: World = autofree(World.new())
+	var before: int = _orphans()
+	SaveGame._deserialize_levels({1: bad}, world)
+	assert_eq(world.levels(), [] as Array[Level], "the level isn't in the world")
+	assert_eq(_orphans(), before, "a refused level is freed")
 
 
 func test_deserialized_layers_are_not_shared_with_the_data() -> void:
@@ -578,11 +579,20 @@ func _read(file: String) -> Variant:
 	return f.get_var(false)
 
 
-# Levels only: actors need levels in the tree, which these don't use.
+# Levels only, in a world made for the save and taken apart after, so
+# the test keeps its levels.
 func _save(levels: Array[Level], slot: String = TEST_SLOT) -> SaveGame.REFUSAL_REASON:
-	var no_actors: Array[Node] = []
-	return SaveGame.save_game(slot, levels, no_actors, null, TEST_SEED, "none",
-		0.0, 0.0, TEST_ROOT)
+	var world: World = World.new()
+	world.world_seed = TEST_SEED
+	for level: Level in levels:
+		world.add_level(level)
+	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(slot, world,
+		SaveSession.new(-1, "none"), TEST_ROOT)
+	for level: Level in levels:
+		level.get_parent().remove_child(level)
+		level.world = null
+	world.free()
+	return result
 
 
 # A save whose Surface has one tile dug at (x, 0), so two saves can
@@ -870,17 +880,15 @@ func test_a_load_refused_for_its_actors_builds_no_levels() -> void:
 	assert_eq(_orphans(), before, "and no level was left orphaned")
 
 
-func test_free_game_data_frees_its_levels_and_actors() -> void:
+func test_free_game_data_frees_its_world_with_its_levels_and_actors() -> void:
 	var before: int = _orphans()
-	var actor: Actor = Global.actor_packed_scene.instantiate()
-	var game_data: Dictionary = {
-		"levels": SaveGame._deserialize_levels(_saved_levels()),
-		"actors": {"Someone": {"actor_obj": actor}},
-	}
+	var world: World = World.new()
+	SaveGame._deserialize_levels(_saved_levels(), world)
+	var actors: Array[Actor] = SaveGame._deserialize_actors({10: _actor_entry(0)}, world)
 	assert_gt(_orphans(), before, "the loaded nodes are orphans until placed")
-	SaveGame.free_game_data(game_data)
+	SaveGame.free_game_data({"world": world})
 	assert_eq(_orphans(), before, "and none are left once freed")
-	assert_false(is_instance_valid(actor), "the actor too")
+	assert_false(is_instance_valid(actors[0]), "the actor too")
 
 
 # --- load_game: actors stand on the levels the load built ---
@@ -900,24 +908,23 @@ func test_loaded_actors_stand_on_the_loaded_levels() -> void:
 	var old_level: Level = Global.level_packed_scene.instantiate()
 	old_level.setup(0)
 	add_child_autofree(old_level)
-	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
-	var actors: Dictionary = SaveGame._deserialize_actors({"local_actor_id": 10,10: _actor_entry(0)}, levels)
-	var actor: Actor = actors[10]["actor_obj"]
-	assert_eq(actor.current_level, levels[0], "on the loaded level")
+	var world: World = _loaded_world(_saved_levels())
+	var actors: Array[Actor] = SaveGame._deserialize_actors({"local_actor_id": 10, 10: _actor_entry(0)}, world)
+	var actor: Actor = actors[0]
+	assert_eq(actor.current_level, world.level_at(0), "on the loaded level")
 	assert_ne(actor.current_level, old_level, "not the one in the tree")
+	assert_eq(world.actors(), [actor] as Array[Actor], "and in the loaded world")
 	assert_true(actor.current_WorldPos.equals(WorldPos.new(3, -2, 0)), "on its saved tile")
 	assert_eq(actor.facing, Vector2i(-1, 0), "facing as saved")
-	SaveGame.free_game_data({"levels": levels, "actors": actors})
 
 
 func test_an_actor_on_a_depth_that_did_not_load_is_skipped() -> void:
-	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
+	var world: World = _loaded_world(_saved_levels())
 	var before: int = _orphans()
-	var actors: Dictionary = SaveGame._deserialize_actors({10: _actor_entry(5)}, levels)
-	assert_eq(actors, {}, "no actor without its level")
+	var actors: Array[Actor] = SaveGame._deserialize_actors({10: _actor_entry(5)}, world)
+	assert_eq(actors, [] as Array[Actor], "no actor without its level")
 	assert_push_warning("didn't load")
 	assert_eq(_orphans(), before, "and none was left orphaned")
-	SaveGame.free_game_data({"levels": levels})
 
 
 # --- load_game: the fixture report (D-113) ---
@@ -938,7 +945,7 @@ func test_a_fixture_that_breaks_a_placement_rule_loads_and_is_reported() -> void
 	_write_save({"levels": levels, "actors": {10: _actor_entry(0)}})
 
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
-	var surface: Level = game_data.levels[0]
+	var surface: Level = game_data.world.level_at(0)
 	assert_not_null(surface.level_fixtures.find(77), "the ladder loaded")
 	# Once by the placement rules, once by the world's ladder check.
 	assert_eq(game_data.problems.size(), 2, "two reports: %s" % [game_data.problems])
@@ -992,7 +999,7 @@ func test_serialize_skips_a_level_with_no_tiles() -> void:
 
 func test_serialize_skips_an_actor_with_no_position() -> void:
 	var actor: Actor = autofree(Global.actor_packed_scene.instantiate())
-	var actors: Array[Node] = [actor]
+	var actors: Array[Actor] = [actor]
 	assert_eq(SaveGame._serialize_actors(actors), {},
 		"an actor never set up isn't saved")
 
@@ -1000,7 +1007,7 @@ func test_serialize_skips_an_actor_with_no_position() -> void:
 # Every way an actor entry can be malformed is skipped, as each field
 # of a level is: a save is a file anyone can edit.
 func test_deserialize_skips_each_malformed_actor_entry() -> void:
-	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
+	var world: World = _loaded_world(_saved_levels())
 	var broken: Array = []
 	broken.append("not a dictionary")
 	for field: String in ["actor_kind", "actor_name", "worldpos", "facing"]:
@@ -1021,37 +1028,33 @@ func test_deserialize_skips_each_malformed_actor_entry() -> void:
 
 	var before: int = _orphans()
 	for entry: Variant in broken:
-		assert_eq(SaveGame._deserialize_actors({10: entry}, levels), {},
+		assert_eq(SaveGame._deserialize_actors({10: entry}, world), [] as Array[Actor],
 			"skipped: %s" % [entry])
 	assert_eq(_orphans(), before, "and no actor was built for any of them")
-	SaveGame.free_game_data({"levels": levels})
 
 
 # Actors are keyed by id; a save keyed by name, as before, is skipped
 # rather than handing a String to an int parameter.
 func test_deserialize_skips_an_actor_not_keyed_by_an_int_id() -> void:
-	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
+	var world: World = _loaded_world(_saved_levels())
 	var before: int = _orphans()
-	assert_eq(SaveGame._deserialize_actors({"Loaded": _actor_entry(0)}, levels), {},
+	assert_eq(SaveGame._deserialize_actors({"Loaded": _actor_entry(0)}, world), [] as Array[Actor],
 		"skipped")
 	assert_eq(_orphans(), before, "and no actor was built")
-	SaveGame.free_game_data({"levels": levels})
 
 
 func test_deserialize_takes_its_id_from_the_key() -> void:
-	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
-	var actors: Dictionary = SaveGame._deserialize_actors({42: _actor_entry(0)}, levels)
-	assert_eq(actors[42].actor_obj.actor_id, 42, "the key is the id")
-	SaveGame.free_game_data({"levels": levels, "actors": actors})
+	var world: World = _loaded_world(_saved_levels())
+	var actors: Array[Actor] = SaveGame._deserialize_actors({42: _actor_entry(0)}, world)
+	assert_eq(actors[0].actor_id, 42, "the key is the id")
 
 
 func test_an_actor_entry_with_a_tool_path_loads() -> void:
-	var levels: Dictionary = SaveGame._deserialize_levels(_saved_levels())
+	var world: World = _loaded_world(_saved_levels())
 	var entry: Dictionary = _actor_entry(0)
 	entry["equipped"] = "res://src/entity/tools/pickaxe.tres"
-	var actors: Dictionary = SaveGame._deserialize_actors({10: entry}, levels)
+	var actors: Array[Actor] = SaveGame._deserialize_actors({10: entry}, world)
 	assert_eq(actors.size(), 1, "a String tool path is allowed")
-	SaveGame.free_game_data({"levels": levels, "actors": actors})
 
 
 # --- round trip: actors (D-114) ---
@@ -1072,46 +1075,49 @@ func _open_tile(level: Level, last: bool = false) -> WorldPos:
 	return found
 
 
-func _at_depth(levels: Array[Level], depth: int) -> Level:
-	for level: Level in levels:
-		if level.depth == depth: return level
+func _player_on(tile: WorldPos, world: World, actor_name: String, id: int = -1) -> Actor:
+	var actor: Actor = Actor.create(Global.actor_packed_scene, actor_name, tile,
+		world.level_at(tile.depth), ActorKind.ACTOR.PLAYER, id)
+	world.add_actor(actor)
+	return actor
+
+
+func _actor_in(world: World, id: int) -> Actor:
+	for actor: Actor in world.actors():
+		if actor.actor_id == id: return actor
 	return null
 
 
-func _player_on(tile: WorldPos, levels: Array[Level], actor_name: String, id: int) -> Actor:
-	return autofree(Actor.create(Global.actor_packed_scene, actor_name, tile,
-		_at_depth(levels, tile.depth), ActorKind.ACTOR.PLAYER, id))
+func _save_world(world: World, local_actor_id: int = -1) -> SaveGame.REFUSAL_REASON:
+	return SaveGame.save_game(TEST_SLOT, world, SaveSession.new(local_actor_id, "none"), TEST_ROOT)
 
 
 # Each actor comes back on its own depth and tile, both on open
 # floor, so nothing about the tile could send it to the spawn.
 func test_two_actors_on_different_depths_round_trip_each_to_its_own() -> void:
-	var levels: Array[Level] = _generated_world()
-	var tile_a: WorldPos = _open_tile(_at_depth(levels, 1))
-	var tile_b: WorldPos = _open_tile(_at_depth(levels, 2), true)
+	var world: World = autofree(LevelGenerator.generate_world(TEST_SEED))
+	var tile_a: WorldPos = _open_tile(world.level_at(1))
+	var tile_b: WorldPos = _open_tile(world.level_at(2), true)
 	assert_not_null(tile_a, "-1 has open floor")
 	assert_not_null(tile_b, "-2 has open floor")
-	var a: Actor = _player_on(tile_a, levels, "Upper", 10)
-	var b: Actor = _player_on(tile_b, levels, "Lower", 11)
-	var actors: Array[Node] = [a, b]
-	assert_eq(SaveGame.save_game(TEST_SLOT, levels, actors, a, TEST_SEED, "none",
-		0.0, 0.0, TEST_ROOT),
-		SaveGame.REFUSAL_REASON.NONE, "the save succeeds")
+	var a: Actor = _player_on(tile_a, world, "Upper", 10)
+	_player_on(tile_b, world, "Lower", 11)
+	assert_eq(_save_world(world, a.actor_id), SaveGame.REFUSAL_REASON.NONE, "the save succeeds")
 
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
-	assert_true(game_data.has("actors"), "the load succeeds")
-	if not game_data.has("actors"): return
-	assert_true(game_data.actors.has(10) and game_data.actors.has(11), "both actors load")
-	if game_data.actors.has(10):
-		var back_a: Actor = game_data.actors[10].actor_obj
+	assert_true(game_data.has("world"), "the load succeeds")
+	if not game_data.has("world"): return
+	var back_a: Actor = _actor_in(game_data.world, 10)
+	var back_b: Actor = _actor_in(game_data.world, 11)
+	assert_true(back_a != null and back_b != null, "both actors load")
+	if back_a:
 		assert_true(back_a.current_WorldPos.equals(tile_a),
 			"Upper on %s, got %s" % [tile_a, back_a.current_WorldPos])
-		assert_eq(back_a.current_level.depth, 1, "and on the -1 level")
-	if game_data.actors.has(11):
-		var back_b: Actor = game_data.actors[11].actor_obj
+		assert_eq(back_a.current_level, game_data.world.level_at(1), "and on the loaded -1 level")
+	if back_b:
 		assert_true(back_b.current_WorldPos.equals(tile_b),
 			"Lower on %s, got %s" % [tile_b, back_b.current_WorldPos])
-		assert_eq(back_b.current_level.depth, 2, "and on the -2 level")
+		assert_eq(back_b.current_level, game_data.world.level_at(2), "and on the loaded -2 level")
 	SaveGame.free_game_data(game_data)
 
 
@@ -1285,7 +1291,7 @@ func test_a_file_timestamp_is_utc_in_iso_basic_format() -> void:
 func test_a_save_with_optional_keys_missing_loads_them_as_their_defaults() -> void:
 	_good_save(SaveGame.SAVE_BASE_NAME, SAVE_SEED)
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
-	assert_true(game_data.has("levels"),
+	assert_true(game_data.has("world"),
 		"a save with no tuning profile, stats or local actor loads")
 	assert_eq(game_data.get("tuning_profile_id"), SaveGame.DEFAULT_TUNING_PROFILE_ID,
 		"the tuning profile is none")
@@ -1313,7 +1319,7 @@ func test_a_save_missing_a_required_key_is_refused_saying_which() -> void:
 func test_a_version_0_save_is_migrated_and_loads() -> void:
 	_good_save(SaveGame.SAVE_BASE_NAME, SAVE_SEED, 0)
 	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
-	assert_true(game_data.has("levels"), "it loads")
+	assert_true(game_data.has("world"), "it loads")
 	assert_eq(game_data.get("format_version"), 0, "reporting the version it was saved in")
 	SaveGame.free_game_data(game_data)
 
@@ -1448,3 +1454,174 @@ func test_a_save_missing_a_level_falls_back_to_the_backup() -> void:
 	assert_eq(slot.source, SaveGame.SOURCE.BACKUP, "the backup loads instead")
 	assert_eq(_seed_of(slot), BACKUP_SEED, "the backup's world")
 	SaveGame.free_game_data(slot.game_data)
+
+
+# --- a whole World saved and loaded (slice 004 section D) ---
+
+# A generated world with a player on the Surface's open floor.
+func _world_with_player() -> World:
+	var world: World = autofree(LevelGenerator.generate_world(TEST_SEED))
+	_player_on(_open_tile(world.level_at(0)), world, "Saver")
+	return world
+
+
+func test_the_header_holds_the_worlds_counters() -> void:
+	var world: World = _world_with_player()
+	world.fixture_ids.restore(40)
+	world.actor_ids.restore(9)
+	assert_eq(_save_world(world), SaveGame.REFUSAL_REASON.NONE, "saved")
+	var data: Dictionary = _read(SaveGame.SAVE_BASE_NAME)
+	assert_eq(data.get("next_fixture_id"), 40, "the next fixture id (D-130)")
+	assert_eq(data.get("next_actor_id"), 9, "and the next actor id")
+	assert_eq(_read_header(SaveGame.SAVE_BASE_NAME).format_version, 1,
+		"with no format version bump while version 1 is unsettled")
+
+
+func test_the_session_names_the_local_actor_and_the_rest() -> void:
+	var world: World = _world_with_player()
+	var session: SaveSession = SaveSession.new(world.players()[0].actor_id, "fast", 12.0, 30.0)
+	SaveGame.save_game(TEST_SLOT, world, session, TEST_ROOT)
+	var data: Dictionary = _read(SaveGame.SAVE_BASE_NAME)
+	assert_eq(data.get("local_actor_id"), world.players()[0].actor_id, "the local actor")
+	assert_eq(data.get("tuning_profile_id"), "fast", "the tuning profile")
+	assert_eq(data.get("stats"), {"active_play_time": 12.0, "total_play_time": 30.0}, "the clocks")
+
+
+func test_a_session_with_no_local_actor_writes_none() -> void:
+	var world: World = _world_with_player()
+	_save_world(world, -1)
+	assert_false(_read(SaveGame.SAVE_BASE_NAME).has("local_actor_id"), "the game picks one on load")
+
+
+func test_a_load_returns_a_world_outside_the_tree_with_its_levels_and_actors() -> void:
+	var world: World = _world_with_player()
+	_save_world(world)
+	var slot: SaveGame.SlotLoad = SaveGame.load_slot(TEST_SLOT)
+	var loaded: World = slot.world
+	assert_not_null(loaded, "the slot result holds the world (D-127)")
+	if loaded == null: return
+	assert_false(loaded.is_inside_tree(), "built outside the tree")
+	assert_eq(loaded.world_seed, TEST_SEED, "with its seed")
+	assert_eq(loaded.levels().size(), world.levels().size(), "every level")
+	for level: Level in loaded.levels():
+		assert_eq(level.world, loaded, "each knowing its world (D-126)")
+	assert_eq(loaded.players().size(), 1, "and its actor, already in it (D-128)")
+	SaveGame.free_game_data(slot.game_data)
+
+
+# The counters come back from the header, then move past every id the
+# load brought back (D-130).
+func test_saved_counters_are_restored() -> void:
+	var world: World = _world_with_player()
+	world.fixture_ids.restore(40)
+	world.actor_ids.restore(9)
+	_save_world(world)
+	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
+	assert_eq(game_data.world.fixture_ids.peek(), 40, "the fixture counter carries on")
+	assert_eq(game_data.world.actor_ids.peek(), 9, "and the actor counter")
+	SaveGame.free_game_data(game_data)
+
+
+func test_a_stale_counter_is_moved_past_every_loaded_id() -> void:
+	var world: World = _world_with_player()
+	var data: Dictionary = SaveGame._serialize_all(world, SaveSession.new())
+	data["next_fixture_id"] = 1
+	data["next_actor_id"] = 1
+	SaveGame._overwrite_data(SaveGame.FORMAT_VERSION, data, _path(SaveGame.SAVE_BASE_NAME))
+	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
+	var loaded: World = game_data.world
+	assert_gt(loaded.fixture_ids.peek(), SaveGame.highest_fixture_id(loaded.levels()),
+		"a hand-edited fixture counter can't hand out an id in use")
+	assert_gt(loaded.actor_ids.peek(), loaded.players()[0].actor_id,
+		"nor can the actor counter (trap 6)")
+	SaveGame.free_game_data(game_data)
+
+
+# A save from slice 003 has no counters: they come from the ids alone.
+func test_a_save_with_no_counters_gets_them_from_the_ids() -> void:
+	var world: World = _world_with_player()
+	var data: Dictionary = SaveGame._serialize_all(world, SaveSession.new())
+	data.erase("next_fixture_id")
+	data.erase("next_actor_id")
+	SaveGame._overwrite_data(SaveGame.FORMAT_VERSION, data, _path(SaveGame.SAVE_BASE_NAME))
+	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
+	var loaded: World = game_data.world
+	assert_eq(loaded.fixture_ids.peek(), SaveGame.highest_fixture_id(loaded.levels()) + 1,
+		"the next fixture id is just past the highest loaded")
+	assert_eq(loaded.actor_ids.peek(), loaded.players()[0].actor_id + 1,
+		"and the next actor id just past the loaded actor's")
+	SaveGame.free_game_data(game_data)
+
+
+func test_a_counter_that_isnt_an_int_loads_as_missing() -> void:
+	var world: World = _world_with_player()
+	var data: Dictionary = SaveGame._serialize_all(world, SaveSession.new())
+	data["next_actor_id"] = "nine"
+	SaveGame._overwrite_data(SaveGame.FORMAT_VERSION, data, _path(SaveGame.SAVE_BASE_NAME))
+	var game_data: Dictionary = SaveGame.load_game(TEST_SLOT)
+	assert_eq(game_data.world.actor_ids.peek(), game_data.world.players()[0].actor_id + 1,
+		"from the ids, as if it weren't there")
+	SaveGame.free_game_data(game_data)
+
+
+# A level the save holds whole, saved with a radius the recipe doesn't
+# have, comes back at the saved radius (D-112, R-B4).
+func test_a_level_saved_with_another_radius_loads_with_that_radius() -> void:
+	var saved: Dictionary = _level_data(1)
+	var radius: int = _radius(1) + 5
+	var width: int = 2 * radius + 1
+	saved["bound"]["radius"] = radius
+	saved["fixtures"] = []
+	for layer: String in ["ground", "top", "ore"]:
+		saved["tiles"][layer] = _packed(_filled(width * width, 0))
+	var levels: Dictionary = _deserialize({1: saved})
+	assert_true(levels.has(1), "the level loads")
+	if not levels.has(1): return
+	assert_eq(levels[1].level_tiles.level_bound.radius, radius, "at the saved radius")
+	assert_eq(levels[1].level_tiles.level_bound.name, LevelRecipes.TABLE.get_bounds(1).name,
+		"keeping the recipe's name")
+
+
+# The same for a level the save holds only in part: it's generated to
+# the saved bound, so the saved layers still fit.
+func test_a_partial_level_saved_with_another_radius_is_generated_to_it() -> void:
+	var saved: Dictionary = _level_data(1)
+	var radius: int = _radius(1) + 5
+	var width: int = 2 * radius + 1
+	saved["bound"]["radius"] = radius
+	saved["tiles"] = {"top": _packed(_filled(width * width, TileKind.TOP.OPEN))}
+	var levels: Dictionary = _deserialize({1: saved})
+	assert_true(levels.has(1), "the level loads")
+	if not levels.has(1): return
+	assert_eq(levels[1].level_tiles.level_bound.radius, radius, "at the saved radius")
+
+
+# A level generated because the save holds it in part draws fixture
+# ids; every saved id is claimed first, so none collides.
+func test_a_generated_level_never_takes_a_saved_fixture_id() -> void:
+	var levels_data: Dictionary = _saved_levels()
+	# The Surface, with no fixtures entry, is generated: its world spawn
+	# draws an id
+	levels_data[0].erase("fixtures")
+	var deeper: Dictionary = _level_data(1)
+	deeper["fixtures"] = [_fixture_entry(ObjectKind.OBJECT.WORLD_SPAWN, 0, 0, 1)]
+	levels_data[1] = deeper
+	var world: World = _loaded_world(levels_data)
+	var spawns: Array[Fixture] = world.level_at(0).level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN)
+	assert_eq(spawns.size(), 1, "the Surface's generated spawn")
+	if spawns.size() == 1:
+		assert_gt(spawns[0].id, 1, "takes an id past the saved one")
+
+
+# Refused after levels were built (no actor could be placed): the one
+# world built is freed, and nothing else (D-127).
+func test_a_load_refused_after_building_leaves_no_orphans() -> void:
+	_write_save({"levels": _saved_levels(), "actors": {10: _actor_entry(5)}})
+	var before: int = _orphans()
+	var refusals: Array[String] = []
+	assert_eq(SaveGame.load_file(_path(SaveGame.SAVE_BASE_NAME), refusals), {}, "refused")
+	assert_push_warning("didn't load")
+	assert_eq(refusals.size(), 1, "with a reason")
+	if refusals.size() == 1:
+		assert_string_contains(refusals[0], "no actor that could be placed")
+	assert_eq(_orphans(), before, "no orphan nodes (outcome 7)")

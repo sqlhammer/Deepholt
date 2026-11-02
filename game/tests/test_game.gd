@@ -502,13 +502,21 @@ func _two_players() -> Array[Actor]:
 	return players
 
 
-# Saves these actors in this order, naming local (null for none) as
-# the local actor. Writes over the game's own save, so the order and
-# the local actor are the test's.
+# Saves only these actors, in this order, naming local (null for none)
+# as the local actor. The world's other actors are freed first, and
+# these are put in this order under their parents, since the save
+# writes the world's own actors. Writes over the game's own save, so
+# the order and the local actor are the test's.
 func _save_actors(order: Array[Node], local: Actor) -> void:
 	assert_true(_game.save_game(), "a slot exists")
-	assert_eq(SaveGame.save_game(_game.current_save_slot, _levels(), order, local,
-		_game.world.world_seed, _game.tuning_profile_id, 0.0, 0.0, SAVES_ROOT),
+	var local_id: int = local.actor_id if local else -1
+	var world: World = _game.world
+	for actor: Actor in world.actors():
+		if actor not in order: actor.free()
+	for actor: Node in order:
+		actor.get_parent().move_child(actor, -1)
+	var session: SaveSession = SaveSession.new(local_id, _game.tuning_profile_id)
+	assert_eq(SaveGame.save_game(_game.current_save_slot, world, session, SAVES_ROOT),
 		SaveGame.REFUSAL_REASON.NONE, "saved in the chosen order")
 
 
@@ -908,3 +916,31 @@ func test_f3_shows_the_running_worlds_next_ids() -> void:
 	assert_eq(_game.get_node("DebugOverlay").next_ids_text(),
 		"fixture #%d  actor #%d" % [world.fixture_ids.peek(), world.actor_ids.peek()])
 	assert_eq(world.actor_ids.peek(), IdAllocator.FIRST_ID + 1, "the one player took actor id 1")
+
+
+# Trap 6: after a load, a new player takes an id no loaded actor has,
+# and the loaded world's counters carry on past every loaded id.
+func test_a_player_created_after_a_load_gets_a_new_id() -> void:
+	_game._spawn_player("Second")
+	assert_true(_game.save_game(), "saved with two players")
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "loaded")
+	var loaded_ids: Array[int] = []
+	for actor: Actor in _game.world.actors():
+		loaded_ids.append(actor.actor_id)
+	assert_gt(_game.world.actor_ids.peek(), loaded_ids.max(), "the counter is past every loaded id")
+	_game._spawn_player("Third")
+	var third: Actor = _actors()[-1]
+	assert_eq(third.actor_name, "Third", "the new player")
+	assert_false(third.actor_id in loaded_ids, "with an id no loaded actor has")
+
+
+# The load hands back a whole world; the game uses it as it came.
+func test_a_load_puts_the_saved_world_in() -> void:
+	var seed_before: int = _game.world.world_seed
+	var old_world: World = _game.world
+	assert_true(_game.save_game(), "saved")
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "loaded")
+	assert_ne(_game.world, old_world, "a different world node")
+	assert_eq(_game.world.world_seed, seed_before, "with the saved seed")
+	assert_eq(_game.active_actor.current_level.world, _game.world,
+		"and the player in it")

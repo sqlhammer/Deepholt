@@ -109,21 +109,16 @@ func save_game() -> bool:
 		_set_current_save_slot()
 		if current_save_slot == "": return false
 	
-	# Levels
-	var levels: Array[Level] = world.levels()
+	# What isn't the world's (D-130)
+	var local_actor_id: int = active_actor.actor_id if active_actor else -1
+	var session: SaveSession = SaveSession.new(local_actor_id, tuning_profile_id,
+		$ActivePlayTimer.seconds, $TotalPlayTimer.seconds)
 
-	# Actors
-	var actors: Array[Node] = []
-	actors.assign(world.actors())
-	
-	# Game Stats
-	var active_play_time: float = $ActivePlayTimer.seconds
-	var total_play_time: float = $TotalPlayTimer.seconds
-	
 	# Save, timed: F3 shows whether it's short enough to go unfelt
 	# mid-play (D-110)
 	var started: int = Time.get_ticks_usec()
-	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor, world.world_seed, tuning_profile_id, active_play_time, total_play_time, saves_root)
+	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(current_save_slot, world, session,
+		saves_root)
 	last_save_msec = (Time.get_ticks_usec() - started) / 1000.0
 	$DebugOverlay.show_save_time(last_save_msec)
 	if result != SaveGame.REFUSAL_REASON.NONE:
@@ -146,33 +141,19 @@ func load_game() -> REFUSAL_REASON:
 		_report_refused_slot(slot)
 		return REFUSAL_REASON.LOAD_REFUSED
 	var game_data: Dictionary = slot.game_data
-	# The data holds nodes nothing else frees; refusing it frees them
-	if not _is_valid_game_data(game_data):
-		SaveGame.free_game_data(game_data)
-		return REFUSAL_REASON.LOAD_FAILED_NO_OP
-	
-	
-	# Pause game and handle visual transition/loading indicator
-	
-	
+
 	# clean up objects
 	_free_world()
 	_free_inputhandlers()
 
-	# load levels
-	var _lvls: Array[Level] = _get_levels_from_save_data(game_data)
-	var loaded: World = World.new()
-	loaded.world_seed = game_data.world_seed
-	for level: Level in _lvls:
-		loaded.add_level(level)
-	loaded.fixture_ids.claim(SaveGame.highest_fixture_id(_lvls))
-	_attach_world(loaded)
+	# The loaded world arrives whole, with its actors (D-127)
+	_attach_world(slot.world)
 	if not view: _create_view()
 
 	# load actors
 	var raw_id: Variant = game_data.get("local_actor_id", -1)
 	var local_actor_id: int = int(raw_id) if raw_id is int or raw_id is float else -1
-	_load_actors(game_data.actors, local_actor_id)
+	_take_loaded_actors(local_actor_id)
 	
 	# load stats
 	if game_data.has("stats"):
@@ -248,15 +229,6 @@ func show_notice(text: String) -> void:
 func notice_text() -> String:
 	var label: Label = get_node_or_null("SaveNotice/Label")
 	return label.text if label else ""
-
-
-func _is_valid_game_data(game_data: Dictionary) -> bool:
-	if not game_data.has("format_version"): return false
-	if not game_data.has("levels"): return false
-	if not game_data.has("actors"): return false
-	if game_data.actors.size() < 1: return false
-	
-	return true
 
 
 func save_and_quit_to_desktop() -> void:
@@ -365,16 +337,6 @@ func _set_current_save_slot() -> void:
 		current_save_slot = save_slots[0]
 
 
-func _get_levels_from_save_data(data: Dictionary) -> Array[Level]:
-	if not data.has("levels"): return []
-	var levels: Array[Level] = []
-	
-	for key in data.levels:
-		levels.append(data.levels[key])
-	
-	return levels
-
-
 # Frees the world, and with it every level and actor in it (D-128).
 func _free_world() -> void:
 	if world != null:
@@ -408,6 +370,12 @@ func _spawn_player(_name: String) -> void:
 
 func _create_actor(actor: Actor) -> Actor:
 	world.add_actor(actor)
+	return _take_actor(actor)
+
+
+# Gives an actor already in the world what the game adds: a player's
+# capabilities, the view, and the save on a level change.
+func _take_actor(actor: Actor) -> Actor:
 	if actor.actor_kind == ActorKind.ACTOR.PLAYER:
 		grant_player_capabilities(actor)
 	
@@ -425,20 +393,15 @@ func _on_actor_moved(_actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> voi
 	save_game()
 
 
-# Each saved actor joins the game on its saved tile. One stuck on a
-# tile that's no longer passable is moved to the spawn first, before
+# Each loaded actor is on its saved tile, in the world. One stuck on
+# a tile that's no longer passable is moved to the spawn first, before
 # anything listens to it: a move across a depth would save the world
 # this load is still building (D-115, D-119). Then exactly one player
 # is given to the user.
-func _load_actors(actors: Dictionary, local_actor_id: int) -> void:
-	for key in actors:
-		# skip header data
-		if actors[key] is not Dictionary: continue
-		if not actors[key].has("actor_obj"): continue
-	
-		var actor: Actor = actors[key].actor_obj
+func _take_loaded_actors(local_actor_id: int) -> void:
+	for actor: Actor in world.actors():
 		_move_if_stuck(actor)
-		_create_actor(actor)
+		_take_actor(actor)
 	
 	var local: Actor = _local_player(local_actor_id)
 	if local: set_user_control(local)

@@ -101,7 +101,7 @@ static func _tiles_with_ground(tiles: LevelTiles, kind: int) -> Array[Vector2i]:
 # `fixture_ids` is the counter of the world the level is built for.
 static func generate_level(recipe: LevelRecipe, world_seed: int, fixture_ids: IdAllocator) -> Level:
 	var level: Level = Global.level_packed_scene.instantiate()
-	level.setup(recipe.bound.depth, world_seed)
+	level.setup(recipe.bound.depth, world_seed, recipe.bound)
 	var rng: RandomNumberGenerator = rng_for(level)
 	apply_fixed_placements(level, recipe, fixture_ids)
 	place_world_spawns(level, recipe, rng, fixture_ids)

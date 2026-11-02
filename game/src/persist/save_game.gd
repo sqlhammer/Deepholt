@@ -48,7 +48,11 @@ enum SOURCE {
 # each file that was tried and refused was refused.
 class SlotLoad:
 	var source: SaveGame.SOURCE = SaveGame.SOURCE.NEW
+	# The header, the load's problems, and the world under "world"
 	var game_data: Dictionary = {}
+	# The loaded world, outside the tree (D-127); null if none loaded
+	var world: World:
+		get: return game_data.get("world")
 	# One line per refused file: its path, then why
 	var refusals: Array[String] = []
 	# Where a refused world.save was moved to, if the backup loaded
@@ -57,34 +61,33 @@ class SlotLoad:
 
 # saves_root is the folder every slot must sit inside. It's SAVES_DIR
 # for the game; tests pass their own, so they never touch real saves.
-static func save_game(slot_path: String, levels: Array[Level], 
-	actors: Array[Node], active_actor: Actor, world_seed: int, 
-	tuning_profile_id: String, active_play_time: float, 
-	total_play_time: float, saves_root: String = SAVES_DIR) -> REFUSAL_REASON:
-	
+# The world gives its levels, actors, seed and counters; the session
+# what isn't the world's (D-130).
+static func save_game(slot_path: String, world: World, session: SaveSession,
+		saves_root: String = SAVES_DIR) -> REFUSAL_REASON:
 	# Validate input path
 	if not _is_inside(slot_path, saves_root):
 		push_error("Failed to save outside of save path. Requested: %s | Must begin with: %s" % [slot_path, saves_root])
 		return REFUSAL_REASON.SAVE_FAILED
-	
+
 	# Serialize
-	var game_data = _serialize_all(levels, actors, active_actor, world_seed, tuning_profile_id, active_play_time, total_play_time)
-	
+	var game_data: Dictionary = _serialize_all(world, session)
+
 	# Write data to tmp
 	var tmp_save_path: String = slot_path.path_join("%s.tmp" % SAVE_BASE_NAME)
 	var result: bool = _overwrite_data(FORMAT_VERSION, game_data, tmp_save_path)
 	if result == false: return REFUSAL_REASON.SAVE_FAILED
-	
+
 	# Backup old save
 	var save_path: String = slot_path.path_join(SAVE_BASE_NAME)
 	if FileAccess.file_exists(save_path):
 		result = _rename_file(save_path, BACKUP_NAME, true)
 		if result == false: return REFUSAL_REASON.SAVE_FAILED
-	
+
 	# Rename tmp to normal save
 	result = _rename_file(tmp_save_path, SAVE_BASE_NAME, false)
 	if result == false: return REFUSAL_REASON.SAVE_FAILED
-	
+
 	return REFUSAL_REASON.NONE
 
 
@@ -140,8 +143,10 @@ static func load_file(file_path: String, refusals: Array[String] = []) -> Dictio
 	return game_data
 
 
-# Every check runs before any node is built: a refusal after levels
-# or actors exist would orphan them. why gets the reason for a refusal.
+# Every check on the file runs before any node is built. What can only
+# be found by building (a level that won't load, no placeable actor)
+# frees the one world built so far, so nothing is orphaned. why gets
+# the reason for a refusal.
 static func _load_file(file_path: String, why: Array[String]) -> Dictionary:
 	var raw_file_data: Dictionary = _get_file_data(file_path, why)
 	if not raw_file_data: return {}
@@ -190,42 +195,59 @@ static func _load_file(file_path: String, why: Array[String]) -> Dictionary:
 	else:
 		game_data["tuning_profile_id"] = DEFAULT_TUNING_PROFILE_ID
 
+	# The world, built whole outside the tree (D-127). Everything below
+	# goes into it, so a refusal frees this one node and nothing else.
+	var world: World = World.new()
+	world.world_seed = file_data.world_seed
+	game_data["world"] = world
+
 	# Levels
-	game_data["levels"] = _deserialize_levels(file_data.levels)
+	_deserialize_levels(file_data.levels, world)
 	# All or nothing: a world missing a level isn't the world that was
 	# saved, so the file is refused and the backup tried (R-B3). Each
 	# skipped level has said why in its own warning.
 	var missing: Array = file_data.levels.keys().filter(
-		func(depth: Variant) -> bool: return not game_data.levels.has(depth))
+		func(depth: Variant) -> bool: return world.level_at(depth) == null)
 	if missing:
 		why.append("has levels that couldn't be loaded: %s" % [missing])
 		free_game_data(game_data)
 		return {}
 	# Loaded fixtures went straight in; now they're checked, with the
 	# world's ramps and ladders, and reported, never dropped (D-113).
-	var loaded: Array[Level] = []
-	loaded.assign(game_data.levels.values())
-	game_data["problems"] = load_problems(loaded)
+	game_data["problems"] = load_problems(world.levels())
 	for problem: String in game_data.problems:
 		push_warning(problem)
 
-	# Objects
-
-
-	# NPCs
-
-
-	# Actors
 	# Actors stand on the levels this load built, not on whatever is
 	# in the tree, which is the world being replaced.
-	var _actors = _deserialize_actors(file_data.actors, game_data.levels)
-	if _actors.size() < 1:
+	if _deserialize_actors(file_data.actors, world).is_empty():
 		why.append("has no actor that could be placed")
 		free_game_data(game_data)
 		return {}
-	game_data["actors"] = _actors
+
+	# Last, after anything that could draw an id (D-130)
+	_restore_counters(world, file_data)
 
 	return game_data
+
+
+# The world's counters, from the header, then moved past every id the
+# load brought back, so a stale or hand-edited counter can never hand
+# out an id already in use. A save with no counters (slice 003) gets
+# them from the ids alone (D-130, slice 004 trap 6).
+static func _restore_counters(world: World, file_data: Dictionary) -> void:
+	world.fixture_ids.restore(_header_int(file_data, "next_fixture_id", IdAllocator.FIRST_ID))
+	world.fixture_ids.claim(highest_fixture_id(world.levels()))
+	world.actor_ids.restore(_header_int(file_data, "next_actor_id", IdAllocator.FIRST_ID))
+	for actor: Actor in world.actors():
+		world.actor_ids.claim(actor.actor_id)
+
+
+# An optional int in the header, or its default when it's missing or
+# isn't an int (D-121).
+static func _header_int(file_data: Dictionary, key: String, default: int) -> int:
+	var value: Variant = file_data.get(key)
+	return value if value is int else default
 
 
 # Renames a slot's file to world.<label>.<timestamp>.save beside it, or
@@ -262,19 +284,12 @@ static func load_problems(levels: Array[Level]) -> Array[String]:
 		+ LevelGenerator.ladder_problems(levels)
 
 
-# Frees every node a load built: its levels, and its actors. For a
-# caller that refuses loaded data instead of putting it in the tree.
+# Frees the world a load built, and with it its levels and actors. For
+# a caller that refuses loaded data instead of putting it in the tree.
 static func free_game_data(game_data: Dictionary) -> void:
-	var levels: Variant = game_data.get("levels")
-	if levels is Dictionary:
-		for key in levels:
-			if levels[key] is Node: levels[key].free()
-	var actors: Variant = game_data.get("actors")
-	if actors is Dictionary:
-		for key in actors:
-			var entry: Variant = actors[key]
-			if entry is Dictionary and entry.get("actor_obj") is Node:
-				entry.actor_obj.free()
+	var world: Variant = game_data.get("world")
+	if world is World and is_instance_valid(world):
+		world.free()
 
 
 static func setup(saves_root: String = SAVES_DIR) -> void:
@@ -319,41 +334,38 @@ static func _load_tool(path: Variant) -> ToolData:
 	return res
 
 
-static func _serialize_all(levels: Array[Level], 
-	actors: Array[Node], active_actor: Actor, world_seed: int, 
-	tuning_profile_id: String, active_play_time: float, 
-	total_play_time: float) -> Dictionary:
-	
+static func _serialize_all(world: World, session: SaveSession) -> Dictionary:
 	# Serialize data
 	## Header | Mandatory
 	var game_data: Dictionary = {}
 	game_data["format_version"] = FORMAT_VERSION
-	game_data["world_seed"] = world_seed
+	game_data["world_seed"] = world.world_seed
 	game_data["game_version"] = Global.get_game_version()
 	# One clock read, so the time and its offset agree (D-122)
 	var now: Dictionary = Global.get_real_time()
 	game_data["saved_at"] = now.unix
 	game_data["saved_at_utc_offset"] = now.utc_offset
-	
+
 	## Header | Optional
-	if not tuning_profile_id:
+	if not session.tuning_profile_id:
 		game_data["tuning_profile_id"] = DEFAULT_TUNING_PROFILE_ID
 	else:
-		game_data["tuning_profile_id"] = tuning_profile_id
-	if active_actor:
-		game_data["local_actor_id"] = active_actor.actor_id
-	
+		game_data["tuning_profile_id"] = session.tuning_profile_id
+	if session.local_actor_id != -1:
+		game_data["local_actor_id"] = session.local_actor_id
+	# The world's counters (D-130), restored last on load
+	game_data["next_fixture_id"] = world.fixture_ids.peek()
+	game_data["next_actor_id"] = world.actor_ids.peek()
+
 	# Stats
-	game_data["stats"] = _serialize_stats(active_play_time, total_play_time)
-	
+	game_data["stats"] = _serialize_stats(session.active_play_time, session.total_play_time)
+
 	## Levels
-	var level_data: Dictionary = _serialize_levels(levels)
-	game_data["levels"] = level_data
-	
+	game_data["levels"] = _serialize_levels(world.levels())
+
 	## Actors
-	var actor_data: Dictionary = _serialize_actors(actors)
-	game_data["actors"] = actor_data
-	
+	game_data["actors"] = _serialize_actors(world.actors())
+
 	return game_data
 
 
@@ -407,7 +419,7 @@ static func _serialize_fixtures(fixtures: LevelFixtures) -> Array:
 	return data
 
 
-static func _serialize_actors(actors: Array[Node]) -> Dictionary:
+static func _serialize_actors(actors: Array[Actor]) -> Dictionary:
 	var data: Dictionary = {}
 	
 	for actor in actors:
@@ -440,46 +452,48 @@ static func _serialize_actor(actor: Actor) -> Dictionary:
 	return actor_data
 
 
-# levels is the loaded levels by depth; each actor is put on its own.
-static func _deserialize_actors(p_actors: Dictionary, levels: Dictionary) -> Dictionary:
-	var actors: Dictionary = {}
-	
+# Builds each saved actor on its level in `world`, and adds it to the
+# world. Returns the actors built.
+static func _deserialize_actors(p_actors: Dictionary, world: World) -> Array[Actor]:
+	var actors: Array[Actor] = []
+
 	for key in p_actors:
 		# Actors are keyed by their id. This also skips the header's
 		# local_actor_id, and a save keyed the old way, by name.
 		if key is not int: continue
 		if not _is_valid_actor_entry(p_actors[key]): continue
-		var actor: Actor = _deserialize_actor(p_actors[key], key, levels)
+		var actor: Actor = _deserialize_actor(p_actors[key], key, world)
 		if not actor: continue
-		actors[key] = {}
-		actors[key]["actor_obj"] = actor
-		actors[key]["worldpos"] = actor.current_WorldPos
-	
+		world.add_actor(actor)
+		actors.append(actor)
+
 	return actors
 
 
 # Must have already passed _is_valid_actor_entry
-static func _deserialize_actor(p_actor: Dictionary, p_actor_id: int, p_levels: Dictionary) -> Actor:
+static func _deserialize_actor(p_actor: Dictionary, p_actor_id: int, world: World) -> Actor:
 	var actor_name: String = p_actor.actor_name
 	var pos: Dictionary = p_actor.worldpos
-	var level: Level = p_levels.get(pos.depth)
+	var level: Level = world.level_at(pos.depth)
 	if level == null:
 		push_warning("Actor %s is on depth %d, which didn't load; skipped." % [actor_name, pos.depth])
 		return null
 	var worldpos: WorldPos = WorldPos.new(pos.x, pos.y, pos.depth)
 	var actor: Actor = Actor.create(Global.actor_packed_scene, actor_name, worldpos, level, p_actor.actor_kind, p_actor_id)
-	
+
 	var facing: Dictionary = p_actor.facing
 	actor.facing = Vector2i(facing.x, facing.y)
-	
+
 	return actor
 
 
-static func _deserialize_levels(p_levels: Dictionary) -> Dictionary:
-	var levels: Dictionary = {}
-	# For levels generated because the save holds them only in part
-	var fixture_ids: IdAllocator = IdAllocator.new()
-	
+# Builds each saved level and adds it to `world`. A level that can't
+# be built is skipped, with a warning; the caller refuses the save.
+static func _deserialize_levels(p_levels: Dictionary, world: World) -> void:
+	# A level the save holds only in part is generated first, drawing
+	# fixture ids. Every saved id is claimed before that, so a
+	# generated fixture can't take an id a saved one has.
+	_claim_saved_fixture_ids(p_levels, world.fixture_ids)
 	for level_key in p_levels:
 		if not _is_valid_level_entry(level_key, p_levels[level_key]): continue
 		# A depth with no recipe row is refused here. Level.set_depth
@@ -487,48 +501,62 @@ static func _deserialize_levels(p_levels: Dictionary) -> Dictionary:
 		if not LevelRecipes.TABLE.has_recipe(level_key):
 			push_warning("Saved depth %d has no recipe row; skipped." % level_key)
 			continue
-		var level: Level = _deserialize_level(level_key, p_levels[level_key], fixture_ids)
+		var level: Level = _deserialize_level(level_key, p_levels[level_key], world)
 		if not level: continue
-		levels[level_key] = level
-	
-	return levels
+		world.add_level(level)
 
 
-# p_level must already have passed _is_valid_level_entry.
-static func _deserialize_level(p_depth: int, p_level: Dictionary,
-		fixture_ids: IdAllocator) -> Level:
+# Every fixture id in the save that a well-formed entry holds.
+static func _claim_saved_fixture_ids(p_levels: Dictionary, fixture_ids: IdAllocator) -> void:
+	for level_key in p_levels:
+		var entry: Variant = p_levels[level_key]
+		if not entry is Dictionary: continue
+		if not _is_valid_fixtures_entry(entry.get("fixtures", [])): continue
+		for fixture: Dictionary in entry.get("fixtures", []):
+			fixture_ids.claim(fixture.id)
+
+
+# p_level must already have passed _is_valid_level_entry. The level is
+# built to its saved bound, which wins over the recipe's, so a level
+# whose radius was tuned isn't lost (D-112, R-B4).
+static func _deserialize_level(p_depth: int, p_level: Dictionary, world: World) -> Level:
 	# Build layer arrays
 	var layers: Dictionary = {}
 	if p_level.has("tiles"):
 		layers = _deserialize_tile_layers(p_level)
-	
+
+	var recipe: LevelRecipe = LevelRecipes.TABLE.get_recipe(p_depth)
+	var bound: LevelBound = LevelBound.new(p_depth, recipe.bound.name, p_level.bound.radius)
+
 	# Build level. A level the save holds whole is built from the save
 	# alone: generating it would draw fixture ids and place a world
 	# spawn only for the save to replace them (R-P2). One missing a
 	# layer or its fixtures, from before they were saved, is generated
-	# first, so the missing parts keep what was generated.
+	# first, to the saved bound, so the missing parts keep what was
+	# generated.
 	var level: Level
 	if _holds_whole_level(p_level, layers):
 		level = Global.level_packed_scene.instantiate()
-		level.setup(p_depth)
+		level.setup(p_depth, world.world_seed, bound)
 	else:
-		level = LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(p_depth), 0,
-			fixture_ids)
-	# Never use _set_level_seed() because it recomputes the seed. The save is the source of truth
+		var shaped: LevelRecipe = LevelRecipe.new(bound)
+		shaped.fixed_placements = recipe.fixed_placements
+		level = LevelGenerator.generate_level(shaped, world.world_seed, world.fixture_ids)
+	# The save is the source of truth: its seed, never one recomputed
 	level.level_seed = p_level["level_seed"]
-	
+
 	var result: LevelTiles.REFUSAL_REASON
 	result = level.level_tiles.bulk_load_tile_arrays(layers)
 	if result != LevelTiles.REFUSAL_REASON.NONE:
 		level.free()
 		return
-	
+
 	# The saved fixtures replace the generated ones. A save with no
 	# fixtures entry, from before they were saved, keeps what was
 	# generated, as a missing tile layer does.
 	if p_level.has("fixtures"):
 		level.level_fixtures = _deserialize_fixtures(p_depth, p_level.fixtures)
-	
+
 	return level
 
 
@@ -542,8 +570,7 @@ static func _holds_whole_level(p_level: Dictionary, layers: Dictionary) -> bool:
 
 
 # The highest fixture id in these levels, or -1 if they hold none. A
-# load moves the id counter past it, so a new fixture can't take an id
-# already in the world.
+# load moves the world's counter past it (D-130).
 static func highest_fixture_id(levels: Array[Level]) -> int:
 	var highest: int = -1
 	for level: Level in levels:
