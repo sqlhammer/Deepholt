@@ -68,13 +68,13 @@ and nothing searching the tree for levels or actors.
 
 ## C. The world's id counters
 
-- [ ] The next fixture id and the next actor id live on the world (D-118). `Objects`' counter
+- [x] The next fixture id and the next actor id live on the world (D-118). `Objects`' counter
   and `World.id_allocator` are gone; the generator and actor creation draw from the world they
   build into.
-- [ ] A new world starts its own counters; generating a second world leaves the first world's
+- [x] A new world starts its own counters; generating a second world leaves the first world's
   untouched. [6]
-- [ ] F3 shows the running world's next fixture id and next actor id. [3]
-- [ ] Test: a second generated world doesn't change the first's counters. [6]
+- [x] F3 shows the running world's next fixture id and next actor id. [3]
+- [x] Test: a second generated world doesn't change the first's counters. [6]
 
 ## D. Saving and loading a `World`
 

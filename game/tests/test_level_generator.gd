@@ -187,3 +187,40 @@ func test_the_generator_stamps_a_prefabs_fixtures() -> void:
 	TilePrefabRegistry._prefabs.erase(&"test_with_ladder")
 	assert_true(level.level_fixtures.has_kind_at(Vector2i(9, 10), ObjectKind.OBJECT.LADDER),
 		"the ladder is in the level's store")
+
+
+# --- each world numbers its own (D-118, slice 004 outcome 6) ---
+
+func test_a_second_world_leaves_the_firsts_counters_alone() -> void:
+	var first: World = autofree(LevelGenerator.generate_world(0))
+	first.fixture_ids.allocate()
+	first.actor_ids.allocate()
+	var fixture_next: int = first.fixture_ids.peek()
+	var actor_next: int = first.actor_ids.peek()
+	var second: World = autofree(LevelGenerator.generate_world(0))
+	assert_eq(first.fixture_ids.peek(), fixture_next, "the first's fixture counter is untouched")
+	assert_eq(first.actor_ids.peek(), actor_next, "and its actor counter")
+	assert_eq(second.fixture_ids.peek(), fixture_next - 1,
+		"the second numbered its own fixtures from 1, as the first did")
+	assert_eq(second.actor_ids.peek(), IdAllocator.FIRST_ID, "and has handed out no actor id")
+
+
+func test_the_same_seed_gives_the_same_fixture_ids() -> void:
+	var first: World = autofree(LevelGenerator.generate_world(0))
+	var second: World = autofree(LevelGenerator.generate_world(0))
+	var first_ids: Array[int] = []
+	var second_ids: Array[int] = []
+	for level: Level in first.levels():
+		for fixture: Fixture in level.level_fixtures.all(): first_ids.append(fixture.id)
+	for level: Level in second.levels():
+		for fixture: Fixture in level.level_fixtures.all(): second_ids.append(fixture.id)
+	assert_eq(second_ids, first_ids, "however many worlds one process builds (D-104)")
+
+
+func test_an_actor_created_in_one_world_draws_only_from_it() -> void:
+	var first: World = autofree(LevelGenerator.generate_world(0))
+	var second: World = autofree(LevelGenerator.generate_world(0))
+	var actor: Actor = autofree(Actor.create(Global.actor_packed_scene, "A", WorldPos.new(0, 0, 0),
+		second.level_at(0), ActorKind.ACTOR.PLAYER))
+	assert_eq(actor.actor_id, IdAllocator.FIRST_ID, "the second world's first actor")
+	assert_eq(first.actor_ids.peek(), IdAllocator.FIRST_ID, "the first world handed out nothing")

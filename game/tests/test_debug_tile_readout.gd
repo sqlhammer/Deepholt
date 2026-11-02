@@ -229,3 +229,27 @@ func test_the_world_spawn_section_appears_when_the_overlay_is_shown() -> void:
 	_overlay.visible = true
 	_overlay._refresh_watched_actors()
 	assert_true(_overlay.debug_text.has("World spawn"), "a World spawn section")
+
+
+# --- the world's id counters (D-118, slice 004 outcome 3) ---
+
+func test_the_next_ids_are_the_shown_worlds() -> void:
+	_world.fixture_ids.restore(12)
+	_world.actor_ids.restore(4)
+	assert_eq(_overlay.next_ids_text(), "fixture #12  actor #4")
+
+
+func test_the_next_ids_follow_the_counters() -> void:
+	_world.fixture_ids.allocate()
+	assert_eq(_overlay.next_ids_text(), "fixture #2  actor #1", "a fixture id was taken")
+
+
+func test_the_next_ids_section_appears_when_the_overlay_is_shown() -> void:
+	_overlay.visible = true
+	_overlay._refresh_watched_actors()
+	assert_true(_overlay.debug_text.has(_overlay.NEXT_IDS_SECTION), "a Next ids section")
+
+
+func test_no_world_has_no_next_ids() -> void:
+	_overlay.world = null
+	assert_eq(_overlay.next_ids_text(), "no world")

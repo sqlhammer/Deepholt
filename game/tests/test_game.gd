@@ -900,3 +900,11 @@ func test_the_screen_follows_the_player_down_a_level() -> void:
 
 
 
+
+
+# F3 reads the counters of the world being played (slice 004 outcome 3).
+func test_f3_shows_the_running_worlds_next_ids() -> void:
+	var world: World = _game.world
+	assert_eq(_game.get_node("DebugOverlay").next_ids_text(),
+		"fixture #%d  actor #%d" % [world.fixture_ids.peek(), world.actor_ids.peek()])
+	assert_eq(world.actor_ids.peek(), IdAllocator.FIRST_ID + 1, "the one player took actor id 1")

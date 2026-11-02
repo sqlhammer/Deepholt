@@ -73,6 +73,7 @@ func _get_group(title: String) -> int:
 		"World Seed": return 0
 		"Level Seed": return 0
 		WORLD_SPAWN_SECTION: return 0
+		NEXT_IDS_SECTION: return 0
 		LOAD_PROBLEMS_SECTION: return 0
 		SAVE_SECTION: return 0
 		SAVE_TIME_SECTION: return 0
@@ -113,9 +114,19 @@ func _refresh_watched_actors() -> void:
 			set_section(watched_actors[id], _tile_readout(actor.current_WorldPos))
 	if visible:
 		set_section(WORLD_SPAWN_SECTION, world_spawn_text())
+		set_section(NEXT_IDS_SECTION, next_ids_text())
 
 
 const WORLD_SPAWN_SECTION: String = "World spawn"
+const NEXT_IDS_SECTION: String = "Next ids"
+
+
+# The ids the shown world hands out next (D-118). Polled, so it
+# follows a placement or a new actor, and a load shows whether the
+# counters carried on (slice 004, outcome 3).
+func next_ids_text() -> String:
+	if world == null: return "no world"
+	return "fixture #%d  actor #%d" % [world.fixture_ids.peek(), world.actor_ids.peek()]
 
 
 # Where the world's default spawn is (D-091, D-105): the one fixture
@@ -266,6 +277,7 @@ func _on_shown_world_changed(p_world: World, depth: int) -> void:
 	world = p_world
 	if world != null:
 		set_section("World Seed", str(world.world_seed))
+		set_section(NEXT_IDS_SECTION, next_ids_text())
 	_on_shown_depth_changed(View.NO_DEPTH, depth)
 
 
