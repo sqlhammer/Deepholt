@@ -117,10 +117,10 @@ and nothing searching the tree for levels or actors.
 
 ## F. Two worlds
 
-- [ ] Test: two worlds in one process, at the same depths, each with an actor. A dig, a depth
+- [x] Test: two worlds in one process, at the same depths, each with an actor. A dig, a depth
   change and a fixture placed in one leave the other untouched. [5]
-- [ ] Test: freeing a world leaves no orphan nodes. [7]
-- [ ] Test (or a grep in a test): no code in `src/` searches the tree for levels. [7]
+- [x] Test: freeing a world leaves no orphan nodes. [7]
+- [x] Test (or a grep in a test): no code in `src/` searches the tree for levels. [7]
 
 ## G. Done
 
