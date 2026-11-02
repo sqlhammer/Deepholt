@@ -3047,3 +3047,69 @@ which the one-level renderers can't do yet); a 0.3 s fade (Derik chose the longe
 level change reads as a descent); input left running (the player acts without seeing), or
 held keys needing a re-press (reverses D-108).
 
+---
+
+### D-143 — Levels are generated one ahead of arrival, by the world, on the main thread
+**Decided** (by Derik, planning slice 006, 2026-11-02). Builds what
+[world-runtime §8](./tech/world-runtime-and-persistence.md#8-generation-threading) describes,
+which the code hasn't done since slice 002 (all eight levels are built at launch).
+
+- **A new world starts with the Surface and −1 only.**
+- **When any actor arrives at a depth, the depth below it is generated** if it doesn't exist
+  yet and the recipe table has a row for it. One ahead, so the ramp or ladder down from where
+  an actor stands always leads somewhere: a ladder lives on the level below its hole
+  ([D-089](#d-089--a-ladder-is-an-object-on-the-lower-level-a-hole-is-a-ground-kind-a-ramp-is-a-tile-kind)),
+  so generating on use would leave the hole reading as dead.
+- **The world does it,** listening to its own actors' depth changes. It's simulation: an NPC or
+  a second player triggers it too (pillar [P5](./game-overview.md)), and it works in a world
+  that isn't in the game scene.
+- **On the main thread for now,** timed and shown in F3. The worker thread §8 describes comes
+  later, with the measurement in hand.
+- **A load builds only the levels the save holds.** After the new world is swapped in, each
+  actor's level below is generated if missing, by the same rule as an arrival. Never during the
+  load itself, so a refusal still frees one world and nothing else, and no ids are drawn mid-load.
+- **A level that doesn't exist yet is a missing key in the save,** read as "not generated", not
+  as damage. A level the save holds and can't load still refuses the file (R-B3).
+
+*Why:* §8's fast new game, and the ramp or ladder down from wherever an actor stands always
+works.
+
+*Considered:* generating on use (dead ladder holes until then); a worker thread now (the design's
+end state, but a much bigger slice with a new class of traps); the game generating (a world
+outside the game scene never grows); the actor asking in `move_to` (world-building inside the
+one way an actor moves, [D-119](#d-119--move_to-is-the-one-way-an-actor-is-put-somewhere-else));
+generating missing levels inside the load (draws ids mid-load); waiting for a real arrival after
+a load (a dead way down until the actor leaves and comes back).
+
+---
+
+### D-144 — Slice 006's dark: all four render states, and light from a brazier
+**Decided** (by Derik, planning slice 006, 2026-11-02). Scopes
+[D-010](#d-010--dark-vision-light-is-capability-not-survival) and
+[D-033](#d-033--tunnel-memory-four-render-states-per-tile) for the first build of the dark.
+
+- **All four states:** Unknown (black), Remembered (dim outline, no ore identity), Sensed (dark
+  vision: monochrome, low detail, a radius of about 7 tiles), Lit (full color, ore legible).
+- **The Remembered bit is saved** as a new byte layer, one more name on `SaveGame.TILE_LAYERS`
+  ([D-112](#d-112--tile-layers-are-saved-by-name-a-byte-layer-per-fact-a-saved-bound-wins)),
+  editing format v1 in place
+  ([D-133](#d-133--save-format-version-1-is-settled-when-the-first-build-goes-to-someone-else)).
+  Light and Sensed are derived, and never saved.
+- **Ore type shows only on Lit tiles.** Elsewhere a vein reads as a grey lump (D-010). The ore
+  stays in the tile data; hiding it is the renderer's job.
+- **Light comes from a brazier,** a new fixture kind placed by the home cave's prefab, the way
+  ladders are. Its radius is a `TuningProfile` number
+  ([D-135](#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it)).
+  Placing one at runtime waits for slice 007.
+- **The Surface is lit by daylight** throughout. Exposure and the sun
+  ([light-and-sunlight §2](./systems/light-and-sunlight.md)) are out of scope.
+- **Claude drew the brazier's placeholder art**; Derik replaces it when he likes.
+
+*Why:* the four states together are what the dark is to be judged by
+([P3](./game-overview.md)). With a fixed light, Lit is a place you can walk into and out of, and
+ore can be compared lit and unlit, before players can place lights.
+
+*Considered:* Sensed and Unknown only (dug tunnels vanish when you walk away, the problem D-033
+solves); three states with no Lit; light carried by each actor (lit wherever you are, which
+flattens the contrast); Surface daylight as the only light.
+

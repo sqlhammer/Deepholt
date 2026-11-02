@@ -1,145 +1,112 @@
-# Slice 005 checklist
+# Slice 006 checklist
 
-Working list for [NOW.md](./NOW.md). **Agent mode for the whole slice** (Derik, 2026-11-02):
-Claude builds on the `slice-005` branch, in small commits, and Derik merges it as a PR. Derik
-verifies by hand. Forks are taken one at a time, just before the section that needs them, and
-each lands as a `D-nnn`. Numbers in brackets are the brief's outcomes.
+Working list for [NOW.md](./NOW.md). **Educational Assistant mode for the whole slice** (Derik,
+2026-11-02): Derik builds; Claude writes each section's walkthrough in the gitignored
+`work/lesson/` before Derik starts it, and reviews the section once it's built. Forks are taken
+one at a time, before the section that needs them, and each lands as a `D-nnn`. Numbers in
+brackets are the brief's outcomes.
 
-Ordered cheapest and least coupled first, so that the tidy-ups are off the table before the
-transition, which touches the actor, the view and saving at once. The game is launched by hand
-at the end of every section that changes something you can see.
+Ordered as Derik chose in planning: generation on first descent first, so the save's shape
+changes once before the dark adds a layer to it. Then memory and the senses, then light. The
+game runs at the end of every section, and is launched by hand there (002's log).
 
-Slice 004's checklist is in git history (last at `c8e5d62`).
-
-**Closed 2026-11-02** by Derik, merged into `main`. The by-hand items below weren't reported
-walked before the close, and are left unticked as they stood.
+Slice 005's checklist is in git history (last at `ca1ac7b`).
 
 ---
 
-## A. Tidy-ups
+## A. Decided in planning
 
-No forks.
+*Settled with Derik, 2026-11-02.*
 
-- [x] `density` → `hardness` in code (`TileKind.MINABLE_DENSITY` and its readers). Names only
-  ([D-081](../docs/design-decisions.md)). [13]
-- [x] The dead tool-loading code goes: `_load_tool`, `TOOL_DIR`, and the `equipped` check in the
-  actor validator (R-B5). [13]
-- [x] Save slots are listed sorted, not in `get_directories()` order (R-P6). Test it with slots
-  created out of order. [13]
-- [x] "it's" → "its" in three comments, and every comment wrapped to 70 characters (R-S4).
-  *Only two "it's" were wrong (three lines); 147 long comment lines across 43 files were
-  re-wrapped.* [13]
-- [x] F3's tile window prints a hole as its own character, not `.`. *It prints `h`, the
-  character holes are authored with.* [3]
-- [x] Test the playtime clocks: active and total, across a save, a load and a pause
-  ([D-120](../docs/design-decisions.md)). [7] *Pausing is checked by each timer's
-  `process_mode`, not by pausing the tree, which would pause GUT too.*
-- [ ] By hand: F3 shows a hole distinctly. [3]
+- [x] Generation one level ahead of any actor's arrival, by the world, on the main thread,
+  timed in F3. A load builds what the save holds, and generates each actor's level below after
+  the swap
+  ([D-143](../docs/design-decisions.md#d-143--levels-are-generated-one-ahead-of-arrival-by-the-world-on-the-main-thread)).
+- [x] The dark's scope: all four states, ore legible only when Lit, the Remembered bit saved, a
+  brazier in the home cave, the Surface lit
+  ([D-144](../docs/design-decisions.md#d-144--slice-006s-dark-all-four-render-states-and-light-from-a-brazier)).
+- [x] Placeholder brazier art: `game/src/render/brazier.png`, 16 x 24 (Claude).
 
-## B. Loads
+## B. Generation on first descent
 
-- [x] The load returns a typed result instead of a dictionary with the world under `"world"`.
-  Grep the run for `Ignoring` and `Parse Error` (trap 3). [8] *`SaveGame.LoadedGame`: the
-  world, a `SaveSession`, a typed `Header` and the problems
-  ([D-131](../docs/design-decisions.md#d-131--a-load-returns-the-world-a-session-and-a-typed-header)).*
-- [x] The view can show a world with no followed actor and announces `shown_world_changed` for
-  it ([D-129](../docs/design-decisions.md)). Test: a save with only NPCs loads, and the
-  renderers and F3 draw the new world. [9] *Every swap now shows the new world at its spawn's
-  depth first
-  ([D-132](../docs/design-decisions.md#d-132--every-swap-shows-the-new-world-at-its-spawns-depth-following-an-actor-moves-only-the-depth)).*
-- [ ] By hand: measure F3's "Last load" after F6 and record it for the log (003 closed at about
-  100 ms). [6]
+Lesson: `work/lesson/006-B-first-descent.md`.
 
-## C. Saves on disk
+- [ ] The cross-level checks (`ladder_problems`, `ramp_problems`) skip a pair whose other level
+  doesn't exist yet, and the pair is checked when that level is generated (trap 1).
+- [ ] `LevelGenerator` builds a new world with the Surface and −1 only, and can build one
+  level into an existing world, drawing fixture ids from that world's counter (D-143, trap 3).
+- [ ] The world generates the level below on any of its actors' arrival at a depth, once, and
+  only where the recipe table has a row (D-143).
+- [ ] Nothing generates while a load is building a world, or before it's swapped in. After the
+  swap, each actor's level below is generated if missing (D-143, trap 2).
+- [ ] A save without some levels loads with no refusal and no problem reported for the levels
+  that don't exist yet. [8]
+- [ ] F3 lists the generated depths, and how long the last generation took. [1]
+- [ ] The places that assume eight levels are found and fixed (trap 4).
+- [ ] Tests: an arrival generates the level below once; an NPC's arrival does too; a world
+  outside the game scene grows; two worlds grow independently; a load with missing levels
+  generates after the swap, never during it. [7, 8]
+- [ ] By hand: `--new-game`, F3 shows the Surface and −1; walk down to −2 and −3; save on −1
+  and relaunch. [1, 2]
 
-- [x] *Decide:* format version 1, settled now or left open. *Open until the first build goes to
-  someone else
-  ([D-133](../docs/design-decisions.md#d-133--save-format-version-1-is-settled-when-the-first-build-goes-to-someone-else)).*
-- [x] *Decide:* the pruning rule: what's kept, how many or how long, and when it runs (trap 5).
-  *The newest of each kind, each kind with its own count (three for now), at launch once the
-  game has started
-  ([D-134](../docs/design-decisions.md#d-134--kept-saves-are-pruned-to-a-newest-few-of-each-kind-each-kind-its-own-count-at-launch)).*
-- [x] Pruning built to that rule. Test it against a folder with the live save, the backup, and
-  one of each kind of moved-aside and broken save
-  ([D-111](../docs/design-decisions.md#d-111--continue-by-default-a-flag-for-a-new-game-backups-and-broken-saves),
-  [D-123](../docs/design-decisions.md)). [5]
-- [x] [save-files.md](../docs/tech/save-files.md) caught up: the two playtime clocks (D-120),
-  the required keys (D-121, D-122), the file-name timestamp (D-123), the two counters and
-  `SaveSession` (D-130), and whatever C decides. [13]
-- [ ] By hand: save and relaunch until saves are moved aside, and see the folder pruned. [5]
+## C. Memory and the senses
 
-## D. The tuning profile
+Lesson: `work/lesson/006-C-memory-and-senses.md`, written once C's forks are settled.
 
-- [x] *Decide:* how the profile is reached, and how much moves into it now
-  ([D-037](../docs/design-decisions.md#d-037--one-tuningprofile-resource-holds-every-global-constant)).
-  *The world holds it, and every number in code moves in
-  ([D-135](../docs/design-decisions.md#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it)).
-  A loaded world runs under its save's profile, else the default
-  ([D-136](../docs/design-decisions.md#d-136--a-loaded-world-runs-under-the-profile-its-save-names-else-the-default)).*
-- [x] *Decide:* the content validator: built now and with which checks, or left for when the
-  strata are built. *Deferred until a stratum below the Surface gets its own stone
-  ([D-137](../docs/design-decisions.md#d-137--the-content-validator-is-built-when-a-stratum-below-the-surface-gets-its-own-stone)).* The Surface's accepted 0.375 s needs a recorded exception (trap 6,
-  [D-038](../docs/design-decisions.md), [D-081](../docs/design-decisions.md)).
-- [x] `TuningProfile` built to that decision. The autosave interval comes from it, and a save
-  writes its id instead of `"none"`
-  ([D-116](../docs/design-decisions.md)). [12] *`content/tuning/default.tres`; the id moved
-  from `SaveSession` to the world. `--tuning=<id>` picks a new world's profile, and F3 shows it.*
-- [x] ~~The validator, if it was decided in.~~ Deferred (D-137).
+- [ ] *Decide:* whose senses draw the screen (the followed actor's, or every player's in the
+  shown world).
+- [ ] *Decide:* whose memory, and who writes it (any player or the local one; through the world
+  or directly).
+- [ ] *Decide:* what "seen" means: the whole radius, or line of sight.
+- [ ] *Decide:* how the states reach the shader, and what Remembered looks like.
+- [ ] The sense radius is a `TuningProfile` number (about 7 tiles,
+  [D-135](../docs/design-decisions.md#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it)).
+- [ ] A `memory` byte layer on `LevelTiles`, saved by name in `SaveGame.TILE_LAYERS`; a save
+  without it loads with nothing remembered ([D-112](../docs/design-decisions.md)). [9]
+- [ ] Memory is marked as decided, per world, and never from "the" player in simulation
+  (trap 8).
+- [ ] The renderer draws Unknown, Remembered and Sensed, follows `shown_world_changed`, and
+  uploads memory without re-sending the whole layer every step (trap 5). [3, 4]
+- [ ] Tests: memory round-trips through a save, with a remembered tile the generator would
+  never mark (trap 9); a second world's memory is its own. [9]
+- [ ] By hand: underground is black past the radius and monochrome within it; walk away and
+  your tunnel stays outlined; relaunch and it's still there. [3, 4]
 
-## E. Fixtures and ladders
+## D. Light, the brazier and ore
 
-- [x] *Decide:* moving a fixture: a read-only `Fixture.tile`, and announced as removal plus
-  placement or as its own event. *Its own event, `fixture_moved`
-  ([D-138](../docs/design-decisions.md#d-138--a-fixture-moves-through-the-gatekeeper-and-the-move-is-its-own-event)).*
-- [x] A fixture moves only through the world's fixture gatekeeper. Test: the move is announced
-  as decided, and the fixture renderer follows it. [11]
-- [x] *Decide:* which way a ladder goes when both directions apply
-  ([D-106](../docs/design-decisions.md#d-106--interact-is-polled-on-the-physics-tick)).
-  *Facing a usable hole goes down
-  ([D-139](../docs/design-decisions.md#d-139--on-a-ladder-facing-a-usable-hole-interact-goes-down)).*
-- [x] Test: in a built world with neighboring shafts at −2 and −3, the actor goes the way that
-  was decided. [10]
-- [x] *Decide:* the temporary Surface hole at (0, 2), removed now or kept. *Kept until 007
-  ([D-140](../docs/design-decisions.md#d-140--the-temporary-surface-hole-stays-until-slice-007)).*
-- [x] ~~If removed: by hand, `--new-game` starts without it (trap 4).~~ Not removed. [4]
-- [x] *Decide:* the refusal reasons: shown in F3 now, or left for feedback. *Left for feedback
-  ([D-141](../docs/design-decisions.md#d-141--refusal-reasons-wait-for-the-feedback-that-will-use-them)).*
+Lesson: `work/lesson/006-D-light.md`, written once D's forks are settled.
 
-## F. The level-change transition
+- [ ] *Decide:* how light spreads (a plain radius, or blocked by rock), and whether it has
+  levels or is on/off per tile.
+- [ ] The brazier is a fixture kind: a new `ObjectKind` id, a prefab character, its texture in
+  `FixtureRenderer`, and placed in `rootshelf_home`
+  ([D-103](../docs/design-decisions.md#d-103--fixtures-names-signals-refusal-reasons-and-the-conflict-table)).
+- [ ] Its light radius is a `TuningProfile` number.
+- [ ] The light field is derived per level from its light fixtures: rebuilt after a load, a
+  swap, and any light fixture's change; never saved (trap 7). [10]
+- [ ] Lit tiles draw in full color. Ore type shows only on Lit tiles; elsewhere a vein is a grey
+  lump. The tile data and the dig are unchanged (trap 6). [5]
+- [ ] The Surface is lit throughout (D-144). [6]
+- [ ] Tests: light follows a swapped-in world; moving a brazier (D-138) moves its light; nothing
+  about light is in a save. [10]
+- [ ] By hand: copper by the brazier and copper in the dark; the Surface; how a hole on −1 and
+  the level-change fade read in the dark. [5, 6]
 
-- [x] *Decide:* how it looks and how long it takes; whether the move is delayed in the
-  simulation or the view only plays the effect; what a held dig does during it; whether input
-  and the level-change save wait for it
-  ([D-108](../docs/design-decisions.md#d-108--a-held-dig-carries-across-a-level-change-level-changes-are-instant-for-now),
-  traps 1 and 2). *A 0.5 s fade through black in the view; the move stays instant; the local
-  player's input pauses and held keys resume
-  ([D-142](../docs/design-decisions.md#d-142--a-level-change-fades-through-black-in-the-view-the-move-itself-stays-instant)).*
-- [x] ~~Built between the request and `Actor.move_to`, never in the `Ramp` or `Ladder` rules~~
-  ([D-119](../docs/design-decisions.md#d-119--move_to-is-the-one-way-an-actor-is-put-somewhere-else)).
-  *Not needed: the move stays instant, and the fade is the view's.*
-- [x] Per actor, not global: two actors in one world each take their own transition
-  (pillar [P5](../docs/game-overview.md)). Test it. *The fade follows only the followed actor;
-  another actor's level change starts none.*
-- [x] A swap cancels a transition in progress, and nothing fires against a freed actor. Test it
-  (trap 1). [2]
-- [ ] By hand: the ramp and the ladder, both ways, with a held dig. [1]
-- [ ] By hand: F5 during a transition, then F6. [2]
+## E. Done
 
-## G. Done
-
-- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-  *754 tests, 37 scripts.*
-- [x] `python scripts/coverage.py` run; uncovered lines looked at (004 closed at 95.7%).
-  *97.5%.*
-- [ ] By hand: every by-hand outcome walked in one sitting, launched outside the editor at least
-  once.
-- [x] Claude writes `log/005-clearing-the-backlog.md`.
-- [x] Claude re-sketches [NEXT.md](./NEXT.md).
+- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
+- [ ] `python scripts/coverage.py` run; uncovered lines looked at (005 closed at 97.5%).
+- [ ] By hand: outcomes 1–6 walked in one sitting, launched outside the editor at least once.
+- [ ] Claude reviews the slice.
+- [ ] Claude writes `log/006-down-into-the-dark.md`.
+- [ ] Claude re-sketches [NEXT.md](./NEXT.md).
 
 ---
 
 ### Not in this slice, worth knowing
 
-- **Generation on first descent** (world-runtime §8) still isn't how the code works. All eight
-  levels are built at launch. When that changes, a save in which some levels don't exist yet
-  is a missing key, and the load needs that case. Carried in [NEXT.md](./NEXT.md).
+- **Generation on a worker thread** (world-runtime §8). D-143 keeps it on the main thread until
+  the timing in F3 says otherwise.
+- **Exposure and the sun** ([light-and-sunlight §2](../docs/systems/light-and-sunlight.md)). The
+  Surface is simply lit.
+- **Portable light, fuel, and placing lights at runtime.** Placing waits for 007.

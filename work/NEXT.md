@@ -1,45 +1,9 @@
 # Next
 
-Sketches, not commitments. Slice 005 is built ([log](./log/005-clearing-the-backlog.md)); its
-by-hand outcomes are still to walk. 006 is next unless that walk turns something up. Cheap to
-throw away; expect them to change.
+Sketches, not commitments. Slice 006, "Down into the dark", is in [NOW.md](./NOW.md): generation
+on first descent, then the dark. Cheap to throw away; expect them to change.
 
 ---
-
-## 006 — The dark
-
-Dark vision, a light radius, and rock you cannot see past. The first half of *the dark is home,
-the sun is the hazard* (pillar [P3](../docs/game-overview.md)) — inverted from the genre default.
-
-Changes what "readable" means: slice 001 made rock and floor distinguishable, slice 002 added
-holes, ramps and ladder tops that have to read at a glance, and this one takes most of the screen
-away and asks again. Tunnel memory's remembered bit is persistent
-([D-033](../docs/design-decisions.md)), so it's a new byte layer in a save format that now exists:
-one more name on `SaveGame.TILE_LAYERS`
-([D-112](../docs/design-decisions.md#d-112--tile-layers-are-saved-by-name-a-byte-layer-per-fact-a-saved-bound-wins)).
-Light itself is derived, so it isn't saved. Likely the first slice where the render route from
-001 (D-046) either holds up or gets replaced.
-
-**Also in this slice (Derik, 2026-11-02): generation on first descent**
-([world-runtime §8](../docs/tech/world-runtime-and-persistence.md#8-generation-threading)).
-Today all eight levels are built at launch, which isn't how the design says it works: a level is
-generated the first time someone goes down to it. When that changes, a save in which some
-levels don't exist yet has a missing level key, and the load needs that case. It must read as
-"not generated yet", not as a damaged save, since a level the save holds and can't load refuses
-the whole file today (R-B3). It also changes what a ramp or ladder down leads to before the
-level below exists, and when that level's fixture ids are drawn. This makes 006 two pieces of
-work, so the brief should say whether they're one slice or two.
-
-What 005 changes here: light radii and anything else tunable go in the world's
-`TuningProfile` ([D-135](../docs/design-decisions.md)), not in code. The level-change fade
-(D-142) is a black overlay over the whole display. A dark that's already near black may want it
-restyled, and the dead Surface hole (D-140) is there to judge how a hole reads in the dark.
-The tunnel-memory layer still edits save format v1 in place (D-133).
-
-What 004 changes here: anything new that draws (a light or fog layer) has to follow the view's
-`shown_world_changed` as well as its depth, or it won't hear a load (D-129). Light comes from
-actors and fixtures, so it is worked out per world, from that world's actors, never from "the"
-player (D-045). A new byte layer is also one more layer `World`'s levels carry through a swap.
 
 ## 007 — Dig your own way down
 
@@ -50,8 +14,12 @@ Breaching is the M1 verb and the one hard tool gate on descent
 ([digging-and-structure §1](../docs/systems/digging-and-structure.md)); building needs at least a
 placement mode. It's also the first time a fixture is created at runtime, so the fixture id
 counter 004 saves gets its first real use, and the first time levels below −2 can be reached.
-Probably too big as one slice; the split should fall out of 006. If 005 builds fixture moves and
-the ladder rule for neighboring shafts, this is where a player first reaches both.
+Probably too big as one slice; the split should fall out of 006. A placed brazier is the
+natural first runtime placement, since 006 makes the brazier a fixture kind with a light.
+
+What 006 changes here: levels exist one ahead of arrival (D-143), so a hole breached on the
+deepest level a player has reached opens onto a level that already exists. Lights placed at
+runtime will need the light field rebuilt on placement, which 006 builds for moves.
 
 What 005 changes here: fixtures can already move through the gatekeeper (D-138), and the
 ladder rule for neighboring shafts is settled (D-139), so both are reachable here for the first
