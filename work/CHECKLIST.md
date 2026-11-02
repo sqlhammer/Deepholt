@@ -104,16 +104,20 @@ No forks.
 
 ## F. The level-change transition
 
-- [ ] *Decide:* how it looks and how long it takes; whether the move is delayed in the
+- [x] *Decide:* how it looks and how long it takes; whether the move is delayed in the
   simulation or the view only plays the effect; what a held dig does during it; whether input
   and the level-change save wait for it
   ([D-108](../docs/design-decisions.md#d-108--a-held-dig-carries-across-a-level-change-level-changes-are-instant-for-now),
-  traps 1 and 2).
-- [ ] Built between the request and `Actor.move_to`, never in the `Ramp` or `Ladder` rules
+  traps 1 and 2). *A 0.5 s fade through black in the view; the move stays instant; the local
+  player's input pauses and held keys resume
+  ([D-142](../docs/design-decisions.md#d-142--a-level-change-fades-through-black-in-the-view-the-move-itself-stays-instant)).*
+- [x] ~~Built between the request and `Actor.move_to`, never in the `Ramp` or `Ladder` rules~~
   ([D-119](../docs/design-decisions.md#d-119--move_to-is-the-one-way-an-actor-is-put-somewhere-else)).
-- [ ] Per actor, not global: two actors in one world each take their own transition
-  (pillar [P5](../docs/game-overview.md)). Test it.
-- [ ] A swap cancels a transition in progress, and nothing fires against a freed actor. Test it
+  *Not needed: the move stays instant, and the fade is the view's.*
+- [x] Per actor, not global: two actors in one world each take their own transition
+  (pillar [P5](../docs/game-overview.md)). Test it. *The fade follows only the followed actor;
+  another actor's level change starts none.*
+- [x] A swap cancels a transition in progress, and nothing fires against a freed actor. Test it
   (trap 1). [2]
 - [ ] By hand: the ramp and the ladder, both ways, with a held dig. [1]
 - [ ] By hand: F5 during a transition, then F6. [2]

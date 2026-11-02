@@ -74,6 +74,9 @@ func set_user_control(actor: Actor) -> void:
 	input.quick_save_requested.connect(save_game)
 	input.load_requested.connect(_on_load_requested)
 	input.save_and_quit_requested.connect(save_and_quit_to_desktop)
+	# Input waits while a level change fades (D-142)
+	view.transition_started.connect(input.pause)
+	view.transition_ended.connect(input.resume)
 	add_child(input)
 	_input_handlers.append(input)
 	
@@ -345,6 +348,18 @@ func _start_autosave() -> void:
 	_autosave_timer.start()
 
 
+# Black over the whole display, as clear as the view's fade says
+# (D-142). Above the game, below F3.
+func _create_fade() -> void:
+	var fade: ColorRect = ColorRect.new()
+	fade.name = "Fade"
+	fade.color = Color(0, 0, 0, 0)
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	$Display.add_child(fade)
+	view.fade_changed.connect(func(value: float) -> void: fade.color.a = value)
+
+
 func _prepare_then_quit() -> void:
 	save_game()
 	get_tree().quit()
@@ -353,7 +368,9 @@ func _prepare_then_quit() -> void:
 func _create_view() -> void:
 	view = View.new()
 	view.name = "View"
+	view.transitions = true
 	add_child(view)
+	_create_fade()
 	$GameViewport/LevelRenderer.watch(view)
 	$GameViewport/FixtureRenderer.watch(view)
 	

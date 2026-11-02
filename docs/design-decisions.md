@@ -3013,3 +3013,37 @@ only to be removed.
 
 *Considered:* showing the last refusal in F3.
 
+---
+
+### D-142 — A level change fades through black in the view; the move itself stays instant
+**Decided** (by Derik, slice 005 section F, 2026-11-02). Builds the transition
+[D-108](#d-108--a-held-dig-carries-across-a-level-change-level-changes-are-instant-for-now)
+deferred.
+
+- **Presentation only.** The simulation doesn't change: `Actor.move_to`
+  ([D-119](#d-119--move_to-is-the-one-way-an-actor-is-put-somewhere-else)) still moves the
+  actor at once, so saves, loads, digs and other actors only ever see an instant move.
+- **The view plays it for the actor it follows.** The screen fades to black, the shown depth
+  switches at the darkest point, and it fades back in. The followed actor stays drawn
+  throughout.
+- **0.5 s in all, half out and half in.** The length is a `TuningProfile` number
+  (`level_change_fade_seconds`, [D-135](#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it)),
+  read from the shown world.
+- **The local player's input is paused during the fade.** The actor stops walking and digging,
+  and interact is ignored. When the fade ends, input is read again, so a dig or a direction
+  still held carries on from arrival, as D-108 has it.
+- **A swap cancels a fade in progress** (a load, or a new game): the new world is shown at once,
+  and input resumes.
+
+*Why:* with the move instant, there's no half-moved world for a save, a load or a dig to land
+in (slice 005 trap 1), and an effect that belongs to the screen lives with the screen
+([D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer)). Pausing input means
+the player never acts blind on a level they can't see yet, and can't walk straight back onto
+the ramp mid-fade.
+
+*Considered:* delaying the move in the simulation (a rule players feel, but every in-between
+case needs an answer), or both; a slide in the direction of travel (both levels drawn at once,
+which the one-level renderers can't do yet); a 0.3 s fade (Derik chose the longer one, so a
+level change reads as a descent); input left running (the player acts without seeing), or
+held keys needing a re-press (reverses D-108).
+

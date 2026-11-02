@@ -226,6 +226,65 @@ func test_following_an_actor_in_the_shown_world_moves_only_the_depth() -> void:
 	assert_eq(get_signal_parameters(view, "shown_depth_changed"), [0, 2], "only the depth")
 
 
+# --- the fade (D-142) ---
+
+func _fading_view(actor: Actor) -> View:
+	var view: View = _view_following(actor)
+	view.transitions = true
+	return view
+
+
+func test_a_view_without_transitions_switches_at_once() -> void:
+	var actor: Actor = _actor_at(OPEN_TILE, 0)
+	var view: View = _view_following(actor)
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	assert_false(view.is_transitioning(), "no fade")
+	assert_eq(view.shown_depth, 1, "the depth switches")
+
+
+func test_a_move_within_a_level_starts_no_fade() -> void:
+	var actor: Actor = _actor_at(OPEN_TILE, 0)
+	var view: View = _fading_view(actor)
+	watch_signals(view)
+	actor.actor_worldpos_changed.emit(actor, WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 0),
+		WorldPos.new(OPEN_TILE.x + 1, OPEN_TILE.y, 0))
+	assert_signal_not_emitted(view, "transition_started")
+
+
+func test_the_fade_is_announced_start_and_end() -> void:
+	var actor: Actor = _actor_at(OPEN_TILE, 0)
+	var view: View = _fading_view(actor)
+	watch_signals(view)
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	assert_signal_emitted(view, "transition_started")
+	view.advance_transition(_world.tuning.level_change_fade_seconds)
+	assert_signal_emitted(view, "transition_ended")
+	assert_eq(view.shown_depth, 1, "on the new depth")
+
+
+# Down again before the fade switched: the fade goes on, and switches
+# to the latest depth.
+func test_a_second_change_mid_fade_switches_to_the_latest_depth() -> void:
+	var actor: Actor = _actor_at(OPEN_TILE, 0)
+	var view: View = _fading_view(actor)
+	watch_signals(view)
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 2))
+	assert_signal_emit_count(view, "transition_started", 1, "one fade")
+	view.finish_transition()
+	assert_eq(view.shown_depth, 2, "the latest depth")
+
+
+# An actor that isn't followed changes nothing on screen.
+func test_another_actors_level_change_starts_no_fade() -> void:
+	var view: View = _fading_view(_actor_at(OPEN_TILE, 0))
+	var other: Actor = _actor_at(OPEN_TILE, 0)
+	view.track(other)
+	other.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
+	assert_false(view.is_transitioning(), "no fade")
+	assert_false(other.visible, "and it's hidden on a depth not shown")
+
+
 func test_the_first_follow_announces_the_world() -> void:
 	var view: View = View.new()
 	add_child_autofree(view)

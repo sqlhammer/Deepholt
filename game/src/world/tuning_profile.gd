@@ -32,6 +32,10 @@ const DEFAULT_ID: String = "default"
 # without it (tuning appendix, section 4).
 @export var ore_dig_multiplier: float = 0.0
 
+# How long a level change's fade through black lasts, out and back in
+# (D-142). Zero switches at once.
+@export var level_change_fade_seconds: float = 0.0
+
 
 # The profile with this id, or null if this build has none.
 static func find(profile_id: String) -> TuningProfile:

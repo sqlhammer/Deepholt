@@ -950,12 +950,72 @@ func test_mouse_maps_through_top_and_bottom_bars() -> void:
 		"top and bottom bars shift y, not x")
 
 
+# --- the level-change fade (D-142) ---
+
+func _player_down_a_level() -> Actor:
+	var actor: Actor = _game.active_actor
+	var here: WorldPos = actor.current_WorldPos
+	assert_true(actor.move_to(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
+	return actor
+
+
+func _fade_seconds() -> float:
+	return _game.world.tuning.level_change_fade_seconds
+
+
+func test_a_level_change_fades_and_switches_at_the_midpoint() -> void:
+	var view: View = _game.view
+	var actor: Actor = _player_down_a_level()
+	assert_eq(actor.depth, 1, "the move itself is instant")
+	assert_true(view.is_transitioning(), "the fade starts")
+	assert_eq(view.shown_depth, 0, "still showing the Surface")
+	assert_true(actor.visible, "and the player is still drawn")
+	view.advance_transition(_fade_seconds() * 0.25)
+	assert_almost_eq(view.fade, 0.5, 0.01, "halfway to black")
+	var overlay: ColorRect = _game.get_node("Display/Fade")
+	assert_almost_eq(overlay.color.a, 0.5, 0.01, "and the screen shows it")
+	view.advance_transition(_fade_seconds() * 0.3)
+	assert_eq(view.shown_depth, 1, "past the midpoint, -1 is shown")
+	view.advance_transition(_fade_seconds())
+	assert_false(view.is_transitioning(), "the fade is over")
+	assert_eq(overlay.color.a, 0.0, "and the screen is clear")
+
+
+func test_input_is_paused_during_the_fade_and_resumes_after() -> void:
+	var actor: Actor = _game.active_actor
+	var handler: InputHandler = _handler_for(actor)
+	actor.move(Vector2.RIGHT)
+	actor.primary_action(true)
+	_player_down_a_level()
+	assert_true(handler.paused, "input waits")
+	assert_eq(actor.move_intent, Vector2.ZERO, "the player stops walking")
+	assert_false(actor.action_intent, "and digging")
+	_game.view.finish_transition()
+	assert_false(handler.paused, "input is read again once it ends")
+
+
+func test_the_fade_length_is_the_profiles() -> void:
+	assert_eq(_fade_seconds(), 0.5, "0.5 s in the default profile")
+
+
+# A load mid-fade shows the loaded world at once (D-142, D-132).
+func test_a_load_mid_fade_ends_the_fade() -> void:
+	assert_true(_game.save_game(), "saved")
+	_player_down_a_level()
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "loaded")
+	assert_false(_game.view.is_transitioning(), "no fade left running")
+	assert_eq(_game.view.fade, 0.0, "the screen is clear")
+	assert_false(_handler_for(_game.active_actor).paused, "and the new player's input runs")
+
+
 # The screen follows the player down (D-094). The Surface spawn sits
 # over -1's home cave, so the landing is open.
 func test_the_screen_follows_the_player_down_a_level() -> void:
 	var actor: Actor = _actors()[0]
 	var here: WorldPos = actor.current_WorldPos
 	assert_true(actor.move_to(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
+	# The screen switches halfway through the fade (D-142)
+	_game.view.finish_transition()
 	var renderer: LevelRenderer = _game.get_node("GameViewport/LevelRenderer")
 	var top: Texture2D = renderer.material.get_shader_parameter("top_data")
 	var expected: int = LevelRenderer.level_width(_game.world.level_at(1).level_tiles)
