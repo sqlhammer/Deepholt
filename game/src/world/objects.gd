@@ -64,6 +64,13 @@ func reset_ids() -> void:
 	_next_fixture_id = FIRST_ID
 
 
+# Never hands out `id` or any id below it again. A load calls it with
+# the highest fixture id it brought back, since loaded levels draw no
+# ids. Until the counter is saved itself (slice 004, D-118).
+func reserve_ids_through(id: int) -> void:
+	_next_fixture_id = maxi(_next_fixture_id, id + 1)
+
+
 # Why a fixture of `kind` can't go on `tile` of a level, or NONE. Takes
 # the level's stores rather than finding them, so generation can ask it
 # about levels that aren't in the tree yet. `tiles_above` is the level

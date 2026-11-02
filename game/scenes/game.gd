@@ -19,6 +19,19 @@ var load_source: SaveGame.SOURCE = SaveGame.SOURCE.NEW
 # Set when neither save in the slot loaded: the game hasn't started,
 # and saving would write over the files the player needs back
 var _saving_refused: bool = false
+# --new-game, after -- on the command line or in the editor's run
+# arguments, starts a fresh world (D-111). Set it before _ready to
+# choose; tests do.
+var new_game: bool = OS.get_cmdline_user_args().has("--new-game")
+var _autosave_timer: Timer
+# How long the last save and the last load took, from the game's side:
+# the whole world, read or written
+var last_save_msec: float = -1.0
+var last_load_msec: float = -1.0
+
+# How often the game saves while playing (D-110). A tuning number: the
+# first to move into the tuning profile when it's built (D-116).
+const AUTOSAVE_INTERVAL_SECONDS: float = 300.0
 
 enum REFUSAL_REASON {
 	NONE,
@@ -42,6 +55,11 @@ func refresh_current_view() -> void:
 		if _lvl.depth == view.shown_depth:
 			get_level_renderer().show_level(_lvl.level_tiles)
 			break
+	# The view only announces a depth that changed, so a load onto the
+	# depth already shown would leave the fixtures drawn from the old
+	# world, and listening to it (R-B9)
+	if view.shown_depth != View.NO_DEPTH:
+		$GameViewport/FixtureRenderer.show_depth(view.shown_depth)
 
 
 func grant_player_capabilities(actor: Actor) -> void:
@@ -56,7 +74,10 @@ func set_user_control(actor: Actor) -> void:
 	
 	# Attach input handling to the player
 	var input: InputHandler = InputHandler.new()
-	input.setup(actor, mouse_world_position, self)
+	input.setup(actor, mouse_world_position)
+	input.quick_save_requested.connect(save_game)
+	input.load_requested.connect(load_game)
+	input.save_and_quit_requested.connect(save_and_quit_to_desktop)
 	add_child(input)
 	_input_handlers.append(input)
 	
@@ -107,8 +128,12 @@ func save_game() -> bool:
 	var active_play_time: float = $ActivePlayTimer.seconds
 	var total_play_time: float = $TotalPlayTimer.seconds
 	
-	# Save
+	# Save, timed: F3 shows whether it's short enough to go unfelt
+	# mid-play (D-110)
+	var started: int = Time.get_ticks_usec()
 	var result = SaveGame.save_game(current_save_slot, levels, actors, active_actor, World.world_seed, tuning_profile_id, active_play_time, total_play_time, saves_root)
+	last_save_msec = (Time.get_ticks_usec() - started) / 1000.0
+	$DebugOverlay.show_save_time(last_save_msec)
 	if result != SaveGame.REFUSAL_REASON.NONE:
 		return false
 	
@@ -122,6 +147,7 @@ func load_game() -> REFUSAL_REASON:
 	if current_save_slot == "": 
 		return REFUSAL_REASON.LOAD_FAILED_NO_OP
 	
+	var started: int = Time.get_ticks_usec()
 	var slot: SaveGame.SlotLoad = SaveGame.load_slot(current_save_slot)
 	if slot.source == SaveGame.SOURCE.NEW: return REFUSAL_REASON.LOAD_FAILED_NO_OP
 	if slot.source == SaveGame.SOURCE.REFUSED:
@@ -145,6 +171,7 @@ func load_game() -> REFUSAL_REASON:
 	# load levels
 	var _lvls: Array[Level] = _get_levels_from_save_data(game_data)
 	_attach_levels(_lvls)
+	Objects.reserve_ids_through(SaveGame.highest_fixture_id(_lvls))
 	
 	# Trigger the view to refresh the tiles
 	if not view: _create_view()
@@ -168,6 +195,8 @@ func load_game() -> REFUSAL_REASON:
 	
 	$DebugOverlay.show_load_problems(game_data.get("problems", []).size())
 	load_source = slot.source
+	last_load_msec = (Time.get_ticks_usec() - started) / 1000.0
+	$DebugOverlay.show_load_time(last_load_msec)
 	if slot.source == SaveGame.SOURCE.BACKUP: _report_backup_load(slot)
 	$DebugOverlay.show_load_source(load_source, game_data.format_version)
 	return REFUSAL_REASON.NONE
@@ -192,7 +221,7 @@ func _report_refused_slot(slot: SaveGame.SlotLoad) -> void:
 	var text: String = "No save could be loaded, so the game hasn't started.\n"
 	for refusal: String in slot.refusals:
 		text += "%s.\n" % _shown_refusal(refusal)
-	text += "Both files are left as they were. Move them out of the slot folder to start a new world."
+	text += "Both files are left as they were. Launch with --new-game to move them aside and start a new world."
 	push_error(text)
 	show_notice(text)
 
@@ -256,20 +285,65 @@ func _ready() -> void:
 	$ActivePlayTimer.start() # TODO: When we have a main menu, don't start until the game has loaded and is playable
 	
 	_set_current_save_slot()
-	var loaded: REFUSAL_REASON = load_game()
-	if loaded == REFUSAL_REASON.NONE: return
-	# No world, and no saving: the refused files stay as they are
-	if loaded == REFUSAL_REASON.LOAD_REFUSED:
-		_saving_refused = true
-		load_source = SaveGame.SOURCE.REFUSED
-		$DebugOverlay.show_load_source(load_source, -1)
-		return
+	if new_game:
+		if not _move_old_world_aside():
+			_refuse_to_start()
+			return
+	else:
+		var loaded: REFUSAL_REASON = load_game()
+		if loaded == REFUSAL_REASON.NONE:
+			_start_autosave()
+			return
+		# No world, and no saving: the refused files stay as they are
+		if loaded == REFUSAL_REASON.LOAD_REFUSED:
+			_refuse_to_start()
+			return
 
 	load_source = SaveGame.SOURCE.NEW
 	$DebugOverlay.show_load_source(load_source, SaveGame.FORMAT_VERSION)
 	_spawn_levels()
 	_create_view()
 	_spawn_player("DefaultName")
+	_start_autosave()
+
+
+func _refuse_to_start() -> void:
+	_saving_refused = true
+	load_source = SaveGame.SOURCE.REFUSED
+	$DebugOverlay.show_load_source(load_source, -1)
+
+
+# A new game keeps the old world beside it, never under it, before
+# anything is generated: world.save becomes world.<time>.save, and its
+# backup world.backup.<time>.save (D-111, D-123). Refused saves are
+# moved the same way. False if a file couldn't be moved: the game
+# mustn't start over a world it couldn't keep.
+func _move_old_world_aside() -> bool:
+	if current_save_slot == "": return true
+	var now: int = int(Time.get_unix_time_from_system())
+	var moves: Dictionary = {SaveGame.SAVE_BASE_NAME: "", SaveGame.BACKUP_NAME: "backup"}
+	for file: String in moves:
+		var path: String = current_save_slot.path_join(file)
+		if not FileAccess.file_exists(path): continue
+		if SaveGame.move_aside(path, moves[file], now) == "":
+			var text: String = "Couldn't move %s aside for a new game, so the game hasn't started." % [
+				_shown_path(path)]
+			push_error(text)
+			show_notice(text)
+			return false
+	return true
+
+
+# Saves on a timer while playing (D-110). Pausable, so a paused game
+# doesn't save, and only started once there's a world.
+func _start_autosave() -> void:
+	_autosave_timer = Timer.new()
+	_autosave_timer.name = "AutosaveTimer"
+	_autosave_timer.wait_time = AUTOSAVE_INTERVAL_SECONDS
+	_autosave_timer.process_mode = Node.PROCESS_MODE_PAUSABLE
+	_autosave_timer.timeout.connect(save_game)
+	add_child(_autosave_timer)
+	_autosave_timer.start()
 
 
 func _prepare_then_quit() -> void:
@@ -329,9 +403,14 @@ func _free_actors() -> void:
 	_active_actor = null
 
 
+# Out of the tree now, freed at the end of the frame: the debug load
+# key reaches here from inside a handler's own _input, and freeing the
+# handler there would free it with its code still running (R-B8).
 func _free_inputhandlers() -> void:
 	for handler in _input_handlers:
-		if is_instance_valid(handler): handler.free()
+		if not is_instance_valid(handler): continue
+		if handler.get_parent(): handler.get_parent().remove_child(handler)
+		handler.queue_free()
 	_input_handlers.clear()
 
 

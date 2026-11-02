@@ -201,23 +201,37 @@ saves, the backup fallback, F3's save line and the section's tests were Agent mo
 
 ## F. New game, the timer, and feel
 
-*Mode: ask before starting.*
+*Mode: Agent, 2026-11-01. The by-hand check and the decision by looking are Derik's.*
 
-- [ ] `--new-game` (a user argument after `--`) moves an existing save aside to
-  `world.<timestamp>.save` before anything is generated (D-111).
-- [ ] The autosave timer runs while playing; its interval is a named constant, to move into the
-  tuning profile when it's built (D-110, D-116).
+- [x] `--new-game` (a user argument after `--`) moves an existing save aside to
+  `world.<timestamp>.save` before anything is generated (D-111). *Its backup goes too, to
+  `world.backup.<timestamp>.save`: left behind, a crash before the new world's first save would
+  bring the old world back from it. Refused saves move the same way, which is the way out of
+  a slot that won't start. If a file can't be moved, the game doesn't start.
+  `game.gd`'s `new_game` can be set before `_ready`; tests do.*
+- [x] The autosave timer runs while playing; its interval is a named constant, to move into the
+  tuning profile when it's built (D-110, D-116). *`AUTOSAVE_INTERVAL_SECONDS`, 300 for now:
+  D-110 leaves the number open. A pausable `Timer`, started once there's a world, so a game
+  that didn't start never has one.*
 - [ ] By hand: new game with a save present gives a fresh world, and the old save is beside it,
   intact. [5]
-- [ ] Measure a full save and a full load at all eight levels.
-- [ ] **Decide, by looking:** is the timer's save felt mid-play? Over about a frame, split it into
+- [x] Measure a full save and a full load at all eight levels. *Headless, debug build,
+  2026-11-01, the generated world (a 3.6 KB file): a save takes about 1.7 ms; a load about
+  470 ms. Of the load, about 375 ms is `_deserialize_levels`, about 90 ms is `game.gd` swapping
+  the world in, and reading the file is 0.3 ms. *Corrected 2026-11-01:* the 375 ms isn't
+  regeneration, as first written. It's `LevelTiles.new` filling every tile of all eight levels
+  in a GDScript loop before the saved layers replace them; building from the save (R-P2) left
+  the load time where it was. *Tuned, Agent mode, 2026-11-01:* `_init_tile_array` uses
+  `fill`, and a load now takes about 100 ms (a save is unchanged at about 2 ms). The test suite
+  went from about 66 s to about 15 s with it. F3 shows "Last save" and "Last load" each time.*
+- [x] **Decide, by looking:** is the timer's save felt mid-play? Over about a frame, split it into
   a main-thread snapshot and a compress-and-write on a worker thread (D-110). Is the load felt at
-  launch?
+  launch? *Derik, 2026-11-01: neither is felt. The save stays on the main thread.*
 
 ## R. Save/load code review (2026-10-29)
 
 *Mode: ask before starting.* Review of B's F5/F6 save and load (commit `4b0243f`), re-checked
-against the code on 2026-10-30. Ids match the review, so they can be referred to by number.
+against the code on 2026-10-30 and again on 2026-11-01, after D, E and F. Ids match the review, so they can be referred to by number.
 Items marked **→ 004** are part of slice 004's job
 ([Moved to slice 004](#moved-to-slice-004-d-118)); they stay here only so the list is complete.
 
@@ -226,81 +240,116 @@ Items marked **→ 004** are part of slice 004's job
   `game.load_game()` has an end-to-end test now (`test_a_load_puts_the_player_on_a_level_in_the_tree`).
 - [x] **R-B2. The type checks for a damaged save never got to run.** Levels and actors are now
   each checked in their loop, before the typed call.
-- [ ] **R-B3. A load can leave the world with no levels and crash, or with some missing.**
-  `_deserialize_levels` skips bad levels; if all fail, `game.gd` frees the running world and
-  attaches nothing, and the actor has no level. The load has to be all or nothing.
-  **→ 004** for the swap itself (build the new world to one side, check it, swap it in one move).
-  A guard here meanwhile: refuse the load if any saved level didn't come back.
+- [x] **R-B3. A load can leave the world with some levels missing.** `_deserialize_levels`
+  skips a bad level, and the load goes on without it. *Since E, the crash is gone: if every
+  level fails, no actor can be placed, so the file is refused before `game.gd` frees anything,
+  and the backup is tried.* The load has to be all or nothing. **→ 004** for the swap itself
+  (build the new world to one side, check it, swap it in one move). A guard here meanwhile:
+  refuse the file if any saved level didn't come back, which E's refusal path then handles.
+  *The guard is in, Agent mode, 2026-11-01: `_load_file` refuses a file with any saved level
+  that didn't load, naming the depths, and frees the ones that did; the backup is tried. The
+  swap itself is still 004's.*
 - [ ] **R-B4. A level whose radius was tuned disappears on load.** `_deserialize_level` builds
   from the recipe, not the saved bound, so a different radius fails the size check and the level
-  is dropped (D-112 says the saved bound wins). **→ 004.** A saved depth with no recipe row still
-  crashes in `generate_level`: that part is C's "refused, not clamped" item.
+  is dropped (D-112 says the saved bound wins). **→ 004.** *A saved depth with no recipe row no
+  longer crashes: C refuses it.*
 - [x] **R-B5. The saved tool's path was passed to `load()`,** which could run code from an edited
-  save. `_load_tool` now only loads `ToolData` from inside `TOOL_DIR`. **Open:** D-114 decided
-  the equipped tool is *not* saved. Saving it needs a D-nnn reversing that part of D-114, or the
-  field comes out.
+  save. `_load_tool` now only loads `ToolData` from inside `TOOL_DIR`. *The field came out:
+  the equipped tool isn't saved, as D-114 has it.* **Open:** what's left of it is dead code to
+  remove: `_load_tool`, `TOOL_DIR`, and the optional `equipped` check in
+  `_is_valid_actor_entry`. Nothing calls them.
 - [x] **R-B6. Actors were created against the old levels.** Fixed by D-117: actors are handed the
   levels the load built. The workaround `setup()` and its `# PROBLEM` comment are gone.
-- [ ] **R-B7. Actors that aren't active are lost and leak.** `game.gd`'s load only calls
+- [x] **R-B7. Actors that aren't active are lost and leak.** `game.gd`'s load only calls
   `_create_player` for actors with `is_active`; the rest are never added to the tree or freed.
   Any actor flagged active gets `_create_player`, so an edited save with two gets two input
-  handlers. Overlaps D's items on `kind` and `local_actor_id`.
-- [ ] **R-B8. The input handler frees itself while it's running.** F6 → `InputHandler._input` →
+  handlers. Overlaps D's items on `kind` and `local_actor_id`. *Fixed by D: every loaded actor
+  joins the tree by its kind, and exactly one player, the one `local_actor_id` names, is given
+  control.*
+- [x] **R-B8. The input handler frees itself while it's running.** F6 → `InputHandler._input` →
   `game.load_game()` → `_free_inputhandlers()` → `free()` on the handler still on the stack. Use
-  `queue_free()` after `remove_child`, or start the load with `call_deferred`.
-- [ ] **R-B9. The fixture renderer keeps showing the old level when the depth doesn't change.**
+  `queue_free()` after `remove_child`, or start the load with `call_deferred`. *Still so:
+  `_free_inputhandlers` calls `free()` on each handler. R-P10 would move the key off the
+  handler, which ends this too.* *Fixed, Agent mode, 2026-11-01: `_free_inputhandlers` takes
+  each handler out of the tree and `queue_free`s it, so one pressing the load key finishes
+  its call and goes at the end of the frame.*
+- [x] **R-B9. The fixture renderer keeps showing the old level when the depth doesn't change.**
   It rebuilds only on `shown_depth_changed`. A load onto the depth already shown leaves it
   listening to the old level's `LevelFixtures`, and its ladder tops reading the old tiles.
   `refresh_current_view` re-points tiles only. 004 re-points every listener on a swap; this can
-  be fixed here first.
-- [ ] **R-B10. Small ones.**
+  be fixed here first. *Still so: since D the view follows the loaded player, but it only
+  announces a depth that changed.* *Fixed, Agent mode, 2026-11-01: `refresh_current_view`
+  also calls the fixture renderer's new `show_depth`, which redraws the shown depth from the
+  levels in the world now.*
+- [x] **R-B10. Small ones.** *Both fixed, Agent mode, 2026-11-01.*
   - `_serialize_actors` calls `_serialize_actor` twice per actor.
   - `_get_file_data` copies the body's keys over the header, so the body's `format_version`
-    replaces the header's.
+    replaces the header's. *Since E this matters more: the newer-version check reads the
+    merged value, so a header saying version 2 over a body saying 1 would load. The body
+    still carries its own `format_version` (`_serialize_all` writes it).* *The body's copy
+    is now skipped when merging, so the header's is the one checked; the body keeps
+    writing it, which a test pins.*
 
 **Pitfalls for the future**
-- [ ] **R-P1. The code has drifted from D-114 and D-115.** Actors are keyed by `actor_name`, not
+- [x] **R-P1. The code has drifted from D-114 and D-115.** Actors are keyed by `actor_name`, not
   `actor_id`, so two actors with one name overwrite each other. No `kind`. A per-actor
   `is_active` flag where D-115 has one `local_actor_id`. The equipped tool is saved (R-B5).
-  These are D's items.
-- [ ] **R-P2. Loaded levels run generation's side effects.** `generate_level` draws fixture ids
+  These are D's items. *Fixed by D: keyed by `actor_id`, with `actor_kind`, one
+  `local_actor_id` in the header, and no equipped tool.*
+- [x] **R-P2. Loaded levels run generation's side effects.** `generate_level` draws fixture ids
   from `Objects.next_id()` without a reset, so ids climb with every F6. It also places the world
   spawn from the re-hashed seed, not the saved one. **→ 004** (building from the save).
-- [ ] **R-P3. No version check.** A save from a newer version loads; the migration function is
-  a stub. E's items.
+  *Done here, Agent mode, 2026-11-01: a level the save holds whole (every layer and its
+  fixtures) is built from the save alone. One missing a part is still generated first, so
+  the part keeps what was generated. Loaded levels draw no ids, so the load moves the fixture
+  counter past the highest id it brought back (`Objects.reserve_ids_through`). 004 replaces
+  that with the saved counter (D-118).*
+- [x] **R-P3. No version check.** A save from a newer version loads; the migration function is
+  a stub. E's items. *Fixed by E: a newer version is refused, and older ones step up through
+  `_migration_from`.*
 - [x] **R-P4. A failed load leaked nodes.** Every section is checked before any node is built,
-  and `SaveGame.free_game_data()` frees what a refused load built. R-B7's inactive actors still
-  leak.
+  and `SaveGame.free_game_data()` frees what a refused load built. *R-B7's inactive actors no
+  longer leak (D), and a file refused for having no placeable actor now frees the levels it
+  built (E).*
 - [x] **R-P5. Tests touched real saves.** `game.gd` has `saves_root`, set before `_ready`; scene
   tests use `user://test_saves/…` via `tests/save_dirs.gd`.
 - [x] **R-P6. The slot regex wasn't anchored.** Now `^slot-\d{3}$`. **Still open:** the first slot
   is picked by `get_directories()` order, which nothing guarantees; sort the slots.
 - [x] **R-P7. `Global.is_regex_match` printed on every call.** Gone; a bad pattern is a
   `push_error`.
-- [ ] **R-P8. Layer names come from the `LAYER` enum.** `_serialize_tile_layers` turns each enum
+- [x] **R-P8. Layer names come from the `LAYER` enum.** `_serialize_tile_layers` turns each enum
   name into a property name (`level_tiles.get(_key)`). A `LAYER` entry with no property crashes
   the save on `null.compress`. Use the explicit `["ground", "top", "ore"]` list
-  `_is_valid_level_entry` already has, in one shared place.
-- [ ] **R-P9. No upper limit on a saved radius.** An edited save with a huge radius makes
+  `_is_valid_level_entry` already has, in one shared place. *`SaveGame.TILE_LAYERS`, used
+  by the save, the load and the checks; a layer not on it is ignored on load. Agent mode,
+  2026-11-01.*
+- [x] **R-P9. No upper limit on a saved radius.** An edited save with a huge radius makes
   `array_size` and `decompress` try to allocate gigabytes. One line in `_is_valid_level_entry`.
-- [ ] **R-P10. Save and load keys live in the per-actor `InputHandler`.** Two local actors would
+  *`MAX_SAVED_RADIUS` = 1024: about 4 MB a layer, well past the largest recipe's 207, so a
+  tuned radius still loads. Agent mode, 2026-11-01.*
+- [x] **R-P10. Save and load keys live in the per-actor `InputHandler`.** Two local actors would
   save twice, and the handler calls `game.save_game()` directly through an untyped `game: Node`,
   where the coding standards say signals over direct calls. Move the keys to `game.gd`, or emit
-  `quick_save_requested` / `load_requested`.
+  `quick_save_requested` / `load_requested`. *Signals, as Derik chose: the handler emits
+  `quick_save_requested`, `load_requested` and `save_and_quit_requested`, `game.gd` connects
+  them in `set_user_control`, and the handler no longer holds the game. Agent mode,
+  2026-11-01.*
 - [x] **R-P11. Input handlers were found by name.** `game.gd` keeps `_input_handlers`.
 
 **Suggestions**
 - [ ] **R-S1. Do the load in phases:** validate, build levels from saved bounds, swap the world,
   build actors, re-point the view and renderers. **→ 004**; it is the shape D-118 gives a load.
-- [ ] **R-S2. Missing tests.** Done: a String level key, a non-Dictionary level entry, actors on
-  the loaded levels, an actor whose depth didn't load. Still to write: a non-Dictionary actor
-  entry; a load where every level fails leaves the running world untouched (with R-B3); two
-  actors round-tripping (D's test).
+- [x] **R-S2. Missing tests.** Done: a String level key, a non-Dictionary level entry, actors on
+  the loaded levels, an actor whose depth didn't load, a non-Dictionary actor entry, and two
+  actors round-tripping (D). Still to write: a load where every level fails leaves the running
+  world untouched (with R-B3). *Written, Agent mode, 2026-11-01: the save is refused, and the
+  same levels and player carry on, still saving. R-B3's partial case is still open.*
 - [ ] **R-S3. `_get_levels_from_save_data`** only turns a Dictionary into an Array. It goes once
   `SaveGame` returns levels in depth order, or a world (004).
-- [ ] **R-S4. Tidy-ups.** Pass `ALLOW_OBJECTS` to both `get_var` calls; "it's" → "its" in three
-  comments in `save_game.gd`; several comments are over 70 characters; remove the `# Objects` /
-  `# NPCs` placeholders or point them at checklist items.
+- [ ] **R-S4. Tidy-ups.** "it's" → "its" in three comments in `save_game.gd` ("move into it's
+  own func", and "so that it's format can change" twice); several comments are over 70
+  characters; remove the `# Objects` / `# NPCs` placeholders or point them at checklist items.
+  *Done: `ALLOW_OBJECTS` is passed to every `get_var`, through `_read_var` (E).*
 
 **Found while fixing the review**
 - [x] **R-F1. `test_save_game.gd` was silently skipped** (renamed `serialize`/`deserialize`, the

@@ -16,6 +16,14 @@ const SAVES_DIR: String = "user://saves"
 const SAVE_BASE_NAME: String = "world.save"
 const ALLOW_OBJECTS: bool = false
 const COMPRESSION_MODE: FileAccess.CompressionMode = FileAccess.COMPRESSION_ZSTD
+# Every tile layer a save holds, by the name it's saved under and the
+# LevelTiles property it's read from (D-112). One list, so the save,
+# the load and the checks can't disagree (R-P8).
+const TILE_LAYERS: Array[String] = ["ground", "top", "ore"]
+# The largest radius a saved bound may have. Well past every recipe's
+# (207 at most), and an edited save can't make the load allocate
+# gigabytes: at this radius a layer is about 4 MB (R-P9).
+const MAX_SAVED_RADIUS: int = 1024
 const DEFAULT_TUNING_PROFILE_ID: String = "none"
 const BACKUP_NAME: String = SAVE_BASE_NAME + ".bak"
 # The header keys a save is refused without, and the type each must be
@@ -184,6 +192,15 @@ static func _load_file(file_path: String, why: Array[String]) -> Dictionary:
 
 	# Levels
 	game_data["levels"] = _deserialize_levels(file_data.levels)
+	# All or nothing: a world missing a level isn't the world that was
+	# saved, so the file is refused and the backup tried (R-B3). Each
+	# skipped level has said why in its own warning.
+	var missing: Array = file_data.levels.keys().filter(
+		func(depth: Variant) -> bool: return not game_data.levels.has(depth))
+	if missing:
+		why.append("has levels that couldn't be loaded: %s" % [missing])
+		free_game_data(game_data)
+		return {}
 	# Loaded fixtures went straight in; now they're checked, with the
 	# world's ramps and ladders, and reported, never dropped (D-113).
 	var loaded: Array[Level] = []
@@ -396,7 +413,7 @@ static func _serialize_actors(actors: Array[Node]) -> Dictionary:
 	for actor in actors:
 		var actor_data: Dictionary = _serialize_actor(actor)
 		if not actor_data: continue
-		data[actor.actor_id] = _serialize_actor(actor)
+		data[actor.actor_id] = actor_data
 	
 	return data
 
@@ -482,9 +499,17 @@ static func _deserialize_level(p_depth: int, p_level: Dictionary) -> Level:
 	if p_level.has("tiles"):
 		layers = _deserialize_tile_layers(p_level)
 	
-	# Build level
-	var level_recipe: LevelRecipe = World.level_recipes.get_recipe(p_depth)
-	var level: Level = LevelGenerator.generate_level(level_recipe)
+	# Build level. A level the save holds whole is built from the save
+	# alone: generating it would draw fixture ids and place a world
+	# spawn only for the save to replace them (R-P2). One missing a
+	# layer or its fixtures, from before they were saved, is generated
+	# first, so the missing parts keep what was generated.
+	var level: Level
+	if _holds_whole_level(p_level, layers):
+		level = Global.level_packed_scene.instantiate()
+		level.setup(p_depth)
+	else:
+		level = LevelGenerator.generate_level(World.level_recipes.get_recipe(p_depth))
 	# Never use _set_level_seed() because it recomputes the seed. The save is the source of truth
 	level.level_seed = p_level["level_seed"]
 	
@@ -501,6 +526,26 @@ static func _deserialize_level(p_depth: int, p_level: Dictionary) -> Level:
 		level.level_fixtures = _deserialize_fixtures(p_depth, p_level.fixtures)
 	
 	return level
+
+
+# Whether a saved level has every tile layer and its fixtures, so
+# nothing in it has to come from generation.
+static func _holds_whole_level(p_level: Dictionary, layers: Dictionary) -> bool:
+	if not p_level.has("fixtures"): return false
+	for layer: String in TILE_LAYERS:
+		if not layers.has(layer): return false
+	return true
+
+
+# The highest fixture id in these levels, or -1 if they hold none. A
+# load moves the id counter past it, so a new fixture can't take an id
+# already in the world.
+static func highest_fixture_id(levels: Array[Level]) -> int:
+	var highest: int = -1
+	for level: Level in levels:
+		for fixture: Fixture in level.level_fixtures.all():
+			highest = maxi(highest, fixture.id)
+	return highest
 
 
 # p_fixtures must already have passed _is_valid_level_entry. Each goes
@@ -525,10 +570,10 @@ static func _deserialize_tile_layers(level_data: Dictionary) -> Dictionary:
 	var bound: Dictionary = level_data["bound"]
 	var layer_size: int = LevelTiles.array_size(bound["radius"])
 	
-	for key in tiles:
-		if tiles[key] is not PackedByteArray: continue
-		var bytes: PackedByteArray = tiles[key]
-		layers[key] = bytes.decompress(layer_size, COMPRESSION_MODE)
+	for layer: String in TILE_LAYERS:
+		if tiles.get(layer) is not PackedByteArray: continue
+		var bytes: PackedByteArray = tiles[layer]
+		layers[layer] = bytes.decompress(layer_size, COMPRESSION_MODE)
 	
 	return layers
 
@@ -537,12 +582,9 @@ static func _serialize_tile_layers(level_data: Dictionary, level: Level) -> void
 	# Level and Dictionary are byref, therefore their updates don't need to be returned
 	if not level_data.has("tiles"): level_data["tiles"] = {}
 	var tiles: Dictionary = level_data["tiles"]
-	for key in level.level_tiles.LAYER:
-		var _key: String = str(key).to_lower()
-		if _key == "none": continue
-		
-		var data: PackedByteArray = level.level_tiles.get(_key)
-		tiles[_key] = data.compress(COMPRESSION_MODE)
+	for layer: String in TILE_LAYERS:
+		var data: PackedByteArray = level.level_tiles.get(layer)
+		tiles[layer] = data.compress(COMPRESSION_MODE)
 
 
 # The file's two parts, its version and its data, merged. {} if either
@@ -569,7 +611,10 @@ static func _get_file_data(file_path: String, why: Array[String]) -> Dictionary:
 	if not data is Dictionary:
 		why.append("is cut short or unreadable")
 		return {}
+	# The header's version is the one checked, so the body's copy
+	# (save_game writes one) mustn't replace it (R-B10)
 	for key in data:
+		if key == "format_version": continue
 		dict_data[key] = data[key]
 
 	return dict_data
@@ -602,7 +647,7 @@ static func _is_valid_level_entry(key: Variant, entry: Variant) -> bool:
 	if not bound is Dictionary: return false
 	if not bound.get("depth") is int: return false
 	if not bound.get("radius") is int: return false
-	if bound["radius"] < 0: return false
+	if bound["radius"] < 0 or bound["radius"] > MAX_SAVED_RADIUS: return false
 	# The key and the bound both name the depth; a save where they
 	# differ has been edited or damaged, and neither can be trusted.
 	if bound["depth"] != key: return false
@@ -613,7 +658,7 @@ static func _is_valid_level_entry(key: Variant, entry: Variant) -> bool:
 	if not entry.has("tiles"): return true
 	var tiles: Variant = entry["tiles"]
 	if not tiles is Dictionary: return false
-	for layer: String in ["ground", "top", "ore"]:
+	for layer: String in TILE_LAYERS:
 		if tiles.has(layer) and not tiles[layer] is PackedByteArray: return false
 
 	return true

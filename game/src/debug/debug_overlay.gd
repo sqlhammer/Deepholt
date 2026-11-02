@@ -73,6 +73,8 @@ func _get_group(title: String) -> int:
 		WORLD_SPAWN_SECTION: return 0
 		LOAD_PROBLEMS_SECTION: return 0
 		SAVE_SECTION: return 0
+		SAVE_TIME_SECTION: return 0
+		LOAD_TIME_SECTION: return 0
 		"Player: ": return 10
 	
 	return group
@@ -223,6 +225,19 @@ const SAVE_SECTION: String = "Save"
 # (outcome 7). A refused slot has no version to show.
 func show_load_source(source: SaveGame.SOURCE, format_version: int) -> void:
 	set_section(SAVE_SECTION, load_source_text(source, format_version))
+
+
+const SAVE_TIME_SECTION: String = "Last save"
+const LOAD_TIME_SECTION: String = "Last load"
+
+
+# Over about a frame (16 ms), a timer save is felt mid-play (D-110).
+func show_save_time(msec: float) -> void:
+	set_section(SAVE_TIME_SECTION, "%.1f ms" % msec)
+
+
+func show_load_time(msec: float) -> void:
+	set_section(LOAD_TIME_SECTION, "%.1f ms" % msec)
 
 
 static func load_source_text(source: SaveGame.SOURCE, format_version: int) -> String:

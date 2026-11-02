@@ -4,7 +4,12 @@ class_name InputHandler
 var actor: Actor
 var mouse_world_position: Callable
 var current_device_scheme: DEVICE_SCHEME = DEVICE_SCHEME.GAMEPAD
-var game: Node
+
+# The game-wide keys. The handler only asks; the game decides what a
+# save or a load is (R-P10).
+signal quick_save_requested
+signal load_requested
+signal save_and_quit_requested
 
 # Inside this distance from the feet the mouse's direction is
 # mostly noise, so it counts as no aim and facing holds.
@@ -17,22 +22,21 @@ enum DEVICE_SCHEME {
 	MOUSE_AND_KEYBOARD,
 }
 
-func setup(p_actor: Actor, p_mouse_world_position: Callable, p_game: Node) -> void:
+func setup(p_actor: Actor, p_mouse_world_position: Callable) -> void:
 	actor = p_actor
 	name = "InputHandler%s" % p_actor.actor_name
 	mouse_world_position = p_mouse_world_position
-	game = p_game
 
 
 func _input(event: InputEvent) -> void:
 	_update_device_scheme(event)
 	
 	if event.is_action_pressed("quick_save"):
-		game.save_game()
+		quick_save_requested.emit()
 	if event.is_action_pressed("load"):
-		game.load_game()
+		load_requested.emit()
 	if event.is_action_pressed("save_and_quit_to_desktop"):
-		game.save_and_quit_to_desktop()
+		save_and_quit_requested.emit()
 
 
 func _physics_process(_delta: float) -> void:

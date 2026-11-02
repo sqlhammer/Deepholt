@@ -21,8 +21,7 @@ func before_each() -> void:
 	# actor needs its Sprite2D child.
 	_actor = autofree(Global.actor_packed_scene.instantiate())
 	_handler = autofree(InputHandler.new())
-	# No game: nothing here presses quick_save, the only use of it.
-	_handler.setup(_actor, func() -> Vector2: return _mouse_at, null)
+	_handler.setup(_actor, func() -> Vector2: return _mouse_at)
 
 
 func after_each() -> void:
@@ -32,6 +31,35 @@ func after_each() -> void:
 
 func test_setup_gives_the_handler_its_actor() -> void:
 	assert_eq(_handler.actor, _actor, "the handler drives the actor it was given")
+
+
+# --- the game-wide keys: asked for by signal, never called (R-P10) ---
+
+func _press(action: StringName) -> void:
+	var event: InputEventAction = InputEventAction.new()
+	event.action = action
+	event.pressed = true
+	_handler._input(event)
+
+
+func test_each_game_key_emits_its_request_and_only_its_own() -> void:
+	var requests: Dictionary = {
+		&"quick_save": "quick_save_requested",
+		&"load": "load_requested",
+		&"save_and_quit_to_desktop": "save_and_quit_requested",
+	}
+	watch_signals(_handler)
+	for action: StringName in requests:
+		# The watcher counts across presses, so each press is judged
+		# by what it added
+		var before: Dictionary = {}
+		for signal_name: String in requests.values():
+			before[signal_name] = get_signal_emit_count(_handler, signal_name)
+		_press(action)
+		for signal_name: String in requests.values():
+			var expected: int = 1 if signal_name == requests[action] else 0
+			assert_eq(get_signal_emit_count(_handler, signal_name) - before[signal_name], expected,
+				"%s: %s emitted %d times" % [action, signal_name, expected])
 
 
 # --- choosing the aim device ---

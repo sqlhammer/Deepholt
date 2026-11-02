@@ -127,10 +127,11 @@ func test_moving_within_a_level_does_not_save() -> void:
 
 # Quits this game and launches another over the same saves root, so
 # its _ready reads whatever the slot holds now.
-func _relaunch() -> void:
+func _relaunch(new_game: bool = false) -> void:
 	_game.free()
 	_game = load("res://scenes/game.tscn").instantiate()
 	_game.saves_root = SAVES_ROOT
+	_game.new_game = new_game
 	add_child_autofree(_game)
 
 
@@ -205,6 +206,126 @@ func test_a_launch_with_both_saves_refused_does_not_start_or_save() -> void:
 	assert_string_contains(notice, ProjectSettings.globalize_path(_save_file()) + " is cut short")
 	assert_string_contains(notice, ProjectSettings.globalize_path(_backup_file()) + " is cut short")
 	assert_eq(_f3_save_line(), "refused: nothing loaded", "F3 says so")
+
+
+# --- a new game, and the autosave timer (D-110, D-111) ---
+
+func _slot_files(prefix: String) -> PackedStringArray:
+	var found: PackedStringArray = []
+	for file: String in DirAccess.get_files_at(SAVES_ROOT.path_join("slot-001")):
+		if file.begins_with(prefix): found.append(file)
+	return found
+
+
+func _slot_bytes(file: String) -> PackedByteArray:
+	return FileAccess.get_file_as_bytes(SAVES_ROOT.path_join("slot-001").path_join(file))
+
+
+# A Surface tile the generator leaves as rock, to dig.
+func _a_rock_tile() -> Vector2i:
+	var tiles: LevelTiles = World.get_level_by_depth(0).level_tiles
+	for x: int in range(-10, 11):
+		for y: int in range(-10, 11):
+			if tiles.get_top(x, y) == TileKind.TOP.MINABLE_ROCK: return Vector2i(x, y)
+	return Vector2i(999, 999)
+
+
+func test_the_command_line_flag_is_new_game_after_the_double_dash() -> void:
+	assert_false(_game.new_game, "the test run has no --new-game")
+
+
+func test_a_new_game_moves_the_save_and_backup_aside_and_starts_fresh() -> void:
+	var tile: Vector2i = _a_rock_tile()
+	assert_ne(tile, Vector2i(999, 999), "there's rock to dig")
+	World.get_level_by_depth(0).level_tiles.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
+	assert_true(_game.save_game(), "saved once")
+	assert_true(_game.save_game(), "and again, so there's a backup")
+	var save_bytes: PackedByteArray = _slot_bytes(SaveGame.SAVE_BASE_NAME)
+	var backup_bytes: PackedByteArray = _slot_bytes(SaveGame.BACKUP_NAME)
+	_relaunch(true)
+
+	assert_eq(_game.load_source, SaveGame.SOURCE.NEW, "a new world")
+	assert_eq(World.get_level_by_depth(0).level_tiles.get_top(tile.x, tile.y),
+		TileKind.TOP.MINABLE_ROCK, "fresh: the dig isn't in it")
+	assert_not_null(_game.active_actor, "with a player")
+	assert_false(FileAccess.file_exists(_save_file()), "world.save is moved aside")
+	assert_false(FileAccess.file_exists(_backup_file()), "and so is the backup")
+	var old_save: PackedStringArray = _slot_files("world.2")
+	var old_backup: PackedStringArray = _slot_files("world.backup.")
+	assert_eq(old_save.size(), 1, "the old save is beside it: %s" % [old_save])
+	assert_eq(old_backup.size(), 1, "and the old backup: %s" % [old_backup])
+	if old_save.size() == 1:
+		assert_true(Global.is_regex_match(old_save[0], r"^world\.\d{8}T\d{6}Z\.save$"),
+			"named world.<UTC time>.save (D-123)")
+		assert_true(_slot_bytes(old_save[0]) == save_bytes, "intact")
+	if old_backup.size() == 1:
+		assert_true(_slot_bytes(old_backup[0]) == backup_bytes, "intact")
+
+
+func test_a_new_game_with_no_save_just_starts() -> void:
+	_relaunch(true)
+	assert_eq(_game.load_source, SaveGame.SOURCE.NEW, "a new world")
+	assert_gt(_levels().size(), 0, "generated")
+
+
+# The way out of a slot whose saves are both refused (D-111).
+func test_a_new_game_moves_refused_saves_aside_and_starts() -> void:
+	assert_true(_game.save_game(), "saved once")
+	assert_true(_game.save_game(), "and again, so there's a backup")
+	_truncate(_save_file())
+	_truncate(_backup_file())
+	_relaunch(true)
+	assert_eq(_game.load_source, SaveGame.SOURCE.NEW, "a new world")
+	assert_true(_game.save_game(), "and it saves")
+	assert_eq(_slot_files("world.2").size(), 1, "the refused save is kept")
+	assert_eq(_slot_files("world.backup.").size(), 1, "and so is its backup")
+
+
+func _autosave() -> Timer:
+	return _game.get_node_or_null("AutosaveTimer")
+
+
+func test_the_autosave_timer_runs_at_its_named_interval_while_playing() -> void:
+	var timer: Timer = _autosave()
+	assert_not_null(timer, "a new world has an autosave timer")
+	if timer == null: return
+	assert_eq(timer.wait_time, _game.AUTOSAVE_INTERVAL_SECONDS, "at the named interval")
+	assert_false(timer.is_stopped(), "running")
+	assert_false(timer.one_shot, "and repeating")
+	assert_eq(timer.process_mode, Node.PROCESS_MODE_PAUSABLE, "paused with the game")
+
+
+func test_the_autosave_timer_saves_when_it_fires() -> void:
+	assert_false(FileAccess.file_exists(_save_file()), "no save yet")
+	_autosave().timeout.emit()
+	assert_true(FileAccess.file_exists(_save_file()), "the timer saved")
+
+
+func test_a_loaded_world_has_an_autosave_timer_too() -> void:
+	assert_true(_game.save_game(), "saved")
+	_relaunch()
+	assert_eq(_game.load_source, SaveGame.SOURCE.SAVE, "loaded")
+	assert_not_null(_autosave(), "the timer runs")
+
+
+func test_a_game_that_did_not_start_has_no_autosave_timer() -> void:
+	assert_true(_game.save_game(), "saved once")
+	assert_true(_game.save_game(), "and again, so there's a backup")
+	_truncate(_save_file())
+	_truncate(_backup_file())
+	_relaunch()
+	assert_push_error("No save could be loaded")
+	assert_null(_autosave(), "nothing to save")
+
+
+func test_f3_shows_how_long_the_last_save_and_load_took() -> void:
+	assert_true(_game.save_game(), "saved")
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "loaded")
+	var overlay: Node = _game.get_node("DebugOverlay")
+	assert_gte(_game.last_save_msec, 0.0, "the save was timed")
+	assert_gte(_game.last_load_msec, 0.0, "and the load")
+	assert_string_ends_with(overlay.debug_text[overlay.SAVE_TIME_SECTION].text, " ms")
+	assert_string_ends_with(overlay.debug_text[overlay.LOAD_TIME_SECTION].text, " ms")
 
 
 # --- loading actors (D-091, D-114, D-115) ---
@@ -582,9 +703,85 @@ func test_freeing_input_handlers_frees_only_the_games_own() -> void:
 	lookalike.name = "InputHandlerLookalike"
 	_game.add_child(lookalike)
 	_game._free_inputhandlers()
-	assert_false(is_instance_valid(handler), "the renamed handler is freed")
+	assert_null(handler.get_parent(), "the renamed handler is out of the tree")
+	assert_true(handler.is_queued_for_deletion(), "and on its way to being freed")
 	assert_true(is_instance_valid(lookalike), "the lookalike is left alone")
 	assert_eq(_game._input_handlers.size(), 0, "and the list is emptied")
+	await get_tree().process_frame
+	assert_false(is_instance_valid(handler), "freed by the end of the frame")
+
+
+# The debug load key reaches the load from inside the handler's own
+# _input: the handler must outlive its own call (R-B8).
+func test_the_load_key_replaces_the_handler_that_pressed_it() -> void:
+	assert_true(_game.save_game(), "saved")
+	var handler: InputHandler = _handler_for(_game.active_actor)
+	var press: InputEventAction = InputEventAction.new()
+	press.action = "load"
+	press.pressed = true
+	handler._input(press)
+	assert_true(is_instance_valid(handler), "the old handler finished its call")
+	assert_true(handler.is_queued_for_deletion(), "and goes at the end of the frame")
+	assert_eq(_handler_count(), 1, "one handler, for the loaded player")
+	assert_ne(_handler_for(_game.active_actor), handler, "a new one")
+	await get_tree().process_frame
+	assert_false(is_instance_valid(handler), "the old one is freed")
+
+
+func test_the_quick_save_key_saves_through_the_handler() -> void:
+	var handler: InputHandler = _handler_for(_game.active_actor)
+	var press: InputEventAction = InputEventAction.new()
+	press.action = "quick_save"
+	press.pressed = true
+	assert_false(FileAccess.file_exists(_save_file()), "no save yet")
+	handler._input(press)
+	assert_true(FileAccess.file_exists(_save_file()), "the game heard the request and saved")
+
+
+# A loaded world draws no fixture ids, so the counter is moved past
+# every id it brought back: a fixture placed after a fresh launch's
+# load can't take one already in the world (R-P2).
+func test_after_a_load_new_fixture_ids_are_past_every_loaded_one() -> void:
+	assert_true(_game.save_game(), "saved")
+	Objects.reset_ids()
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "loaded")
+	var next: int = Objects.next_id()
+	assert_gt(next, SaveGame.highest_fixture_id(_levels()), "the next id is a new one")
+
+
+# Every level in the save fails its checks: the save is refused before
+# anything is freed, and the running world carries on (R-B3, R-S2).
+func test_a_load_where_every_level_fails_leaves_the_running_world() -> void:
+	assert_true(_game.save_game(), "saved once, so there's no backup to fall back to")
+	var data: Dictionary = SaveGame.get_save_data(SAVES_ROOT.path_join("slot-001"))
+	for depth: Variant in data.levels:
+		data.levels[depth]["level_seed"] = "not a seed"
+	SaveGame._overwrite_data(SaveGame.FORMAT_VERSION, data, _save_file())
+	var levels: Array[Level] = _levels()
+	var actor: Actor = _game.active_actor
+
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.LOAD_REFUSED, "the load is refused")
+	assert_push_error("No save could be loaded")
+	assert_eq(_levels(), levels, "the same levels, still in the tree")
+	assert_true(is_instance_valid(actor), "the player wasn't freed")
+	assert_eq(_game.active_actor, actor, "and is still in control")
+	assert_true(_game.save_game(), "and the game still saves")
+
+
+# A load onto the depth already shown: the fixtures are drawn from the
+# loaded level, not the one it replaced (R-B9).
+func test_a_load_onto_the_shown_depth_redraws_its_fixtures() -> void:
+	var depth: int = _game.view.shown_depth
+	assert_true(_game.save_game(), "saved")
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "loaded")
+	assert_eq(_game.view.shown_depth, depth, "onto the same depth")
+	var renderer: FixtureRenderer = _game.get_node("GameViewport/FixtureRenderer")
+	var level: Level = World.get_level_by_depth(depth)
+	assert_eq(renderer._fixtures, level.level_fixtures, "drawing the loaded level's fixtures")
+	assert_eq(renderer._shown_tiles, level.level_tiles, "and its tiles for the ladder tops")
+	var below: Level = World.get_level_by_depth(depth + 1)
+	if below != null:
+		assert_eq(renderer._below, below.level_fixtures, "and the loaded level below's ladders")
 
 
 func test_user_control_points_the_camera_at_the_actor() -> void:

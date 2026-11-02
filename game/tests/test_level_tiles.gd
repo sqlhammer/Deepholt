@@ -128,6 +128,25 @@ func _surface() -> LevelTiles:
 	return LevelTiles.new(World.level_recipes.get_bounds(0))
 
 
+# Every byte of every layer starts as its default, the whole square,
+# corners outside the disc included.
+func test_a_new_level_is_its_default_kinds_throughout() -> void:
+	var tiles: LevelTiles = _surface()
+	var size: int = LevelTiles.array_size(tiles.level_bound.radius)
+	var defaults: Dictionary = {
+		"ground": TileKind.GROUND.ROCK,
+		"top": TileKind.TOP.MINABLE_ROCK,
+		"ore": TileKind.ORE.NONE,
+	}
+	for layer: String in defaults:
+		var bytes: PackedByteArray = tiles.get(layer)
+		assert_eq(bytes.size(), size, "%s is the whole square" % layer)
+		var expected: PackedByteArray = PackedByteArray()
+		expected.resize(size)
+		expected.fill(defaults[layer])
+		assert_true(bytes == expected, "%s is all its default" % layer)
+
+
 func test_changing_a_top_tile_announces_it_once() -> void:
 	var tiles: LevelTiles = _surface()
 	watch_signals(tiles)

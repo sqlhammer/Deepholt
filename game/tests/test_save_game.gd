@@ -1323,3 +1323,128 @@ func test_a_version_with_no_migration_is_refused() -> void:
 	assert_eq(refusals.size(), 1, "with a reason")
 	if refusals.size() == 1:
 		assert_string_contains(refusals[0], "no migration")
+
+
+# The header's version is the one checked: the body's copy can't make
+# a newer save look loadable (R-B10).
+func test_the_headers_version_wins_over_the_bodys() -> void:
+	var data: Dictionary = {"levels": _saved_levels(), "actors": {10: _actor_entry(0)}}
+	data.merge(_required_header())
+	data["format_version"] = SaveGame.FORMAT_VERSION
+	SaveGame._overwrite_data(SaveGame.FORMAT_VERSION + 1, data, _path(SaveGame.SAVE_BASE_NAME))
+	var refusals: Array[String] = []
+	assert_eq(SaveGame.load_file(_path(SaveGame.SAVE_BASE_NAME), refusals), {},
+		"refused as the newer version its header says")
+	assert_eq(refusals.size(), 1, "with a reason")
+	if refusals.size() == 1:
+		assert_string_contains(refusals[0], "newer than this build's")
+
+
+# --- a level built from the save, the layer list, the radius cap (R-P2, R-P8, R-P9) ---
+
+# A level the save holds whole is built from it alone: no fixture ids
+# drawn, no world spawn placed from the re-hashed seed (R-P2).
+func test_a_whole_saved_level_is_built_without_generating() -> void:
+	var saved: Dictionary = _level_data(0)
+	saved["fixtures"] = []
+	var before: int = Objects._next_fixture_id
+	var levels: Dictionary = _deserialize({0: saved})
+	assert_eq(Objects._next_fixture_id, before, "no fixture id was drawn")
+	assert_eq(levels[0].level_fixtures.all(), [] as Array[Fixture],
+		"and no world spawn was placed: the saved list is all there is")
+	assert_eq(levels[0].level_seed, TEST_SEED, "with the saved seed")
+
+
+# One from before fixtures were saved is generated first, so it keeps
+# the generated ones (C).
+func test_a_saved_level_missing_its_fixtures_is_generated_first() -> void:
+	var levels: Dictionary = _deserialize({0: _level_data(0)})
+	assert_gt(levels[0].level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN).size(), 0,
+		"the generated world spawn is kept")
+
+
+func test_a_saved_level_missing_a_layer_is_generated_first() -> void:
+	var saved: Dictionary = _level_data(0)
+	saved["fixtures"] = []
+	saved["tiles"].erase("ore")
+	var before: int = Objects._next_fixture_id
+	_deserialize({0: saved})
+	assert_gt(Objects._next_fixture_id, before, "generated, so ids were drawn")
+
+
+func test_the_highest_fixture_id_is_found_across_levels() -> void:
+	var a: Level = _level(0)
+	var b: Level = _level(1)
+	a.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.WORLD_SPAWN, WorldPos.new(0, 0, 0), 7))
+	b.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.LADDER, WorldPos.new(1, 1, 1), 42))
+	assert_eq(SaveGame.highest_fixture_id([a, b]), 42, "the highest of all levels")
+	assert_eq(SaveGame.highest_fixture_id([] as Array[Level]), -1, "none at all")
+
+
+# Exactly the layers the list names are saved, and read back (R-P8).
+func test_the_saved_layers_are_exactly_the_shared_list() -> void:
+	var saved: Dictionary = _serialize([_level(0)])
+	var names: Array = saved[0]["tiles"].keys()
+	names.sort()
+	var expected: Array = SaveGame.TILE_LAYERS.duplicate()
+	expected.sort()
+	assert_eq(names, expected, "ground, top and ore")
+
+
+func test_a_layer_not_in_the_list_is_not_read() -> void:
+	var saved: Dictionary = _level_data(0)
+	saved["tiles"]["light"] = _packed(_filled(_size(0), 1))
+	var layers: Dictionary = SaveGame._deserialize_tile_layers(saved)
+	assert_false(layers.has("light"), "unknown layers are ignored")
+
+
+# An edited save can't ask for gigabytes (R-P9).
+func test_deserialize_skips_a_radius_past_the_cap() -> void:
+	var saved: Dictionary = _level_data(1)
+	saved["bound"]["radius"] = SaveGame.MAX_SAVED_RADIUS + 1
+	_assert_bad_level_skipped(saved, "radius past the cap")
+
+
+func test_a_radius_at_the_cap_passes_the_check() -> void:
+	var saved: Dictionary = _level_data(1)
+	saved["bound"]["radius"] = SaveGame.MAX_SAVED_RADIUS
+	saved.erase("tiles")
+	assert_true(SaveGame._is_valid_level_entry(1, saved), "the cap itself is allowed")
+
+
+func test_the_cap_is_past_every_recipe() -> void:
+	for recipe: LevelRecipe in World.level_recipes.rows:
+		assert_lt(recipe.bound.radius, SaveGame.MAX_SAVED_RADIUS,
+			"depth %d fits under the cap" % recipe.bound.depth)
+
+
+# All or nothing: a save with a level that won't load is refused, not
+# loaded without it (R-B3).
+func test_a_save_with_a_level_that_wont_load_is_refused_naming_it() -> void:
+	var levels: Dictionary = {0: _level_data(0), 1: _level_data(1)}
+	levels[0]["fixtures"] = []
+	levels[1]["fixtures"] = []
+	levels[1]["level_seed"] = "not a seed"
+	var data: Dictionary = {"levels": levels, "actors": {10: _actor_entry(0)}}
+	data.merge(_required_header())
+	_write_raw_save(data)
+	var before: int = _orphans()
+	var refusals: Array[String] = []
+	assert_eq(SaveGame.load_file(_path(SaveGame.SAVE_BASE_NAME), refusals), {}, "refused")
+	assert_eq(_orphans(), before, "and the level that did load is freed")
+	assert_eq(refusals.size(), 1, "with a reason")
+	if refusals.size() == 1:
+		assert_string_contains(refusals[0], "couldn't be loaded: [1]")
+
+
+func test_a_save_missing_a_level_falls_back_to_the_backup() -> void:
+	var levels: Dictionary = {0: _level_data(0), 1: _level_data(1)}
+	levels[1]["bound"]["depth"] = 2
+	var data: Dictionary = {"levels": levels, "actors": {10: _actor_entry(0)}}
+	data.merge(_required_header())
+	_write_raw_save(data)
+	_good_save(SaveGame.BACKUP_NAME, BACKUP_SEED)
+	var slot: SaveGame.SlotLoad = SaveGame.load_slot(TEST_SLOT)
+	assert_eq(slot.source, SaveGame.SOURCE.BACKUP, "the backup loads instead")
+	assert_eq(_seed_of(slot), BACKUP_SEED, "the backup's world")
+	SaveGame.free_game_data(slot.game_data)
