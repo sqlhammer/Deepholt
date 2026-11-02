@@ -11,6 +11,9 @@ at the end of every section that changes something you can see.
 
 Slice 004's checklist is in git history (last at `c8e5d62`).
 
+**Closed 2026-11-02** by Derik, merged into `main`. The by-hand items below weren't reported
+walked before the close, and are left unticked as they stood.
+
 ---
 
 ## A. Tidy-ups

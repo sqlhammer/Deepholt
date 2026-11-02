@@ -123,3 +123,16 @@ failed to match.
   `total_play_timer.gd`). They're tested now. Merging them is a tidy-up for whenever the clocks
   are next touched.
 - **Generation on first descent** is still in NEXT.md's "Not placed yet".
+
+---
+
+## Closed
+
+*Added by Claude, 2026-11-02, when the slice was closed.*
+
+Derik closed the slice and merged it into `main` on 2026-11-02. The by-hand outcomes weren't
+reported walked before the close, so they stay unticked in the checklist (last at the close
+commit). One by-hand question did come up: saving only ever leaves `world.save` and
+`world.save.bak`. That's the design. Timestamped files come only from `--new-game` and from a
+refused save whose backup loaded, so pruning is checked by launching with `--new-game` four or
+more times. Generation on first descent moved into slice 006 at Derik's request.
