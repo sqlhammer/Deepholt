@@ -47,15 +47,45 @@ enum SOURCE {
 # each file that was tried and refused was refused.
 class SlotLoad:
 	var source: SaveGame.SOURCE = SaveGame.SOURCE.NEW
-	# The header, the load's problems, and the world under "world"
-	var game_data: Dictionary = {}
+	# What loaded; null if nothing did
+	var loaded: LoadedGame
 	# The loaded world, outside the tree (D-127); null if none loaded
 	var world: World:
-		get: return game_data.get("world")
+		get: return loaded.world if loaded else null
 	# One line per refused file: its path, then why
 	var refusals: Array[String] = []
 	# Where a refused world.save was moved to, if the backup loaded
 	var broken_path: String = ""
+
+
+# The header a save is refused without (D-121, D-122), typed. The
+# format version is the one the file was written in, not the one it
+# was migrated to: F3 shows it.
+class Header:
+	var format_version: int
+	var world_seed: int
+	var game_version: String
+	var saved_at: int
+	var saved_at_utc_offset: int
+
+
+# What a load hands back (D-131): what a save took in, the world and a
+# session, with the header and the load's problems. A clock the save
+# left out is -1 in the session, and so is a missing local actor.
+class LoadedGame:
+	# Built outside the tree (D-127)
+	var world: World
+	var session: SaveSession
+	var header: Header
+	# One line per problem the checks found; reported, never fixed
+	# (D-113)
+	var problems: Array[String] = []
+
+	# Frees the world, and with it its levels and actors. For a caller
+	# that refuses the load instead of putting it in the tree.
+	func free_world() -> void:
+		if is_instance_valid(world): world.free()
+		world = null
 
 
 # saves_root is the folder every slot must sit inside. It's SAVES_DIR
@@ -102,25 +132,25 @@ static func load_slot(slot_path: String) -> SlotLoad:
 	if not has_save and not has_backup: return result
 
 	if has_save:
-		result.game_data = load_file(save_path, result.refusals)
-		if result.game_data:
+		result.loaded = load_file(save_path, result.refusals)
+		if result.loaded:
 			result.source = SOURCE.SAVE
 			return result
 
 	# A missing world.save with a backup is a crash between the two
 	# renames of a write: a fallback, never a new game.
 	if has_backup:
-		result.game_data = load_file(backup_path, result.refusals)
-		if result.game_data and has_save:
+		result.loaded = load_file(backup_path, result.refusals)
+		if result.loaded and has_save:
 			result.broken_path = move_aside(save_path, "broken",
 				int(Time.get_unix_time_from_system()))
 			# Left in place, the broken save would be rotated over the
 			# good backup by the next write
 			if result.broken_path == "":
 				result.refusals.append("%s couldn't be moved aside" % save_path)
-				free_game_data(result.game_data)
-				result.game_data = {}
-		if result.game_data:
+				result.loaded.free_world()
+				result.loaded = null
+		if result.loaded:
 			result.source = SOURCE.BACKUP
 			return result
 
@@ -128,77 +158,61 @@ static func load_slot(slot_path: String) -> SlotLoad:
 	return result
 
 
-# The slot's world.save, or {} if it's refused.
-static func load_game(slot_path: String) -> Dictionary:
+# The slot's world.save, or null if it's refused.
+static func load_game(slot_path: String) -> LoadedGame:
 	return load_file(slot_path.path_join(SAVE_BASE_NAME))
 
 
-# One save file's world, or {} if it's refused, with a line saying why
-# appended to refusals: the file's path, then the reason.
-static func load_file(file_path: String, refusals: Array[String] = []) -> Dictionary:
+# One save file's world, or null if it's refused, with a line saying
+# why appended to refusals: the file's path, then the reason.
+static func load_file(file_path: String, refusals: Array[String] = []) -> LoadedGame:
 	var why: Array[String] = []
-	var game_data: Dictionary = _load_file(file_path, why)
+	var loaded: LoadedGame = _load_file(file_path, why)
 	if why: refusals.append("%s %s" % [file_path, why[0]])
-	return game_data
+	return loaded
 
 
 # Every check on the file runs before any node is built. What can only
 # be found by building (a level that won't load, no placeable actor)
 # frees the one world built so far, so nothing is orphaned. why gets
 # the reason for a refusal.
-static func _load_file(file_path: String, why: Array[String]) -> Dictionary:
+static func _load_file(file_path: String, why: Array[String]) -> LoadedGame:
 	var raw_file_data: Dictionary = _get_file_data(file_path, why)
-	if not raw_file_data: return {}
+	if not raw_file_data: return null
 
 	var saved_version: int = raw_file_data.format_version
 	if saved_version > FORMAT_VERSION:
 		why.append("is format version %d, newer than this build's %d" % [
 			saved_version, FORMAT_VERSION])
-		return {}
+		return null
 	var file_data: Dictionary = _upgrade_file_data_to_latest_format_version(raw_file_data)
 	if not file_data:
 		why.append("is format version %d, which has no migration to %d" % [
 			saved_version, FORMAT_VERSION])
-		return {}
+		return null
 
 	# An int, not merely present: earlier saves held strings for
 	# saved_at
 	for key: String in REQUIRED_HEADER:
 		if typeof(file_data.get(key)) != REQUIRED_HEADER[key]:
 			why.append("has no %s" % key)
-			return {}
+			return null
 	if not file_data.get("levels") is Dictionary or not file_data.levels:
 		why.append("has no levels")
-		return {}
+		return null
 	if not file_data.get("actors") is Dictionary or not file_data.actors:
 		why.append("has no actors")
-		return {}
+		return null
 
-	# Header data | Mandatory
-	var game_data: Dictionary = {}
-	# The version the file was written in, not the one it was
-	# migrated to: F3 shows it (outcome 7)
-	game_data["format_version"] = saved_version
-	game_data["world_seed"] = file_data.world_seed
-	game_data["game_version"] = file_data.game_version
-	game_data["saved_at"] = file_data.saved_at
-	game_data["saved_at_utc_offset"] = file_data.saved_at_utc_offset
-
-	# Header data | Optional
-	if file_data.has("stats"):
-		game_data["stats"] = file_data.stats
-	if file_data.has("local_actor_id"):
-		game_data["local_actor_id"] = file_data.local_actor_id
-	if file_data.has("tuning_profile_id"):
-		game_data["tuning_profile_id"] = file_data.tuning_profile_id
-	else:
-		game_data["tuning_profile_id"] = DEFAULT_TUNING_PROFILE_ID
+	var loaded: LoadedGame = LoadedGame.new()
+	loaded.header = _deserialize_header(file_data, saved_version)
+	loaded.session = _deserialize_session(file_data)
 
 	# The world, built whole outside the tree (D-127). Everything below
 	# goes into it, so a refusal frees this one node and nothing else.
 	var world: World = World.new()
 	world.world_seed = file_data.world_seed
-	game_data["world"] = world
+	loaded.world = world
 
 	# Levels
 	_deserialize_levels(file_data.levels, world)
@@ -209,25 +223,57 @@ static func _load_file(file_path: String, why: Array[String]) -> Dictionary:
 		func(depth: Variant) -> bool: return world.level_at(depth) == null)
 	if missing:
 		why.append("has levels that couldn't be loaded: %s" % [missing])
-		free_game_data(game_data)
-		return {}
+		loaded.free_world()
+		return null
 	# Loaded fixtures went straight in; now they're checked, with the
 	# world's ramps and ladders, and reported, never dropped (D-113).
-	game_data["problems"] = load_problems(world.levels())
-	for problem: String in game_data.problems:
+	loaded.problems = load_problems(world.levels())
+	for problem: String in loaded.problems:
 		push_warning(problem)
 
 	# Actors stand on the levels this load built, not on whatever is
 	# in the tree, which is the world being replaced.
 	if _deserialize_actors(file_data.actors, world).is_empty():
 		why.append("has no actor that could be placed")
-		free_game_data(game_data)
-		return {}
+		loaded.free_world()
+		return null
 
 	# Last, after anything that could draw an id (D-130)
 	_restore_counters(world, file_data)
 
-	return game_data
+	return loaded
+
+
+# The required keys, already checked for type (D-121, D-122).
+static func _deserialize_header(file_data: Dictionary, saved_version: int) -> Header:
+	var header: Header = Header.new()
+	header.format_version = saved_version
+	header.world_seed = file_data.world_seed
+	header.game_version = file_data.game_version
+	header.saved_at = file_data.saved_at
+	header.saved_at_utc_offset = file_data.saved_at_utc_offset
+	return header
+
+
+# What the save held that isn't the world's (D-130, D-131). Each key
+# is optional, and one that's missing or of the wrong type loads as
+# its default (D-121): -1 for the local actor and for each clock, so
+# the game can tell "not saved" from a zero (D-120).
+static func _deserialize_session(file_data: Dictionary) -> SaveSession:
+	var stats: Variant = file_data.get("stats")
+	if not stats is Dictionary: stats = {}
+	var profile: Variant = file_data.get("tuning_profile_id")
+	return SaveSession.new(
+		_header_int(file_data, "local_actor_id", -1),
+		profile if profile is String else DEFAULT_TUNING_PROFILE_ID,
+		_number_or(stats, "active_play_time", -1.0),
+		_number_or(stats, "total_play_time", -1.0))
+
+
+static func _number_or(data: Dictionary, key: String, default: float) -> float:
+	var value: Variant = data.get(key)
+	if value is float or value is int: return float(value)
+	return default
 
 
 # The world's counters, from the header, then moved past every id the
@@ -281,14 +327,6 @@ static func load_problems(levels: Array[Level]) -> Array[String]:
 	return FixturePlacement.problems(levels) \
 		+ LevelGenerator.ramp_problems(levels) \
 		+ LevelGenerator.ladder_problems(levels)
-
-
-# Frees the world a load built, and with it its levels and actors. For
-# a caller that refuses loaded data instead of putting it in the tree.
-static func free_game_data(game_data: Dictionary) -> void:
-	var world: Variant = game_data.get("world")
-	if world is World and is_instance_valid(world):
-		world.free()
 
 
 static func setup(saves_root: String = SAVES_DIR) -> void:
@@ -356,10 +394,12 @@ static func _serialize_all(world: World, session: SaveSession) -> Dictionary:
 
 
 static func _serialize_stats(active_play_time: float, total_play_time: float) -> Dictionary:
+	# A zero isn't written, and neither is a loaded session's -1 for
+	# "not saved" (D-120, D-131)
 	var data: Dictionary = {}
-	if active_play_time:
+	if active_play_time > 0.0:
 		data["active_play_time"] = active_play_time
-	if total_play_time:
+	if total_play_time > 0.0:
 		data["total_play_time"] = total_play_time
 	return data
 

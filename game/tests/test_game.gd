@@ -489,6 +489,33 @@ func test_a_save_with_no_player_gives_nobody_control() -> void:
 	assert_eq(_handler_count(), 0, "no input handler")
 
 
+# D-132: with nobody to follow, the loaded world is still what's on
+# screen, at its spawn's depth, and nothing draws the freed one.
+func test_a_save_with_no_player_is_still_shown() -> void:
+	var spawn: WorldPos = _world_spawn().tile
+	var npc: Actor = _game._create_actor(Actor.create(Global.actor_packed_scene, "Npc",
+		spawn, _game.world.level_at(spawn.depth), ActorKind.ACTOR.NULL))
+	var order: Array[Node] = [npc]
+	_save_actors(order, null)
+
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "the load succeeds")
+	assert_push_error("no player to control")
+	var view: View = _game.view
+	assert_eq(view.shown_world, _game.world, "the loaded world is shown")
+	assert_eq(view.shown_depth, spawn.depth, "at its spawn's depth")
+	assert_null(view.actor, "following nobody")
+
+	var level: Level = _game.world.level_at(spawn.depth)
+	var tiles: LevelRenderer = _game.get_node("GameViewport/LevelRenderer")
+	tiles.upload_changed_layers()
+	level.level_tiles.set_top(1, 1, TileKind.TOP.MINABLE_DIRT)
+	assert_true(tiles._dirty_layers.has("top"), "the level renderer hears the new world")
+	var fixtures: FixtureRenderer = _game.get_node("GameViewport/FixtureRenderer")
+	level.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.LADDER, spawn, 9003))
+	assert_not_null(fixtures.sprite_for(9003), "and so does the fixture renderer")
+	assert_eq(_game.get_node("DebugOverlay").world, _game.world, "F3 reads it")
+
+
 func _npc_named(actor_name: String) -> Actor:
 	for actor: Actor in _game.world.actors():
 		if actor.actor_kind != ActorKind.ACTOR.PLAYER and actor.actor_name == actor_name:

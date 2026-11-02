@@ -10,19 +10,20 @@ extends Node
 # hidden, or it would stand in the shown level's rock (trap 2).
 
 signal shown_depth_changed(old_depth: int, new_depth: int)
-# A different world is shown: the followed actor's (D-129). The world
-# and the depth come together, even when the depth is the one already
-# shown, so a listener re-points to both at once. shown_depth_changed
-# isn't also emitted for the same move.
+# A different world is shown (D-129, D-132). The world and the depth
+# come together, even when the depth is the one already shown, so a
+# listener re-points to both at once. shown_depth_changed isn't also
+# emitted for the same move.
 signal shown_world_changed(world: World, depth: int)
 
-# No depth is shown until an actor is followed.
+# No depth is shown until a world is.
 const NO_DEPTH: int = -1
 
+# Null while nobody is followed: a world can be shown without one
+# (D-132).
 var actor: Actor
 var shown_depth: int = NO_DEPTH
-# The world the followed actor is in, reached through its level
-# (D-126). Null until an actor is followed.
+# The world on screen. Null until one is shown.
 var shown_world: World
 
 # Actors whose visibility follows the shown depth. Keyed by instance
@@ -30,10 +31,19 @@ var shown_world: World
 var _tracked: Dictionary[int, bool] = {}
 
 
+# Shows a world at a depth, following nobody (D-132). A swap calls it
+# first, so a world is shown even when none of its actors is a
+# player.
+func show_world(world: World, depth: int) -> void:
+	_stop_following()
+	_show_world(world, depth)
+
+
+# Follows an actor. In the world already shown, only the depth
+# changes; an actor in another world brings its world with it
+# (D-129), reached through its level (D-126).
 func follow(p_actor: Actor) -> void:
-	# The actor followed before may have been freed with its world
-	if is_instance_valid(actor) and actor.actor_worldpos_changed.is_connected(_on_followed_actor_moved):
-		actor.actor_worldpos_changed.disconnect(_on_followed_actor_moved)
+	_stop_following()
 	actor = p_actor
 	actor.actor_worldpos_changed.connect(_on_followed_actor_moved)
 	track(actor)
@@ -42,6 +52,13 @@ func follow(p_actor: Actor) -> void:
 		_show_world(world, actor.depth)
 		return
 	_show(actor.depth)
+
+
+# The actor followed before may have been freed with its world.
+func _stop_following() -> void:
+	if is_instance_valid(actor) and actor.actor_worldpos_changed.is_connected(_on_followed_actor_moved):
+		actor.actor_worldpos_changed.disconnect(_on_followed_actor_moved)
+	actor = null
 
 
 # Draws the actor only while it is on the shown depth.

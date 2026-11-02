@@ -152,30 +152,27 @@ func load_game(defer_swap: bool = false) -> REFUSAL_REASON:
 	if slot.source == SaveGame.SOURCE.REFUSED:
 		_report_refused_slot(slot)
 		return REFUSAL_REASON.LOAD_REFUSED
-	var game_data: Dictionary = slot.game_data
-	var raw_id: Variant = game_data.get("local_actor_id", -1)
-	var local_actor_id: int = int(raw_id) if raw_id is int or raw_id is float else -1
+	var loaded: SaveGame.LoadedGame = slot.loaded
+	var session: SaveSession = loaded.session
 
 	# Swap, then re-point
 	if defer_swap:
-		_swap_in_loaded_world.call_deferred(slot.world, local_actor_id)
+		_swap_in_loaded_world.call_deferred(loaded.world, session.local_actor_id)
 	else:
-		_swap_in_loaded_world(slot.world, local_actor_id)
-		
-	# load stats
-	if game_data.has("stats"):
-		if game_data.stats.has("active_play_time"):
-			$ActivePlayTimer.setup(game_data.stats.active_play_time)
-		if game_data.stats.has("total_play_time"):
-			$TotalPlayTimer.setup(game_data.stats.total_play_time)
-	
-	
-	$DebugOverlay.show_load_problems(game_data.get("problems", []).size())
+		_swap_in_loaded_world(loaded.world, session.local_actor_id)
+
+	# A clock the save left out is -1, and keeps its count (D-120)
+	if session.active_play_time >= 0.0:
+		$ActivePlayTimer.setup(session.active_play_time)
+	if session.total_play_time >= 0.0:
+		$TotalPlayTimer.setup(session.total_play_time)
+
+	$DebugOverlay.show_load_problems(loaded.problems.size())
 	load_source = slot.source
 	last_load_msec = (Time.get_ticks_usec() - started) / 1000.0
 	$DebugOverlay.show_load_time(last_load_msec)
 	if slot.source == SaveGame.SOURCE.BACKUP: _report_backup_load(slot)
-	$DebugOverlay.show_load_source(load_source, game_data.format_version)
+	$DebugOverlay.show_load_source(load_source, loaded.header.format_version)
 	return REFUSAL_REASON.NONE
 
 
@@ -335,13 +332,15 @@ func _create_view() -> void:
 
 # The one way a world comes in, at launch, for a new game and on a
 # load (D-129): input goes, the old world is freed with everything in
-# it, and the new one is added. Giving one of its actors control then
-# re-points the view, and through it the renderers and F3.
+# it, and the new one is added. The view is told the new world at its
+# spawn's depth, and through it the renderers and F3, whether or not
+# a player is then given control (D-132).
 func _swap_world(new_world: World) -> void:
 	_free_inputhandlers()
 	_free_world()
 	_attach_world(new_world)
 	if view == null: _create_view()
+	view.show_world(world, Spawning.world_spawn_depth(world.levels()))
 
 
 # A loaded world's swap. It arrives with its actors (D-127). One stuck

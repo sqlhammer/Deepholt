@@ -35,11 +35,15 @@ No forks.
 
 ## B. Loads
 
-- [ ] The load returns a typed result instead of a dictionary with the world under `"world"`.
-  Grep the run for `Ignoring` and `Parse Error` (trap 3). [8]
-- [ ] The view can show a world with no followed actor and announces `shown_world_changed` for
+- [x] The load returns a typed result instead of a dictionary with the world under `"world"`.
+  Grep the run for `Ignoring` and `Parse Error` (trap 3). [8] *`SaveGame.LoadedGame`: the
+  world, a `SaveSession`, a typed `Header` and the problems
+  ([D-131](../docs/design-decisions.md#d-131--a-load-returns-the-world-a-session-and-a-typed-header)).*
+- [x] The view can show a world with no followed actor and announces `shown_world_changed` for
   it ([D-129](../docs/design-decisions.md)). Test: a save with only NPCs loads, and the
-  renderers and F3 draw the new world. [9]
+  renderers and F3 draw the new world. [9] *Every swap now shows the new world at its spawn's
+  depth first
+  ([D-132](../docs/design-decisions.md#d-132--every-swap-shows-the-new-world-at-its-spawns-depth-following-an-actor-moves-only-the-depth)).*
 - [ ] By hand: measure F3's "Last load" after F6 and record it for the log (003 closed at about
   100 ms). [6]
 

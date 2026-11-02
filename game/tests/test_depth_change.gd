@@ -199,6 +199,33 @@ func test_following_another_actor_in_the_same_world_doesnt() -> void:
 	assert_signal_emitted(view, "shown_depth_changed", "only the depth changed")
 
 
+# D-132: a world is shown without anyone to follow, and the actor
+# followed before is let go.
+func test_showing_a_world_follows_nobody() -> void:
+	var actor: Actor = _actor_at(OPEN_TILE, 0)
+	var view: View = _view_following(actor)
+	var other: Actor = _actor_in_other_world(2)
+	watch_signals(view)
+	view.show_world(other.current_level.world, 1)
+	assert_eq(get_signal_parameters(view, "shown_world_changed"),
+		[other.current_level.world, 1], "the world, at the depth given")
+	assert_null(view.actor, "nobody is followed")
+	actor.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 2))
+	assert_eq(view.shown_depth, 1, "the old actor's moves no longer move the view")
+
+
+# After a swap has shown the world, following its player moves only
+# the depth (D-132).
+func test_following_an_actor_in_the_shown_world_moves_only_the_depth() -> void:
+	var view: View = View.new()
+	add_child_autofree(view)
+	view.show_world(_world, 0)
+	watch_signals(view)
+	view.follow(_actor_at(OPEN_TILE, 2))
+	assert_signal_not_emitted(view, "shown_world_changed", "the world was already shown")
+	assert_eq(get_signal_parameters(view, "shown_depth_changed"), [0, 2], "only the depth")
+
+
 func test_the_first_follow_announces_the_world() -> void:
 	var view: View = View.new()
 	add_child_autofree(view)

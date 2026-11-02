@@ -2779,3 +2779,48 @@ breaks every caller again); the world holding the playtime, tuning id and local 
 shortest call, but the local actor is presentation's choice, as
 [D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer) carves out, and playtime
 belongs to the session, not to the mountain).
+
+---
+
+### D-131 — A load returns the world, a session and a typed header
+**Decided** (by Derik, slice 005 section B, 2026-11-02). Replaces the dictionary that
+[D-127](#d-127--the-generator-and-the-save-each-build-a-whole-world-outside-the-tree)'s load
+returned, with the world under `"world"`.
+
+- **A load returns a typed `SaveGame.LoadedGame`.** It holds the `World`, a
+  [`SaveSession`](#d-130--a-save-takes-the-world-and-a-typed-session-the-worlds-counters-go-in-the-header)
+  (the local actor, the tuning profile and both clocks), a typed header (the format version the
+  file was written in, the world seed, the game version, the save time and its offset), and the
+  load's problems.
+- **A load hands back what a save took in:** the world and a session. A new session field is
+  added in one place, and the save and the load can't drift apart.
+- **A clock the save left out reads as -1 in the session,** so the game can tell it apart from
+  a zero and leave its timer where it was
+  ([D-120](#d-120--playtime-is-two-clocks-active-and-total)). A missing local actor is -1, as
+  it is when saving.
+
+*Why:* the dictionary's keys were checked only at run time, and every reader had to know them.
+
+*Considered:* one flat typed class with a field for every key (the smallest change, but it
+doesn't say which fields mirror the session, so a new one is added twice); keeping the
+dictionary.
+
+---
+
+### D-132 — Every swap shows the new world at its spawn's depth; following an actor moves only the depth
+**Decided** (by Derik, slice 005 section B, 2026-11-02). Amends
+[D-129](#d-129--a-swap-happens-at-the-end-of-the-frame-and-the-view-re-points-everything-that-draws),
+where only following an actor announced a new world.
+
+- **The swap tells the view the new world first,** at the depth of that world's spawn (0 if it
+  has none), and the view stops following the freed actor. `shown_world_changed` is emitted
+  from this one place, for every kind of swap.
+- **Following an actor afterwards only changes the shown depth,** when the actor is on another
+  depth.
+
+*Why:* a save whose only actors are NPCs gave nobody control, so nothing announced the new
+world, and the renderers kept drawing the freed one (found in 004). With the world announced
+in one place, a world with no player is shown like any other.
+
+*Considered:* only when there's no player, show the first actor's depth (the world would then
+be announced from two places), or always the Surface (which isn't always where anything is).

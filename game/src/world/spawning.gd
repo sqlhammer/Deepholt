@@ -25,6 +25,18 @@ static func world_spawn(levels: Array[Level]) -> Fixture:
 	return found[0]
 
 
+# The depth a world is first shown at (D-132): its spawn's, or 0 when
+# it has no single spawn. Quiet, unlike world_spawn: a world shown
+# with no spawn is still shown, and the spawn's absence is reported
+# where an actor needs it.
+static func world_spawn_depth(levels: Array[Level]) -> int:
+	var found: Array[Fixture] = []
+	for level: Level in levels:
+		found.append_array(level.level_fixtures.of_kind(ObjectKind.OBJECT.WORLD_SPAWN))
+	if found.size() != 1: return 0
+	return found[0].tile.depth
+
+
 # The tile an actor should appear on. `own_spawn` is the actor's own
 # spawn point, or null to use the world's default. Null if there is
 # nowhere to spawn.
