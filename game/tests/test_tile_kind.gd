@@ -39,7 +39,7 @@ func test_only_the_two_reserved_ids_are_sentinels() -> void:
 		assert_false(TileKind.is_sentinel(id), "%d is not (D-059 reserves 254 and 255)" % id)
 
 
-# --- what can be dug, and how hard it is ---
+# --- what can be dug ---
 
 func test_minable_kinds_are_diggable() -> void:
 	assert_true(TileKind.is_diggable(TileKind.TOP.MINABLE_ROCK), "rock")
@@ -51,57 +51,6 @@ func test_other_kinds_are_not_diggable() -> void:
 		assert_false(TileKind.is_diggable(TileKind.TOP[kind_name]), kind_name)
 	assert_false(TileKind.is_diggable(TileKind.SENTINEL_OUT_OF_BOUNDS), "outside the level")
 	assert_false(TileKind.is_diggable(TileKind.SENTINEL_OUT_OF_ARRAY), "past the array")
-
-
-func test_densities_come_from_the_table() -> void:
-	assert_eq(TileKind.get_tile_hardness(TileKind.TOP.MINABLE_ROCK),
-		TileKind.MINABLE_HARDNESS["MINABLE_ROCK"].hardness, "rock's hardness")
-	assert_eq(TileKind.get_tile_hardness(TileKind.TOP.MINABLE_DIRT),
-		TileKind.MINABLE_HARDNESS["MINABLE_DIRT"].hardness, "dirt's hardness")
-
-
-func test_an_undiggable_kind_has_no_hardness() -> void:
-	assert_lt(TileKind.get_tile_hardness(TileKind.TOP.OPEN), 0.0,
-		"a negative hardness means not diggable")
-
-
-# A hardness of zero or less would finish a dig on its first tick, or
-# be read as "not diggable" by the capability.
-func test_every_hardness_is_positive() -> void:
-	for kind_name: String in TileKind.MINABLE_HARDNESS:
-		assert_gt(TileKind.MINABLE_HARDNESS[kind_name].hardness, 0.0,
-			"%s takes some time to dig" % kind_name)
-
-
-func test_every_hardness_entry_is_a_top_kind() -> void:
-	for kind_name: String in TileKind.MINABLE_HARDNESS:
-		var id: int = TileKind.MINABLE_HARDNESS[kind_name].id
-		assert_true(id in TileKind.TOP.values(), "%s names a real top kind" % kind_name)
-		assert_eq(TileKind.TOP.get(kind_name, -1), id,
-			"and the entry's name matches that kind's name")
-
-
-# --- hardness (D-081) ---
-
-# Hardness belongs to the tile kind. Surface stone matches the tuning
-# appendix's Surface value; dirt is a bit easier.
-func test_rock_and_dirt_hardness() -> void:
-	assert_eq(TileKind.get_tile_hardness(TileKind.TOP.MINABLE_ROCK), 6.0, "rock is 6")
-	assert_eq(TileKind.get_tile_hardness(TileKind.TOP.MINABLE_DIRT), 4.0, "dirt is 4")
-	assert_lt(TileKind.get_tile_hardness(TileKind.TOP.MINABLE_DIRT),
-		TileKind.get_tile_hardness(TileKind.TOP.MINABLE_ROCK), "dirt is easier than rock")
-
-
-func test_ore_makes_a_tile_one_and_a_half_times_as_hard() -> void:
-	assert_eq(TileKind.get_dig_hardness(TileKind.TOP.MINABLE_ROCK, TileKind.ORE.NONE), 6.0,
-		"plain rock")
-	assert_eq(TileKind.get_dig_hardness(TileKind.TOP.MINABLE_ROCK, TileKind.ORE.COPPER), 9.0,
-		"rock with copper takes 1.5x")
-
-
-func test_ore_does_not_make_an_undiggable_tile_diggable() -> void:
-	assert_lt(TileKind.get_dig_hardness(TileKind.TOP.OPEN, TileKind.ORE.COPPER), 0.0,
-		"open floor stays undiggable whatever the ore says")
 
 
 # --- ids are forever ---

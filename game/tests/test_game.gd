@@ -331,7 +331,8 @@ func test_the_autosave_timer_runs_at_its_named_interval_while_playing() -> void:
 	var timer: Timer = _autosave()
 	assert_not_null(timer, "a new world has an autosave timer")
 	if timer == null: return
-	assert_eq(timer.wait_time, _game.AUTOSAVE_INTERVAL_SECONDS, "at the named interval")
+	assert_eq(timer.wait_time, _game.world.tuning.autosave_interval_seconds,
+		"at the profile's interval")
 	assert_false(timer.is_stopped(), "running")
 	assert_false(timer.one_shot, "and repeating")
 	assert_eq(timer.process_mode, Node.PROCESS_MODE_PAUSABLE, "paused with the game")
@@ -587,7 +588,7 @@ func _save_actors(order: Array[Node], local: Actor) -> void:
 		if actor not in order: actor.free()
 	for actor: Node in order:
 		actor.get_parent().move_child(actor, -1)
-	var session: SaveSession = SaveSession.new(local_id, _game.tuning_profile_id)
+	var session: SaveSession = SaveSession.new(local_id)
 	assert_eq(SaveGame.save_game(_game.current_save_slot, world, session, SAVES_ROOT),
 		SaveGame.REFUSAL_REASON.NONE, "saved in the chosen order")
 

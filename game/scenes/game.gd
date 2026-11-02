@@ -16,7 +16,10 @@ var active_actor: Actor:
 	get: return _active_actor
 var _active_actor: Actor
 var _input_handlers: Array[InputHandler] = []
-@export var tuning_profile_id: String
+# --tuning=<id>, after -- like --new-game, picks the profile a new
+# world runs under; "" for the default (D-136). A loaded world runs
+# under the profile its save names. Set it before _ready to choose.
+var tuning_id: String = _flag_value("--tuning=")
 # Where this session's world came from (D-111): F3 shows it
 var load_source: SaveGame.SOURCE = SaveGame.SOURCE.NEW
 # Set when neither save in the slot loaded: the game hasn't started,
@@ -35,9 +38,6 @@ var _autosave_timer: Timer
 var last_save_msec: float = -1.0
 var last_load_msec: float = -1.0
 
-# How often the game saves while playing (D-110). A tuning number: the
-# first to move into the tuning profile when it's built (D-116).
-const AUTOSAVE_INTERVAL_SECONDS: float = 300.0
 # A new world's seed, hashed. One fixed seed until there is a menu to
 # choose one.
 const WORLD_SEED_TEXT: String = "Default Seed"
@@ -114,7 +114,7 @@ func save_game() -> bool:
 	
 	# What isn't the world's (D-130)
 	var local_actor_id: int = active_actor.actor_id if active_actor else -1
-	var session: SaveSession = SaveSession.new(local_actor_id, tuning_profile_id,
+	var session: SaveSession = SaveSession.new(local_actor_id,
 		$ActivePlayTimer.seconds, $TotalPlayTimer.seconds)
 
 	# Save, timed: F3 shows whether it's short enough to go unfelt
@@ -275,7 +275,8 @@ func _ready() -> void:
 
 	load_source = SaveGame.SOURCE.NEW
 	$DebugOverlay.show_load_source(load_source, SaveGame.FORMAT_VERSION)
-	_swap_world(LevelGenerator.generate_world(hash(WORLD_SEED_TEXT)))
+	_swap_world(LevelGenerator.generate_world(hash(WORLD_SEED_TEXT), LevelRecipes.TABLE,
+		_launch_profile()))
 	_spawn_player("DefaultName")
 	_prune_kept_saves()
 	_start_autosave()
@@ -319,10 +320,25 @@ func _prune_kept_saves() -> void:
 		print("Pruned %s" % _shown_path(path))
 
 
+# The profile a new world runs under (D-136): the default, unless
+# --tuning names another this build has.
+func _launch_profile() -> TuningProfile:
+	if tuning_id.is_empty(): return TuningProfile.default_profile()
+	return TuningProfile.find_or_default(tuning_id, "--tuning")
+
+
+# The value after `prefix` in the user arguments, or "".
+static func _flag_value(prefix: String) -> String:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with(prefix): return arg.substr(prefix.length())
+	return ""
+
+
+# Saves on the running world's interval (D-135).
 func _start_autosave() -> void:
 	_autosave_timer = Timer.new()
 	_autosave_timer.name = "AutosaveTimer"
-	_autosave_timer.wait_time = AUTOSAVE_INTERVAL_SECONDS
+	_autosave_timer.wait_time = world.tuning.autosave_interval_seconds
 	_autosave_timer.process_mode = Node.PROCESS_MODE_PAUSABLE
 	_autosave_timer.timeout.connect(save_game)
 	add_child(_autosave_timer)
@@ -353,6 +369,9 @@ func _swap_world(new_world: World) -> void:
 	_free_inputhandlers()
 	_free_world()
 	_attach_world(new_world)
+	# A loaded world may run under another profile (D-136)
+	if _autosave_timer != null:
+		_autosave_timer.wait_time = world.tuning.autosave_interval_seconds
 	if view == null: _create_view()
 	view.show_world(world, Spawning.world_spawn_depth(world.levels()))
 

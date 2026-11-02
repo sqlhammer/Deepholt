@@ -22,6 +22,8 @@ section; this page is the *what*. The save format's place in the wider world mod
 [D-131]: ../design-decisions.md#d-131--a-load-returns-the-world-a-session-and-a-typed-header
 [D-132]: ../design-decisions.md#d-132--every-swap-shows-the-new-world-at-its-spawns-depth-following-an-actor-moves-only-the-depth
 [D-133]: ../design-decisions.md#d-133--save-format-version-1-is-settled-when-the-first-build-goes-to-someone-else
+[D-135]: ../design-decisions.md#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it
+[D-136]: ../design-decisions.md#d-136--a-loaded-world-runs-under-the-profile-its-save-names-else-the-default
 [D-134]: ../design-decisions.md#d-134--kept-saves-are-pruned-to-a-newest-few-of-each-kind-each-kind-its-own-count-at-launch
 
 ---
@@ -56,14 +58,14 @@ One file holds the whole world: a single `Dictionary` written with `FileAccess.s
 
 | Part | Holds |
 |---|---|
-| Header | `format_version`, `world_seed`, `game_version`, `saved_at` (UTC Unix seconds, an int) and `saved_at_utc_offset` (the writer's offset in minutes, an int); `tuning_profile_id` (`"none"` until the tuning profile exists), `local_actor_id`, `next_fixture_id`, `next_actor_id`, and `stats`. No `game_time` until there's a game clock. ([D-116], [D-122], [D-130]) |
+| Header | `format_version`, `world_seed`, `game_version`, `saved_at` (UTC Unix seconds, an int) and `saved_at_utc_offset` (the writer's offset in minutes, an int); `tuning_profile_id` (the profile the world runs under), `local_actor_id`, `next_fixture_id`, `next_actor_id`, and `stats`. No `game_time` until there's a game clock. ([D-116], [D-122], [D-130]) |
 | `stats` | `active_play_time` (seconds played unpaused) and `total_play_time` (seconds the game was open), as floats. A zero isn't written. ([D-120]) |
 | Per level | Keyed by depth (an int): the bound (depth and radius, as plain ints), the level seed, the tile layers by name (`"ground"`, `"top"`, `"ore"`), and the fixtures (kind, tile, id). ([D-112]) |
 | Actors | Every actor, never just "the player", keyed by id: kind, name, depth, tile, facing. ([D-114]) |
 
 **Who supplies what:** `SaveGame.save_game(slot, world, session, saves_root)`. The `World`
-gives its seed, levels, actors and both id counters. A `SaveSession` gives what isn't the
-world's: the local actor's id, the tuning profile id and the two clocks. A new header field
+gives its seed, levels, actors, both id counters and its tuning profile's id ([D-135]). A
+`SaveSession` gives what isn't the world's: the local actor's id and the two clocks. A new header field
 that isn't the world's becomes a field on `SaveSession`, and no call site changes. ([D-130])
 
 **Rules for what goes in:**
@@ -85,7 +87,8 @@ equipped tool (a placeholder until inventory exists). ([D-114])
 - When the window is closed (the game holds the close, saves, then quits).
 - When the player quits with `Esc`.
 - After every level change, once the actor has arrived.
-- On a timer while playing, every 300 s for now.
+- On a timer while playing, at the world's tuning profile's interval (300 s in the default).
+  ([D-135])
 - On the debug quicksave key, `F5`. `F6` loads the slot (§7).
 
 The editor's stop button kills the game without a save. Test quitting outside the editor.
@@ -152,8 +155,10 @@ building frees the one world built so far, so nothing is left orphaned. ([D-127]
 
 These are **not** refusals:
 - **A missing or wrongly typed optional key.** It loads as its default: `tuning_profile_id` as
-  `"none"`, the local actor and each clock as -1 (not saved), and each counter from the loaded
-  ids. ([D-121], [D-131])
+  `"default"`, the local actor and each clock as -1 (not saved), and each counter from the
+  loaded ids. ([D-121], [D-131])
+- **A tuning profile this build doesn't have** (an older save's `"none"` included). The world
+  runs under the default, with a warning, and F3 shows the profile in use. ([D-136])
 - **A missing tile layer.** It loads as that layer's default. ([D-112])
 - **A fixture that breaks a placement rule, or a ramp or ladder check that fails.** It loads
   anyway, a warning is logged, and F3 shows the count. Nothing is dropped. ([D-113])
@@ -194,7 +199,7 @@ running world is left exactly as it was, and so is saving.
 
 ## 9. Not decided yet
 
-- The autosave interval (a placeholder 300 s) and the quicksave key.
+- The quicksave key.
 - Whether a timer save is felt mid-play. If it is, the save splits into a quick copy on the
   main thread and compress-and-write on a worker thread. ([D-110])
 - Levels that don't exist yet, once generation happens on first descent: a missing level key.

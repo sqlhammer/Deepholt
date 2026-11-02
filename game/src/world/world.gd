@@ -60,6 +60,9 @@ var world_seed: int
 # never resets these (D-118).
 var fixture_ids: IdAllocator = IdAllocator.new()
 var actor_ids: IdAllocator = IdAllocator.new()
+# The numbers this world runs under (D-135). Each world holds its own,
+# so two worlds can run under different profiles.
+var tuning: TuningProfile
 
 var _levels: Dictionary[int, Level] = {}
 var _levels_node: Node2D
@@ -68,8 +71,10 @@ var _npcs_node: Node2D
 
 
 # The children are built here, not in a scene, so a world made with
-# World.new() is whole before it is ever in the tree.
-func _init() -> void:
+# World.new() is whole before it is ever in the tree. With no profile
+# given, it runs under the default.
+func _init(p_tuning: TuningProfile = null) -> void:
+	tuning = p_tuning if p_tuning != null else TuningProfile.default_profile()
 	name = "World"
 	_levels_node = Node2D.new()
 	_levels_node.name = "Levels"

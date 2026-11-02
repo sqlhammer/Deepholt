@@ -67,15 +67,21 @@ No forks.
 
 ## D. The tuning profile
 
-- [ ] *Decide:* how the profile is reached, and how much moves into it now
+- [x] *Decide:* how the profile is reached, and how much moves into it now
   ([D-037](../docs/design-decisions.md#d-037--one-tuningprofile-resource-holds-every-global-constant)).
-- [ ] *Decide:* the content validator: built now and with which checks, or left for when the
-  strata are built. The Surface's accepted 0.375 s needs a recorded exception (trap 6,
+  *The world holds it, and every number in code moves in
+  ([D-135](../docs/design-decisions.md#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it)).
+  A loaded world runs under its save's profile, else the default
+  ([D-136](../docs/design-decisions.md#d-136--a-loaded-world-runs-under-the-profile-its-save-names-else-the-default)).*
+- [x] *Decide:* the content validator: built now and with which checks, or left for when the
+  strata are built. *Deferred until a stratum below the Surface gets its own stone
+  ([D-137](../docs/design-decisions.md#d-137--the-content-validator-is-built-when-a-stratum-below-the-surface-gets-its-own-stone)).* The Surface's accepted 0.375 s needs a recorded exception (trap 6,
   [D-038](../docs/design-decisions.md), [D-081](../docs/design-decisions.md)).
-- [ ] `TuningProfile` built to that decision. The autosave interval comes from it, and a save
+- [x] `TuningProfile` built to that decision. The autosave interval comes from it, and a save
   writes its id instead of `"none"`
-  ([D-116](../docs/design-decisions.md)). [12]
-- [ ] The validator, if it was decided in.
+  ([D-116](../docs/design-decisions.md)). [12] *`content/tuning/default.tres`; the id moved
+  from `SaveSession` to the world. `--tuning=<id>` picks a new world's profile, and F3 shows it.*
+- [x] ~~The validator, if it was decided in.~~ Deferred (D-137).
 
 ## E. Fixtures and ladders
 

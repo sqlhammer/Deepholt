@@ -21,7 +21,10 @@ var facing: Vector2i = Vector2i(0,1) # Default = Down
 
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 
-@export var speed: float = 85.0
+# Walk speed is the tuning profile's, from the world this actor is
+# in (D-135, D-126).
+var speed: float:
+	get: return current_level.world.tuning.walk_speed
 @export var feet_box: Rect2 = Rect2(-5, 1, 10, 6)
 
 # TODO: Temporary equip. Refactor later.

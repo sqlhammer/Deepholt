@@ -23,7 +23,6 @@ const TILE_LAYERS: Array[String] = ["ground", "top", "ore"]
 # (207 at most), and an edited save can't make the load allocate
 # gigabytes: at this radius a layer is about 4 MB (R-P9).
 const MAX_SAVED_RADIUS: int = 1024
-const DEFAULT_TUNING_PROFILE_ID: String = "none"
 const BACKUP_NAME: String = SAVE_BASE_NAME + ".bak"
 # The kinds of file a slot keeps beside its save (D-111, D-123), each
 # pruned on its own (D-134).
@@ -85,6 +84,10 @@ class Header:
 	var game_version: String
 	var saved_at: int
 	var saved_at_utc_offset: int
+	# The profile the file names, which may not be the one the world
+	# runs under: one this build lacks falls back to the default
+	# (D-136). The world's is `world.tuning`.
+	var tuning_profile_id: String
 
 
 # What a load hands back (D-131): what a save took in, the world and a
@@ -226,9 +229,11 @@ static func _load_file(file_path: String, why: Array[String]) -> LoadedGame:
 	loaded.header = _deserialize_header(file_data, saved_version)
 	loaded.session = _deserialize_session(file_data)
 
-	# The world, built whole outside the tree (D-127). Everything below
-	# goes into it, so a refusal frees this one node and nothing else.
-	var world: World = World.new()
+	# The world, built whole outside the tree (D-127), under the profile
+	# the save names (D-136). Everything below goes into it, so a
+	# refusal frees this one node and nothing else.
+	var world: World = World.new(
+		TuningProfile.find_or_default(loaded.header.tuning_profile_id, "The save"))
 	world.world_seed = file_data.world_seed
 	loaded.world = world
 
@@ -270,6 +275,9 @@ static func _deserialize_header(file_data: Dictionary, saved_version: int) -> He
 	header.game_version = file_data.game_version
 	header.saved_at = file_data.saved_at
 	header.saved_at_utc_offset = file_data.saved_at_utc_offset
+	# Optional (D-121)
+	var profile: Variant = file_data.get("tuning_profile_id")
+	header.tuning_profile_id = profile if profile is String else TuningProfile.DEFAULT_ID
 	return header
 
 
@@ -280,10 +288,8 @@ static func _deserialize_header(file_data: Dictionary, saved_version: int) -> He
 static func _deserialize_session(file_data: Dictionary) -> SaveSession:
 	var stats: Variant = file_data.get("stats")
 	if not stats is Dictionary: stats = {}
-	var profile: Variant = file_data.get("tuning_profile_id")
 	return SaveSession.new(
 		_header_int(file_data, "local_actor_id", -1),
-		profile if profile is String else DEFAULT_TUNING_PROFILE_ID,
 		_number_or(stats, "active_play_time", -1.0),
 		_number_or(stats, "total_play_time", -1.0))
 
@@ -429,10 +435,8 @@ static func _serialize_all(world: World, session: SaveSession) -> Dictionary:
 	game_data["saved_at_utc_offset"] = now.utc_offset
 
 	## Header | Optional
-	if not session.tuning_profile_id:
-		game_data["tuning_profile_id"] = DEFAULT_TUNING_PROFILE_ID
-	else:
-		game_data["tuning_profile_id"] = session.tuning_profile_id
+	# The profile the world runs under (D-135)
+	game_data["tuning_profile_id"] = world.tuning.id
 	if session.local_actor_id != -1:
 		game_data["local_actor_id"] = session.local_actor_id
 	# The world's counters (D-130), restored last on load

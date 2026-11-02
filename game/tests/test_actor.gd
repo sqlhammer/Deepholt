@@ -423,7 +423,7 @@ func test_holding_dig_opens_the_faced_tile_on_screen() -> void:
 	# limit is the dig time from the data plus a margin, so a broken
 	# dig fails instead of looping forever, and retuning the tool or
 	# the rock doesn't break the test.
-	var rock: float = TileKind.get_tile_hardness(TileKind.TOP.MINABLE_ROCK)
+	var rock: float = TuningProfile.default_profile().hardness_of(TileKind.TOP.MINABLE_ROCK)
 	var dig_seconds: float = rock / actor.equipped.speed
 	var limit: int = ceili(dig_seconds * 60.0) + 10
 	actor.primary_action(true)

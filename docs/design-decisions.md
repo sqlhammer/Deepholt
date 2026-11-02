@@ -2870,3 +2870,82 @@ report needs.
 
 *Considered:* by age (a burst of new games in one day keeps everything); the newest N of any
 kind (a run of new games pushes out the broken save); not pruning until a save-slot menu exists.
+
+---
+
+### D-135 — The world holds its tuning profile; every number in code moves into it
+**Decided** (by Derik, slice 005 section D, 2026-11-02). Builds
+[D-037](#d-037--one-tuningprofile-resource-holds-every-global-constant)'s `TuningProfile`, which
+[D-116](#d-116--the-save-header-and-a-placeholder-tuning-profile-id) left as a placeholder id.
+
+- **A `TuningProfile` is a `Resource` with an `id`,** one `.tres` per profile under
+  `res://content/tuning/`. The default's id is `"default"`, and it replaces the placeholder
+  `"none"`.
+- **The world holds it (`world.tuning`).** The generator and the load each build a world with a
+  profile. Simulation reaches it the way it reaches everything since slice 004: through a level
+  (`actor.current_level.world.tuning`,
+  [D-126](#d-126--a-level-knows-its-world-everything-else-reaches-the-world-through-a-level)).
+  The game reads its own numbers from the world it's running. A save records
+  `world.tuning.id`.
+- **Every tuning number in the code moves into it now:** the autosave interval, the actor's
+  walk speed, each diggable tile kind's hardness, and the ore multiplier.
+- **The profile's id is the world's, not the session's.** A save writes `world.tuning.id`, and
+  `tuning_profile_id` leaves `SaveSession`, amending
+  [D-130](#d-130--a-save-takes-the-world-and-a-typed-session-the-worlds-counters-go-in-the-header)
+  and [D-131](#d-131--a-load-returns-the-world-a-session-and-a-typed-header). A load's header
+  says which profile the file named, and `world.tuning` is the one it runs under.
+- **Whether a tile kind can be dug stays `TileKind`'s** (`TileKind.DIGGABLE`). The profile only
+  says how hard each one is, so a profile can't make rock undiggable by leaving it out.
+- **Not tuning, so not in it:** a tool's power stays on its `ToolData`, because it belongs to
+  the item, and pruning's per-kind counts
+  ([D-134](#d-134--kept-saves-are-pruned-to-a-newest-few-of-each-kind-each-kind-its-own-count-at-launch))
+  stay in `SaveGame`.
+
+*Why:* nothing global holds world state since 004, and a profile on the world keeps that true.
+Tests build a world with any profile and nothing to put back, and two worlds can run under
+different numbers. The list is short now, and only grows from here (006 adds light radii).
+
+*Considered:* a static profile chosen at launch (the fewest changes, but it's global state
+again, and every test that swaps it has to restore it); handing the profile as a parameter to
+each thing that needs a number (each new number threads through its callers); moving only the
+autosave interval, or only the plainly global numbers.
+
+---
+
+### D-136 — A loaded world runs under the profile its save names, else the default
+**Decided** (by Derik, slice 005 section D, 2026-11-02).
+
+- **A load looks up the profile the save names** and builds the world with it, so a playtest
+  keeps its numbers across relaunches.
+- **A profile this build doesn't have** (including an older save's `"none"`) **falls back to
+  the default,** with a warning. The load isn't refused. F3 shows the profile in use.
+- **`--tuning=<id>`** (after `--`, like `--new-game`) picks the profile for a new world. An id
+  this build doesn't have falls back to the default, with a warning.
+
+*Why:* the save is the record of which numbers a playtest ran under (D-037), so the world that
+comes back should run under them too. A missing profile is a reason to warn, not to lose the
+world.
+
+*Considered:* always the launch profile (a save could silently change numbers); refusing a
+save whose profile is missing (an old playtest save stops loading once its profile is deleted).
+
+---
+
+### D-137 — The content validator is built when a stratum below the Surface gets its own stone
+**Decided** (by Derik, slice 005 section D, 2026-11-02). Puts a trigger on
+[D-038](#d-038--a-content-validator-enforces-the-derived-invariants-in-ci).
+
+- **Not built yet.** Today its dig band (each stratum's tool digs that stratum's stone in
+  0.5–0.7 s) would check one stone, the Surface's, and that sits at an accepted 0.375 s
+  ([D-081](#d-081--hardness-belongs-to-tile-kinds-the-pre-alpha-tool-is-a-flint-pickaxe)). Its
+  other checks are about items, creatures, support and recipes, and none of those exist yet.
+- **It's built when the first stratum below the Surface gets its own stone kind,** with the
+  Surface's 0.375 s recorded as its first exception.
+- **The appendix's misses at −5 and −7** wait for those strata, as D-081 says.
+
+*Why:* a validator with nothing real to check is code that's never exercised, and one that
+fails on an accepted number gets switched off.
+
+*Considered:* the dig band now, with the Surface as an exception (it checks one accepted
+exception); a skeleton now with only the checks that have content (prefab ids resolve, kind ids
+are unique), which the existing tests mostly cover already.

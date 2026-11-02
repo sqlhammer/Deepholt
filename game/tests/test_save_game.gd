@@ -588,7 +588,7 @@ func _save(levels: Array[Level], slot: String = TEST_SLOT) -> SaveGame.REFUSAL_R
 	for level: Level in levels:
 		world.add_level(level)
 	var result: SaveGame.REFUSAL_REASON = SaveGame.save_game(slot, world,
-		SaveSession.new(-1, "none"), TEST_ROOT)
+		SaveSession.new(-1), TEST_ROOT)
 	for level: Level in levels:
 		level.get_parent().remove_child(level)
 		level.world = null
@@ -1093,7 +1093,7 @@ func _actor_in(world: World, id: int) -> Actor:
 
 
 func _save_world(world: World, local_actor_id: int = -1) -> SaveGame.REFUSAL_REASON:
-	return SaveGame.save_game(TEST_SLOT, world, SaveSession.new(local_actor_id, "none"), TEST_ROOT)
+	return SaveGame.save_game(TEST_SLOT, world, SaveSession.new(local_actor_id), TEST_ROOT)
 
 
 # Each actor comes back on its own depth and tile, both on open
@@ -1379,8 +1379,8 @@ func test_a_save_with_optional_keys_missing_loads_them_as_their_defaults() -> vo
 	assert_true(loaded_game != null,
 		"a save with no tuning profile, stats or local actor loads")
 	var session: SaveSession = loaded_game.session
-	assert_eq(session.tuning_profile_id, SaveGame.DEFAULT_TUNING_PROFILE_ID,
-		"the tuning profile is none")
+	assert_eq(loaded_game.header.tuning_profile_id, TuningProfile.DEFAULT_ID,
+		"the tuning profile is the default")
 	assert_eq(session.local_actor_id, -1, "no local actor: the game picks one (D-115)")
 	assert_eq(session.active_play_time, -1.0, "no active clock: the timer keeps its count")
 	assert_eq(session.total_play_time, -1.0, "nor total (D-120, D-131)")
@@ -1391,7 +1391,7 @@ func test_a_save_with_optional_keys_missing_loads_them_as_their_defaults() -> vo
 func test_the_session_saved_is_the_session_loaded() -> void:
 	var world: World = autofree(LevelGenerator.generate_world(5))
 	var local: int = _player_on(_open_tile(world.level_at(1)), world, "Local", 10).actor_id
-	var session: SaveSession = SaveSession.new(local, "playtest-a", 12.0, 30.0)
+	var session: SaveSession = SaveSession.new(local, 12.0, 30.0)
 	assert_eq(SaveGame.save_game(TEST_SLOT, world, session, TEST_ROOT),
 		SaveGame.REFUSAL_REASON.NONE, "saved")
 	var loaded_game: SaveGame.LoadedGame = SaveGame.load_game(TEST_SLOT)
@@ -1400,7 +1400,8 @@ func test_the_session_saved_is_the_session_loaded() -> void:
 		return
 	var back: SaveSession = loaded_game.session
 	assert_eq(back.local_actor_id, local, "the local actor")
-	assert_eq(back.tuning_profile_id, "playtest-a", "the tuning profile")
+	assert_eq(loaded_game.header.tuning_profile_id, TuningProfile.DEFAULT_ID,
+		"the world's profile")
 	assert_eq(back.active_play_time, 12.0, "active play")
 	assert_eq(back.total_play_time, 30.0, "total play")
 	assert_eq(loaded_game.header.world_seed, 5, "the header's seed")
@@ -1422,7 +1423,7 @@ func test_session_keys_of_the_wrong_type_load_as_their_defaults() -> void:
 		return
 	var session: SaveSession = loaded_game.session
 	assert_eq(session.local_actor_id, -1, "the local actor")
-	assert_eq(session.tuning_profile_id, SaveGame.DEFAULT_TUNING_PROFILE_ID, "the profile")
+	assert_eq(loaded_game.header.tuning_profile_id, TuningProfile.DEFAULT_ID, "the profile")
 	assert_eq(session.active_play_time, -1.0, "a clock that isn't a number")
 	assert_eq(session.total_play_time, 30.0, "an int clock reads as a float")
 	loaded_game.free_world()
@@ -1608,11 +1609,11 @@ func test_the_header_holds_the_worlds_counters() -> void:
 
 func test_the_session_names_the_local_actor_and_the_rest() -> void:
 	var world: World = _world_with_player()
-	var session: SaveSession = SaveSession.new(world.players()[0].actor_id, "fast", 12.0, 30.0)
+	var session: SaveSession = SaveSession.new(world.players()[0].actor_id, 12.0, 30.0)
 	SaveGame.save_game(TEST_SLOT, world, session, TEST_ROOT)
 	var data: Dictionary = _read(SaveGame.SAVE_BASE_NAME)
 	assert_eq(data.get("local_actor_id"), world.players()[0].actor_id, "the local actor")
-	assert_eq(data.get("tuning_profile_id"), "fast", "the tuning profile")
+	assert_eq(data.get("tuning_profile_id"), world.tuning.id, "the world's tuning profile")
 	assert_eq(data.get("stats"), {"active_play_time": 12.0, "total_play_time": 30.0}, "the clocks")
 
 

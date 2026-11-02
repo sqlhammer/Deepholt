@@ -55,7 +55,7 @@ func _tick(tile: Vector2i, times: int = 1) -> void:
 
 
 func _hardness(kind_name: String) -> float:
-	return TileKind.MINABLE_HARDNESS[kind_name].hardness
+	return TuningProfile.default_profile().hardness_of(TileKind.TOP[kind_name])
 
 
 # --- building progress ---
@@ -99,7 +99,7 @@ func test_aiming_at_something_undiggable_drops_progress() -> void:
 	assert_eq(_dig.progress, 0.0, "progress on rock is lost on open floor")
 
 
-# TileKind is the one owner of "diggable" (it reads MINABLE_HARDNESS).
+# TileKind is the one owner of "diggable" (TileKind.DIGGABLE).
 # The capability's hardness lookup and LevelTiles.is_diggable must
 # agree with it for every top kind, so nothing drifts from the owner.
 func test_every_place_agrees_on_what_is_diggable() -> void:
@@ -108,7 +108,7 @@ func test_every_place_agrees_on_what_is_diggable() -> void:
 		var probe: CapabilityDig = CapabilityDig.new()
 		autofree(probe)
 		var diggable: bool = TileKind.is_diggable(kind)
-		var has_hardness: bool = probe._set_tile_hardness(kind)
+		var has_hardness: bool = probe._set_tile_hardness(TuningProfile.default_profile(), kind)
 		_level.level_tiles.set_top(5, 0, kind)
 		var level_says: bool = _level.level_tiles.is_diggable(WorldPos.new(5, 0, 0))
 		assert_eq(has_hardness, diggable,
@@ -150,7 +150,7 @@ func test_softer_ground_digs_faster() -> void:
 func test_a_tile_with_ore_takes_one_and_a_half_times_as_long() -> void:
 	_level.level_tiles.set_ore(ROCK_TILE.x, ROCK_TILE.y, TileKind.ORE.COPPER)
 	var rock_ticks: int = ceili(_hardness("MINABLE_ROCK") / (SPEED * TICK))
-	var ore_ticks: int = ceili(_hardness("MINABLE_ROCK") * TileKind.ORE_DIG_MULTIPLIER
+	var ore_ticks: int = ceili(_hardness("MINABLE_ROCK") * TuningProfile.default_profile().ore_dig_multiplier
 		/ (SPEED * TICK))
 	watch_signals(_world)
 	_tick(ROCK_TILE, rock_ticks)

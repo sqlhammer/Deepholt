@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TuningProfile" format=3]
+
+[ext_resource type="Script" path="res://src/world/tuning_profile.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+id = "default"
+autosave_interval_seconds = 300.0
+walk_speed = 85.0
+hardness = Dictionary[int, float]({
+2: 6.0,
+3: 4.0
+})
+ore_dig_multiplier = 1.5

@@ -25,7 +25,7 @@ func dig(delta: float, tool_speed: float, target_tile: WorldPos, level: Level) -
 	var kind: int = _get_tile_kind(level, target_tile)
 	var ore: int = level.level_tiles.get_ore(target_tile.x, target_tile.y)
 	
-	var is_diggable: bool = _set_tile_hardness(kind, ore)
+	var is_diggable: bool = _set_tile_hardness(level.world.tuning, kind, ore)
 	if not is_diggable:
 		_reset_progress()
 		return
@@ -76,9 +76,11 @@ func _is_dig_complete() -> bool:
 	return false
 
 
-# Ore makes a tile harder to dig (TileKind.ORE_DIG_MULTIPLIER).
-func _set_tile_hardness(kind: int, ore: int = TileKind.ORE.NONE) -> bool:
-	var hardness: float = TileKind.get_dig_hardness(kind, ore)
+# The number is the profile of the world being dug (D-135). Ore makes
+# a tile harder to dig.
+func _set_tile_hardness(tuning: TuningProfile, kind: int,
+		ore: int = TileKind.ORE.NONE) -> bool:
+	var hardness: float = tuning.dig_hardness(kind, ore)
 	if hardness >= 0.0:
 		tile_hardness = hardness
 		return true

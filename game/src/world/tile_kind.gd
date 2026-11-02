@@ -64,43 +64,15 @@ const ORE: Dictionary = {
 	"COPPER": 2,
 }
 
-# How hard each diggable top kind is: the "hardness" of the tuning
-# appendix (D-081). Hardness belongs to the kind, not the level; a
-# level only chooses which kinds it has. Dig seconds = hardness /
-# tool power, so flint (16) digs rock (6) in 0.375 s.
-const MINABLE_HARDNESS: Dictionary = {
-	"MINABLE_ROCK": { "id": TOP.MINABLE_ROCK, "hardness": 6.0 },
-	"MINABLE_DIRT": { "id": TOP.MINABLE_DIRT, "hardness": 4.0 },
-}
-
-# A tile holding ore takes this much longer to dig than the same
-# tile without it (tuning appendix, section 4).
-const ORE_DIG_MULTIPLIER: float = 1.5
+# The top kinds that can be dug: the one owner of "diggable". How hard
+# each is belongs to the kind (D-081), and the number is the tuning
+# profile's (D-135), so every kind here needs a hardness in every
+# profile.
+const DIGGABLE: Array[int] = [TOP.MINABLE_ROCK, TOP.MINABLE_DIRT]
 
 
 static func is_diggable(kind: int) -> bool:
-	for key in TileKind.MINABLE_HARDNESS:
-		if kind == TileKind.MINABLE_HARDNESS[key].id:
-			return true
-	return false
-
-
-static func get_tile_hardness(kind: int) -> float:
-	for key in TileKind.MINABLE_HARDNESS:
-		if kind == TileKind.MINABLE_HARDNESS[key].id:
-			return TileKind.MINABLE_HARDNESS[key].hardness
-	return -1.0 # invalid hardness
-
-
-# How hard a tile is to dig, counting its ore: the top kind's
-# hardness, times ORE_DIG_MULTIPLIER when the tile holds ore. Negative
-# when the top kind can't be dug.
-static func get_dig_hardness(top_kind: int, ore_kind: int) -> float:
-	var hardness: float = get_tile_hardness(top_kind)
-	if hardness < 0.0: return hardness
-	if ore_kind != ORE.NONE and ore_kind != ORE.NULL:
-		hardness *= ORE_DIG_MULTIPLIER
-	return hardness
+	return kind in DIGGABLE
 
 
 static func is_ramp(ground_kind: int) -> bool:

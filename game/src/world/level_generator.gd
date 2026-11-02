@@ -14,8 +14,9 @@ extends RefCounted
 # A new world for a seed, with a level per recipe and its own fresh
 # id counters, so the same seed gives the same fixture ids however
 # many worlds one process builds (D-104, D-118).
-static func generate_world(world_seed: int, recipes: LevelRecipeTable = LevelRecipes.TABLE) -> World:
-	var world: World = World.new()
+static func generate_world(world_seed: int, recipes: LevelRecipeTable = LevelRecipes.TABLE,
+		tuning: TuningProfile = null) -> World:
+	var world: World = World.new(tuning)
 	world.world_seed = world_seed
 	for recipe: LevelRecipe in recipes.rows:
 		world.add_level(generate_level(recipe, world_seed, world.fixture_ids))
