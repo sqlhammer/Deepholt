@@ -98,18 +98,19 @@ and nothing searching the tree for levels or actors.
 
 ## E. The swap
 
-- [ ] `game.gd` swaps a built world in at the end of the frame: the old world freed, the new one
+- [x] `game.gd` swaps a built world in at the end of the frame: the old world freed, the new one
   added, control given to its local player (D-129, trap 4). Launch, `--new-game` and F6 all go
   through it.
-- [ ] `view.follow` announces `shown_world_changed` (world and depth) when the followed actor's
-  world isn't the one shown, even at the same depth (D-129).
-- [ ] The level renderer, the fixture renderer and F3 re-point on `shown_world_changed`, and stop
+- [x] `view.follow` announces `shown_world_changed` (world and depth) when the followed actor's
+  world isn't the one shown, even at the same depth (D-129). *Built in section B; tested
+  here.*
+- [x] The level renderer, the fixture renderer and F3 re-point on `shown_world_changed`, and stop
   listening to the old world (trap 3).
-- [ ] The load runs in phases: validate, build the world to one side, swap it in, re-point
+- [x] The load runs in phases: validate, build the world to one side, swap it in, re-point
   (003's review, R-S1).
-- [ ] Test: after a swap, each renderer and F3 hears a change made in the new world, and nothing
+- [x] Test: after a swap, each renderer and F3 hears a change made in the new world, and nothing
   made in the old one (trap 3).
-- [ ] Test: F6 on a truncated save leaves the screen, F3 and the ids as they were. [2]
+- [x] Test: F6 on a truncated save leaves the screen, F3 and the ids as they were. [2]
 - [ ] By hand: dig on two levels, F5, dig more, F6: every level shows the saved world. [1]
 - [ ] By hand: F6 on a truncated save changes nothing. [2]
 - [ ] By hand: F6 twice in a row: F3's next ids are the same both times. [3]

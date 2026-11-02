@@ -161,3 +161,48 @@ func test_a_freed_actor_is_dropped_from_the_view() -> void:
 	other.free()
 	followed.move_to(WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, 1))
 	assert_eq(view._tracked.size(), 1, "only the followed actor is still tracked")
+
+
+# --- a different world (D-129) ---
+
+# An actor at the open tile in a second world, at the same depths.
+func _actor_in_other_world(depth: int) -> Actor:
+	var other: World = add_child_autofree(World.new())
+	for level_depth in [0, 1, 2]:
+		var level: Level = Global.level_packed_scene.instantiate()
+		level.setup(level_depth)
+		level.level_tiles.set_top(OPEN_TILE.x, OPEN_TILE.y, TileKind.TOP.OPEN)
+		other.add_level(level)
+	var actor: Actor = Actor.create(Global.actor_packed_scene, "Other",
+		WorldPos.new(OPEN_TILE.x, OPEN_TILE.y, depth), other.level_at(depth), ActorKind.ACTOR.PLAYER)
+	other.add_actor(actor)
+	return actor
+
+
+func test_following_an_actor_in_another_world_announces_the_world() -> void:
+	var view: View = _view_following(_actor_at(OPEN_TILE, 0))
+	var other: Actor = _actor_in_other_world(0)
+	watch_signals(view)
+	view.follow(other)
+	assert_eq(get_signal_parameters(view, "shown_world_changed"),
+		[other.current_level.world, 0], "the world and the depth, together")
+	assert_signal_not_emitted(view, "shown_depth_changed", "the depth didn't change")
+	assert_eq(view.shown_world, other.current_level.world, "the other world is shown")
+
+
+func test_following_another_actor_in_the_same_world_doesnt() -> void:
+	var view: View = _view_following(_actor_at(OPEN_TILE, 0))
+	var second: Actor = _actor_at(OPEN_TILE, 1)
+	watch_signals(view)
+	view.follow(second)
+	assert_signal_not_emitted(view, "shown_world_changed", "same world")
+	assert_signal_emitted(view, "shown_depth_changed", "only the depth changed")
+
+
+func test_the_first_follow_announces_the_world() -> void:
+	var view: View = View.new()
+	add_child_autofree(view)
+	watch_signals(view)
+	var actor: Actor = _actor_at(OPEN_TILE, 1)
+	view.follow(actor)
+	assert_signal_emitted_with_parameters(view, "shown_world_changed", [_world, 1])

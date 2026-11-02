@@ -34,9 +34,11 @@ func _actors() -> Array[Actor]:
 
 # Input handlers live directly under Game, outside the game viewport,
 # so their _input fires without events being pushed in.
+# A handler on its way out (queued for deletion) doesn't count.
 func _handler_for(actor: Actor) -> InputHandler:
 	for child in _game.get_children():
-		if child is InputHandler and child.actor == actor: return child
+		if child is InputHandler and child.actor == actor and not child.is_queued_for_deletion():
+			return child
 	return null
 
 
@@ -534,7 +536,8 @@ func _save_two_players(local_first: bool) -> Array[int]:
 
 func _handler_count() -> int:
 	return _game.get_children().filter(
-		func(child: Node) -> bool: return child is InputHandler).size()
+		func(child: Node) -> bool:
+			return child is InputHandler and not child.is_queued_for_deletion()).size()
 
 
 # The local actor gets input, the view, the camera and F3; the other
@@ -710,8 +713,11 @@ func test_freeing_input_handlers_frees_only_the_games_own() -> void:
 	lookalike.name = "InputHandlerLookalike"
 	_game.add_child(lookalike)
 	_game._free_inputhandlers()
-	assert_null(handler.get_parent(), "the renamed handler is out of the tree")
-	assert_true(handler.is_queued_for_deletion(), "and on its way to being freed")
+	assert_true(handler.is_queued_for_deletion(), "the renamed handler is on its way to being freed")
+	assert_null(handler.actor, "cut off from its actor until then")
+	assert_false(handler.is_processing_input(), "and from input")
+	assert_false(handler.is_physics_processing(), "and drives nothing")
+	assert_eq(handler.get_parent(), _game, "but left in the tree, so it's never an orphan")
 	assert_true(is_instance_valid(lookalike), "the lookalike is left alone")
 	assert_eq(_game._input_handlers.size(), 0, "and the list is emptied")
 	await get_tree().process_frame
@@ -719,16 +725,23 @@ func test_freeing_input_handlers_frees_only_the_games_own() -> void:
 
 
 # The debug load key reaches the load from inside the handler's own
-# _input: the handler must outlive its own call (R-B8).
-func test_the_load_key_replaces_the_handler_that_pressed_it() -> void:
+# _input: the world is built then, and swapped in at the end of the
+# frame, when no handler or actor code is running (R-B8, D-129, trap 4).
+func test_the_load_key_swaps_the_world_in_at_the_end_of_the_frame() -> void:
 	assert_true(_game.save_game(), "saved")
-	var handler: InputHandler = _handler_for(_game.active_actor)
+	var old_world: World = _game.world
+	var old_player: Actor = _game.active_actor
+	var handler: InputHandler = _handler_for(old_player)
 	var press: InputEventAction = InputEventAction.new()
 	press.action = "load"
 	press.pressed = true
 	handler._input(press)
-	assert_true(is_instance_valid(handler), "the old handler finished its call")
-	assert_true(handler.is_queued_for_deletion(), "and goes at the end of the frame")
+	assert_eq(_game.world, old_world, "nothing is swapped during the key's own call")
+	assert_true(is_instance_valid(old_player), "and nothing freed")
+	assert_eq(_handler_for(old_player), handler, "its handler still drives it")
+	await get_tree().process_frame
+	assert_ne(_game.world, old_world, "the loaded world is in by the end of the frame")
+	assert_false(is_instance_valid(old_world), "and the old one freed")
 	assert_eq(_handler_count(), 1, "one handler, for the loaded player")
 	assert_ne(_handler_for(_game.active_actor), handler, "a new one")
 	await get_tree().process_frame
@@ -944,3 +957,103 @@ func test_a_load_puts_the_saved_world_in() -> void:
 	assert_eq(_game.world.world_seed, seed_before, "with the saved seed")
 	assert_eq(_game.active_actor.current_level.world, _game.world,
 		"and the player in it")
+
+
+# --- the swap (slice 004 section E) ---
+
+func _press_load() -> void:
+	var press: InputEventAction = InputEventAction.new()
+	press.action = "load"
+	press.pressed = true
+	_handler_for(_game.active_actor)._input(press)
+
+
+# Trap 3: anything listening to the old world goes silent when it's
+# freed, with no error. After a load, each thing that draws hears a
+# change in the new world, and nothing from the old one.
+func test_after_a_load_everything_that_draws_follows_the_new_world_only() -> void:
+	assert_true(_game.save_game(), "saved")
+	var depth: int = _game.view.shown_depth
+	var old_level: Level = _game.world.level_at(depth)
+	# Kept past the old level's free: they're RefCounted
+	var old_tiles: LevelTiles = old_level.level_tiles
+	var old_fixtures: LevelFixtures = old_level.level_fixtures
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "loaded")
+	var level: Level = _game.world.level_at(depth)
+
+	var tiles: LevelRenderer = _game.get_node("GameViewport/LevelRenderer")
+	tiles.upload_changed_layers()
+	old_tiles.set_top(1, 1, TileKind.TOP.MINABLE_DIRT)
+	assert_true(tiles._dirty_layers.is_empty(), "the level renderer doesn't hear the old world")
+	level.level_tiles.set_top(1, 1, TileKind.TOP.MINABLE_DIRT)
+	assert_true(tiles._dirty_layers.has("top"), "it hears the new one")
+
+	var fixtures: FixtureRenderer = _game.get_node("GameViewport/FixtureRenderer")
+	var spot: WorldPos = _game.active_actor.current_WorldPos
+	old_fixtures.add(Fixture.new(ObjectKind.OBJECT.LADDER, spot, 9001))
+	assert_null(fixtures.sprite_for(9001), "the fixture renderer doesn't hear the old world")
+	level.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.LADDER, spot, 9002))
+	assert_not_null(fixtures.sprite_for(9002), "it hears the new one")
+
+	var overlay: Node = _game.get_node("DebugOverlay")
+	assert_eq(overlay.world, _game.world, "F3 reads the new world")
+	_game.world.fixture_ids.allocate()
+	assert_eq(overlay.next_ids_text(), "fixture #%d  actor #%d" % [
+		_game.world.fixture_ids.peek(), _game.world.actor_ids.peek()], "and its counters")
+
+	var dig: CapabilityDig = _game.active_actor.get_node("Capabilities/CapabilityDig")
+	assert_true(_game.world.tile_dug.is_connected(dig._on_tile_dug),
+		"the loaded player's dig hears the new world's gatekeeper")
+
+
+# Outcome 2: F6 on a save cut short (and no backup) changes nothing:
+# not the world, not the screen, not F3, not the ids.
+func test_f6_on_a_truncated_save_changes_nothing() -> void:
+	assert_true(_game.save_game(), "saved once, so there's no backup")
+	var bytes: PackedByteArray = FileAccess.get_file_as_bytes(_save_file())
+	var file: FileAccess = FileAccess.open(_save_file(), FileAccess.WRITE)
+	file.store_buffer(bytes.slice(0, bytes.size() / 2))
+	file.close()
+
+	var world: World = _game.world
+	var player: Actor = _game.active_actor
+	var depth: int = _game.view.shown_depth
+	var overlay: Node = _game.get_node("DebugOverlay")
+	var ids: String = overlay.next_ids_text()
+	var tiles: LevelRenderer = _game.get_node("GameViewport/LevelRenderer")
+	var shown: LevelTiles = tiles._tiles
+
+	_press_load()
+	await get_tree().process_frame
+	assert_push_error("No save could be loaded")
+	assert_eq(_game.world, world, "the same world")
+	assert_true(is_instance_valid(player), "the player wasn't freed")
+	assert_eq(_game.active_actor, player, "and is still in control")
+	assert_eq(_handler_count(), 1, "with its one handler")
+	assert_eq(_game.view.shown_depth, depth, "the same depth on screen")
+	assert_eq(tiles._tiles, shown, "drawing the same level")
+	assert_eq(overlay.world, world, "F3 reads the same world")
+	assert_eq(overlay.next_ids_text(), ids, "and the same ids")
+	assert_string_contains(_game.notice_text(), "unchanged", "the notice says the world carries on")
+
+
+# Outcome 3: loading twice in a row shows the same next ids both
+# times: they don't restart, and they don't climb.
+func test_loading_twice_shows_the_same_next_ids() -> void:
+	_game._spawn_player("Second")
+	assert_true(_game.save_game(), "saved")
+	var overlay: Node = _game.get_node("DebugOverlay")
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "loaded once")
+	var first: String = overlay.next_ids_text()
+	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "and again")
+	assert_eq(overlay.next_ids_text(), first, "the same next ids")
+	assert_ne(first, "fixture #1  actor #1", "and not restarted")
+
+
+func test_a_new_game_comes_in_through_the_swap() -> void:
+	var world: World = _game.world
+	_game._swap_world(LevelGenerator.generate_world(1))
+	assert_false(is_instance_valid(world), "the old world is freed")
+	assert_eq(_game.world.world_seed, 1, "the new one is in")
+	assert_eq(_game.world.get_parent(), _game.get_node("GameViewport"), "in the game viewport")
+	assert_eq(_handler_count(), 0, "with no input until a player is given control")

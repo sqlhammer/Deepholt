@@ -69,7 +69,7 @@ func set_user_control(actor: Actor) -> void:
 	var input: InputHandler = InputHandler.new()
 	input.setup(actor, mouse_world_position)
 	input.quick_save_requested.connect(save_game)
-	input.load_requested.connect(load_game)
+	input.load_requested.connect(_on_load_requested)
 	input.save_and_quit_requested.connect(save_and_quit_to_desktop)
 	add_child(input)
 	_input_handlers.append(input)
@@ -127,13 +127,25 @@ func save_game() -> bool:
 	return true
 
 
-# Core principle: we don't want to update existing objects. Instead, we will
-# build new objects and replace them if they have already loaded into the game.
-# This will prevent merge issues
-func load_game() -> REFUSAL_REASON:
-	if current_save_slot == "": 
+# The F6 key. It arrives from inside an input handler's _input, so the
+# world is built now and swapped in at the end of the frame, when no
+# handler or actor code is running (D-129, trap 4).
+func _on_load_requested() -> void:
+	load_game(true)
+
+
+# Nothing running is changed: a new world is built to one side and the
+# old one replaced whole (D-118). In phases (R-S1): SaveGame validates
+# the file and builds the world outside the tree; then it is swapped
+# in; then the view re-points everything that draws to it (D-129). A
+# refusal stops before the swap, so the running world, the screen, F3
+# and the ids are as they were. `defer_swap` puts the swap at the end
+# of the frame.
+func load_game(defer_swap: bool = false) -> REFUSAL_REASON:
+	if current_save_slot == "":
 		return REFUSAL_REASON.LOAD_FAILED_NO_OP
-	
+
+	# Validate and build
 	var started: int = Time.get_ticks_usec()
 	var slot: SaveGame.SlotLoad = SaveGame.load_slot(current_save_slot)
 	if slot.source == SaveGame.SOURCE.NEW: return REFUSAL_REASON.LOAD_FAILED_NO_OP
@@ -141,20 +153,15 @@ func load_game() -> REFUSAL_REASON:
 		_report_refused_slot(slot)
 		return REFUSAL_REASON.LOAD_REFUSED
 	var game_data: Dictionary = slot.game_data
-
-	# clean up objects
-	_free_world()
-	_free_inputhandlers()
-
-	# The loaded world arrives whole, with its actors (D-127)
-	_attach_world(slot.world)
-	if not view: _create_view()
-
-	# load actors
 	var raw_id: Variant = game_data.get("local_actor_id", -1)
 	var local_actor_id: int = int(raw_id) if raw_id is int or raw_id is float else -1
-	_take_loaded_actors(local_actor_id)
-	
+
+	# Swap, then re-point
+	if defer_swap:
+		_swap_in_loaded_world.call_deferred(slot.world, local_actor_id)
+	else:
+		_swap_in_loaded_world(slot.world, local_actor_id)
+		
 	# load stats
 	if game_data.has("stats"):
 		if game_data.stats.has("active_play_time"):
@@ -189,6 +196,9 @@ func _report_backup_load(slot: SaveGame.SlotLoad) -> void:
 
 func _report_refused_slot(slot: SaveGame.SlotLoad) -> void:
 	var text: String = "No save could be loaded, so the game hasn't started.\n"
+	# Mid-session (F6), the running world carries on (D-111)
+	if world != null:
+		text = "No save could be loaded; the world you're in is unchanged.\n"
 	for refusal: String in slot.refusals:
 		text += "%s.\n" % _shown_refusal(refusal)
 	text += "Both files are left as they were. Launch with --new-game to move them aside and start a new world."
@@ -262,8 +272,7 @@ func _ready() -> void:
 
 	load_source = SaveGame.SOURCE.NEW
 	$DebugOverlay.show_load_source(load_source, SaveGame.FORMAT_VERSION)
-	_attach_world(LevelGenerator.generate_world(hash(WORLD_SEED_TEXT)))
-	_create_view()
+	_swap_world(LevelGenerator.generate_world(hash(WORLD_SEED_TEXT)))
 	_spawn_player("DefaultName")
 	_start_autosave()
 
@@ -322,6 +331,32 @@ func _create_view() -> void:
 	$DebugOverlay.watch_view(view)
 
 
+# The one way a world comes in, at launch, for a new game and on a
+# load (D-129): input goes, the old world is freed with everything in
+# it, and the new one is added. Giving one of its actors control then
+# re-points the view, and through it the renderers and F3.
+func _swap_world(new_world: World) -> void:
+	_free_inputhandlers()
+	_free_world()
+	_attach_world(new_world)
+	if view == null: _create_view()
+
+
+# A loaded world's swap. It arrives with its actors (D-127). One stuck
+# on a tile that's no longer passable is moved to the spawn before the
+# game listens to it: a move across a depth would save the world
+# mid-swap (D-115, D-119). Then exactly one player is given to the
+# user.
+func _swap_in_loaded_world(new_world: World, local_actor_id: int) -> void:
+	_swap_world(new_world)
+	for actor: Actor in world.actors():
+		_move_if_stuck(actor)
+	for actor: Actor in world.actors():
+		_take_actor(actor)
+	var local: Actor = _local_player(local_actor_id)
+	if local: set_user_control(local)
+
+
 # Puts a world built outside the tree at the origin inside the game
 # viewport (D-128), drawn after the renderers so its actors stand over
 # the level.
@@ -346,13 +381,16 @@ func _free_world() -> void:
 	_active_actor = null
 
 
-# Out of the tree now, freed at the end of the frame: the debug load
-# key reaches here from inside a handler's own _input, and freeing the
-# handler there would free it with its code still running (R-B8).
+# Freed at the end of the frame, in case this is reached from inside a
+# handler's own _input: freeing it there would free it with its code
+# still running (R-B8). Until then it is cut off from its actor and
+# from input, and left in the tree, so it is never an orphan.
 func _free_inputhandlers() -> void:
 	for handler in _input_handlers:
 		if not is_instance_valid(handler): continue
-		if handler.get_parent(): handler.get_parent().remove_child(handler)
+		handler.actor = null
+		handler.set_process_input(false)
+		handler.set_physics_process(false)
 		handler.queue_free()
 	_input_handlers.clear()
 
@@ -391,20 +429,6 @@ func _on_actor_moved(_actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> voi
 	if old_pos == null or new_pos == null: return
 	if old_pos.depth == new_pos.depth: return
 	save_game()
-
-
-# Each loaded actor is on its saved tile, in the world. One stuck on
-# a tile that's no longer passable is moved to the spawn first, before
-# anything listens to it: a move across a depth would save the world
-# this load is still building (D-115, D-119). Then exactly one player
-# is given to the user.
-func _take_loaded_actors(local_actor_id: int) -> void:
-	for actor: Actor in world.actors():
-		_move_if_stuck(actor)
-		_take_actor(actor)
-	
-	var local: Actor = _local_player(local_actor_id)
-	if local: set_user_control(local)
 
 
 # By the path a new player takes, avoiding the actors already placed
