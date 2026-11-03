@@ -26,8 +26,21 @@ func _bare_level(depth: int) -> Level:
 	return level
 
 
+# A new world holds only the profile's starting depths (D-143).
+func test_a_new_world_holds_the_starting_depths() -> void:
+	var world: World = autofree(LevelGenerator.generate_world(0))
+	var depths: Array[int] = []
+	for level: Level in world.levels():
+		depths.append(level.depth)
+	assert_eq(depths, world.tuning.levels_to_generate_on_new_game, "the Surface and -1")
+
+
+# Generated the rest of the way down, there's one level per recipe.
 func test_one_level_per_recipe_in_order() -> void:
-	var levels: Array[Level] = autofree(LevelGenerator.generate_world(0)).levels()
+	var world: World = autofree(LevelGenerator.generate_world(0))
+	for depth in range(LevelRecipes.TABLE.rows.size()):
+		if world.level_at(depth) == null: LevelGenerator.generate_into(world, depth)
+	var levels: Array[Level] = world.levels()
 	assert_eq(levels.size(), LevelRecipes.TABLE.rows.size(), "one level per recipe")
 	for index in levels.size():
 		assert_eq(levels[index].depth, index, "level %d is depth %d" % [index, index])
@@ -169,6 +182,9 @@ func test_the_world_is_built_outside_the_tree_with_its_seed() -> void:
 func test_the_same_seed_gives_the_same_level_seeds() -> void:
 	var first: World = autofree(LevelGenerator.generate_world(1234))
 	var second: World = autofree(LevelGenerator.generate_world(1234))
+	# -3 isn't there at a new game (D-143)
+	LevelGenerator.generate_into(first, 3)
+	LevelGenerator.generate_into(second, 3)
 	for depth in [0, 3]:
 		assert_eq(first.level_at(depth).level_seed, second.level_at(depth).level_seed,
 			"depth %d" % depth)

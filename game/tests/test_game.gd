@@ -672,11 +672,15 @@ func test_a_local_actor_that_did_not_load_falls_back_to_the_lowest_id() -> void:
 
 # --- levels ---
 
-func test_ready_spawns_each_depth_once() -> void:
-	for depth in range(8):
+# A new game generates only the profile's starting depths (D-143),
+# each once; the rest wait for an arrival.
+func test_ready_spawns_each_starting_depth_once() -> void:
+	var starting: Array[int] = _game.world.tuning.levels_to_generate_on_new_game
+	for depth in range(LevelRecipes.TABLE.rows.size()):
 		var count: int = _levels().filter(
 			func(level: Level) -> bool: return level.depth == depth).size()
-		assert_eq(count, 1, "exactly one level at depth %d" % depth)
+		var expected: int = 1 if depth in starting else 0
+		assert_eq(count, expected, "%d level(s) at depth %d" % [expected, depth])
 
 
 # Inside the game viewport, at the origin, so a level's and an
@@ -689,8 +693,8 @@ func test_the_world_sits_at_the_origin_inside_the_game_viewport() -> void:
 		"and the player is the world's own")
 
 
-func test_get_level_finds_every_depth() -> void:
-	for depth in range(8):
+func test_get_level_finds_every_generated_depth() -> void:
+	for depth: int in _game.world.tuning.levels_to_generate_on_new_game:
 		var level: Level = _game.world.level_at(depth)
 		assert_not_null(level, "depth %d is resident" % depth)
 		if level: assert_eq(level.depth, depth, "and is the right one")
@@ -749,7 +753,7 @@ func test_spawn_player_with_no_world_spawn_adds_no_player() -> void:
 
 
 func test_create_actor_stands_on_the_tile_given() -> void:
-	var _pos: WorldPos = WorldPos.new(14, -2, 2)
+	var _pos: WorldPos = WorldPos.new(14, -2, 1)
 	var actor: Actor = Actor.create(Global.actor_packed_scene, "TestPlayer", _pos, _game.world.level_at(_pos.depth), ActorKind.ACTOR.PLAYER)
 	actor = _game._create_actor(actor)
 	assert_true(actor in _actors(), "the actor is added under Players")
@@ -759,7 +763,10 @@ func test_create_actor_stands_on_the_tile_given() -> void:
 
 # --- user control ---
 
+# Generates the depth first if a new game hasn't yet (D-143).
 func _actor_at_depth(depth: int) -> Actor:
+	if _game.world.level_at(depth) == null:
+		LevelGenerator.generate_into(_game.world, depth)
 	var actor: Actor = Actor.create(
 		Global.actor_packed_scene, "TestPlayer", WorldPos.new(0, 0, depth), _game.world.level_at(depth), ActorKind.ACTOR.PLAYER)
 	_game.world.add_actor(actor)
@@ -767,7 +774,7 @@ func _actor_at_depth(depth: int) -> Actor:
 
 
 func test_user_control_gives_the_actor_an_input_handler() -> void:
-	var actor: Actor = _actor_at_depth(3)
+	var actor: Actor = _actor_at_depth(0)
 	_game.set_user_control(actor)
 	assert_not_null(_handler_for(actor),
 		"an InputHandler driving this actor is under Game")

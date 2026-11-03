@@ -14,6 +14,9 @@ var _world: World
 
 func before_each() -> void:
 	_world = add_child_autofree(LevelGenerator.generate_world(0))
+	# A new world starts with the Surface and -1 only (D-143). The
+	# ladder is on -2, so it's built here rather than by an arrival.
+	LevelGenerator.generate_into(_world, 2)
 
 
 func after_each() -> void:

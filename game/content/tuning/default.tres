@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="TuningProfile" format=3]
+[gd_resource type="Resource" script_class="TuningProfile" format=3 uid="uid://dvmtkudgu7u3o"]
 
-[ext_resource type="Script" path="res://src/world/tuning_profile.gd" id="1_tuning"]
+[ext_resource type="Script" uid="uid://11n0go65ary5" path="res://src/world/tuning_profile.gd" id="1_tuning"]
 
 [resource]
 script = ExtResource("1_tuning")

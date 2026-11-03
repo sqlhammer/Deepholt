@@ -103,6 +103,9 @@ func test_standing_next_to_the_ladder_doesnt_climb() -> void:
 func test_the_worked_example_from_the_lesson() -> void:
 	# Real levels: hole on -1 at (14, -2), ladder on -2 under it.
 	_world = autofree(LevelGenerator.generate_world(0))
+	# A new world starts at the Surface and -1 (D-143); the ladder is
+	# on -2
+	LevelGenerator.generate_into(_world, 2)
 	_assert_at(_target(14, -1, 1, Vector2i(0, -1)), WorldPos.new(14, -2, 2), "down from (14, -1) facing north")
 	_assert_at(_target(14, -2, 2, Vector2i(0, -1)), WorldPos.new(15, -2, 1),
 		"still facing north, (14, -3) is rock: up at (15, -2), east")

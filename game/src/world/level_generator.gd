@@ -14,12 +14,14 @@ extends RefCounted
 # A new world for a seed, with a level per recipe and its own fresh
 # id counters, so the same seed gives the same fixture ids however
 # many worlds one process builds (D-104, D-118).
-static func generate_world(world_seed: int, recipes: LevelRecipeTable = LevelRecipes.TABLE,
-		tuning: TuningProfile = null) -> World:
+static func generate_world(world_seed: int, tuning: TuningProfile = null) -> World:
 	var world: World = World.new(tuning)
 	world.world_seed = world_seed
-	for recipe: LevelRecipe in recipes.rows:
-		world.add_level(generate_level(recipe, world_seed, world.fixture_ids))
+	
+	if not tuning: tuning = TuningProfile.default_profile()
+	for depth in tuning.levels_to_generate_on_new_game:
+		generate_into(world, depth)
+	
 	var levels: Array[Level] = world.levels()
 	for problem: String in ramp_problems(levels) + ladder_problems(levels):
 		push_error(problem)
@@ -109,6 +111,21 @@ static func generate_level(recipe: LevelRecipe, world_seed: int, fixture_ids: Id
 	return level
 
 
+# "already there" and "nothing below the deepest" are normal.
+# Their checks need handling by the caller, not here.
+# Only crash protection has been implemented
+static func generate_into(world: World, depth: int) -> Level:
+	if not world: return null
+	
+	var recipe: LevelRecipe = LevelRecipes.TABLE.get_recipe(depth)
+	if not recipe: return null
+	
+	var level: Level = generate_level(recipe, world.world_seed, world.fixture_ids)
+	world.add_level(level)
+	
+	return level
+
+
 # For a placement with a spawn radius, places the world's default
 # spawn (D-091, D-105): a random tile within the radius (a disc, like
 # the level bounds) of the placement's anchor, where an actor could
@@ -176,9 +193,6 @@ static func rng_for(level: Level) -> RandomNumberGenerator:
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
 	rng.seed = level.level_seed
 	return rng
-
-
-
 
 
 

@@ -24,7 +24,7 @@ var facing: Vector2i = Vector2i(0,1) # Default = Down
 # Walk speed is the tuning profile's, from the world this actor is
 # in (D-135, D-126).
 var speed: float:
-	get: return current_level.world.tuning.walk_speed
+	get: return _get_speed()
 @export var feet_box: Rect2 = Rect2(-5, 1, 10, 6)
 
 # TODO: Temporary equip. Refactor later.
@@ -328,7 +328,11 @@ func _on_move_intent_changed(p_move_intent: Vector2) -> void:
 		Vector2(1,0): _walk(DIRECTION.RIGHT)
 
 
-
+func _get_speed() -> float:
+	if not current_level: return 0.0
+	if not current_level.world: return 0.0
+	if not current_level.world.tuning: return 0.0
+	return current_level.world.tuning.walk_speed
 
 
 

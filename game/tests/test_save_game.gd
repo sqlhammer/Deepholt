@@ -1100,6 +1100,8 @@ func _save_world(world: World, local_actor_id: int = -1) -> SaveGame.REFUSAL_REA
 # floor, so nothing about the tile could send it to the spawn.
 func test_two_actors_on_different_depths_round_trip_each_to_its_own() -> void:
 	var world: World = autofree(LevelGenerator.generate_world(TEST_SEED))
+	# -2 isn't there at a new game (D-143)
+	LevelGenerator.generate_into(world, 2)
 	var tile_a: WorldPos = _open_tile(world.level_at(1))
 	var tile_b: WorldPos = _open_tile(world.level_at(2), true)
 	assert_not_null(tile_a, "-1 has open floor")

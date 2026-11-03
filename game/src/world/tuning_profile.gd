@@ -36,6 +36,9 @@ const DEFAULT_ID: String = "default"
 # (D-142). Zero switches at once.
 @export var level_change_fade_seconds: float = 0.0
 
+# When a new game generates levels, which depths are generated before any actors are spawned
+@export var levels_to_generate_on_new_game: Array[int] = [0,1]
+
 
 # The profile with this id, or null if this build has none.
 static func find(profile_id: String) -> TuningProfile:

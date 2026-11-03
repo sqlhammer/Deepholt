@@ -108,14 +108,13 @@ func test_a_world_runs_under_the_default_unless_given_one() -> void:
 
 func test_two_worlds_can_run_under_different_profiles() -> void:
 	var first: World = autofree(LevelGenerator.generate_world(1))
-	var second: World = autofree(LevelGenerator.generate_world(1, LevelRecipes.TABLE, _other()))
+	var second: World = autofree(LevelGenerator.generate_world(1, _other()))
 	assert_eq(first.tuning.walk_speed, 85.0, "the first walks at the default")
 	assert_eq(second.tuning.walk_speed, 40.0, "the second at its own")
 
 
 func test_an_actor_walks_at_its_worlds_speed() -> void:
-	var world: World = add_child_autofree(LevelGenerator.generate_world(1, LevelRecipes.TABLE,
-		_other()))
+	var world: World = add_child_autofree(LevelGenerator.generate_world(1, _other()))
 	var spawn: WorldPos = Spawning.world_spawn(world.levels()).tile
 	var actor: Actor = Actor.create(Global.actor_packed_scene, "Walker", spawn,
 		world.level_at(spawn.depth), ActorKind.ACTOR.PLAYER)
@@ -128,7 +127,7 @@ func test_an_actor_walks_at_its_worlds_speed() -> void:
 func _saved_world(tuning: TuningProfile) -> String:
 	var slot: String = SAVES_ROOT.path_join("slot-001")
 	DirAccess.make_dir_recursive_absolute(slot)
-	var world: World = autofree(LevelGenerator.generate_world(7, LevelRecipes.TABLE, tuning))
+	var world: World = autofree(LevelGenerator.generate_world(7, tuning))
 	var spawn: WorldPos = Spawning.world_spawn(world.levels()).tile
 	world.add_actor(Actor.create(Global.actor_packed_scene, "Saver", spawn,
 		world.level_at(spawn.depth), ActorKind.ACTOR.PLAYER))

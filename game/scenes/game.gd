@@ -278,8 +278,7 @@ func _ready() -> void:
 
 	load_source = SaveGame.SOURCE.NEW
 	$DebugOverlay.show_load_source(load_source, SaveGame.FORMAT_VERSION)
-	_swap_world(LevelGenerator.generate_world(hash(WORLD_SEED_TEXT), LevelRecipes.TABLE,
-		_launch_profile()))
+	_swap_world(LevelGenerator.generate_world(hash(WORLD_SEED_TEXT), _launch_profile()))
 	_spawn_player("DefaultName")
 	_prune_kept_saves()
 	_start_autosave()
