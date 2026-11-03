@@ -3113,3 +3113,56 @@ ore can be compared lit and unlit, before players can place lights.
 solves); three states with no Lit; light carried by each actor (lit wherever you are, which
 flattens the contrast); Surface daylight as the only light.
 
+---
+
+### D-145 — Senses flood through open space; the followed actor's draw, every player's remember
+**Decided** (by Derik, slice 006 section C, 2026-11-03). Settles who senses and who remembers,
+under [D-033](#d-033--tunnel-memory-four-render-states-per-tile) and
+[D-144](#d-144--slice-006s-dark-all-four-render-states-and-light-from-a-brazier).
+
+- **What an actor senses:** a breadth-first flood from its tile through open tiles, up to the
+  sense radius in steps, plus the rock faces bordering the open tiles it reaches. Rock behind a
+  face is never sensed, so untouched rock stays black. The radius is a `TuningProfile` number
+  (about 7,
+  [D-135](#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it)).
+- **The screen's Sensed ring is the followed actor's,** worked out in presentation, which
+  [D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer) allows.
+- **Memory is every player's.** The world marks each of its players' sensed tiles remembered
+  as they move. It's simulation, per world, saved with the world, and never "the" player
+  (pillar [P5](./game-overview.md)). A co-op partner's exploring fills in the shared map.
+- **The world sets the memory layer directly,** the way generation fills a level. Memory is
+  perception, not terrain, so it isn't a request through the tile gatekeeper
+  ([D-078](#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime) is about what a tile
+  *is*).
+
+*Why:* a flood suits a sense rather than sight, reaches around a corner, and keeps the map the
+record of what was dug. Memory belongs to the world, so it can't depend on who was watching.
+
+*Considered:* true line of sight by shadowcasting (no seeing around corners; more to learn and
+to run); a plain disc (reveals rock seven tiles deep around every tunnel, against D-033); every
+player's ring drawn on screen; memory written through the gatekeeper (dozens of requests a
+step that are never refused); memory from the local player only (the saved world would depend
+on the viewer).
+
+---
+
+### D-146 — The four states reach the shader as one state texture; Sensed is grey, Remembered darker
+**Decided** (by Derik, slice 006 section C, 2026-11-03). Settles the render route for D-033
+within [D-046](#d-046--levels-reach-the-screen-through-a-data-texture-and-a-shader-not-tilemaplayer).
+
+- **One byte per tile, built in GDScript:** 0 Unknown, 1 Remembered, 2 Sensed, 3 Lit. It's
+  worked out from the memory layer, the followed actor's sensed tiles and (section D) the light
+  field, uploaded as one more data texture. The shader maps each state to a look. The rule that
+  combines the states is plain code, unit-tested, and readable in F3.
+- **The looks:** Lit is full color, with ore by type. Sensed is the tile art in greyscale, with
+  ore as a plain grey lump. Remembered is that greyscale at about a third of the brightness,
+  with no ore. Unknown is black. The two brightnesses are `TuningProfile` numbers.
+
+*Why:* the flood has to run in GDScript anyway, and a rule in GDScript can be tested where one
+in a shader can't. The greys are a few lines of shader and tune by eye.
+
+*Considered:* separate memory, sensed and light textures combined in the shader (each uploads
+only on its own change, but the rule is out of tests' reach); Remembered drawn as outlines of
+open-rock edges (closest to D-033's wording, but the shader samples neighbors); tints (color is
+how the game says "this is yours", D-010).
+

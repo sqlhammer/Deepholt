@@ -65,14 +65,19 @@ Claude the rest (Agent mode).*
 
 ## C. Memory and the senses
 
-Lesson: `work/lesson/006-C-memory-and-senses.md`, written once C's forks are settled.
+Lesson: `work/lesson/006-C-memory-and-senses.md`. Forks settled 2026-11-03 as
+[D-145](../docs/design-decisions.md#d-145--senses-flood-through-open-space-the-followed-actors-draw-every-players-remember)
+and D-146.
 
-- [ ] *Decide:* whose senses draw the screen (the followed actor's, or every player's in the
-  shown world).
-- [ ] *Decide:* whose memory, and who writes it (any player or the local one; through the world
-  or directly).
-- [ ] *Decide:* what "seen" means: the whole radius, or line of sight.
-- [ ] *Decide:* how the states reach the shader, and what Remembered looks like.
+- [x] *Decide:* whose senses draw the screen (the followed actor's, or every player's in the
+  shown world). *The followed actor's (D-145).*
+- [x] *Decide:* whose memory, and who writes it (any player or the local one; through the world
+  or directly). *Every player's, set by the world directly (D-145).*
+- [x] *Decide:* what "seen" means: the whole radius, or line of sight. *A flood through open
+  space, with the rock faces it reaches (D-145).*
+- [x] *Decide:* how the states reach the shader, and what Remembered looks like. *One state
+  texture built in GDScript; Sensed grey, Remembered darker grey
+  ([D-146](../docs/design-decisions.md#d-146--the-four-states-reach-the-shader-as-one-state-texture-sensed-is-grey-remembered-darker)).*
 - [ ] The sense radius is a `TuningProfile` number (about 7 tiles,
   [D-135](../docs/design-decisions.md#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it)).
 - [ ] A `memory` byte layer on `LevelTiles`, saved by name in `SaveGame.TILE_LAYERS`; a save
