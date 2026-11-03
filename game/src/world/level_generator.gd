@@ -50,11 +50,28 @@ static func ladder_problems(levels: Array[Level]) -> Array[String]:
 	return problems
 
 
+# The cross-level problems between two adjacent levels, for a level
+# generated below one that exists (D-143): ramps between them, and the
+# lower level's ladders against the upper level's holes. Ladders on
+# the upper level answer to the level above it, checked when the
+# upper level was itself generated.
+static func problems_between(upper: Level, lower: Level) -> Array[String]:
+	var problems: Array[String] = ramp_problems([upper, lower] as Array[Level])
+	for ladder: Fixture in lower.level_fixtures.of_kind(ObjectKind.OBJECT.LADDER):
+		if upper.level_tiles.get_ground(ladder.tile.x, ladder.tile.y) != TileKind.GROUND.HOLE:
+			problems.append("Ladder at (%d, %d) depth %d has no hole above it at depth %d." % [
+				ladder.tile.x, ladder.tile.y, lower.depth, upper.depth])
+	return problems
+
+
 # Every ramp end needs its other end at the same (x, y) one level
 # away, both under open tops (D-095). Checked on world tiles after
 # every level is stamped, since a pair spans two prefabs (NOW.md
 # trap 4). A ramp outside the other level's bounds has no other end
-# there, so it is reported the same way.
+# there, so it is reported the same way. A ramp whose other level
+# isn't among `levels` is skipped: levels are generated one ahead of
+# arrival (D-143), so the deepest one's way down leads to a level that
+# doesn't exist yet. The pair is checked when that level arrives.
 static func ramp_problems(levels: Array[Level]) -> Array[String]:
 	var by_depth: Dictionary[int, Level] = {}
 	for level: Level in levels:
@@ -76,8 +93,7 @@ static func _ramp_problem(by_depth: Dictionary[int, Level], depth: int, tile: Ve
 		return "%s is under a solid top." % name
 
 	var other_depth: int = depth + 1 if TileKind.RAMPS[kind].down else depth - 1
-	if not by_depth.has(other_depth):
-		return "%s leads to depth %d, which has no level." % [name, other_depth]
+	if not by_depth.has(other_depth): return ""
 	var pair: int = TileKind.ramp_pair(kind)
 	if by_depth[other_depth].level_tiles.get_ground(tile.x, tile.y) != pair:
 		return "%s has no %s at depth %d." % [

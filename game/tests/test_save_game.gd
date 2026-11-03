@@ -972,10 +972,15 @@ func test_a_fixture_that_breaks_a_placement_rule_loads_and_is_reported() -> void
 	loaded_game.free_world()
 
 
-# The world's own checks run too: a ramp end with no other end below
-# it is reported.
+# The world's own checks run too: a ramp end with no other end on the
+# level below it is reported. With no level below at all, there's
+# nothing to check against yet (D-143), so -1 is saved too.
 func test_a_load_reports_a_ramp_problem() -> void:
 	var levels: Dictionary = _saved_levels()
+	var minus_one: Level = Level.new()
+	minus_one.setup(1)
+	levels.merge(SaveGame._serialize_levels([minus_one] as Array[Level]))
+	minus_one.free()
 	var ground: PackedByteArray = _filled(_size(0), TileKind.GROUND.ROCK)
 	var top: PackedByteArray = _filled(_size(0), TileKind.TOP.MINABLE_ROCK)
 	var index: int = LevelTiles.new(LevelRecipes.TABLE.get_bounds(0)).get_index(0, 0)
@@ -987,7 +992,7 @@ func test_a_load_reports_a_ramp_problem() -> void:
 
 	var loaded_game: SaveGame.LoadedGame = SaveGame.load_game(TEST_SLOT)
 	assert_eq(loaded_game.problems.size(), 1, "the lone ramp end: %s" % [loaded_game.problems])
-	assert_push_warning("which has no level")
+	assert_push_warning("has no RAMP_UP")
 	loaded_game.free_world()
 
 

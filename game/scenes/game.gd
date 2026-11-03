@@ -401,6 +401,9 @@ func _swap_in_loaded_world(new_world: World, local_actor_id: int) -> void:
 	_swap_world(new_world)
 	for actor: Actor in world.actors():
 		_move_if_stuck(actor)
+	# Only now, with the world swapped in and every move made: the
+	# level below each actor, if the save didn't hold it (D-143)
+	world.generate_below_actors()
 	for actor: Actor in world.actors():
 		_take_actor(actor)
 	var local: Actor = _local_player(local_actor_id)

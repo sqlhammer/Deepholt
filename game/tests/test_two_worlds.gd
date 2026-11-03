@@ -18,7 +18,9 @@ var _second_actor: Actor
 # standing on OPEN at the Surface.
 func _world_with_actor(actor_name: String) -> World:
 	var world: World = add_child_autofree(World.new())
-	for depth in [0, 1]:
+	# Blank -2 too: an actor arriving on -1 would otherwise generate the
+	# real -2 under this blank -1 (D-143)
+	for depth in [0, 1, 2]:
 		var level: Level = Global.level_packed_scene.instantiate()
 		level.setup(depth)
 		level.level_tiles.set_top(OPEN.x, OPEN.y, TileKind.TOP.OPEN)

@@ -6,6 +6,10 @@ Working list for [NOW.md](./NOW.md). **Educational Assistant mode for the whole 
 one at a time, before the section that needs them, and each lands as a `D-nnn`. Numbers in
 brackets are the brief's outcomes.
 
+**Section B finished in Agent mode** (Derik, 2026-11-03): Derik built the generator's two entry
+points (`e6e61a3`), and Claude built the rest of B on `main`. C and D stay in Educational
+Assistant mode.
+
 Ordered as Derik chose in planning: generation on first descent first, so the save's shape
 changes once before the dark adds a layer to it. Then memory and the senses, then light. The
 game runs at the end of every section, and is launched by hand there (002's log).
@@ -29,21 +33,31 @@ Slice 005's checklist is in git history (last at `ca1ac7b`).
 
 ## B. Generation on first descent
 
-Lesson: `work/lesson/006-B-first-descent.md`.
+Lesson: `work/lesson/006-B-first-descent.md`. *Derik built the first two items' generator side;
+Claude the rest (Agent mode).*
 
-- [ ] The cross-level checks (`ladder_problems`, `ramp_problems`) skip a pair whose other level
-  doesn't exist yet, and the pair is checked when that level is generated (trap 1).
-- [ ] `LevelGenerator` builds a new world with the Surface and −1 only, and can build one
+- [x] The cross-level checks (`ladder_problems`, `ramp_problems`) skip a pair whose other level
+  doesn't exist yet, and the pair is checked when that level is generated (trap 1). *Ramps
+  skip a missing other level; ladders still report a missing level above, which top-down
+  generation can't cause. `LevelGenerator.problems_between(upper, lower)` checks a new pair.*
+- [x] `LevelGenerator` builds a new world with the Surface and −1 only, and can build one
   level into an existing world, drawing fixture ids from that world's counter (D-143, trap 3).
-- [ ] The world generates the level below on any of its actors' arrival at a depth, once, and
-  only where the recipe table has a row (D-143).
-- [ ] Nothing generates while a load is building a world, or before it's swapped in. After the
-  swap, each actor's level below is generated if missing (D-143, trap 2).
-- [ ] A save without some levels loads with no refusal and no problem reported for the levels
+  *`generate_world(seed, tuning)` builds the profile's `levels_to_generate_on_new_game`;
+  `generate_into(world, depth)` (Derik).*
+- [x] The world generates the level below on any of its actors' arrival at a depth, once, and
+  only where the recipe table has a row (D-143). *`World.generate_below(depth)`, called from
+  each actor's `actor_worldpos_changed`; `level_added` on every level joining a world.*
+- [x] Nothing generates while a load is building a world, or before it's swapped in. After the
+  swap, each actor's level below is generated if missing (D-143, trap 2). *An actor's starting
+  place isn't heard as an arrival, so the load can't generate; the swap calls
+  `world.generate_below_actors()` after the stuck-actor moves.*
+- [x] A save without some levels loads with no refusal and no problem reported for the levels
   that don't exist yet. [8]
-- [ ] F3 lists the generated depths, and how long the last generation took. [1]
-- [ ] The places that assume eight levels are found and fixed (trap 4).
-- [ ] Tests: an arrival generates the level below once; an NPC's arrival does too; a world
+- [x] F3 lists the generated depths, and how long the last generation took. [1]
+- [x] The places that assume eight levels are found and fixed (trap 4). *Tests only. The fixture
+  renderer also redraws ladder tops when the level below arrives late. Hand-built test worlds
+  got a blank −2 so an arrival on −1 doesn't generate the real −2 under them.*
+- [x] Tests: an arrival generates the level below once; an NPC's arrival does too; a world
   outside the game scene grows; two worlds grow independently; a load with missing levels
   generates after the swap, never during it. [7, 8]
 - [ ] By hand: `--new-game`, F3 shows the Surface and −1; walk down to −2 and −3; save on −1

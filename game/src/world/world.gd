@@ -19,6 +19,12 @@ extends Node2D
 # `actor` may be null in every signal: no actor is behind a generated
 # or collapsed fixture.
 
+# A level joined this world: at creation, from a load, or generated
+# as an actor arrived above it (D-143). Anything that draws the level
+# below the shown one listens, since it can arrive after the shown one
+# is drawn.
+signal level_added(level: Level)
+
 signal dig_requested(actor: Actor, tile: WorldPos)
 signal tile_dug(actor: Actor, tile: WorldPos)
 signal dig_refused(actor: Actor, tile: WorldPos, reason: DIG_REFUSAL)
@@ -67,6 +73,9 @@ var actor_ids: IdAllocator = IdAllocator.new()
 # The numbers this world runs under (D-135). Each world holds its own,
 # so two worlds can run under different profiles.
 var tuning: TuningProfile
+# How long the last level generated on arrival took, in ms; -1 until
+# one has been (D-143). F3 shows it.
+var last_generation_msec: float = -1.0
 
 var _levels: Dictionary[int, Level] = {}
 var _levels_node: Node2D
@@ -109,6 +118,7 @@ func add_level(level: Level) -> bool:
 	level.world = self
 	_levels[level.depth] = level
 	_levels_node.add_child(level)
+	level_added.emit(level)
 	return true
 
 
@@ -137,6 +147,45 @@ func add_actor(actor: Actor) -> void:
 		_players_node.add_child(actor)
 	else:
 		_npcs_node.add_child(actor)
+	# Where an actor starts isn't an arrival: setup announced it before
+	# now. A load relies on that, so nothing generates while it builds
+	# (D-143).
+	actor.actor_worldpos_changed.connect(_on_actor_moved)
+
+
+# --- generation on first descent (D-143) ---
+
+# Any actor, a player or not, arriving at a depth grows the world one
+# level below it.
+func _on_actor_moved(_actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> void:
+	if old_pos != null and old_pos.depth == new_pos.depth: return
+	generate_below(new_pos.depth)
+
+
+# Generates the level below `depth` if it doesn't exist yet and the
+# recipe table has a row for it. Returns the new level, or null if
+# none was needed.
+func generate_below(depth: int) -> Level:
+	var below: int = depth + 1
+	if level_at(below) != null or not LevelRecipes.TABLE.has_recipe(below): return null
+	var started: int = Time.get_ticks_usec()
+	var level: Level = LevelGenerator.generate_into(self, below)
+	last_generation_msec = (Time.get_ticks_usec() - started) / 1000.0
+	if level == null: return null
+	# The pairs that span the new level and the one above are checked
+	# now that both exist (trap 1). A problem there is a recipe bug.
+	var above: Level = level_at(depth)
+	if above != null:
+		for problem: String in LevelGenerator.problems_between(above, level):
+			push_error(problem)
+	return level
+
+
+# The pass a load makes once its world is swapped in (D-143): the
+# level below each actor, if the save didn't hold it.
+func generate_below_actors() -> void:
+	for actor: Actor in actors():
+		generate_below(actor.depth)
 
 
 # Every actor in the world, players first, each in the order added.

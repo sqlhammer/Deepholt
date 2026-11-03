@@ -70,6 +70,9 @@ section and after its forks are settled. Each covers the decisions, the reasons,
 how the pieces work and the traps, with small snippets only, never the complete work. Claude
 answers questions straight and in full, and reviews each section once it's built.
 
+**Section B was finished in Agent mode** (Derik, 2026-11-03), on `main`. C and D stay in
+Educational Assistant mode.
+
 ## What you're deciding
 
 Generation on first descent is settled

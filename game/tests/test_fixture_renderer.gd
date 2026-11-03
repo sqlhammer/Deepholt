@@ -13,7 +13,9 @@ var _levels: Array[Level] = []
 func before_each() -> void:
 	_levels.clear()
 	_world = add_child_autofree(World.new())
-	for depth in [0, 1]:
+	# Blank -2 too: an actor arriving on -1 would otherwise generate the
+	# real -2 under this blank -1 (D-143)
+	for depth in [0, 1, 2]:
 		var level: Level = Global.level_packed_scene.instantiate()
 		level.setup(depth)
 		_world.add_level(level)

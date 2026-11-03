@@ -35,6 +35,7 @@ var _sprites: Dictionary[int, Sprite2D] = {}
 # tops drawn in its holes, by the ladder's id (D-107).
 var _below: LevelFixtures
 var _shown_tiles: LevelTiles
+var _shown_depth: int = View.NO_DEPTH
 var _top_sprites: Dictionary[int, Sprite2D] = {}
 
 
@@ -51,8 +52,18 @@ func watch(view: View) -> void:
 
 
 func _on_shown_world_changed(world: World, depth: int) -> void:
+	if is_instance_valid(_world) and _world.level_added.is_connected(_on_level_added):
+		_world.level_added.disconnect(_on_level_added)
 	_world = world
+	if _world != null: _world.level_added.connect(_on_level_added)
 	show_depth(depth)
+
+
+# The level below the shown one can be generated after the shown one
+# is drawn (D-143). Its ladders' tops are drawn once it arrives.
+func _on_level_added(level: Level) -> void:
+	if level.depth != _shown_depth + 1 or _shown_tiles == null: return
+	show_ladder_tops(_shown_tiles, level.level_fixtures)
 
 
 func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:
@@ -67,6 +78,7 @@ func show_depth(depth: int) -> void:
 	if level == null:
 		push_error("No level at depth %d to draw fixtures for." % depth)
 		return
+	_shown_depth = depth
 	show_fixtures(level.level_fixtures)
 	var below: Level = _world.level_at(depth + 1)
 	show_ladder_tops(level.level_tiles, below.level_fixtures if below != null else null)

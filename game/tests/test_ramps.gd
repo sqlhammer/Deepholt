@@ -135,11 +135,13 @@ func test_a_ramp_under_a_solid_top_is_reported() -> void:
 		assert_string_contains(problems[0], "under a solid top")
 
 
-func test_a_ramp_leading_to_no_level_is_reported() -> void:
+# The level below may not be generated yet (D-143): the pair is
+# checked when it arrives, not reported now.
+func test_a_ramp_leading_to_a_level_not_generated_yet_is_not_reported() -> void:
 	var levels: Array[Level] = _levels([0])
 	levels[0].level_tiles.set_ground(RAMP_TILE.x, RAMP_TILE.y, TileKind.GROUND.RAMP_DOWN_E)
 	var problems: Array[String] = LevelGenerator.ramp_problems(levels)
-	assert_eq(problems.size(), 1, "nowhere to go")
+	assert_eq(problems.size(), 0, "nothing to check against yet")
 	if problems.size() == 1:
 		assert_string_contains(problems[0], "which has no level")
 
