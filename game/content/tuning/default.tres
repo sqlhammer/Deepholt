@@ -13,3 +13,4 @@ hardness = Dictionary[int, float]({
 })
 ore_dig_multiplier = 1.5
 level_change_fade_seconds = 0.5
+levels_to_generate_on_new_game = Array[int]([0, 1])
