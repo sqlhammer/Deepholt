@@ -24,6 +24,7 @@ section; this page is the *what*. The save format's place in the wider world mod
 [D-133]: ../design-decisions.md#d-133--save-format-version-1-is-settled-when-the-first-build-goes-to-someone-else
 [D-135]: ../design-decisions.md#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it
 [D-136]: ../design-decisions.md#d-136--a-loaded-world-runs-under-the-profile-its-save-names-else-the-default
+[D-147]: ../design-decisions.md#d-147--memory-is-a-saved-only-layer-of-bit-flags
 [D-134]: ../design-decisions.md#d-134--kept-saves-are-pruned-to-a-newest-few-of-each-kind-each-kind-its-own-count-at-launch
 
 ---
@@ -60,7 +61,7 @@ One file holds the whole world: a single `Dictionary` written with `FileAccess.s
 |---|---|
 | Header | `format_version`, `world_seed`, `game_version`, `saved_at` (UTC Unix seconds, an int) and `saved_at_utc_offset` (the writer's offset in minutes, an int); `tuning_profile_id` (the profile the world runs under), `local_actor_id`, `next_fixture_id`, `next_actor_id`, and `stats`. No `game_time` until there's a game clock. ([D-116], [D-122], [D-130]) |
 | `stats` | `active_play_time` (seconds played unpaused) and `total_play_time` (seconds the game was open), as floats. A zero isn't written. ([D-120]) |
-| Per level | Keyed by depth (an int): the bound (depth and radius, as plain ints), the level seed, the tile layers by name (`"ground"`, `"top"`, `"ore"`), and the fixtures (kind, tile, id). ([D-112]) |
+| Per level | Keyed by depth (an int): the bound (depth and radius, as plain ints), the level seed, the tile layers by name (`"ground"`, `"top"`, `"ore"`, `"memory"`), and the fixtures (kind, tile, id). ([D-112]) Memory is bit flags per tile, bit 0 "remembered", the rest reserved ([D-147]). |
 | Actors | Every actor, never just "the player", keyed by id: kind, name, depth, tile, facing. ([D-114]) |
 
 **Who supplies what:** `SaveGame.save_game(slot, world, session, saves_root)`. The `World`
@@ -159,7 +160,10 @@ These are **not** refusals:
   loaded ids. ([D-121], [D-131])
 - **A tuning profile this build doesn't have** (an older save's `"none"` included). The world
   runs under the default, with a warning, and F3 shows the profile in use. ([D-136])
-- **A missing tile layer.** It loads as that layer's default. ([D-112])
+- **A missing tile layer.** It loads as that layer's default. ([D-112]) A saved-only layer
+  (`SaveGame.SAVED_ONLY_LAYERS`: memory) isn't needed for a level to count as held whole, so a
+  save from before memory existed is still built from the save alone, with nothing remembered
+  ([D-147]).
 - **A fixture that breaks a placement rule, or a ramp or ladder check that fails.** It loads
   anyway, a warning is logged, and F3 shows the count. Nothing is dropped. ([D-113])
   The one exception is a second fixture with an id already on its level: a level can't hold

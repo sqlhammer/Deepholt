@@ -10,4 +10,6 @@ const OBJECT: Dictionary = {
 	"LADDER": 1,
 	# The world's default spawn point (D-091, D-092). Invisible.
 	"WORLD_SPAWN": 2,
+	# A fixed light (D-144, D-149).
+	"BRAZIER": 3,
 }

@@ -42,6 +42,12 @@ var _tiles: LevelTiles
 var _dirty_layers: Dictionary[String, bool] = {}
 # The world whose levels are drawn, set only by the view's signal
 var _world: World
+# The states of the shown level's tiles (D-146), drawn from one more
+# data texture. Without a Visibility every tile is drawn Lit, as
+# before the dark.
+var _visibility: Visibility
+var _state_image: Image
+var _state_texture: ImageTexture
 
 const LAYER_NAMES: Dictionary = {
 	LevelTiles.LAYER.GROUND: "ground",
@@ -53,6 +59,11 @@ func _ready() -> void:
 	material.set_shader_parameter("ground_cells", _ground_cells())
 	material.set_shader_parameter("top_cells", _top_cells())
 	material.set_shader_parameter("ore_cells", _ore_cells())
+	# Every ore reads as the same lump in the dark (D-010, D-146).
+	# Copper is the only ore with art, so its cell is the lump for now.
+	material.set_shader_parameter("unknown_ore_cell", AtlasCell.COPPER)
+	material.set_shader_parameter("empty_cell", AtlasCell.EMPTY)
+	_set_brightness(null)
 
 
 # Sends each layer changed this frame to the GPU, once.
@@ -72,6 +83,7 @@ func show_level(tiles: LevelTiles) -> void:
 	for layer: String in layers:
 		var layer_texture: ImageTexture = _get_and_store_data(layer, tiles, layers[layer])
 		material.set_shader_parameter(layer + "_data", layer_texture)
+	_upload_state()
 
 	# A QuadMesh is centered on its node, and an odd-width level's center
 	# is the middle of tile (0, 0). Shifting by half a tile puts that
@@ -249,7 +261,56 @@ func watch(view: View) -> void:
 
 func _on_shown_world_changed(world: World, depth: int) -> void:
 	_world = world
+	_set_brightness(world.tuning if world != null else null)
 	_show_depth(depth)
+
+
+# --- the dark (D-146) ---
+
+# Draws each tile in its state, from the Visibility's bytes, whenever
+# they change.
+func watch_visibility(visibility: Visibility) -> void:
+	_visibility = visibility
+	visibility.states_changed.connect(_upload_state)
+	_upload_state()
+
+
+# The two greys come from the shown world's profile (D-146).
+func _set_brightness(tuning: TuningProfile) -> void:
+	material.set_shader_parameter("sensed_brightness",
+		tuning.sensed_brightness if tuning != null else 1.0)
+	material.set_shader_parameter("remembered_brightness",
+		tuning.remembered_brightness if tuning != null else 1.0)
+
+
+# The state texture for the level on screen. Bytes for another level
+# (the Visibility hasn't caught up with a switch yet) aren't drawn;
+# the level is drawn Lit until they are.
+func _upload_state() -> void:
+	if _tiles == null: return
+	var width: int = level_width(_tiles)
+	var bytes: PackedByteArray = []
+	if _visibility != null and _visibility.shown_tiles() == _tiles \
+			and _visibility.state_bytes.size() == width * width:
+		bytes = _visibility.state_bytes
+	else:
+		bytes.resize(width * width)
+		bytes.fill(Visibility.STATE.LIT)
+	if _state_image != null and _state_image.get_width() == width:
+		_state_image.set_data(width, width, false, Image.FORMAT_R8, bytes)
+		_state_texture.update(_state_image)
+	else:
+		_state_image = Image.create_from_data(width, width, false, Image.FORMAT_R8, bytes)
+		_state_texture = ImageTexture.create_from_image(_state_image)
+		material.set_shader_parameter("state_data", _state_texture)
+
+
+# The state the shader is drawing a tile in, read back from the
+# texture's source image. For tests.
+func drawn_state_at(x: int, y: int) -> int:
+	if _state_image == null or _tiles == null: return -1
+	var radius: int = _tiles.level_bound.radius
+	return int(_state_image.get_pixel(x + radius, y + radius).r * 255.0 + 0.5)
 
 
 func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:

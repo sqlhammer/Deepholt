@@ -9,8 +9,13 @@ extends RefCounted
 # Which kinds can't share a tile with which (D-103). A kind missing
 # from the table conflicts with nothing.
 const CONFLICTS: Dictionary = {
-	ObjectKind.OBJECT.LADDER: [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.WORLD_SPAWN],
-	ObjectKind.OBJECT.WORLD_SPAWN: [ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.LADDER],
+	ObjectKind.OBJECT.LADDER: [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.WORLD_SPAWN,
+		ObjectKind.OBJECT.BRAZIER],
+	ObjectKind.OBJECT.WORLD_SPAWN: [ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.LADDER,
+		ObjectKind.OBJECT.BRAZIER],
+	# A brazier fills its tile: nothing else stands there (D-144)
+	ObjectKind.OBJECT.BRAZIER: [ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.LADDER,
+		ObjectKind.OBJECT.WORLD_SPAWN],
 }
 
 

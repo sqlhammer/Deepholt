@@ -7,8 +7,9 @@ one at a time, before the section that needs them, and each lands as a `D-nnn`. 
 brackets are the brief's outcomes.
 
 **Section B finished in Agent mode** (Derik, 2026-11-03): Derik built the generator's two entry
-points (`e6e61a3`), and Claude built the rest of B on `main`. C and D stay in Educational
-Assistant mode.
+points (`e6e61a3`), and Claude built the rest of B on `main`. **C and D were built in Agent
+mode too** (Derik, 2026-11-08), stopping for decisions: D-147 to D-149, and a second brazier on
+−2. Derik had already added C's profile numbers.
 
 Ordered as Derik chose in planning: generation on first descent first, so the save's shape
 changes once before the dark adds a layer to it. Then memory and the senses, then light. The
@@ -78,43 +79,56 @@ and D-146.
 - [x] *Decide:* how the states reach the shader, and what Remembered looks like. *One state
   texture built in GDScript; Sensed grey, Remembered darker grey
   ([D-146](../docs/design-decisions.md#d-146--the-four-states-reach-the-shader-as-one-state-texture-sensed-is-grey-remembered-darker)).*
-- [ ] The sense radius is a `TuningProfile` number (about 7 tiles,
+- [x] The sense radius is a `TuningProfile` number (about 7 tiles,
   [D-135](../docs/design-decisions.md#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it)).
-- [ ] A `memory` byte layer on `LevelTiles`, saved by name in `SaveGame.TILE_LAYERS`; a save
-  without it loads with nothing remembered ([D-112](../docs/design-decisions.md)). [9]
-- [ ] Memory is marked as decided, per world, and never from "the" player in simulation
-  (trap 8).
-- [ ] The renderer draws Unknown, Remembered and Sensed, follows `shown_world_changed`, and
-  uploads memory without re-sending the whole layer every step (trap 5). [3, 4]
-- [ ] Tests: memory round-trips through a save, with a remembered tile the generator would
+- [x] A `memory` byte layer on `LevelTiles`, saved by name in `SaveGame.TILE_LAYERS`; a save
+  without it loads with nothing remembered ([D-112](../docs/design-decisions.md)). [9] *Bit
+  flags, bit 0 remembered; `SAVED_ONLY_LAYERS` keeps an old save "whole"
+  ([D-147](../docs/design-decisions.md#d-147--memory-is-a-saved-only-layer-of-bit-flags)).*
+- [x] Memory is marked as decided, per world, and never from "the" player in simulation
+  (trap 8). *`Senses.flood` in `src/world/`; the world marks each player's flood on every tile
+  step and when it's added, so a new game's first tiles are remembered at once.*
+- [x] The renderer draws Unknown, Remembered and Sensed, follows `shown_world_changed`, and
+  uploads memory without re-sending the whole layer every step (trap 5). [3, 4] *A
+  presentation `Visibility` node owns the state bytes; the level renderer, fixture renderer
+  and view read them. Measured on the largest level: flood 0.06 ms, state build 0.02 ms.
+  Actors hidden and fixtures dimmed in the dark
+  ([D-148](../docs/design-decisions.md#d-148--in-the-dark-other-actors-are-hidden-and-fixtures-are-dimmed-with-their-tile)).*
+- [x] Tests: memory round-trips through a save, with a remembered tile the generator would
   never mark (trap 9); a second world's memory is its own. [9]
 - [ ] By hand: underground is black past the radius and monochrome within it; walk away and
   your tunnel stays outlined; relaunch and it's still there. [3, 4]
 
 ## D. Light, the brazier and ore
 
-Lesson: `work/lesson/006-D-light.md`, written once D's forks are settled.
+*Built in Agent mode, so no lesson was written.*
 
-- [ ] *Decide:* how light spreads (a plain radius, or blocked by rock), and whether it has
-  levels or is on/off per tile.
-- [ ] The brazier is a fixture kind: a new `ObjectKind` id, a prefab character, its texture in
+- [x] *Decide:* how light spreads (a plain radius, or blocked by rock), and whether it has
+  levels or is on/off per tile. *The sense flood, on/off
+  ([D-149](../docs/design-decisions.md#d-149--light-floods-like-the-senses-and-a-tile-is-lit-or-not)).*
+- [x] The brazier is a fixture kind: a new `ObjectKind` id, a prefab character, its texture in
   `FixtureRenderer`, and placed in `rootshelf_home`
   ([D-103](../docs/design-decisions.md#d-103--fixtures-names-signals-refusal-reasons-and-the-conflict-table)).
-- [ ] Its light radius is a `TuningProfile` number.
-- [ ] The light field is derived per level from its light fixtures: rebuilt after a load, a
+  *`BRAZIER: 3`, prefab `B`, conflicts with ladders, spawns and braziers. A second brazier on
+  −2 (Greyseam) at (−7, 3) lights one copper vein; −1 stays copper-free (Derik).*
+- [x] Its light radius is a `TuningProfile` number.
+- [x] The light field is derived per level from its light fixtures: rebuilt after a load, a
   swap, and any light fixture's change; never saved (trap 7). [10]
-- [ ] Lit tiles draw in full color. Ore type shows only on Lit tiles; elsewhere a vein is a grey
+- [x] Lit tiles draw in full color. Ore type shows only on Lit tiles; elsewhere a vein is a grey
   lump. The tile data and the dig are unchanged (trap 6). [5]
-- [ ] The Surface is lit throughout (D-144). [6]
-- [ ] Tests: light follows a swapped-in world; moving a brazier (D-138) moves its light; nothing
+- [x] The Surface is lit throughout (D-144). [6]
+- [x] Tests: light follows a swapped-in world; moving a brazier (D-138) moves its light; nothing
   about light is in a save. [10]
-- [ ] By hand: copper by the brazier and copper in the dark; the Surface; how a hole on −1 and
-  the level-change fade read in the dark. [5, 6]
+- [ ] By hand: copper by the brazier and copper in the dark (on −2, by Greyseam's brazier); the
+  home cave's brazier on −1; the Surface; how a hole on −1 and the level-change fade read in
+  the dark. [5, 6]
 
 ## E. Done
 
-- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-- [ ] `python scripts/coverage.py` run; uncovered lines looked at (005 closed at 97.5%).
+- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
+  *810 tests, 41 scripts.*
+- [x] `python scripts/coverage.py` run; uncovered lines looked at (005 closed at 97.5%).
+  *97.4%.*
 - [ ] By hand: outcomes 1–6 walked in one sitting, launched outside the editor at least once.
 - [ ] Claude reviews the slice.
 - [ ] Claude writes `log/006-down-into-the-dark.md`.

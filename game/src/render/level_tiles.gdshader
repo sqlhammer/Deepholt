@@ -18,6 +18,23 @@ uniform int ground_cells[256];
 uniform int top_cells[256];
 uniform int ore_cells[256];
 
+// Each tile's state (D-033, D-146), one texel per tile like the
+// layers, and an id, not a color: 0 Unknown, 1 Remembered, 2 Sensed,
+// 3 Lit. Built in GDScript by Visibility.
+uniform sampler2D state_data : filter_nearest, repeat_disable;
+// How bright each grey is: 1 keeps the art's own brightness.
+uniform float sensed_brightness = 1.0;
+uniform float remembered_brightness = 1.0;
+// The one cell every ore draws as in the dark, so its kind can't be
+// told apart by shape (D-010).
+uniform int unknown_ore_cell = 0;
+// The cell that draws nothing: a tile with no ore draws it
+uniform int empty_cell = 0;
+
+const int UNKNOWN = 0;
+const int REMEMBERED = 1;
+const int SENSED = 2;
+
 
 // QuadMesh is a 3D mesh: its UV.y runs bottom-to-top, the opposite of
 // the 2D canvas. Flipped here so (0, 0) is the top-left, like the
@@ -50,6 +67,14 @@ vec4 paint_over(vec4 under, vec4 over) {
 }
 
 
+// Monochrome at a brightness (D-010). The weights are the usual
+// luminance ones: green looks brighter than blue at the same value.
+vec4 grey(vec4 colour, float brightness) {
+	float luma = dot(colour.rgb, vec3(0.299, 0.587, 0.114));
+	return vec4(vec3(luma * brightness), colour.a);
+}
+
+
 void fragment() {
 	ivec2 tiles = textureSize(top_data, 0);
 	ivec2 level_pixels = tiles * TILE_PIXELS;
@@ -59,8 +84,23 @@ void fragment() {
 	ivec2 tile = pixel / TILE_PIXELS;
 	ivec2 within_tile = pixel % TILE_PIXELS;
 
-	vec4 colour = atlas_texel(ground_cells[kind_at(ground_data, tile)], within_tile);
-	colour = paint_over(colour, atlas_texel(top_cells[kind_at(top_data, tile)], within_tile));
-	colour = paint_over(colour, atlas_texel(ore_cells[kind_at(ore_data, tile)], within_tile));
+	int state = kind_at(state_data, tile);
+	// Unknown is black; fragment() can't return early, so every other
+	// state is drawn inside the if (D-146)
+	vec4 colour = vec4(0.0, 0.0, 0.0, 1.0);
+	if (state != UNKNOWN) {
+		colour = atlas_texel(ground_cells[kind_at(ground_data, tile)], within_tile);
+		colour = paint_over(colour, atlas_texel(top_cells[kind_at(top_data, tile)], within_tile));
+
+		// Ore by its kind only in light; a lump when sensed; nothing
+		// when remembered
+		int ore_cell = ore_cells[kind_at(ore_data, tile)];
+		bool has_ore = ore_cell != empty_cell;
+		if (state == SENSED && has_ore) ore_cell = unknown_ore_cell;
+		if (state != REMEMBERED) colour = paint_over(colour, atlas_texel(ore_cell, within_tile));
+
+		if (state == SENSED) colour = grey(colour, sensed_brightness);
+		if (state == REMEMBERED) colour = grey(colour, remembered_brightness);
+	}
 	COLOR = colour;
 }

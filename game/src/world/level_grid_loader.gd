@@ -44,6 +44,7 @@ const ORE_CHARS: Dictionary = {
 const OBJECT_CHARS: Dictionary = {
 	".": ObjectKind.OBJECT.NULL,
 	"L": ObjectKind.OBJECT.LADDER,
+	"B": ObjectKind.OBJECT.BRAZIER,
 	"0": ObjectKind.OBJECT.NULL,
 }
 

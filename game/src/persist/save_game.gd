@@ -18,7 +18,11 @@ const COMPRESSION_MODE: FileAccess.CompressionMode = FileAccess.COMPRESSION_ZSTD
 # Every tile layer a save holds, by the name it's saved under and the
 # LevelTiles property it's read from (D-112). One list, so the save,
 # the load and the checks can't disagree (R-P8).
-const TILE_LAYERS: Array[String] = ["ground", "top", "ore"]
+const TILE_LAYERS: Array[String] = ["ground", "top", "ore", "memory"]
+# The layers only ever saved, never generated (D-147). A level the
+# save holds whole needs every other layer; one of these missing just
+# loads as its default.
+const SAVED_ONLY_LAYERS: Array[String] = ["memory"]
 # The largest radius a saved bound may have. Well past every recipe's
 # (207 at most), and an edited save can't make the load allocate
 # gigabytes: at this radius a layer is about 4 MB (R-P9).
@@ -653,6 +657,7 @@ static func _deserialize_level(p_depth: int, p_level: Dictionary, world: World) 
 static func _holds_whole_level(p_level: Dictionary, layers: Dictionary) -> bool:
 	if not p_level.has("fixtures"): return false
 	for layer: String in TILE_LAYERS:
+		if layer in SAVED_ONLY_LAYERS: continue
 		if not layers.has(layer): return false
 	return true
 

@@ -149,17 +149,37 @@ func add_actor(actor: Actor) -> void:
 		_npcs_node.add_child(actor)
 	# Where an actor starts isn't an arrival: setup announced it before
 	# now. A load relies on that, so nothing generates while it builds
-	# (D-143).
+	# (D-143). It is sensed, though, so a new game's first tiles are
+	# remembered before the first step.
 	actor.actor_worldpos_changed.connect(_on_actor_moved)
+	_remember_around(actor)
+
+
+# Every tile step: a player's senses mark memory, and any actor
+# arriving at a depth grows the world below it.
+func _on_actor_moved(actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> void:
+	_remember_around(actor)
+	if old_pos != null and old_pos.depth == new_pos.depth: return
+	generate_below(new_pos.depth)
+
+
+# --- memory (D-145) ---
+
+# What a player senses from where it stands is remembered on its
+# level, in this world. Players only: an NPC wandering the mountain
+# doesn't map it for you. Set directly, not requested: memory is
+# perception, not terrain, and nothing can refuse it.
+func _remember_around(actor: Actor) -> void:
+	if actor.actor_kind != ActorKind.ACTOR.PLAYER: return
+	var level: Level = actor.current_level
+	if level == null or level.world != self: return
+	var here: WorldPos = actor.current_WorldPos
+	if here == null: return
+	level.level_tiles.remember(
+		Senses.flood(level.level_tiles, Vector2i(here.x, here.y), tuning.sense_radius))
 
 
 # --- generation on first descent (D-143) ---
-
-# Any actor, a player or not, arriving at a depth grows the world one
-# level below it.
-func _on_actor_moved(_actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> void:
-	if old_pos != null and old_pos.depth == new_pos.depth: return
-	generate_below(new_pos.depth)
 
 
 # Generates the level below `depth` if it doesn't exist yet and the

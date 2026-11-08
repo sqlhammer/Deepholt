@@ -4,6 +4,8 @@ extends Node
 @onready var game_viewport: SubViewport = $GameViewport
 
 var view: View
+# What the screen can show of each tile, for the renderers (D-146)
+var visibility: Visibility
 # The world being played, inside GameViewport at the origin (D-128).
 # Handed by reference to whatever needs it; nothing looks it up.
 var world: World
@@ -370,10 +372,20 @@ func _create_view() -> void:
 	view.transitions = true
 	add_child(view)
 	_create_fade()
+	# What the screen can show of each tile (D-146). It watches the view
+	# first, so its states are ready when the renderers redraw.
+	visibility = Visibility.new()
+	visibility.name = "Visibility"
+	add_child(visibility)
+	visibility.watch(view)
+	view.visibility = visibility
 	$GameViewport/LevelRenderer.watch(view)
 	$GameViewport/FixtureRenderer.watch(view)
-	
+	$GameViewport/LevelRenderer.watch_visibility(visibility)
+	$GameViewport/FixtureRenderer.watch_visibility(visibility)
+
 	$DebugOverlay.watch_view(view)
+	$DebugOverlay.watch_visibility(visibility)
 
 
 # The one way a world comes in, at launch, for a new game and on a

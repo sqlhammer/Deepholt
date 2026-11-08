@@ -91,7 +91,8 @@ func test_a_move_within_a_level_generates_nothing() -> void:
 	assert_null(world.level_at(2), "same depth")
 
 
-# The deepest recipe row has nothing below it, and that's not an error.
+# The deepest recipe row has nothing below it, and that's not an
+# error.
 func test_arriving_at_the_deepest_level_generates_nothing() -> void:
 	var deepest: int = LevelRecipes.TABLE.rows.size() - 1
 	var world: World = autofree(World.new())
@@ -199,7 +200,8 @@ func test_f3_lists_the_generated_depths_and_the_last_time() -> void:
 
 
 # -1 is shown before -2 exists; the ladder's top appears in -1's hole
-# once -2 is generated (lesson trap: the renderer listened to nothing).
+# once -2 is generated (the lesson's trap: the renderer listened to
+# nothing).
 func test_ladder_tops_appear_when_the_level_below_arrives() -> void:
 	var world: World = add_child_autofree(LevelGenerator.generate_world(0))
 	var actor: Actor = _actor(world, BESIDE_HOLE)

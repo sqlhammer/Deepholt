@@ -17,6 +17,12 @@ const DEFAULT_ID: String = "default"
 
 @export var id: String = ""
 
+## Simulation
+
+# The depths a new world is generated with, before any actor is
+# spawned (D-143).
+@export var levels_to_generate_on_new_game: Array[int] = []
+
 # How often the game saves while playing, in seconds (D-110).
 @export var autosave_interval_seconds: float = 0.0
 
@@ -32,12 +38,25 @@ const DEFAULT_ID: String = "default"
 # without it (tuning appendix, section 4).
 @export var ore_dig_multiplier: float = 0.0
 
+# How far a player senses, in steps through open space (D-145).
+@export var sense_radius: int = 0
+
+# How far a brazier's light reaches, in steps through open space
+# (D-149).
+@export var brazier_light_radius: int = 0
+
+## Presentation
+
 # How long a level change's fade through black lasts, out and back in
 # (D-142). Zero switches at once.
 @export var level_change_fade_seconds: float = 0.0
 
-# When a new game generates levels, which depths are generated before any actors are spawned
-@export var levels_to_generate_on_new_game: Array[int] = [0,1]
+# How bright a Sensed tile's grey is, 1 being the art's own brightness
+# (D-146).
+@export var sensed_brightness: float = 0.0
+
+# How bright a Remembered tile's grey is (D-146).
+@export var remembered_brightness: float = 0.0
 
 
 # The profile with this id, or null if this build has none.

@@ -21,6 +21,9 @@ signal transition_started
 signal transition_ended
 # 0 is clear, 1 is black. Whatever draws the fade follows this.
 signal fade_changed(fade: float)
+# The followed actor is somewhere new: followed, or a tile step. What
+# it senses has changed (D-145).
+signal followed_moved(actor: Actor)
 
 # No depth is shown until a world is.
 const NO_DEPTH: int = -1
@@ -46,6 +49,15 @@ var _transition_elapsed: float = -1.0
 var _transition_seconds: float = 0.0
 var _transition_depth: int = NO_DEPTH
 
+# What the screen can show, tile by tile (D-146). Other actors are
+# drawn only on Sensed or Lit tiles (D-148). Without one, every actor
+# on the shown depth is drawn, as before the dark.
+var visibility: Visibility:
+	set(value):
+		visibility = value
+		if visibility != null:
+			visibility.states_changed.connect(_update_all_visibility)
+
 
 # Shows a world at a depth, following nobody (D-132). A swap calls it
 # first, so a world is shown even when none of its actors is a
@@ -68,8 +80,9 @@ func follow(p_actor: Actor) -> void:
 	var world: World = actor.current_level.world if actor.current_level else null
 	if world != shown_world:
 		_show_world(world, actor.depth)
-		return
-	_show(actor.depth)
+	else:
+		_show(actor.depth)
+	followed_moved.emit(actor)
 
 
 # The actor followed before may have been freed with its world.
@@ -90,6 +103,7 @@ func track(p_actor: Actor) -> void:
 
 # Called on every tile step; only a change of depth matters here.
 func _on_followed_actor_moved(_actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> void:
+	followed_moved.emit(actor)
 	if old_pos != null and old_pos.depth == new_pos.depth: return
 	var seconds: float = shown_world.tuning.level_change_fade_seconds if shown_world else 0.0
 	if not transitions or seconds <= 0.0:
@@ -189,6 +203,18 @@ func _update_all_visibility() -> void:
 
 
 # The followed actor is always drawn, even while a fade still shows
-# the depth it left (D-142).
+# the depth it left (D-142). Others only on the shown depth, and, in
+# the dark, only where the tile is Sensed or Lit (D-148).
 func _update_visibility(p_actor: Actor) -> void:
-	p_actor.visible = p_actor.depth == shown_depth or p_actor == actor
+	if p_actor == actor:
+		p_actor.visible = true
+		return
+	if p_actor.depth != shown_depth:
+		p_actor.visible = false
+		return
+	if visibility == null:
+		p_actor.visible = true
+		return
+	var here: WorldPos = p_actor.current_WorldPos
+	p_actor.visible = here != null \
+		and visibility.state_at(here.x, here.y) >= Visibility.STATE.SENSED

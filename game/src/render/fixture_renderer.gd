@@ -16,6 +16,7 @@ extends Node2D
 # (D-105).
 const TEXTURES: Dictionary = {
 	ObjectKind.OBJECT.LADDER: preload("res://src/render/ladder.png"),
+	ObjectKind.OBJECT.BRAZIER: preload("res://src/render/brazier.png"),
 }
 
 # Kinds deliberately not drawn (D-091: the world spawn is invisible to
@@ -42,6 +43,14 @@ var _top_sprites: Dictionary[int, Sprite2D] = {}
 # The world whose fixtures are drawn, set only by the view's signal
 var _world: World
 
+# In the dark, a fixture is drawn like its tile (D-148): greyed and
+# dimmed when Sensed or Remembered, hidden when Unknown, as it is when
+# Lit. Without a Visibility every fixture is drawn as Lit.
+const GREY: Shader = preload("res://src/render/grey.gdshader")
+var _visibility: Visibility
+var _sensed_material: ShaderMaterial
+var _remembered_material: ShaderMaterial
+
 
 # Follows the view's depth and world (D-094, D-129).
 func watch(view: View) -> void:
@@ -49,6 +58,55 @@ func watch(view: View) -> void:
 	view.shown_world_changed.connect(_on_shown_world_changed)
 	if view.shown_world != null:
 		_on_shown_world_changed(view.shown_world, view.shown_depth)
+
+
+# Draws each sprite in its tile's state, whenever the states change.
+func watch_visibility(visibility: Visibility) -> void:
+	_visibility = visibility
+	visibility.states_changed.connect(_apply_states)
+	_apply_states()
+
+
+func _apply_states() -> void:
+	for sprite: Sprite2D in _sprites.values():
+		_apply_state(sprite)
+	for sprite: Sprite2D in _top_sprites.values():
+		_apply_state(sprite)
+
+
+# The state of the tile the sprite stands on (for a ladder top, the
+# hole), as a material, or hidden.
+func _apply_state(sprite: Sprite2D) -> void:
+	if _visibility == null: return
+	var tile: Vector2i = sprite.get_meta("tile")
+	match _visibility.state_at(tile.x, tile.y):
+		Visibility.STATE.LIT:
+			sprite.visible = true
+			sprite.material = null
+		Visibility.STATE.SENSED:
+			sprite.visible = true
+			sprite.material = _grey(true)
+		Visibility.STATE.REMEMBERED:
+			sprite.visible = true
+			sprite.material = _grey(false)
+		_:
+			sprite.visible = false
+
+
+# The shared grey material for a state, at the shown world's
+# brightness (D-146).
+func _grey(sensed: bool) -> ShaderMaterial:
+	if _sensed_material == null:
+		_sensed_material = ShaderMaterial.new()
+		_sensed_material.shader = GREY
+		_remembered_material = ShaderMaterial.new()
+		_remembered_material.shader = GREY
+	var tuning: TuningProfile = _world.tuning if is_instance_valid(_world) else null
+	_sensed_material.set_shader_parameter("brightness",
+		tuning.sensed_brightness if tuning != null else 1.0)
+	_remembered_material.set_shader_parameter("brightness",
+		tuning.remembered_brightness if tuning != null else 1.0)
+	return _sensed_material if sensed else _remembered_material
 
 
 func _on_shown_world_changed(world: World, depth: int) -> void:
@@ -131,8 +189,10 @@ func _add_sprite(fixture: Fixture) -> void:
 	var rise: float = sprite.texture.get_height() - TileSpace.TILE_PIXELS
 	sprite.position = tile_corner - Vector2(0, rise)
 	sprite.name = "Fixture%d" % fixture.id
+	sprite.set_meta("tile", Vector2i(fixture.tile.x, fixture.tile.y))
 	add_child(sprite)
 	_sprites[fixture.id] = sprite
+	_apply_state(sprite)
 
 
 func _remove_sprite(id: int) -> void:
@@ -195,8 +255,10 @@ func _add_top(ladder: Fixture) -> void:
 	sprite.centered = false
 	sprite.position = Vector2(ladder.tile.x, ladder.tile.y) * TileSpace.TILE_PIXELS
 	sprite.name = "LadderTop%d" % ladder.id
+	sprite.set_meta("tile", Vector2i(ladder.tile.x, ladder.tile.y))
 	add_child(sprite)
 	_top_sprites[ladder.id] = sprite
+	_apply_state(sprite)
 
 
 func _remove_top(id: int) -> void:

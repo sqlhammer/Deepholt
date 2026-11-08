@@ -70,8 +70,8 @@ section and after its forks are settled. Each covers the decisions, the reasons,
 how the pieces work and the traps, with small snippets only, never the complete work. Claude
 answers questions straight and in full, and reviews each section once it's built.
 
-**Section B was finished in Agent mode** (Derik, 2026-11-03), on `main`. C and D stay in
-Educational Assistant mode.
+**Section B was finished in Agent mode** (Derik, 2026-11-03), on `main`, and **C and D were
+built in Agent mode** too (Derik, 2026-11-08), with every decision put to him first.
 
 ## What you're deciding
 

@@ -14,3 +14,7 @@ hardness = Dictionary[int, float]({
 ore_dig_multiplier = 1.5
 level_change_fade_seconds = 0.5
 levels_to_generate_on_new_game = Array[int]([0, 1])
+sense_radius = 7
+sensed_brightness = 1.0
+remembered_brightness = 0.35
+brazier_light_radius = 6

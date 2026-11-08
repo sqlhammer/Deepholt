@@ -19,12 +19,23 @@ var _ore: PackedByteArray
 var ore: PackedByteArray:
 	get: return _ore
 	set(new_value): _set_ore(new_value)
+# What the world's players have sensed here (D-145): bit flags per
+# tile (D-147). Bit 0 is REMEMBERED; the other seven are reserved.
+# Perception, not terrain: nothing that decides what a tile is reads
+# it. Saved, never generated.
+var _memory: PackedByteArray
+var memory: PackedByteArray:
+	get: return _memory
+	set(new_value): _set_memory(new_value)
+
+const REMEMBERED: int = 1
 
 enum LAYER {
 	NONE,
 	GROUND,
 	TOP,
 	ORE,
+	MEMORY,
 }
 enum REFUSAL_REASON {
 	NONE,
@@ -33,6 +44,9 @@ enum REFUSAL_REASON {
 
 signal tile_changed(x: int, y: int, layer: LAYER, level_tiles: LevelTiles)
 signal tiles_replaced(level_tiles: LevelTiles)
+# Some tiles became remembered: once per batch, not per tile, since a
+# step can mark a hundred (D-145).
+signal memory_changed(level_tiles: LevelTiles)
 
 func _init(p_level_bound: LevelBound) -> void:
 	level_bound = p_level_bound
@@ -42,6 +56,7 @@ func _init(p_level_bound: LevelBound) -> void:
 	_ground = _init_tile_array(ground,TileKind.GROUND.ROCK)
 	_top = _init_tile_array(top,TileKind.TOP.MINABLE_ROCK)
 	_ore = _init_tile_array(ore,TileKind.ORE.NONE)
+	_memory = _init_tile_array(memory, 0)
 
 
 func bulk_load_tile_arrays(layers: Dictionary) -> REFUSAL_REASON:
@@ -52,12 +67,15 @@ func bulk_load_tile_arrays(layers: Dictionary) -> REFUSAL_REASON:
 		return REFUSAL_REASON.LAYER_SIZE_MISMATCH
 	if (layers.has("ore") and layers["ore"].size() != level_size):
 		return REFUSAL_REASON.LAYER_SIZE_MISMATCH
+	if (layers.has("memory") and layers["memory"].size() != level_size):
+		return REFUSAL_REASON.LAYER_SIZE_MISMATCH
 	
 	# Using the private vars and not using the setters to avoid tens of 
 	# thousands of tile change signal emits during initialization.
 	if layers.has("ground"): _ground = layers["ground"].duplicate()
 	if layers.has("top"): _top = layers["top"].duplicate()
 	if layers.has("ore"): _ore = layers["ore"].duplicate()
+	if layers.has("memory"): _memory = layers["memory"].duplicate()
 	
 	tiles_replaced.emit(self)
 	
@@ -95,6 +113,31 @@ func get_ore(x: int, y: int) -> int:
 
 func get_top(x: int, y: int) -> int:
 	return _get_tile(top,x,y)
+
+
+# The memory byte, or a sentinel outside the level (D-059).
+func get_memory(x: int, y: int) -> int:
+	return _get_tile(memory,x,y)
+
+
+func is_remembered(x: int, y: int) -> bool:
+	var flags: int = get_memory(x, y)
+	if TileKind.is_sentinel(flags): return false
+	return (flags & REMEMBERED) != 0
+
+
+# Marks each tile remembered, skipping any outside the level, and
+# announces the batch once if anything changed. Returns how many
+# tiles were newly remembered.
+func remember(tiles: Array[Vector2i]) -> int:
+	var count: int = 0
+	for tile: Vector2i in tiles:
+		var flags: int = get_memory(tile.x, tile.y)
+		if TileKind.is_sentinel(flags) or (flags & REMEMBERED) != 0: continue
+		_memory[get_index(tile.x, tile.y)] = flags | REMEMBERED
+		count += 1
+	if count > 0: memory_changed.emit(self)
+	return count
 
 
 func is_diggable(p_tile: WorldPos) -> bool:
@@ -205,6 +248,11 @@ func _set_top(new_value: PackedByteArray) -> void:
 func _set_ore(new_value: PackedByteArray) -> void:
 	push_warning("Use set_ore() to modify individual elements.")
 	_ore = new_value
+
+
+func _set_memory(new_value: PackedByteArray) -> void:
+	push_warning("Use remember() to modify individual elements.")
+	_memory = new_value
 
 
 

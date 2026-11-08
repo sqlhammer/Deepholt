@@ -3166,3 +3166,60 @@ only on its own change, but the rule is out of tests' reach); Remembered drawn a
 open-rock edges (closest to D-033's wording, but the shader samples neighbors); tints (color is
 how the game says "this is yours", D-010).
 
+---
+
+### D-147 — Memory is a saved-only layer of bit flags
+**Decided** (by Derik, slice 006 section C, 2026-11-08). Settles how the memory layer of
+[D-145](#d-145--senses-flood-through-open-space-the-followed-actors-draw-every-players-remember)
+is saved.
+
+- **`SaveGame.TILE_LAYERS` names every saved layer, and `SAVED_ONLY_LAYERS` names the ones the
+  "whole level" check skips.** Memory is the first. A level the save holds whole is still built
+  from the save alone, so a save from before memory existed doesn't regenerate its levels
+  ([D-112](#d-112--tile-layers-are-saved-by-name-a-byte-layer-per-fact-a-saved-bound-wins),
+  003's R-P2).
+- **A memory byte is bit flags.** Bit 0 is "remembered". The other seven are reserved for later
+  per-tile perception facts, so one of those needs no new layer. A missing layer loads as all
+  zeros: nothing remembered.
+
+*Why:* one list stays the single answer to "what's in a save", and the exception is named where
+it matters. Bits cost nothing today and save a layer later.
+
+*Considered:* two lists, `GENERATED_LAYERS` and `TILE_LAYERS`; a plain 0/1 byte that doubles as
+the state byte (D-146); a plain flag always translated.
+
+---
+
+### D-148 — In the dark, other actors are hidden and fixtures are dimmed with their tile
+**Decided** (by Derik, slice 006 section C, 2026-11-08). Extends D-146 to what's drawn over the
+tiles. The followed actor is always drawn
+([D-142](#d-142--a-level-change-fades-through-black-in-the-view-the-move-itself-stays-instant)).
+
+- **Other actors** (NPCs, a second player) are drawn only on Sensed or Lit tiles.
+- **Fixtures are structure:** on Sensed and Remembered tiles they're drawn greyed and at that
+  state's brightness, at full color when Lit, and hidden on Unknown tiles. A ladder top follows
+  its hole's tile.
+
+*Why:* D-033's Remembered shows no entities, but a ladder you've found should stay on your map.
+
+*Considered:* fixtures only on Sensed or Lit tiles (a remembered ladder vanishes from the map);
+leaving actors and fixtures drawn everywhere (an NPC in black rock gives the dark away).
+
+---
+
+### D-149 — Light floods like the senses, and a tile is lit or not
+**Decided** (by Derik, slice 006 section D, 2026-11-08). Settles how a brazier's light spreads,
+under [D-144](#d-144--slice-006s-dark-all-four-render-states-and-light-from-a-brazier).
+
+- **Light uses the sense flood** (D-145) from the light's tile, with the light's own radius: open
+  tiles within the radius in steps, plus the rock faces they border. Light never passes through
+  rock.
+- **On or off per tile:** a lit tile is state 3 in the one state byte
+  ([D-146](#d-146--the-four-states-reach-the-shader-as-one-state-texture-sensed-is-grey-remembered-darker)).
+- **The light radius is a `TuningProfile` number.** The Surface is lit throughout (D-144).
+
+*Why:* one rule for senses and light, one function to test, and untouched rock stays black.
+
+*Considered:* the flood with brightness falling off (a second per-tile value and a blend in the
+shader); a plain radius (shows rock interiors the senses never reveal).
+

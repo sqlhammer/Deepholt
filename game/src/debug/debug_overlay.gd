@@ -75,6 +75,7 @@ func _get_group(title: String) -> int:
 		WORLD_SPAWN_SECTION: return 0
 		NEXT_IDS_SECTION: return 0
 		LEVELS_SECTION: return 0
+		DARK_SECTION: return 0
 		TUNING_SECTION: return 0
 		LOAD_PROBLEMS_SECTION: return 0
 		SAVE_SECTION: return 0
@@ -118,6 +119,7 @@ func _refresh_watched_actors() -> void:
 		set_section(WORLD_SPAWN_SECTION, world_spawn_text())
 		set_section(NEXT_IDS_SECTION, next_ids_text())
 		set_section(LEVELS_SECTION, levels_text())
+		set_section(DARK_SECTION, dark_text())
 
 
 const WORLD_SPAWN_SECTION: String = "World spawn"
@@ -126,6 +128,25 @@ const NEXT_IDS_SECTION: String = "Next ids"
 const TUNING_SECTION: String = "Tuning"
 # Which depths exist so far, and how long the last one took (D-143)
 const LEVELS_SECTION: String = "Levels"
+# The state of the tile under each watched actor's feet, and how long
+# the last state rebuild took (D-146): is it the rule or the shader?
+const DARK_SECTION: String = "Dark"
+var visibility: Visibility
+
+
+func watch_visibility(p_visibility: Visibility) -> void:
+	visibility = p_visibility
+
+
+func dark_text() -> String:
+	if visibility == null or visibility.shown_tiles() == null: return "none"
+	var names: PackedStringArray = []
+	for id: int in watched_actors:
+		var actor: Actor = instance_from_id(id) as Actor
+		if actor == null or actor.current_WorldPos == null: continue
+		var here: WorldPos = actor.current_WorldPos
+		names.append(Visibility.STATE.find_key(visibility.state_at(here.x, here.y)))
+	return "%s  (rebuild %.2f ms)" % [", ".join(names), visibility.last_build_msec]
 
 
 # The shown world's generated depths, shallowest first, and how long
@@ -304,6 +325,7 @@ func _on_shown_world_changed(p_world: World, depth: int) -> void:
 		set_section(NEXT_IDS_SECTION, next_ids_text())
 		set_section(LEVELS_SECTION, levels_text())
 		set_section(TUNING_SECTION, world.tuning.id)
+		set_section(DARK_SECTION, dark_text())
 	_on_shown_depth_changed(View.NO_DEPTH, depth)
 
 
