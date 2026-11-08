@@ -48,11 +48,11 @@ Slice 007's checklist is in git history (last at `76c5d8d`).
 
 - [x] *Decide:* who puts a yield in the pack, and what a dirt wall yields. *The world; dirt
   nothing; uncapped; drops later (D-158).*
-- [ ] Yield rules in `Digging`, numbers in the profile (D-150): 1 stone per rock wall, none for
+- [x] Yield rules in `Digging`, numbers in the profile (D-150): 1 stone per rock wall, none for
   dirt; 2–4 ore per vein, copper ore for copper.
-- [ ] The digging actor's pack gets the yield, never "the" player's (trap 2); a dig with no actor
+- [x] The digging actor's pack gets the yield, never "the" player's (trap 2); a dig with no actor
   yields nothing. [2, 6, 7]
-- [ ] Tests: a wall, a vein's range, an NPC's dig, a dig with no actor, a second world. [6, 7]
+- [x] Tests: a wall, a vein's range, an NPC's dig, a dig with no actor, a second world. [6, 7]
 - [ ] By hand: dig a wall and a copper vein, and watch the weight. [2]
 
 ## D. Weight you feel

@@ -38,6 +38,12 @@ const DEFAULT_ID: String = "default"
 # without it (tuning appendix, section 4).
 @export var ore_dig_multiplier: float = 0.0
 
+# What digging yields (D-156): stone per rock wall, and the range of
+# ore an ore vein gives.
+@export var rock_wall_stone: int = 0
+@export var ore_yield_min: int = 0
+@export var ore_yield_max: int = 0
+
 # Each level's floor hardness, by depth: its stratum's number from the
 # tuning appendix (D-151).
 @export var floor_hardness_by_depth: Array[float] = []

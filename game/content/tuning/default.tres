@@ -26,3 +26,6 @@ carry_capacity_kg = 60.0
 starting_items = Dictionary[StringName, int]({
 &"timber": 10
 })
+rock_wall_stone = 1
+ore_yield_min = 2
+ore_yield_max = 4

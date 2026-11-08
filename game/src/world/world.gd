@@ -86,6 +86,10 @@ enum FIXTURE_REFUSAL {
 }
 
 var world_seed: int
+# Draws what digging yields (D-158): seeded from the world seed the
+# first time it's used, so a world's yields repeat. Not saved; a load
+# starts a fresh sequence.
+var _yield_rng: RandomNumberGenerator
 # World-wide, so an id alone finds a fixture or an actor (D-104,
 # D-114). Each world numbers its own: generating or loading another
 # never resets these (D-118).
@@ -290,9 +294,24 @@ func _dig_tile(actor: Actor, tile: WorldPos) -> void:
 		push_error("Tile at %s is missing. Cannot complete the dig." % tile)
 		dig_refused.emit(actor, tile, DIG_REFUSAL.LEVEL_NOT_EXISTS)
 		return
+	# The yield, read before the tile changes, goes into the digger's
+	# own pack, uncapped (D-158). No actor, no yield.
+	if actor != null:
+		var tiles: LevelTiles = level.level_tiles
+		var found: Dictionary[StringName, int] = Digging.yield_of(tuning,
+			tiles.get_top(tile.x, tile.y), tiles.get_ore(tile.x, tile.y), _yields())
+		for id: StringName in found:
+			actor.pack.add(id, found[id])
 	level.level_tiles.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
 	level.level_tiles.set_ore(tile.x, tile.y, TileKind.ORE.NONE)
 	tile_dug.emit(actor, tile)
+
+
+func _yields() -> RandomNumberGenerator:
+	if _yield_rng == null:
+		_yield_rng = RandomNumberGenerator.new()
+		_yield_rng.seed = hash([world_seed, "yields"])
+	return _yield_rng
 
 
 # --- breaching (D-151, D-152) ---
