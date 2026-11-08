@@ -554,3 +554,47 @@ func test_the_overlay_tints_green_amber_and_red_and_toggles() -> void:
 	assert_gt(amber.g, amber.b, "marginal is amber")
 	assert_gt(red.r, red.g, "failing is red")
 	assert_eq(SupportOverlay.color_for(LevelSupport.STATE.NONE), Color.TRANSPARENT, "unjudged is clear")
+
+
+# --- the corners ---
+
+func test_a_prop_is_not_set_on_a_ramp() -> void:
+	_level.level_tiles.set_top(41, 40, TileKind.TOP.OPEN)
+	_level.level_tiles.set_ground(41, 40, TileKind.GROUND.RAMP_DOWN_E)
+	assert_eq(FixturePlacement.problem(ObjectKind.OBJECT.TIMBER_PROP, Vector2i(41, 40),
+		_level.level_tiles, _level.level_fixtures, null), World.FIXTURE_REFUSAL.TILE_NOT_PASSABLE,
+		"a prop would wall the ramp off")
+
+
+func test_a_prop_is_not_moved_onto_someone() -> void:
+	_player_on(1)
+	_level.level_tiles.set_top(41, 40, TileKind.TOP.OPEN)
+	_world.place_requested.emit(null, ObjectKind.OBJECT.TIMBER_PROP, _at(Vector2i(41, 40)))
+	var prop: Fixture = _level.level_fixtures.of_kind(ObjectKind.OBJECT.TIMBER_PROP)[0]
+	_world.move_requested.emit(null, prop.id, _at(Vector2i(40, 40)))
+	assert_eq(get_signal_parameters(_world, "request_refused")[3],
+		World.FIXTURE_REFUSAL.ACTOR_ON_TILE, "refused")
+	assert_true(_level.level_tiles.is_blocked(41, 40), "and it stays where it was")
+
+
+func test_a_tile_that_is_not_failing_has_no_progress_or_time() -> void:
+	assert_eq(_level.support.progress_at(Vector2i.ZERO), 0.0, "no progress")
+	assert_eq(_level.support.remaining_at(Vector2i.ZERO), -1.0, "no time")
+
+
+func test_a_malformed_saved_countdown_is_skipped_with_a_warning() -> void:
+	_dig_room(_level, WIDE)
+	_level.support.restore([{"remaining": "soon", "tiles": [0, 0]}, 7,
+		{"remaining": 5.0, "tiles": [0, 0, 1]}])
+	assert_push_warning_count(3, "each skipped entry says so")
+	assert_almost_eq(_level.support.remaining_at(Vector2i.ZERO), 45.0, 0.001,
+		"the fresh countdown stands")
+
+
+func test_a_store_swapped_in_by_a_load_is_judged_again() -> void:
+	_dig_room(_level, WIDE)
+	var fixtures: LevelFixtures = LevelFixtures.new()
+	fixtures.add(Fixture.new(ObjectKind.OBJECT.TIMBER_PROP, _at(Vector2i.ZERO), 77))
+	_level.level_fixtures = fixtures
+	assert_false(_level.support.has_failing(), "the prop in the new store holds the room")
+	assert_true(_level.level_tiles.is_blocked(0, 0), "and blocks")
