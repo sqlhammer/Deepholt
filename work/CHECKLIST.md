@@ -85,9 +85,9 @@ Slice 006's checklist is in git history (last at `701740b`).
 - [x] `python scripts/coverage.py` run; uncovered lines looked at (006 closed at 97.4%).
   *97.5%.*
 - [ ] By hand: outcomes 1–5 walked in one sitting, launched outside the editor at least once.
-- [ ] Claude reviews the slice.
-- [ ] Claude writes `log/007-dig-your-own-way-down.md`.
-- [ ] Claude re-sketches [NEXT.md](./NEXT.md).
+- [x] Claude reviews the slice. *In the log.*
+- [x] Claude writes `log/007-dig-your-own-way-down.md`.
+- [x] Claude re-sketches [NEXT.md](./NEXT.md).
 
 ---
 
