@@ -29,8 +29,8 @@ signal dig_requested(actor: Actor, tile: WorldPos)
 signal tile_dug(actor: Actor, tile: WorldPos)
 signal dig_refused(actor: Actor, tile: WorldPos, reason: DIG_REFUSAL)
 
-# A floor breached (D-152): `tile` is the floor on its own level, which
-# becomes a hole; the tile below it is cleared as the landing.
+# A floor breached (D-152): `tile` is the floor on its own level,
+# which becomes a hole; the tile below it is cleared as the landing.
 signal breach_requested(actor: Actor, tile: WorldPos, tool_power: float)
 signal tile_breached(actor: Actor, tile: WorldPos)
 signal breach_refused(actor: Actor, tile: WorldPos, reason: BREACH_REFUSAL)

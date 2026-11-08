@@ -68,6 +68,10 @@ const DEFAULT_ID: String = "default"
 # How bright a Remembered tile's grey is (D-146).
 @export var remembered_brightness: float = 0.0
 
+# How far build mode's cursor reaches from the player, in tiles
+# (ui-ux §2.1, D-154). The mouse and the stick share it.
+@export var build_cursor_radius: int = 0
+
 
 # The profile with this id, or null if this build has none.
 static func find(profile_id: String) -> TuningProfile:

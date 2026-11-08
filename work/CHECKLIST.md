@@ -50,35 +50,40 @@ Slice 006's checklist is in git history (last at `701740b`).
   primary places (D-154).*
 - [x] *Decide:* where a ladder is aimed. *At a hole on your level, Sensed or Lit only
   (D-154).*
-- [ ] The cursor's radius is a profile number (about 5).
-- [ ] Build mode in presentation, per local player (D-045): a grid cursor clamped around the
+- [x] The cursor's radius is a profile number (about 5).
+- [x] Build mode in presentation, per local player (D-045): a grid cursor clamped around the
   character, mouse and stick with the same reach, snapping tile to tile (ui-ux §2.1).
-- [ ] Valid and invalid shown by shape and icon as well as color (ui-ux §7), from the same
+- [x] Valid and invalid shown by shape and icon as well as color (ui-ux §7), from the same
   placement rules the gatekeeper enforces, so the preview can't disagree with the outcome. On
   Remembered or Unknown tiles, invalid with the reason (D-154).
 - [x] The new bindings in `project.godot` and in ui-ux's control tables: breach `R` / `X`,
   build mode `E` / `Y`. *Build mode is `B`, since `E` is interact; breach holds pad X until
   tools can be swapped
   ([D-155](../docs/design-decisions.md#d-155--build-mode-is-b-on-the-keyboard-breach-holds-pad-x-until-tools-can-be-swapped)).*
-- [ ] What toggling build mode does to a held dig, a held breach, the fade and F5/F6 (trap 5).
-- [ ] Tests: the clamp; mouse and stick reach the same tiles; the preview matches the rules. [2]
+- [x] What toggling build mode does to a held dig, a held breach, the fade and F5/F6 (trap 5).
+  *Entering build mode stops a held dig and breach; the fade pauses input as before; F5 and F6
+  are unaffected; a world swap turns build mode off. ui-ux §7's dimming and grid, the pad's B
+  to leave, and the cursor's audible tick aren't built.*
+- [x] Tests: the clamp; mouse and stick reach the same tiles; the preview matches the rules. [2]
 - [ ] By hand: toggle it, move it with both inputs, read it in the dark. [2]
 
 ## D. Placing and using a ladder
 
-- [ ] Primary action in build mode requests a ladder on the world's fixture gatekeeper, as
+- [x] Primary action in build mode requests a ladder on the world's fixture gatekeeper, as
   decided; a refusal is shown (trap 4). [3]
-- [ ] The ladder is drawn on the level below, and its top in the hole above, at once (trap 3).
+- [x] The ladder is drawn on the level below, and its top in the hole above, at once (trap 3).
   [3, 7]
-- [ ] The world's fixture id counter carries on across a save and load (D-130, trap 3). [4, 7]
-- [ ] Tests: a placed ladder climbs both ways; it's saved and loaded; ids carry on; an NPC and
+- [x] The world's fixture id counter carries on across a save and load (D-130, trap 3). [4, 7]
+- [x] Tests: a placed ladder climbs both ways; it's saved and loaded; ids carry on; an NPC and
   a second world. [7, 8]
 - [ ] By hand: breach, place, climb down to −2 and back, save, relaunch. [3, 4]
 
 ## E. Done
 
-- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-- [ ] `python scripts/coverage.py` run; uncovered lines looked at (006 closed at 97.4%).
+- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
+  *846 tests, 43 scripts.*
+- [x] `python scripts/coverage.py` run; uncovered lines looked at (006 closed at 97.4%).
+  *97.5%.*
 - [ ] By hand: outcomes 1–5 walked in one sitting, launched outside the editor at least once.
 - [ ] Claude reviews the slice.
 - [ ] Claude writes `log/007-dig-your-own-way-down.md`.

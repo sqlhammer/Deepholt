@@ -6,6 +6,8 @@ extends Node
 var view: View
 # What the screen can show of each tile, for the renderers (D-146)
 var visibility: Visibility
+# Build mode's cursor for the local player (D-154)
+var build_cursor: BuildCursor
 # The world being played, inside GameViewport at the origin (D-128).
 # Handed by reference to whatever needs it; nothing looks it up.
 var world: World
@@ -83,6 +85,9 @@ func set_user_control(actor: Actor) -> void:
 	# Input waits while a level change fades (D-142)
 	view.transition_started.connect(input.pause)
 	view.transition_ended.connect(input.resume)
+	build_cursor.set_active(false)
+	build_cursor.actor = actor
+	input.build = build_cursor
 	add_child(input)
 	_input_handlers.append(input)
 	
@@ -390,10 +395,15 @@ func _create_view() -> void:
 
 	$DebugOverlay.watch_view(view)
 	$DebugOverlay.watch_visibility(visibility)
+	# Build mode's cursor (D-154), drawn over the level
+	build_cursor = BuildCursor.new()
+	build_cursor.visibility = visibility
+	$GameViewport.add_child(build_cursor)
 	# Why the local player's action was refused (D-141, D-152)
 	var refusals: RefusalNotice = RefusalNotice.new()
 	add_child(refusals)
 	refusals.watch(view)
+	refusals.watch_cursor(build_cursor)
 
 
 # The one way a world comes in, at launch, for a new game and on a
@@ -403,6 +413,10 @@ func _create_view() -> void:
 # a player is then given control (D-132).
 func _swap_world(new_world: World) -> void:
 	_free_inputhandlers()
+	# Its actor goes with the old world
+	if build_cursor != null:
+		build_cursor.set_active(false)
+		build_cursor.actor = null
 	_free_world()
 	_attach_world(new_world)
 	# A loaded world may run under another profile (D-136)

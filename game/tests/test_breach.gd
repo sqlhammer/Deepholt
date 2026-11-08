@@ -1,10 +1,10 @@
 extends GutTest
 
-# Breaching a floor (D-150 to D-153). Digging's rules give the time and
-# the tool gate from the floor's level; the world's tile gatekeeper
-# turns the floor into a hole and clears the landing below, whole or
-# not at all; the capability does the work while the breach input is
-# held, and asks.
+# Breaching a floor (D-150 to D-153). Digging's rules give the time
+# and the tool gate from the floor's level; the world's tile
+# gatekeeper turns the floor into a hole and clears the landing below,
+# whole or not at all; the capability does the work while the breach
+# input is held, and asks.
 
 const Worlds = preload("res://tests/worlds.gd")
 const TICK: float = 1.0 / 60.0
