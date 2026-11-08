@@ -1,7 +1,7 @@
 # Next
 
-Sketches, not commitments. Slice 007 is built ([log](./log/007-dig-your-own-way-down.md)) on the
-`slice-007` branch; its by-hand outcomes haven't been walked. Cheap to throw away; expect them to
+Sketches, not commitments. Slice 007 is done and merged ([log](./log/007-dig-your-own-way-down.md));
+its by-hand outcomes weren't reported walked. 008 is next. Cheap to throw away; expect them to
 change.
 
 ---

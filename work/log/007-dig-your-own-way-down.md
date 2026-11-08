@@ -95,3 +95,15 @@ before writing, and Derik closed the editor. The tooling memory's warning paid f
 - **Nothing removes a placed ladder,** and placing costs nothing. Both wait for items and the
   hammer.
 - **Lit tiles still aren't remembered,** from 006.
+
+---
+
+## Closed
+
+*Added by Claude, 2026-11-08, when the slice was closed.*
+
+Derik closed the slice and merged it into `main` on 2026-11-08. The by-hand outcomes weren't
+reported walked before the close, so they stay unticked in the checklist. One request came
+after the build: holding `R` gave no sign the breach was working. A crack overlay on the
+target floor was added before the merge (`2e2e27f`). An actor animation and sound, for digging
+and breaching both, are in NEXT.md for when there's art and audio.

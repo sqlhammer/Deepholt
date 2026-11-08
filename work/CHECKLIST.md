@@ -10,6 +10,9 @@ see), then the build mode and cursor (something to point with), then placing and
 
 Slice 006's checklist is in git history (last at `701740b`).
 
+**Closed 2026-11-08** by Derik, merged into `main`. The by-hand items below weren't reported
+walked before the close, and are left unticked as they stood.
+
 ---
 
 ## A. Decided in planning
