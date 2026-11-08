@@ -1,17 +1,14 @@
-# Slice 007 checklist
+# Slice 008 checklist
 
 Working list for [NOW.md](./NOW.md). **Agent mode for the whole slice** (Derik, 2026-11-08), on a
-`slice-007` branch: Claude builds, in small commits, the suite green before each; Derik merges the
+`slice-008` branch: Claude builds, in small commits, the suite green before each; Derik merges the
 PR and verifies by hand. Forks are taken one at a time, before the section that needs them, and
 each lands as a `D-nnn`. Numbers in brackets are the brief's outcomes.
 
-Ordered so the game runs at the end of every section: the breach first (a hole you can make and
-see), then the build mode and cursor (something to point with), then placing and using a ladder.
+Ordered so the game runs at the end of every section: items and the pack first (nothing to see
+yet but the HUD), then yields (the pack fills), then weight (you feel it), then the ladder's cost.
 
-Slice 006's checklist is in git history (last at `701740b`).
-
-**Closed 2026-11-08** by Derik, merged into `main`. The by-hand items below weren't reported
-walked before the close, and are left unticked as they stood.
+Slice 007's checklist is in git history (last at `76c5d8d`).
 
 ---
 
@@ -19,89 +16,80 @@ walked before the close, and are left unticked as they stood.
 
 *Settled with Derik, 2026-11-08.*
 
-- [x] Scope: breach a floor and place a ladder, free of cost; items, inventory and the wood
-  cost come later, and build mode is shaped to take a cost.
-- [x] Agent mode on a `slice-007` branch, PR to `main`.
-- [x] Every fork below, settled in planning as D-150 to D-154.
+- [x] Scope: yields, a weight-limited pack, the load curve, the carry HUD, a timber cost; no
+  shedding and no inventory screen
+  ([D-156](../docs/design-decisions.md#d-156--slice-008-is-the-pack-yields-weight-the-load-curve-and-a-timber-cost)).
+- [x] 1 stone per wall for now; 2–4 ore per vein; 10 starting timber, 4 per ladder; the "dragon
+  bag" randomizer deferred (D-156).
+- [x] Agent mode on a `slice-008` branch, PR to `main`.
+- [x] Every fork below, settled in planning as D-157 to D-159.
 
-## B. Breach
+## B. Items and the pack
 
-- [x] *Decide:* what a floor's hardness is. *Its level's (D-151).*
-- [x] *Decide:* what's beneath a breach. *The breach clears the landing (D-152).*
-- [x] *Decide:* how you breach. *Its own input, held facing the floor, `R` / pad `X` (D-153).*
-- [x] *Decide:* which tiles can be breached. *Plain open floor, both ends clear (D-152).*
-- [x] `Digging`, a static class in `src/world/` taking the profile: the dig rules move off
-  `TuningProfile` (`hardness_of`, `dig_hardness`), and the breach rules join them (D-150).
-- [x] Breach numbers in the profile: the floor hardness per depth, the time multiplier (×8) and
-  the gate (×1.2) (D-151).
-- [x] A breach request on the world's tile gatekeeper, with its own refusal reasons and outcome,
-  applied whole or not at all (trap 1). Refused: under-tier, outside the level, the deepest
-  level, not open floor, a tile someone stands on (trap 2). [6]
-- [x] The breach capability: progress at `breach_seconds`, reset like a dig. [1]
-- [x] Breaching shows it's working (Derik, after the build): `BreachCracks` draws cracks on the
-  floor being breached, in four stages from the capability's progress, for the followed actor,
-  gone on release or refusal. An actor animation and sound wait for art and audio.
-- [x] Refusals are shown to the player (the first reader of a refusal reason, D-141's
-  "feedback"). *`RefusalNotice`: the followed actor's refusal, for 2.5 s at the bottom of the
-  screen.*
-- [x] The temporary Surface hole comes out of `surface_start`, and the tests that read it move
-  (D-140, trap 7). [5]
-- [x] Tests: each refusal; the time with flint on the Surface, −1 and −2; an NPC breaches; a
-  second world is untouched. [6, 8]
-- [ ] By hand: breach −1's floor; try −2's. [1]
+- [x] *Decide:* how items are defined. *Full schema, `.tres` per item, `ItemRegistry` (D-157).*
+- [x] *Decide:* where the pack lives and how it's saved. *On each actor, in its save entry; an
+  older save loads empty (D-157).*
+- [x] *Decide:* the HUD's carry weight. *Bottom center, bar and number, bands marked (D-159).*
+- [ ] Items: stone, copper ore and timber, with the appendix's weights (content-schema §3).
+- [ ] The pack: what an actor carries, its total weight kept current (trap 3), its capacity from
+  the profile (60 kg).
+- [ ] A new game's first player starts with the profile's starting items (10 timber); a load
+  restores the saved pack instead (trap 6). [1]
+- [ ] The pack round-trips through a save; an unknown item id is reported, never dropped (trap
+  5). [5]
+- [ ] The carry weight on the HUD, for the followed actor (D-045). [1]
+- [ ] Tests: weights add up; capacity from the profile; save and load; an unknown id; an NPC has
+  its own pack. [5, 6]
+- [ ] By hand: `--new-game` shows 20 / 60 kg. [1]
 
-## C. Build mode and the anchored cursor
+## C. Yields
 
-- [x] *Decide:* the controls. *As ui-ux says: `E` / `Y`, cursor on mouse or right stick,
-  primary places (D-154).*
-- [x] *Decide:* where a ladder is aimed. *At a hole on your level, Sensed or Lit only
-  (D-154).*
-- [x] The cursor's radius is a profile number (about 5).
-- [x] Build mode in presentation, per local player (D-045): a grid cursor clamped around the
-  character, mouse and stick with the same reach, snapping tile to tile (ui-ux §2.1).
-- [x] Valid and invalid shown by shape and icon as well as color (ui-ux §7), from the same
-  placement rules the gatekeeper enforces, so the preview can't disagree with the outcome. On
-  Remembered or Unknown tiles, invalid with the reason (D-154).
-- [x] The new bindings in `project.godot` and in ui-ux's control tables: breach `R` / `X`,
-  build mode `E` / `Y`. *Build mode is `B`, since `E` is interact; breach holds pad X until
-  tools can be swapped
-  ([D-155](../docs/design-decisions.md#d-155--build-mode-is-b-on-the-keyboard-breach-holds-pad-x-until-tools-can-be-swapped)).*
-- [x] What toggling build mode does to a held dig, a held breach, the fade and F5/F6 (trap 5).
-  *Entering build mode stops a held dig and breach; the fade pauses input as before; F5 and F6
-  are unaffected; a world swap turns build mode off. ui-ux §7's dimming and grid, the pad's B
-  to leave, and the cursor's audible tick aren't built.*
-- [x] Tests: the clamp; mouse and stick reach the same tiles; the preview matches the rules. [2]
-- [ ] By hand: toggle it, move it with both inputs, read it in the dark. [2]
+- [x] *Decide:* who puts a yield in the pack, and what a dirt wall yields. *The world; dirt
+  nothing; uncapped; drops later (D-158).*
+- [ ] Yield rules in `Digging`, numbers in the profile (D-150): 1 stone per rock wall, none for
+  dirt; 2–4 ore per vein, copper ore for copper.
+- [ ] The digging actor's pack gets the yield, never "the" player's (trap 2); a dig with no actor
+  yields nothing. [2, 6, 7]
+- [ ] Tests: a wall, a vein's range, an NPC's dig, a dig with no actor, a second world. [6, 7]
+- [ ] By hand: dig a wall and a copper vein, and watch the weight. [2]
 
-## D. Placing and using a ladder
+## D. Weight you feel
 
-- [x] Primary action in build mode requests a ladder on the world's fixture gatekeeper, as
-  decided; a refusal is shown (trap 4). [3]
-- [x] The ladder is drawn on the level below, and its top in the hole above, at once (trap 3).
-  [3, 7]
-- [x] The world's fixture id counter carries on across a save and load (D-130, trap 3). [4, 7]
-- [x] Tests: a placed ladder climbs both ways; it's saved and loaded; ids carry on; an NPC and
-  a second world. [7, 8]
-- [ ] By hand: breach, place, climb down to −2 and back, save, relaunch. [3, 4]
+- [x] *Decide:* where the 150% ladder refusal lives. *`Ladder.target_for`, shown by
+  `RefusalNotice` (D-159).*
+- [ ] The load curve in the profile (the appendix's table), and in `Actor.speed`. [3]
+- [ ] Above 150%, a ladder refuses, and says why. Ramps still work (D-030). [3]
+- [ ] Tests: speed at each band's edges; the ladder at 150% and just over; an NPC. [3, 6]
+- [ ] By hand: walk empty, half, full, over; try the ladder over 150%. [3]
 
-## E. Done
+## E. The ladder's cost
 
-- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-  *846 tests, 43 scripts.*
-- [x] `python scripts/coverage.py` run; uncovered lines looked at (006 closed at 97.4%).
-  *97.5%.*
+- [x] *Decide:* who checks and takes a cost. *The fixture gatekeeper, with one rule the preview
+  shares (D-159).*
+- [ ] The ladder's cost in the profile (4 timber); placing takes it from the requesting actor's
+  pack; a placement with no actor costs nothing. [4]
+- [ ] Build mode's preview shows the cost and refuses what you can't afford, with the reason
+  (ui-ux §7). [4]
+- [ ] Tests: placing takes the cost; can't afford is refused by both the preview and the
+  gatekeeper; generation and loads place for free. [4]
+- [ ] By hand: place ladders until the timber runs out. [4]
+
+## F. Done
+
+- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
+- [ ] `python scripts/coverage.py` run; uncovered lines looked at (007 closed at 97.5%).
 - [ ] By hand: outcomes 1–5 walked in one sitting, launched outside the editor at least once.
-- [x] Claude reviews the slice. *In the log.*
-- [x] Claude writes `log/007-dig-your-own-way-down.md`.
-- [x] Claude re-sketches [NEXT.md](./NEXT.md).
+- [ ] Claude reviews the slice.
+- [ ] Claude writes `log/008-what-you-carry.md`.
+- [ ] Claude re-sketches [NEXT.md](./NEXT.md), with shedding weight as the next slice (D-156).
 
 ---
 
 ### Not in this slice, worth knowing
 
-- **Items, spoil and a weight-limited inventory** (M1). A ladder's wood cost waits for them.
-- **Removing a placed ladder** (the hammer, ui-ux §7).
-- **Ghost (blueprint) placement** (ui-ux §7), which only matters once things cost something.
-- **The hotbar and radial menu** (ui-ux §2.2): one buildable item doesn't need them.
-- **Other tools than flint**: bronze is what breaches −2. Until tools can be found or made, −2's
-  floor stays shut, which is the tool gate working.
+- **Dropping, discarding and picking up** (D-156): the next slice. Drops for yields that don't
+  fit, picked up from adjacent tiles up to 150%, are the model ahead (D-158).
+- **The inventory screen** with per-item weight and sort by value density (ui-ux §5).
+- **The "dragon bag" yield randomizer** (D-156).
+- **Climb-time multipliers** (appendix §2): ladders are instant, so there's nothing to slow.
+- **Smelting, ingots and other ores** (D-031): no stations yet.
