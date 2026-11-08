@@ -27,19 +27,20 @@ Slice 006's checklist is in git history (last at `701740b`).
 - [x] *Decide:* what's beneath a breach. *The breach clears the landing (D-152).*
 - [x] *Decide:* how you breach. *Its own input, held facing the floor, `R` / pad `X` (D-153).*
 - [x] *Decide:* which tiles can be breached. *Plain open floor, both ends clear (D-152).*
-- [ ] `Digging`, a static class in `src/world/` taking the profile: the dig rules move off
+- [x] `Digging`, a static class in `src/world/` taking the profile: the dig rules move off
   `TuningProfile` (`hardness_of`, `dig_hardness`), and the breach rules join them (D-150).
-- [ ] Breach numbers in the profile: the floor hardness per depth, the time multiplier (×8) and
+- [x] Breach numbers in the profile: the floor hardness per depth, the time multiplier (×8) and
   the gate (×1.2) (D-151).
-- [ ] A breach request on the world's tile gatekeeper, with its own refusal reasons and outcome,
+- [x] A breach request on the world's tile gatekeeper, with its own refusal reasons and outcome,
   applied whole or not at all (trap 1). Refused: under-tier, outside the level, the deepest
   level, not open floor, a tile someone stands on (trap 2). [6]
-- [ ] The breach capability: progress at `breach_seconds`, reset like a dig. [1]
-- [ ] Refusals are shown to the player (the first reader of a refusal reason, D-141's
-  "feedback").
-- [ ] The temporary Surface hole comes out of `surface_start`, and the tests that read it move
+- [x] The breach capability: progress at `breach_seconds`, reset like a dig. [1]
+- [x] Refusals are shown to the player (the first reader of a refusal reason, D-141's
+  "feedback"). *`RefusalNotice`: the followed actor's refusal, for 2.5 s at the bottom of the
+  screen.*
+- [x] The temporary Surface hole comes out of `surface_start`, and the tests that read it move
   (D-140, trap 7). [5]
-- [ ] Tests: each refusal; the time with flint on the Surface, −1 and −2; an NPC breaches; a
+- [x] Tests: each refusal; the time with flint on the Surface, −1 and −2; an NPC breaches; a
   second world is untouched. [6, 8]
 - [ ] By hand: breach −1's floor; try −2's. [1]
 
@@ -55,8 +56,10 @@ Slice 006's checklist is in git history (last at `701740b`).
 - [ ] Valid and invalid shown by shape and icon as well as color (ui-ux §7), from the same
   placement rules the gatekeeper enforces, so the preview can't disagree with the outcome. On
   Remembered or Unknown tiles, invalid with the reason (D-154).
-- [ ] The new bindings in `project.godot` and in ui-ux's control tables: breach `R` / `X`,
-  build mode `E` / `Y`.
+- [x] The new bindings in `project.godot` and in ui-ux's control tables: breach `R` / `X`,
+  build mode `E` / `Y`. *Build mode is `B`, since `E` is interact; breach holds pad X until
+  tools can be swapped
+  ([D-155](../docs/design-decisions.md#d-155--build-mode-is-b-on-the-keyboard-breach-holds-pad-x-until-tools-can-be-swapped)).*
 - [ ] What toggling build mode does to a held dig, a held breach, the fade and F5/F6 (trap 5).
 - [ ] Tests: the clamp; mouse and stick reach the same tiles; the preview matches the rules. [2]
 - [ ] By hand: toggle it, move it with both inputs, read it in the dark. [2]

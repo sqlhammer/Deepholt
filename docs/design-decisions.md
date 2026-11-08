@@ -3316,3 +3316,25 @@ breaching from build mode's cursor.
 off aiming); any tile in reach, seen or not; placing from below (no way down until the ladder
 exists).
 
+---
+
+### D-155 — Build mode is `B` on the keyboard; breach holds pad X until tools can be swapped
+**Decided** (by Derik, slice 007 section B, 2026-11-08). Amends
+[D-154](#d-154--build-mode-follows-ui-ux-a-ladder-is-aimed-at-a-hole-you-can-see) and
+[D-153](#d-153--breaching-has-its-own-input-held-while-facing-the-floor) where they met keys
+already in use.
+
+- **Build mode is `B` on the keyboard,** not `E`: the game binds interact to `E`, where ui-ux had
+  it on the right mouse button. Interact stays on `E`. The pad stays `Y`.
+- **Breach stays on pad X for now,** though ui-ux reserves X for swapping tools. Tools can't be
+  swapped yet; the slice that adds swapping decides between them (for example, hold X to breach
+  and tap X to swap).
+- **ui-ux's control tables record what the game does.**
+
+*Why:* nothing a player already uses changes, and the pad conflict is written down where it
+will be found.
+
+*Considered:* following ui-ux fully (interact moves to the right mouse button, build mode takes
+`E`); `Tab` for build mode (reserved for the inventory); on the pad, primary held toward the
+floor (brings back the held-dig trap D-153 avoided) or D-pad left (a survival binding).
+
