@@ -94,6 +94,9 @@ and D-146.
   and view read them. Measured on the largest level: flood 0.06 ms, state build 0.02 ms.
   Actors hidden and fixtures dimmed in the dark
   ([D-148](../docs/design-decisions.md#d-148--in-the-dark-other-actors-are-hidden-and-fixtures-are-dimmed-with-their-tile)).*
+  *Retuned by eye after Derik's first look (2026-11-08): Sensed read like normal lighting,
+  so `sensed_brightness` 1.0 → 0.5 and `remembered_brightness` 0.35 → 0.2. Fading toward the
+  ring's edge, low detail and warmer light were offered and not taken for now.*
 - [x] Tests: memory round-trips through a save, with a remembered tile the generator would
   never mark (trap 9); a second world's memory is its own. [9]
 - [ ] By hand: underground is black past the radius and monochrome within it; walk away and
