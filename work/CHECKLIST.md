@@ -10,6 +10,9 @@ yet but the HUD), then yields (the pack fills), then weight (you feel it), then 
 
 Slice 007's checklist is in git history (last at `76c5d8d`).
 
+**Closed 2026-11-08** by Derik, merged into `main` before a by-hand walk, so 009 could build on
+it. The by-hand items below are left unticked, to be walked later.
+
 ---
 
 ## A. Decided in planning

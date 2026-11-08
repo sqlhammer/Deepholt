@@ -1,7 +1,7 @@
 # Next
 
-Sketches, not commitments. Slice 008 is built ([log](./log/008-what-you-carry.md)) on the
-`slice-008` branch; its by-hand outcomes haven't been walked. Cheap to throw away; expect them to
+Sketches, not commitments. Slice 008 is done and merged ([log](./log/008-what-you-carry.md));
+its by-hand outcomes are still to walk. Cheap to throw away; expect them to
 change.
 
 ---

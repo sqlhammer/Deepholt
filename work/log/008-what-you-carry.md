@@ -96,3 +96,13 @@ D-143. Every hand-built test world that an actor descends in needs its level bel
 - **Drops** (D-158's model) aren't built.
 - **The "dragon bag" randomizer** (D-156) isn't built.
 - **No inventory screen and no value-density sort** (ui-ux §5).
+
+---
+
+## Closed
+
+*Added by Claude, 2026-11-08, when the slice was closed.*
+
+Derik closed the slice and merged it into `main` on 2026-11-08 without a by-hand walk, so that
+slice 009 could build on it. The by-hand outcomes stay unticked in the checklist, to be walked
+later. Anything that walk finds is fixed in 009 or a follow-up.
