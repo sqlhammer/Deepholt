@@ -120,3 +120,15 @@ before any run.
 - **Lit tiles aren't remembered** unless a player also senses them. Nothing needs them to be
   yet.
 - **005's by-hand items** were never reported walked.
+
+---
+
+## Closed
+
+*Added by Claude, 2026-11-08, when the slice was closed.*
+
+Derik walked the by-hand outcomes, and the slice is closed. One thing came out of the walk:
+the Sensed ring read like normal lighting, so there was little reason to want a torch. The
+two greys were retuned by eye, Sensed 1.0 → 0.5 and Remembered 0.35 → 0.2 (`4662c9f`). A fade
+toward the ring's edge, low detail (D-010's "low-detail monochrome") and warmer light were
+offered and not taken for now.

@@ -17,6 +17,8 @@ game runs at the end of every section, and is launched by hand there (002's log)
 
 Slice 005's checklist is in git history (last at `ca1ac7b`).
 
+**Closed 2026-11-08.** Derik walked the by-hand outcomes.
+
 ---
 
 ## A. Decided in planning
@@ -61,7 +63,7 @@ Claude the rest (Agent mode).*
 - [x] Tests: an arrival generates the level below once; an NPC's arrival does too; a world
   outside the game scene grows; two worlds grow independently; a load with missing levels
   generates after the swap, never during it. [7, 8]
-- [ ] By hand: `--new-game`, F3 shows the Surface and −1; walk down to −2 and −3; save on −1
+- [x] By hand: `--new-game`, F3 shows the Surface and −1; walk down to −2 and −3; save on −1
   and relaunch. [1, 2]
 
 ## C. Memory and the senses
@@ -99,7 +101,7 @@ and D-146.
   ring's edge, low detail and warmer light were offered and not taken for now.*
 - [x] Tests: memory round-trips through a save, with a remembered tile the generator would
   never mark (trap 9); a second world's memory is its own. [9]
-- [ ] By hand: underground is black past the radius and monochrome within it; walk away and
+- [x] By hand: underground is black past the radius and monochrome within it; walk away and
   your tunnel stays outlined; relaunch and it's still there. [3, 4]
 
 ## D. Light, the brazier and ore
@@ -122,7 +124,7 @@ and D-146.
 - [x] The Surface is lit throughout (D-144). [6]
 - [x] Tests: light follows a swapped-in world; moving a brazier (D-138) moves its light; nothing
   about light is in a save. [10]
-- [ ] By hand: copper by the brazier and copper in the dark (on −2, by Greyseam's brazier); the
+- [x] By hand: copper by the brazier and copper in the dark (on −2, by Greyseam's brazier); the
   home cave's brazier on −1; the Surface; how a hole on −1 and the level-change fade read in
   the dark. [5, 6]
 
@@ -132,7 +134,7 @@ and D-146.
   *810 tests, 41 scripts.*
 - [x] `python scripts/coverage.py` run; uncovered lines looked at (005 closed at 97.5%).
   *97.4%.*
-- [ ] By hand: outcomes 1–6 walked in one sitting, launched outside the editor at least once.
+- [x] By hand: outcomes 1–6 walked in one sitting, launched outside the editor at least once.
 - [x] Claude reviews the slice. *In the log, as "choices made while building" and "open".*
 - [x] Claude writes `log/006-down-into-the-dark.md`.
 - [x] Claude re-sketches [NEXT.md](./NEXT.md).
