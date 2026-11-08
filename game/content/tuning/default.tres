@@ -18,3 +18,7 @@ sense_radius = 7
 sensed_brightness = 0.5
 remembered_brightness = 0.2
 brazier_light_radius = 6
+floor_hardness_by_depth = Array[float]([6.0, 10.0, 18.0, 30.0, 48.0, 70.0, 100.0, 140.0])
+breach_time_multiplier = 8.0
+breach_tool_multiplier = 1.2
+build_cursor_radius = 5

@@ -29,6 +29,12 @@ signal dig_requested(actor: Actor, tile: WorldPos)
 signal tile_dug(actor: Actor, tile: WorldPos)
 signal dig_refused(actor: Actor, tile: WorldPos, reason: DIG_REFUSAL)
 
+# A floor breached (D-152): `tile` is the floor on its own level,
+# which becomes a hole; the tile below it is cleared as the landing.
+signal breach_requested(actor: Actor, tile: WorldPos, tool_power: float)
+signal tile_breached(actor: Actor, tile: WorldPos)
+signal breach_refused(actor: Actor, tile: WorldPos, reason: BREACH_REFUSAL)
+
 signal place_requested(actor: Actor, kind: int, tile: WorldPos)
 signal remove_requested(actor: Actor, fixture_id: int)
 signal move_requested(actor: Actor, fixture_id: int, to: WorldPos)
@@ -44,6 +50,21 @@ enum DIG_REFUSAL {
 	LEVEL_NOT_EXISTS,
 	TILE_NOT_EXISTS,
 	TILE_NOT_DIGGABLE,
+}
+
+# Why a breach was refused (D-152). Each names the end that failed:
+# the floor, or the landing below it.
+enum BREACH_REFUSAL {
+	NONE,
+	LEVEL_NOT_EXISTS,
+	TILE_NOT_EXISTS,
+	NOT_PLAIN_FLOOR,
+	FIXTURE_ON_TILE,
+	ACTOR_ON_TILE,
+	NO_LEVEL_BELOW,
+	LANDING_NOT_EXISTS,
+	LANDING_BLOCKED,
+	TOOL_TOO_WEAK,
 }
 
 enum FIXTURE_VERB {
@@ -104,6 +125,7 @@ func _init(p_tuning: TuningProfile = null) -> void:
 	actors_node.add_child(_npcs_node)
 
 	dig_requested.connect(_on_dig_requested)
+	breach_requested.connect(_on_breach_requested)
 	place_requested.connect(_on_place_requested)
 	remove_requested.connect(_on_remove_requested)
 	move_requested.connect(_on_move_requested)
@@ -271,6 +293,66 @@ func _dig_tile(actor: Actor, tile: WorldPos) -> void:
 	level.level_tiles.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
 	level.level_tiles.set_ore(tile.x, tile.y, TileKind.ORE.NONE)
 	tile_dug.emit(actor, tile)
+
+
+# --- breaching (D-151, D-152) ---
+
+# Checked whole, then applied whole: the floor becomes a hole and the
+# landing below becomes open floor, or nothing changes.
+func _on_breach_requested(actor: Actor, tile: WorldPos, tool_power: float) -> void:
+	var reason: BREACH_REFUSAL = breach_problem(tile, tool_power)
+	if reason != BREACH_REFUSAL.NONE:
+		breach_refused.emit(actor, tile, reason)
+		return
+	var upper: LevelTiles = level_at(tile.depth).level_tiles
+	var lower: LevelTiles = level_at(tile.depth + 1).level_tiles
+	upper.set_ground(tile.x, tile.y, TileKind.GROUND.HOLE)
+	lower.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
+	lower.set_ore(tile.x, tile.y, TileKind.ORE.NONE)
+	tile_breached.emit(actor, tile)
+
+
+# Why a breach of `tile` with a tool of `tool_power` would be
+# refused, or NONE. A read: the breach capability asks it before
+# spending five seconds, and build mode's preview can too.
+func breach_problem(tile: WorldPos, tool_power: float) -> BREACH_REFUSAL:
+	var level: Level = level_at(tile.depth)
+	if level == null: return BREACH_REFUSAL.LEVEL_NOT_EXISTS
+	var tiles: LevelTiles = level.level_tiles
+	var top: int = tiles.get_top(tile.x, tile.y)
+	var ground: int = tiles.get_ground(tile.x, tile.y)
+	if TileKind.is_sentinel(top) or TileKind.is_sentinel(ground):
+		return BREACH_REFUSAL.TILE_NOT_EXISTS
+	if top != TileKind.TOP.OPEN or not _is_plain_floor(ground):
+		return BREACH_REFUSAL.NOT_PLAIN_FLOOR
+	if not level.level_fixtures.at(Vector2i(tile.x, tile.y)).is_empty():
+		return BREACH_REFUSAL.FIXTURE_ON_TILE
+	if _actor_on(tile): return BREACH_REFUSAL.ACTOR_ON_TILE
+
+	var below: Level = level_at(tile.depth + 1)
+	if below == null: return BREACH_REFUSAL.NO_LEVEL_BELOW
+	var landing: int = below.level_tiles.get_ground(tile.x, tile.y)
+	if TileKind.is_sentinel(landing) or TileKind.is_sentinel(below.level_tiles.get_top(tile.x, tile.y)):
+		return BREACH_REFUSAL.LANDING_NOT_EXISTS
+	if not _is_plain_floor(landing) or not below.level_fixtures.at(Vector2i(tile.x, tile.y)).is_empty():
+		return BREACH_REFUSAL.LANDING_BLOCKED
+
+	if not Digging.can_breach(tuning, Digging.floor_hardness(tuning, tile.depth), tool_power):
+		return BREACH_REFUSAL.TOOL_TOO_WEAK
+	return BREACH_REFUSAL.NONE
+
+
+# Floor you can stand on that isn't a ramp or a hole: what a breach
+# makes a hole of, and what a landing may be.
+static func _is_plain_floor(ground: int) -> bool:
+	if TileKind.is_ramp(ground): return false
+	return ground in [TileKind.GROUND.ROCK, TileKind.GROUND.DIRT, TileKind.GROUND.GRASS]
+
+
+func _actor_on(tile: WorldPos) -> bool:
+	for actor: Actor in actors():
+		if actor.current_WorldPos != null and actor.current_WorldPos.equals(tile): return true
+	return false
 
 
 # --- fixtures (D-090, D-100, D-103) ---

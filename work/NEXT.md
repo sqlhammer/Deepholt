@@ -1,43 +1,39 @@
 # Next
 
-Sketches, not commitments. Slice 006 is built ([log](./log/006-down-into-the-dark.md)); none
-of its by-hand outcomes have been walked yet. 007 is next unless that walk turns something up.
-Cheap to throw away; expect them to change.
+Sketches, not commitments. Slice 007 is done and merged ([log](./log/007-dig-your-own-way-down.md));
+its by-hand outcomes weren't reported walked. 008 is next. Cheap to throw away; expect them to
+change.
 
 ---
 
-## 007 — Dig your own way down
+## 008 — What you carry
 
-Breach a floor to make a hole, and build a ladder in it. The first runtime use of the fixture
-gatekeeper (it has only ever placed things during generation), and the first of the vertical
-logistics ladder you build rather than find ([vertical-logistics §2](../docs/systems/vertical-logistics-and-power.md)).
-Breaching is the M1 verb and the one hard tool gate on descent
-([digging-and-structure §1](../docs/systems/digging-and-structure.md)); building needs at least a
-placement mode. It's also the first time a fixture is created at runtime, so the fixture id
-counter 004 saves gets its first real use, and the first time levels below −2 can be reached.
-Probably too big as one slice; the split should fall out of 006. A placed brazier is the
-natural first runtime placement, since 006 makes the brazier a fixture kind with a light.
+Digging yields something, and you have to carry it. Spoil and stone from mining, ore from veins,
+a weight-limited inventory with no teleport ([D-013](../docs/design-decisions.md)), and the carry
+weight on the HUD, always ([ui-ux §5](../docs/ui-ux-and-controls.md)). The ladder gets its wood
+cost, so build mode's preview shows a cost and refuses what you can't afford
+([ui-ux §7](../docs/ui-ux-and-controls.md)). This is milestone M1's other half
+([pre-alpha-scope](../docs/pre-alpha-scope.md)): "dig a 20-tile tunnel and fill a pack".
 
-What 006 changes here: levels exist one ahead of arrival (D-143), so a hole breached on the
-deepest level a player has reached opens onto a level that already exists. A brazier placed at
-runtime already relights: `Visibility` rebuilds the light on any light fixture's change
-(D-149). Placing in the dark has to say what a player can target on Unknown or Remembered
-tiles, and the temporary Surface hole comes out (D-140).
+What 007 changes here: placement already goes through the gatekeeper, and the preview already
+uses its rules, so a cost is one more rule in both. Spoil must never become a hauling chore
+([digging-and-structure §1](../docs/systems/digging-and-structure.md)). Where wood comes from
+(the Surface, under exposure) is an open fork, and a large one.
 
-What 005 changes here: fixtures can already move through the gatekeeper (D-138), and the
-ladder rule for neighboring shafts is settled (D-139), so both are reachable here for the first
-time. The temporary Surface hole comes out in this slice (D-140). The first stratum below the
-Surface with its own stone, if it arrives here, triggers the content validator (D-137).
+## 009 — Holding it up
 
-What 004 changes here: a placement is a request on the actor's own world
-(`actor.current_level.world.place_requested`, D-125, D-126), answered on the same world, the
-way the dig capability already works. The breach is a tile change, so it goes through the same
-world's tile gatekeeper.
+The support rule: excavated space has to be held up or it fails (pillar
+[P4](../docs/game-overview.md), [digging-and-structure §2](../docs/systems/digging-and-structure.md)).
+Depth-scaled support radius, timber props (the reserved D-pad down, ui-ux §2.5), three ceiling
+states and a telegraphed failure countdown, then local collapse into rubble. The support
+overlay comes with it. Milestone M2.
+
+What 007 changes here: build mode and the anchored cursor exist, so a prop is a second item to
+place. A breach is the largest single excavation today, so it's the first thing to check
+against support.
 
 ## Not placed yet
 
-- **The support rule**: excavated space has to be held up or it fails (pillar
-  [P4](../docs/game-overview.md)).
 - **The rate machine** that lets a hoist haul while you are three levels away.
 - **Procgen beyond the recipe's fixed placements** (D-084's rules and tags).
 - **A title screen and a save-slot menu.** Today launch continues the first slot, and
@@ -61,3 +57,10 @@ Found during 005, not recorded anywhere else. None of it is decided.
   resource). Derik asked why; moving them beside digging is open.
 - **The state texture's GPU upload is unmeasured** (headless can't). Watch F3's "Dark" line on
   −7, the largest level.
+- **ui-ux §7's build-mode dimming and grid, pad B to leave, and the cursor's tick** weren't
+  built in 007.
+- **Pad X is contested** once tools can be swapped (D-155).
+- **Coverage at the end of slice 007: 97.5%.**
+- **Digging and breaching have no actor animation or sound.** A breach shows cracks on its tile
+  (007); a dig has nothing but the tile vanishing. Both want a working animation once there's
+  art, and strikes once there's audio.

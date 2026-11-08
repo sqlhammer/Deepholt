@@ -90,7 +90,7 @@ late-stage menu.
 | **LT** (hold) | Radial build menu |
 | **A** | Interact — stations, ladders, doors, NPCs, pick up |
 | **B** | Cancel / back / exit build mode |
-| **X** | Swap tool (pick ↔ shovel ↔ hammer) |
+| **X** | Breach (held, facing the floor; D-153). Reserved for swap tool (pick ↔ shovel ↔ hammer) once tools can be swapped, which decides between them (D-155) |
 | **Y** | Toggle build mode |
 | **LB / RB** | Cycle hotbar |
 | **L3** | Toggle support overlay |
@@ -109,8 +109,9 @@ late-stage menu.
 | WASD | Move |
 | Mouse | Grid cursor — **clamped to the same radius as the pad** |
 | LMB | Primary |
-| RMB | Interact |
-| `E` | Build mode · `Q` radial · `1`–`8` hotbar |
+| `E` | Interact (the game binds it here, not RMB; D-155) |
+| `R` | Breach (held, facing the floor; D-153) |
+| `B` | Build mode (D-155) · `Q` radial · `1`–`8` hotbar |
 | `F` | Place timber prop · `L` lantern |
 | `Tab` inventory · `M` map · `V` support overlay |
 

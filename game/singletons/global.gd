@@ -12,13 +12,15 @@ signal debug_event (title: String, text: String, remove: bool)
 
 enum CAPABILITY {
 	NONE,
-	DIG
+	DIG,
+	BREACH,
 }
 
 func get_capability_packedscene(capability: CAPABILITY) -> PackedScene:
 	var scene: PackedScene
 	match capability:
 		CAPABILITY.DIG: scene = load("res://src/entity/capabilities/capability_dig.tscn")
+		CAPABILITY.BREACH: scene = load("res://src/entity/capabilities/capability_breach.tscn")
 	return scene
 
 func contains_whitespace(text: String) -> bool:

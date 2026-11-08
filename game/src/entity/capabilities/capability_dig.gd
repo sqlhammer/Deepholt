@@ -80,7 +80,7 @@ func _is_dig_complete() -> bool:
 # a tile harder to dig.
 func _set_tile_hardness(tuning: TuningProfile, kind: int,
 		ore: int = TileKind.ORE.NONE) -> bool:
-	var hardness: float = tuning.dig_hardness(kind, ore)
+	var hardness: float = Digging.dig_hardness(tuning, kind, ore)
 	if hardness >= 0.0:
 		tile_hardness = hardness
 		return true
