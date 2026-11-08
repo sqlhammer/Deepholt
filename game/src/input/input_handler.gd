@@ -38,6 +38,7 @@ func pause() -> void:
 	if actor == null: return
 	actor.move(Vector2.ZERO)
 	actor.primary_action(false)
+	actor.breach(false)
 
 
 func resume() -> void:
@@ -65,6 +66,9 @@ func _physics_process(_delta: float) -> void:
 	actor.move(move)
 	actor.aim(_get_aim(), move)
 	actor.primary_action(Input.is_action_pressed("primary_action"))
+	# Its own input (D-153); InputMap has it once project.godot does
+	if InputMap.has_action("breach"):
+		actor.breach(Input.is_action_pressed("breach"))
 	# A one-shot, polled here on the physics tick rather than handled
 	# as an event, so the depth change it can cause happens on the same
 	# tick as movement and digging (D-106). Read only here: reading it

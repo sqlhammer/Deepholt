@@ -55,7 +55,7 @@ func _tick(tile: Vector2i, times: int = 1) -> void:
 
 
 func _hardness(kind_name: String) -> float:
-	return TuningProfile.default_profile().hardness_of(TileKind.TOP[kind_name])
+	return Digging.hardness_of(TuningProfile.default_profile(), TileKind.TOP[kind_name])
 
 
 # --- building progress ---

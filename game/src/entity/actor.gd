@@ -16,6 +16,9 @@ var current_level: Level
 var actor_name: String = "Actor"
 var move_intent: Vector2 = Vector2.ZERO
 var action_intent: bool = false
+# Held to breach the floor faced (D-153). Its own intent, so a press
+# held through a dig never turns into a breach of the floor it opened.
+var breach_intent: bool = false
 var aim_vector: Vector2 = Vector2.ZERO
 var facing: Vector2i = Vector2i(0,1) # Default = Down
 
@@ -130,6 +133,13 @@ func primary_action(p_action_intent: bool) -> void:
 		else: emit_signal("action_ended", equipped.verb)
 
 
+func breach(p_breach_intent: bool) -> void:
+	if breach_intent and not p_breach_intent:
+		var capability: CapabilityBreach = get_node_or_null("Capabilities/CapabilityBreach")
+		if capability: capability.reset()
+	breach_intent = p_breach_intent
+
+
 # The interact button (D-101). Today it only uses ladders: the Ladder
 # rule says where, and the actor moves itself (D-093). Returns whether
 # anything happened.
@@ -167,9 +177,16 @@ func _dig(delta: float, target_tile: WorldPos) -> void:
 	if capability: capability.dig(delta, equipped.speed, target_tile, current_level)
 
 
+func _breach(delta: float) -> void:
+	if not breach_intent: return
+	var capability: CapabilityBreach = get_node_or_null("Capabilities/CapabilityBreach")
+	if capability: capability.breach(delta, equipped.speed, _get_target_tile(), current_level)
+
+
 func _physics_process(delta: float) -> void:
 	_move(move_intent * speed * delta)
 	_primary_action(delta)
+	_breach(delta)
 
 
 # The actor is handed the level it starts on rather than finding it

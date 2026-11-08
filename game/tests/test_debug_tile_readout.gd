@@ -31,14 +31,15 @@ func test_window_prints_back_the_authored_grid_around_the_anchor() -> void:
 	assert_string_contains(readout, "####%......", "one and two rows north of the anchor")
 	assert_string_contains(readout, "####c@.....", "anchor row")
 	assert_string_contains(readout, "####c......", "one row south of anchor")
-	assert_string_contains(readout, "####%hc%%%%", "two rows south of anchor")
+	assert_string_contains(readout, "####%.c%%%%", "two rows south of anchor")
 
 
 # A hole is open on top, like floor, but can't be walked over; it
-# prints as the 'h' it is authored with, not as floor.
+# prints as the 'h' it is authored with, not as floor. The Surface's
+# own hole is gone (D-140), so the test makes one.
 func test_a_hole_prints_as_h_not_as_floor() -> void:
 	var tiles: LevelTiles = _world.level_at(0).level_tiles
-	assert_eq(tiles.get_ground(0, 2), TileKind.GROUND.HOLE, "surface_start's hole")
+	tiles.set_ground(0, 2, TileKind.GROUND.HOLE)
 	assert_eq(_overlay._tile_char(tiles, 0, 2, WorldPos.new(5, 5, 0)), "h", "a hole")
 	assert_eq(_overlay._tile_char(tiles, 1, 0, WorldPos.new(5, 5, 0)), ".", "floor beside it")
 

@@ -65,6 +65,10 @@ func grant_player_capabilities(actor: Actor) -> void:
 	var dig_capability: CapabilityDig = dig_scene.instantiate()
 	dig_capability.actor = actor
 	actor.get_node("Capabilities").add_child(dig_capability)
+	var breach_scene: PackedScene = Global.get_capability_packedscene(Global.CAPABILITY.BREACH)
+	var breach_capability: CapabilityBreach = breach_scene.instantiate()
+	breach_capability.actor = actor
+	actor.get_node("Capabilities").add_child(breach_capability)
 
 
 func set_user_control(actor: Actor) -> void:
@@ -386,6 +390,10 @@ func _create_view() -> void:
 
 	$DebugOverlay.watch_view(view)
 	$DebugOverlay.watch_visibility(visibility)
+	# Why the local player's action was refused (D-141, D-152)
+	var refusals: RefusalNotice = RefusalNotice.new()
+	add_child(refusals)
+	refusals.watch(view)
 
 
 # The one way a world comes in, at launch, for a new game and on a

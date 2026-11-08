@@ -38,6 +38,16 @@ const DEFAULT_ID: String = "default"
 # without it (tuning appendix, section 4).
 @export var ore_dig_multiplier: float = 0.0
 
+# Each level's floor hardness, by depth: its stratum's number from the
+# tuning appendix (D-151).
+@export var floor_hardness_by_depth: Array[float] = []
+
+# A breach takes hardness x this / tool power seconds, and needs a
+# tool at least hardness x the gate multiplier strong (tuning
+# appendix §4, D-151).
+@export var breach_time_multiplier: float = 0.0
+@export var breach_tool_multiplier: float = 0.0
+
 # How far a player senses, in steps through open space (D-145).
 @export var sense_radius: int = 0
 
@@ -81,23 +91,3 @@ static func find_or_default(profile_id: String, what: String) -> TuningProfile:
 		what, profile_id, DEFAULT_ID])
 	return default_profile()
 
-
-# How hard a top kind is to dig, or -1 if it can't be dug. Whether a
-# kind can be dug is TileKind's to say, not the profile's.
-func hardness_of(top_kind: int) -> float:
-	if not TileKind.is_diggable(top_kind): return -1.0
-	if not hardness.has(top_kind):
-		push_error("Tuning profile \"%s\" has no hardness for top kind %d." % [id, top_kind])
-		return -1.0
-	return hardness[top_kind]
-
-
-# How hard a tile is to dig, counting its ore: the top kind's
-# hardness, times ore_dig_multiplier when the tile holds ore. -1 when
-# the top kind can't be dug.
-func dig_hardness(top_kind: int, ore_kind: int) -> float:
-	var value: float = hardness_of(top_kind)
-	if value < 0.0: return value
-	if ore_kind != TileKind.ORE.NONE and ore_kind != TileKind.ORE.NULL:
-		value *= ore_dig_multiplier
-	return value

@@ -42,8 +42,8 @@ func test_the_default_holds_the_numbers_the_code_had() -> void:
 	var profile: TuningProfile = _default()
 	assert_eq(profile.autosave_interval_seconds, 300.0, "autosave every 5 minutes")
 	assert_eq(profile.walk_speed, 85.0, "walk speed")
-	assert_eq(profile.hardness_of(TileKind.TOP.MINABLE_ROCK), 6.0, "rock is 6")
-	assert_eq(profile.hardness_of(TileKind.TOP.MINABLE_DIRT), 4.0, "dirt is 4")
+	assert_eq(Digging.hardness_of(profile, TileKind.TOP.MINABLE_ROCK), 6.0, "rock is 6")
+	assert_eq(Digging.hardness_of(profile, TileKind.TOP.MINABLE_DIRT), 4.0, "dirt is 4")
 	assert_eq(profile.ore_dig_multiplier, 1.5, "ore takes 1.5x")
 
 
@@ -53,7 +53,7 @@ func test_the_default_holds_the_numbers_the_code_had() -> void:
 func test_every_diggable_kind_has_a_positive_hardness() -> void:
 	for kind: int in TileKind.DIGGABLE:
 		assert_true(_default().hardness.has(kind), "kind %d has a hardness" % kind)
-		assert_gt(_default().hardness_of(kind), 0.0, "kind %d takes time to dig" % kind)
+		assert_gt(Digging.hardness_of(_default(), kind), 0.0, "kind %d takes time to dig" % kind)
 
 
 func test_every_hardness_entry_is_a_diggable_kind() -> void:
@@ -62,8 +62,8 @@ func test_every_hardness_entry_is_a_diggable_kind() -> void:
 
 
 func test_an_undiggable_kind_has_no_hardness() -> void:
-	assert_lt(_default().hardness_of(TileKind.TOP.OPEN), 0.0, "open floor")
-	assert_lt(_default().dig_hardness(TileKind.TOP.OPEN, TileKind.ORE.COPPER), 0.0,
+	assert_lt(Digging.hardness_of(_default(), TileKind.TOP.OPEN), 0.0, "open floor")
+	assert_lt(Digging.dig_hardness(_default(), TileKind.TOP.OPEN, TileKind.ORE.COPPER), 0.0,
 		"and ore doesn't make it diggable")
 
 
@@ -72,15 +72,15 @@ func test_an_undiggable_kind_has_no_hardness() -> void:
 func test_a_profile_missing_a_kinds_hardness_is_an_error() -> void:
 	var profile: TuningProfile = _other()
 	profile.hardness = {}
-	assert_lt(profile.hardness_of(TileKind.TOP.MINABLE_ROCK), 0.0, "no hardness")
+	assert_lt(Digging.hardness_of(profile, TileKind.TOP.MINABLE_ROCK), 0.0, "no hardness")
 	assert_push_error("has no hardness")
 
 
 func test_ore_multiplies_the_hardness() -> void:
-	var rock: float = _default().hardness_of(TileKind.TOP.MINABLE_ROCK)
-	assert_eq(_default().dig_hardness(TileKind.TOP.MINABLE_ROCK, TileKind.ORE.NONE), rock,
+	var rock: float = Digging.hardness_of(_default(), TileKind.TOP.MINABLE_ROCK)
+	assert_eq(Digging.dig_hardness(_default(), TileKind.TOP.MINABLE_ROCK, TileKind.ORE.NONE), rock,
 		"plain rock")
-	assert_eq(_default().dig_hardness(TileKind.TOP.MINABLE_ROCK, TileKind.ORE.COPPER),
+	assert_eq(Digging.dig_hardness(_default(), TileKind.TOP.MINABLE_ROCK, TileKind.ORE.COPPER),
 		rock * _default().ore_dig_multiplier, "rock with copper")
 
 
