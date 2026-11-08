@@ -130,9 +130,9 @@ and D-146.
 - [x] `python scripts/coverage.py` run; uncovered lines looked at (005 closed at 97.5%).
   *97.4%.*
 - [ ] By hand: outcomes 1–6 walked in one sitting, launched outside the editor at least once.
-- [ ] Claude reviews the slice.
-- [ ] Claude writes `log/006-down-into-the-dark.md`.
-- [ ] Claude re-sketches [NEXT.md](./NEXT.md).
+- [x] Claude reviews the slice. *In the log, as "choices made while building" and "open".*
+- [x] Claude writes `log/006-down-into-the-dark.md`.
+- [x] Claude re-sketches [NEXT.md](./NEXT.md).
 
 ---
 

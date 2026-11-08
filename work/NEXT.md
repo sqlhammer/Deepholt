@@ -1,7 +1,8 @@
 # Next
 
-Sketches, not commitments. Slice 006, "Down into the dark", is in [NOW.md](./NOW.md): generation
-on first descent, then the dark. Cheap to throw away; expect them to change.
+Sketches, not commitments. Slice 006 is built ([log](./log/006-down-into-the-dark.md)); none
+of its by-hand outcomes have been walked yet. 007 is next unless that walk turns something up.
+Cheap to throw away; expect them to change.
 
 ---
 
@@ -18,8 +19,10 @@ Probably too big as one slice; the split should fall out of 006. A placed brazie
 natural first runtime placement, since 006 makes the brazier a fixture kind with a light.
 
 What 006 changes here: levels exist one ahead of arrival (D-143), so a hole breached on the
-deepest level a player has reached opens onto a level that already exists. Lights placed at
-runtime will need the light field rebuilt on placement, which 006 builds for moves.
+deepest level a player has reached opens onto a level that already exists. A brazier placed at
+runtime already relights: `Visibility` rebuilds the light on any light fixture's change
+(D-149). Placing in the dark has to say what a player can target on Unknown or Remembered
+tiles, and the temporary Surface hole comes out (D-140).
 
 What 005 changes here: fixtures can already move through the gatekeeper (D-138), and the
 ladder rule for neighboring shafts is settled (D-139), so both are reachable here for the first
@@ -53,3 +56,8 @@ Found during 005, not recorded anywhere else. None of it is decided.
 - **`content/tuning/default.tres` has no `uid` yet;** the editor adds one on its first save.
 - **Coverage at the end of slice 005: 97.5%** (`python scripts/coverage.py`; 004 closed at
   95.7%).
+- **Coverage at the end of slice 006: 97.4%** (005 closed at 97.5%).
+- **`hardness_of` and `dig_hardness` sit on the tuning profile** (a digging rule on a numbers
+  resource). Derik asked why; moving them beside digging is open.
+- **The state texture's GPU upload is unmeasured** (headless can't). Watch F3's "Dark" line on
+  −7, the largest level.
