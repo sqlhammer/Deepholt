@@ -1,12 +1,13 @@
 class_name CarryHud
 extends CanvasLayer
 
-# The followed actor's carry weight, always on screen (D-159, ui-ux §5):
-# a slim bar at the bottom center, where the hotbar will sit, and
-# "20 / 60 kg" beside it. The bar runs to 150% of capacity, with a mark
-# at 100%; its color changes at the load curve's bands (50%, 100%,
-# 150%), and past 150% the end is hatched. Presentation: it follows
-# the view's actor (D-045), and reads that actor's world's capacity.
+# The followed actor's carry weight, always on screen (D-159, ui-ux
+# §5): a slim bar at the bottom center, where the hotbar will sit, and
+# "20 / 60 kg" beside it. The bar runs to 150% of capacity, with a
+# mark at 100%; its color changes at the load curve's bands (50%,
+# 100%, 150%), and past 150% the end is hatched. Presentation: it
+# follows the view's actor (D-045), and reads that actor's world's
+# capacity.
 
 const BAR_SIZE: Vector2 = Vector2(180, 8)
 const BAR_SPAN: float = 1.5

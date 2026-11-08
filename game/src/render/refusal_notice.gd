@@ -29,6 +29,7 @@ const PLACE_REASONS: Dictionary = {
 	World.FIXTURE_REFUSAL.TILE_NOT_PASSABLE: "There's no floor below for it to stand on.",
 	World.FIXTURE_REFUSAL.NO_HOLE_ABOVE: "A ladder goes in a hole.",
 	World.FIXTURE_REFUSAL.TILE_OCCUPIED: "Something below is in the way.",
+	World.FIXTURE_REFUSAL.CANNOT_AFFORD: "You don't have enough to build that.",
 }
 
 var text: String:

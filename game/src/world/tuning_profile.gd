@@ -76,6 +76,9 @@ const DEFAULT_ID: String = "default"
 # Past this load, no ladder can be climbed (D-030, D-159).
 @export var ladder_load_limit: float = 0.0
 
+# What placing a ladder costs, item id -> count (D-156): four timber.
+@export var ladder_cost: Dictionary[StringName, int] = {}
+
 # What a new game's first player starts with, item id -> count
 # (D-156): the ten timber a ladder is built from.
 @export var starting_items: Dictionary[StringName, int] = {}

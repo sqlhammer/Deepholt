@@ -2,9 +2,9 @@ class_name ItemRegistry
 extends RefCounted
 
 # Every item on disk, by its stable id (D-157, content-schema §1).
-# Loaded once, on first use, from content/items/. A static class rather
-# than an autoload: the items are fixed design data, like the level
-# recipes, and nothing about them is world state (D-118, D-124).
+# Loaded once, on first use, from content/items/. A static class
+# rather than an autoload: the items are fixed design data, like the
+# level recipes, and nothing about them is world state (D-118, D-124).
 
 const ITEM_DIRECTORY: String = "res://content/items/"
 

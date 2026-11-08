@@ -211,3 +211,25 @@ func test_the_hud_colors_follow_the_load_curves_bands() -> void:
 	assert_eq(CarryHud.color_for(0.7), CarryHud.LOADED, "past half")
 	assert_eq(CarryHud.color_for(1.2), CarryHud.HEAVY, "past full")
 	assert_eq(CarryHud.color_for(1.6), CarryHud.OVER, "past 150%")
+
+
+# A broken item file is loud at startup, never a silent null later
+# (content-schema §1).
+func test_a_broken_item_file_is_loud() -> void:
+	ItemRegistry._register(null, "not_an_item.tres")
+	assert_push_error("is not an item")
+	ItemRegistry._register(Item.new(), "no_id.tres")
+	assert_push_error("has no id")
+	var twin: Item = Item.new()
+	twin.id = &"stone"
+	ItemRegistry._register(twin, "stone_again.tres")
+	assert_push_error("Duplicate item id 'stone'")
+	assert_eq(ItemRegistry.get_item(&"stone").weight_kg, 3.0, "the first stone stays")
+
+
+func test_the_hud_hatches_past_150_percent() -> void:
+	var game: Node = _game()
+	var hud: CarryHud = game.get_node("CarryHud")
+	game.active_actor.pack.add(&"stone", 30)
+	assert_gt(hud.ratio, 1.5, "over 150%: 110 of 60 kg")
+	await get_tree().process_frame

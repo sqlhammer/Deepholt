@@ -87,6 +87,8 @@ enum FIXTURE_REFUSAL {
 	NO_HOLE_ABOVE,
 	TILE_OCCUPIED,
 	FIXTURE_NOT_EXISTS,
+	# The requesting actor's pack can't pay the cost (D-159)
+	CANNOT_AFFORD,
 }
 
 var world_seed: int
@@ -393,7 +395,13 @@ func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
 	if reason != FIXTURE_REFUSAL.NONE:
 		request_refused.emit(actor, FIXTURE_VERB.PLACE, tile, reason)
 		return
+	# Paid from the requesting actor's own pack; free with no actor
+	# (D-159)
+	if not Building.can_afford(tuning, actor, kind):
+		request_refused.emit(actor, FIXTURE_VERB.PLACE, tile, FIXTURE_REFUSAL.CANNOT_AFFORD)
+		return
 
+	Building.pay(tuning, actor, kind)
 	var fixture: Fixture = Fixture.new(kind, tile, fixture_ids.allocate())
 	level.level_fixtures.add(fixture)
 	fixture_placed.emit(actor, fixture)

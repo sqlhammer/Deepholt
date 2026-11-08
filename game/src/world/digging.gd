@@ -36,9 +36,9 @@ const ORE_ITEMS: Dictionary = {
 
 
 # What mining a wall yields, item id -> count (D-156, D-158): an ore
-# vein gives its ore, between the profile's minimum and maximum; a rock
-# wall gives stone; a dirt wall gives nothing. `rng` draws the ore's
-# count, so a world's yields repeat for the same seed.
+# vein gives its ore, between the profile's minimum and maximum; a
+# rock wall gives stone; a dirt wall gives nothing. `rng` draws the
+# ore's count, so a world's yields repeat for the same seed.
 static func yield_of(tuning: TuningProfile, top_kind: int, ore_kind: int,
 		rng: RandomNumberGenerator) -> Dictionary[StringName, int]:
 	var found: Dictionary[StringName, int] = {}

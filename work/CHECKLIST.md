@@ -70,18 +70,21 @@ Slice 007's checklist is in git history (last at `76c5d8d`).
 
 - [x] *Decide:* who checks and takes a cost. *The fixture gatekeeper, with one rule the preview
   shares (D-159).*
-- [ ] The ladder's cost in the profile (4 timber); placing takes it from the requesting actor's
-  pack; a placement with no actor costs nothing. [4]
-- [ ] Build mode's preview shows the cost and refuses what you can't afford, with the reason
+- [x] The ladder's cost in the profile (4 timber); placing takes it from the requesting actor's
+  pack; a placement with no actor costs nothing. [4] *One rule, `Building`, in `src/world/`, asked by
+  the gatekeeper (a new `CANNOT_AFFORD` refusal) and by the cursor.*
+- [x] Build mode's preview shows the cost and refuses what you can't afford, with the reason
   (ui-ux §7). [4]
-- [ ] Tests: placing takes the cost; can't afford is refused by both the preview and the
+- [x] Tests: placing takes the cost; can't afford is refused by both the preview and the
   gatekeeper; generation and loads place for free. [4]
 - [ ] By hand: place ladders until the timber runs out. [4]
 
 ## F. Done
 
-- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-- [ ] `python scripts/coverage.py` run; uncovered lines looked at (007 closed at 97.5%).
+- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
+  *890 tests, 46 scripts.*
+- [x] `python scripts/coverage.py` run; uncovered lines looked at (007 closed at 97.5%).
+  *97.6%.*
 - [ ] By hand: outcomes 1–5 walked in one sitting, launched outside the editor at least once.
 - [ ] Claude reviews the slice.
 - [ ] Claude writes `log/008-what-you-carry.md`.
