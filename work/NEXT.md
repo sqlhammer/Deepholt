@@ -1,7 +1,7 @@
 # Next
 
-Sketches, not commitments. Slice 009 is built ([log](./log/009-letting-go.md)) on the
-`slice-009` branch; neither 008's nor 009's by-hand outcomes have been walked. Cheap to throw
+Sketches, not commitments. Slice 009 is done and merged ([log](./log/009-letting-go.md));
+neither 008's nor 009's by-hand outcomes have been walked. Cheap to throw
 away; expect them to change.
 
 ---

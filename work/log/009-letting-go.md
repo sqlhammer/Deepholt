@@ -91,3 +91,12 @@ world's requests); the key routing itself is the by-hand walk's.
   needed.
 - **No take-this preview** on the ground (ui-ux §5).
 - **Pad LB is contested** when the hotbar arrives.
+
+---
+
+## Closed
+
+*Added by Claude, 2026-11-08, when the slice was closed.*
+
+Derik closed the slice and merged it into `main` on 2026-11-08 without a by-hand walk, so that
+slice 010 could build on it. The by-hand outcomes stay unticked, to be walked later with 008's.

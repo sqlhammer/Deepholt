@@ -10,6 +10,9 @@ then yields that overflow into them, then pickup and the take key, then the inve
 
 Slice 008's checklist is in git history (last at `0f34fe3`).
 
+**Closed 2026-11-08** by Derik, merged into `main` before a by-hand walk, so 010 could build on
+it. The by-hand items below are left unticked, to be walked later.
+
 ---
 
 ## A. Decided in planning
