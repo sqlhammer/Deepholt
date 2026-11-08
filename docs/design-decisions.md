@@ -3223,3 +3223,96 @@ under [D-144](#d-144--slice-006s-dark-all-four-render-states-and-light-from-a-br
 *Considered:* the flood with brightness falling off (a second per-tile value and a blend in the
 shader); a plain radius (shows rock interiors the senses never reveal).
 
+---
+
+### D-150 — Digging rules live in a static `Digging` class that takes the profile
+**Decided** (by Derik, planning slice 007, 2026-11-08). Settles his question on
+`TuningProfile.hardness_of` and `dig_hardness`, which put digging rules on a resource meant to
+hold numbers
+([D-135](#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it)).
+
+- **`Digging`, stateless, in `src/world/`,** holds every digging rule: a wall's dig hardness
+  (with the ore multiplier), and 007's breach time and tool gate.
+- **Every rule takes the `TuningProfile` as a parameter,** so its key values stay tunable per
+  world.
+- **The profile holds only numbers.** `hardness_of` and `dig_hardness` move off it.
+
+*Why:* one home for the rules about digging, beside the floor rules 007 adds, and a profile that
+is data.
+
+*Considered:* leaving the rules on the profile; putting them on `TileKind`, which would then
+learn about tools.
+
+---
+
+### D-151 — A floor's hardness is its level's
+**Decided** (by Derik, planning slice 007, 2026-11-08).
+
+- **One floor hardness per depth,** whatever the ground kind, from the tuning appendix's stratum
+  table (Surface 6, −1 10, −2 18, −3 30, −4 48, −5 70, −6 100, −7 140), held in the profile.
+- **The breach formula is the appendix's,** with its numbers in the profile:
+  `breach_seconds = (hardness × 8) / tool_power`, and a breach needs
+  `tool_power ≥ hardness × 1.2`
+  ([tuning appendix §4](./tuning-appendix.md)). With flint (16), the Surface's floor takes 3 s
+  and −1's 5 s; −2's is refused until bronze.
+
+*Why:* it matches the appendix exactly and keeps the breach ladder derived. When strata get
+their own stone kinds (M3), this can become per kind.
+
+*Considered:* per ground kind and level, with dirt floors softer; per ground kind only (the
+tool gate on descent would disappear until the strata get their own kinds).
+
+---
+
+### D-152 — A breach opens a hole and clears its landing; only plain floor with both ends clear
+**Decided** (by Derik, planning slice 007, 2026-11-08). Under
+[D-089](#d-089--a-ladder-is-an-object-on-the-lower-level-a-hole-is-a-ground-kind-a-ramp-is-a-tile-kind).
+
+- **One breach changes two levels:** the floor becomes a hole, and the tile below becomes open
+  floor (top open, ore removed). It's a request on the world's tile gatekeeper, applied whole or
+  not at all.
+- **Breachable:** an open tile whose ground is plain floor (not a ramp or a hole), with no fixture
+  and no actor on it, on a level with a level below, where the tile below is inside that level's
+  bounds and isn't a ramp, a hole or under a fixture. Anything else is refused with a reason.
+  Nobody falls.
+
+*Why:* a breach always makes a usable shaft, and nothing is overwritten.
+
+*Considered:* refusing a breach unless the tile below is already open (the player can't see
+below, so they'd be guessing); the ladder digging its landing (a hole without a ladder stays a
+dead drop over rock); actors on the tile falling to the landing.
+
+---
+
+### D-153 — Breaching has its own input, held while facing the floor
+**Decided** (by Derik, planning slice 007, 2026-11-08).
+
+- **A separate breach action,** held while facing an open floor tile beside you, with progress
+  like a dig's. Keyboard `R`, pad `X`, added to ui-ux's control tables.
+- **Digging keeps one meaning:** primary on a wall mines. A press held through a dig never turns
+  into a breach of the floor it just opened.
+
+*Considered:* a contextual primary needing a fresh press (no new binding, but a subtle rule);
+breaching from build mode's cursor.
+
+---
+
+### D-154 — Build mode follows ui-ux; a ladder is aimed at a hole you can see
+**Decided** (by Derik, planning slice 007, 2026-11-08). Builds
+[ui-ux §2.1, §7](./ui-ux-and-controls.md) for one item.
+
+- **Controls:** `E` / `Y` toggles build mode. In it, the mouse or right stick moves a grid cursor,
+  clamped to a radius around the character (a profile number, about 5), instead of aiming;
+  primary (`LMB` / `RT`) places; `E` / `Y` again, or `B` on a pad, leaves. Walking still works.
+- **A ladder is aimed at a hole on your own level** and placed on the level below at the same
+  (x, y), on the landing the breach cleared.
+- **The cursor acts only on Sensed or Lit tiles**
+  ([D-146](#d-146--the-four-states-reach-the-shader-as-one-state-texture-sensed-is-grey-remembered-darker)).
+  On Remembered or Unknown tiles it shows invalid, with the reason. Nobody builds blind.
+- **Valid and invalid show by shape and icon as well as color,** from the same rules the
+  gatekeeper enforces.
+
+*Considered:* a cursor always on, with no mode (it clutters play and takes the mouse and stick
+off aiming); any tile in reach, seen or not; placing from below (no way down until the ladder
+exists).
+

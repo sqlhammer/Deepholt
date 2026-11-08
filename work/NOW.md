@@ -1,209 +1,162 @@
-# Slice 006 — Down into the dark
+# Slice 007 — Dig your own way down
 
-> Start a new game and only the Surface and −1 exist; each level appears as someone first
-> reaches the one above it. Underground, the screen is black past what you can sense, your own
-> tunnels stay drawn where you've been, and a brazier in the home cave shows what light is for.
+> Stand beside the floor, breach it into a hole, switch to build mode, and set a ladder in it.
+> Climb down to a level nobody built a way into. Your flint can break the Surface's floor and
+> −1's, but not −2's.
 
-*Proposed by Claude, 2026-11-02, from [NEXT.md](./NEXT.md)'s sketch, with Derik's scope from
-planning: generation on first descent first, then all four render states of the dark, with a
-brazier as the light. Derik accepts, edits or replaces it.*
+*Proposed by Claude, 2026-11-08, for Derik's approval. Scope set in planning: breach a floor and
+place a ladder, free of cost for now; Agent mode on a `slice-007` branch. Nothing is built until
+Derik approves this brief.*
 
 ## Where we are
 
-Slice 005 is done and merged ([log](./log/005-clearing-the-backlog.md)). The world is a node
-that owns its levels, its actors, its id counters and its `TuningProfile`. A load returns a
-typed `LoadedGame`, and every swap shows the new world at its spawn's depth. A level change
-fades through black in the view, and the move itself is instant. Fixtures can move through the
-gatekeeper, and a ladder faced down wins.
+Slice 006 is done ([log](./log/006-down-into-the-dark.md)): levels are generated one ahead of
+arrival, and underground is dark: Sensed, Remembered, and Lit by braziers. Derik walked it, and
+the Sensed and Remembered greys were retuned after his first look (0.5 and 0.2).
 
-**What 006 changes, in two parts:**
+**What a player can do today:** walk, dig walls (the dig capability, through the world's tile
+gatekeeper), and take the ramps and ladders the generator placed. Nothing makes a hole or
+places a fixture at runtime. The world's fixture gatekeeper (`place_requested`,
+`move_requested`) has only ever been called by tests.
 
-1. **Generation on first descent.** Today `LevelGenerator.generate_world` builds all eight
-   levels at launch. The design ([world-runtime §8](../docs/tech/world-runtime-and-persistence.md#8-generation-threading))
-   says only the Surface and −1 exist at a new game, and the rest come as they're reached.
-2. **The dark.** Today every tile is drawn in full color, everywhere. Pillar
-   [P3](../docs/game-overview.md) asks for the dark as home: four render states per tile
-   ([D-033](../docs/design-decisions.md#d-033--tunnel-memory-four-render-states-per-tile)), with
-   ore identity needing light
-   ([D-010](../docs/design-decisions.md#d-010--dark-vision-light-is-capability-not-survival)).
-
-**What a level and its drawing are made of, today:**
-- `LevelTiles` holds three byte layers (`ground`, `top`, `ore`). `SaveGame.TILE_LAYERS` names
-  the ones saved, and a missing layer loads as its default (D-112).
-- `LevelRenderer` turns each layer into a one-texel-per-tile data texture, and
-  `level_tiles.gdshader` picks atlas cells from them
-  ([D-046](../docs/design-decisions.md#d-046--levels-reach-the-screen-through-a-data-texture-and-a-shader-not-tilemaplayer)).
-  A change to a layer marks it dirty, and only dirty layers are uploaded.
-- Fixtures are drawn by `FixtureRenderer` from each level's `LevelFixtures`. A fixture's kind
-  needs an entry in `ObjectKind`, a texture, and a prefab character to be placed by a grid.
-- `LevelGenerator.ladder_problems` and `ramp_problems` check pairs across levels, and assume
-  every level exists.
+**What 007 adds, per the design:**
+- **Breach**, the floor verb: "slower, deliberate, requires a tool of that stratum's tier. This is
+  the *only* remaining hard tool gate on descent"
+  ([digging-and-structure §1](../docs/systems/digging-and-structure.md)). The tuning appendix
+  gives `breach_seconds = (hardness × 8) / tool_power` and `breach requires tool_power ≥
+  hardness × 1.2` ([tuning appendix §4](../docs/tuning-appendix.md)). With flint (16): the
+  Surface's floor in 3.0 s, −1's in 5.0 s, −2's refused (it needs bronze).
+- **A build mode with the anchored cursor**: a grid cursor clamped to about 5 tiles around the
+  character, the same reach and rules for mouse and stick
+  ([ui-ux §2.1, §7](../docs/ui-ux-and-controls.md)). The ladder is its only item for now.
+- **Placing a ladder**, free for now. The cost (wood) arrives with items and inventory, and the
+  build mode is shaped so a cost slots in without rebuilding it.
 
 ## What should be true when you stop
 
 By hand, unless marked:
 
-1. `--new-game`: F3 lists only the Surface and −1 as generated. Walk down to −1, and −2 is
-   listed, with how long it took. Take the way down to −2: it works, and −3 appears.
-2. Save on −1, relaunch: the world comes back with the same levels, no more and no fewer, and
-   the way down from −1 still works.
-3. Underground, the screen is black past your dark-vision radius, and monochrome within it.
-4. Walk away from a tunnel you've seen: it stays drawn as a dim outline. Relaunch, and it's
-   still there. Rock you've never seen stays black.
-5. In the home cave, the tiles around the brazier are in full color. Copper in that light shows
-   as copper; the same vein in the dark is a grey lump.
-6. The Surface is lit throughout.
-7. *Automated:* any actor's arrival generates the level below, once, in a world outside the
-   game scene too. Two worlds generate independently.
-8. *Automated:* a save missing a level loads without a refusal, and the level below each actor
-   is generated after the swap, never during the load.
-9. *Automated:* the memory layer round-trips through a save; a save without it loads with
-   nothing remembered.
-10. *Automated:* light is derived: it's recomputed after a load and when a light fixture
-    changes, and nothing about it is saved.
+1. On −1, face the floor beside you and breach it. It takes about 5 seconds with flint, and the
+   tile becomes a hole. On −2 the same breach is refused, and the game says why.
+2. Toggle build mode. A cursor appears on the grid within about 5 tiles of you, moved by the
+   mouse or the right stick, and the screen shows whether a ladder can go where it points.
+3. Point at your hole and place a ladder. Its top shows in the hole, and interact takes you down
+   to −2, then back up.
+4. Save, relaunch: the hole and the ladder are still there, and the ladder still works.
+5. The temporary Surface hole is gone on a `--new-game` (D-140).
+6. *Automated:* a breach goes through the world's tile gatekeeper and is refused under-tier,
+   out of bounds, on the deepest level, and on a tile that isn't floor.
+7. *Automated:* a ladder placed at runtime takes the world's next fixture id, survives a save,
+   relights nothing, and is drawn, including its top, on both levels.
+8. *Automated:* every rule holds for an NPC and in a second world (pillar
+   [P5](../docs/game-overview.md)).
 
 ## Mode
 
-**Educational Assistant**, for the whole slice (Derik, 2026-11-02). Derik builds. Claude writes
-a walkthrough per checklist section in the gitignored `work/lesson/`, before Derik starts that
-section and after its forks are settled. Each covers the decisions, the reasons, the trade-offs,
-how the pieces work and the traps, with small snippets only, never the complete work. Claude
-answers questions straight and in full, and reviews each section once it's built.
-
-**Section B was finished in Agent mode** (Derik, 2026-11-03), on `main`, and **C and D were
-built in Agent mode** too (Derik, 2026-11-08), with every decision put to him first.
+**Agent**, for the whole slice (Derik, 2026-11-08), on a `slice-007` branch with small commits,
+one or more per section, the suite green before each; Derik merges the PR. Claude stops for
+every design fork below, one at a time, and for anything else with long-term consequences.
 
 ## What you're deciding
 
-Generation on first descent is settled
-([D-143](../docs/design-decisions.md#d-143--levels-are-generated-one-ahead-of-arrival-by-the-world-on-the-main-thread)),
-and so is the dark's scope
-([D-144](../docs/design-decisions.md#d-144--slice-006s-dark-all-four-render-states-and-light-from-a-brazier)).
-The forks left are the dark's, taken before section C and D:
+Every fork was settled in planning on 2026-11-08, as D-150 to D-154. The list stays as the
+record of what was weighed:
 
-- **Whose senses draw the screen.** Sensed comes from the followed actor only (presentation, as
-  [D-045](../docs/design-decisions.md#d-045--no-player-singleton-carves-out-the-presentation-layer)
-  allows), or from every player in the shown world.
-- **Whose memory, and who writes it.** Remembered is one bit per tile per world (D-033). Is it
-  set by any player's senses, or only the local player's? Is writing it a world-level change
-  through the world, like a dig
-  ([D-078](../docs/design-decisions.md#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime)),
-  or a layer anything can set, since it's perception rather than terrain?
-- **What "seen" means for memory.** Every tile within the sense radius, or only tiles with a
-  line of sight (rock you can't see past, as NEXT.md's sketch says)? Line of sight changes what
-  a dug tunnel reveals of the rock around it.
-- **How the four states reach the shader.** One derived "visibility" texture with a state per
-  tile, built on the CPU; or the memory layer plus the actor's position and the light field as
-  shader inputs, with the state worked out per pixel.
-- **What Remembered looks like.** An outline of the open tiles' edges, the tiles darkened, or
-  the monochrome look dimmed further.
-- **How light spreads.** A plain radius from each brazier, or blocked by rock (light that stops
-  at walls). And whether light has levels (bright near the flame, dimmer at the edge) or is
-  on/off per tile.
+- **Where the digging rules live:** a static `Digging` class in `src/world/`, taking the profile
+  for its numbers; the profile holds only numbers
+  ([D-150](../docs/design-decisions.md#d-150--digging-rules-live-in-a-static-digging-class-that-takes-the-profile)).
+- **A floor's hardness:** its level's, from the appendix's stratum table, in the profile, with
+  the appendix's breach formula
+  ([D-151](../docs/design-decisions.md#d-151--a-floors-hardness-is-its-levels)).
+- **What's beneath a breach:** the breach clears the landing below, both levels in one request,
+  whole or not at all. Only plain open floor with both ends clear can be breached; nobody falls
+  ([D-152](../docs/design-decisions.md#d-152--a-breach-opens-a-hole-and-clears-its-landing-only-plain-floor-with-both-ends-clear)).
+- **How you breach:** its own input, held while facing the floor (`R` / pad `X`)
+  ([D-153](../docs/design-decisions.md#d-153--breaching-has-its-own-input-held-while-facing-the-floor)).
+- **Build mode:** `E` / `Y` toggles it; the mouse or right stick moves the cursor; primary
+  places. A ladder is aimed at a hole on your own level, and the cursor acts only on Sensed or
+  Lit tiles
+  ([D-154](../docs/design-decisions.md#d-154--build-mode-follows-ui-ux-a-ladder-is-aimed-at-a-hole-you-can-see)).
 
 ## Already settled
 
-- **Generation:** one level ahead of any actor's arrival, by the world, on the main thread,
-  timed in F3; a load builds only what the save holds, then generates each actor's level below
-  after the swap (D-143).
-- **The dark's scope:** all four states; ore legible only when Lit; the Remembered bit saved,
-  light and Sensed derived; a brazier placed by the home cave's prefab, its radius in the
-  tuning profile; the Surface lit by daylight (D-144).
-- **Four render states, one persistent bit per tile** (D-033). **Light is capability, not
-  survival:** unlit space is fully navigable (D-010).
-- **Levels are drawn through data textures and a shader** (D-046). A new per-tile fact reaching
-  the screen is one more texture or one more shader input.
-- **A new tile layer is saved by name, and a missing one loads as its default**
-  ([D-112](../docs/design-decisions.md#d-112--tile-layers-are-saved-by-name-a-byte-layer-per-fact-a-saved-bound-wins)),
-  and format v1 is edited in place until the first playtest
-  ([D-133](../docs/design-decisions.md#d-133--save-format-version-1-is-settled-when-the-first-build-goes-to-someone-else)).
-- **Tunable numbers go in the world's profile, not in code:** the sense radius and the brazier's
-  light radius
+- **A ladder is a fixture on the lower level, under a hole on the level above**
+  ([D-089](../docs/design-decisions.md#d-089--a-ladder-is-an-object-on-the-lower-level-a-hole-is-a-ground-kind-a-ramp-is-a-tile-kind)).
+  The ladder rule, both ways, and the tie (facing a usable hole goes down,
+  [D-139](../docs/design-decisions.md#d-139--on-a-ladder-facing-a-usable-hole-interact-goes-down))
+  already work.
+- **Tiles change only through the world's tile gatekeeper, and fixtures only through its fixture
+  gatekeeper**, as requests answered on the actor's own world
+  ([D-078](../docs/design-decisions.md#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime),
+  [D-125](../docs/design-decisions.md#d-125--the-gatekeepers-are-the-same-request-and-outcome-signals-on-the-world-instance),
+  [D-126](../docs/design-decisions.md#d-126--a-level-knows-its-world-everything-else-reaches-the-world-through-a-level)).
+- **Hardness belongs to tile kinds; the one tool is flint, power 16**
+  ([D-081](../docs/design-decisions.md#d-081--hardness-belongs-to-tile-kinds-the-pre-alpha-tool-is-a-flint-pickaxe)).
+  Tuning numbers live in the world's profile
   ([D-135](../docs/design-decisions.md#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it)).
-- **Anything that draws follows `shown_world_changed`**
-  ([D-129](../docs/design-decisions.md#d-129--a-swap-happens-at-the-end-of-the-frame-and-the-view-re-points-everything-that-draws),
-  [D-132](../docs/design-decisions.md#d-132--every-swap-shows-the-new-world-at-its-spawns-depth-following-an-actor-moves-only-the-depth)).
-- **No system assumes exactly one actor** (pillar [P5](../docs/game-overview.md)), and nothing
-  in simulation resolves to *the* player (D-045).
-- **A new fixture kind gets a new, never-reused `ObjectKind` id,** a prefab character and art
-  ([D-103](../docs/design-decisions.md#d-103--fixtures-names-signals-refusal-reasons-and-the-conflict-table),
-  [D-105](../docs/design-decisions.md)). The brazier's placeholder art is already in
-  `game/src/render/brazier.png`, 16 x 24.
+- **No pixel precision, no click-drag; every placement snaps to a character-anchored cursor;
+  mouse and stick have the same reach** ([ui-ux §1, §2.1](../docs/ui-ux-and-controls.md)).
+- **Valid and invalid placement show by shape and icon as well as color**
+  ([ui-ux §7](../docs/ui-ux-and-controls.md)).
+- **Levels exist one ahead of arrival** (D-143), so the level below a breach always exists,
+  except below the deepest.
+- **The temporary Surface hole comes out in this slice**
+  ([D-140](../docs/design-decisions.md#d-140--the-temporary-surface-hole-stays-until-slice-007)).
+- **Light and memory follow tile and fixture changes already** (D-145, D-149): a breach and a
+  placed ladder update the dark without new wiring.
+- **No system assumes one actor** (pillar [P5](../docs/game-overview.md)); the build cursor is
+  presentation and may know the local player
+  ([D-045](../docs/design-decisions.md#d-045--no-player-singleton-carves-out-the-presentation-layer)).
 
 ## Traps
 
-### 1. The cross-level checks assume every level exists
+### 1. The tile gatekeeper only knows one change
 
-`ladder_problems` reports a ladder with "no level above it", and `ramp_problems` reports a ramp
-end whose other level is missing. With only some levels generated, the deepest one's way down
-leads to a level that doesn't exist yet. `generate_world` turns each problem into a
-`push_error`, and GUT fails a test on any `push_error`. Decide what a check does when the other
-level isn't there (skip the pair, and check it when that level arrives), before writing the
-generation.
+`World._on_dig_requested` sets a tile's top to open. A breach changes the *ground* to a hole,
+and may change the level below (the landing). It needs its own request, refusal reasons and
+outcome, and two levels changing in one request must not be half-applied if the second
+refuses.
 
-### 2. Generating during a load, or during a swap
+### 2. A hole under someone
 
-A load moves a stuck actor to the spawn (D-115) before the game listens to it, and that's a
-depth change. If the world generates on every arrival, a load can generate mid-build: drawing
-fixture ids before the counters are restored, or building a level into a world that's about to
-be refused. D-143 says after the swap; make sure the world's listener can't fire before then.
+An actor standing on a tile that becomes a hole is standing on something impassable. Refuse
+breaching your own tile, and decide what happens to anyone else standing there (an NPC, a
+second player): refuse, or move them.
 
-### 3. Fixture ids now depend on the order levels are reached
+### 3. The fixture gatekeeper's first real caller
 
-Today the generator draws fixture ids in depth order at launch. Generated on arrival, a level's
-fixture ids depend on when it was reached, and the generator's own counter is the world's.
-Tiles stay deterministic (each level's seed is `hash(world_seed, depth)`), but any test that
-expects a particular fixture id from a generated world may change.
+Placement has only run in tests. The first runtime placement draws a fixture id from the
+world's counter, the renderer draws it, and the next save writes it, so check the counter
+carries on across a save and load (D-130). And a ladder placed under a hole on the *upper*
+level has to redraw the ladder top there, through the fixture renderer's `_below` listener.
 
-### 4. A world with eight levels is assumed in more places than generation
+### 4. Ladder rules check the shape, not the story
 
-Tests check "ready spawns each depth once", F3 lists levels, `world.levels()` is iterated by
-the load checks, and a renderer asked to show a depth with no level is an error. Grep for
-eight, for `levels().size()`, and for `level_at(` callers that don't handle null, before the
-first test run.
+`FixturePlacement` requires a hole above and passable ground for a ladder. If the landing below
+is rock, placement is refused with `TILE_NOT_PASSABLE`. That's correct, but the player needs to
+know why, and the "what's beneath" fork decides whether it ever happens.
 
-### 5. Memory changes constantly, and the shader upload must keep up
+### 5. Input modes multiply
 
-Every step can mark a ring of tiles remembered. If each change marks the whole memory layer
-dirty and uploads it, a large level re-uploads a texture every step. The dirty-layer mechanism
-exists already; measure the upload before and after. Slices 002 and 003 both blamed slowness on
-the wrong thing until it was broken down.
+Build mode turns primary action into "place". A held dig, a held breach, the level-change fade
+(input paused, D-142) and F5/F6 all meet here. Decide what each does when build mode toggles
+mid-action.
 
-### 6. Hiding ore is presentation; removing it would be a bug
+### 6. The dark hides the target
 
-Ore identity is gated on light in the *renderer*. The tile data keeps its ore, the dig still
-takes ore's 1.5x hardness in the dark, and a save keeps the ore. If anything in `src/world/`
-starts checking light to decide what a tile *is*, that's simulation depending on presentation,
-which the source layout forbids.
+Underground, most tiles are Unknown or Remembered. The cursor has to be readable on black, and
+the rules must not let you breach or place on a tile you can't sense. Or they should let you,
+and that's a decision.
 
-### 7. Light is derived, so a load and a swap have to rebuild it
+### 7. Removing the Surface hole changes `surface_start`
 
-Nothing about light is saved (D-144). After a load, a swap or a fixture change (a brazier
-placed or moved, later), the light field must be recomputed. That's the same trap as 004's
-renderers that kept listening to a freed world (trap 3 there): test that light follows a new
-world.
-
-### 8. "The" viewer creeps in
-
-Sensed is per viewer, and memory is per world. It's easy to compute both from the local player
-inside the world's code. Settle the two forks above first, and keep the local player in
-`src/render/` or `src/debug/` only (D-045).
-
-### 9. From the 004 and 005 logs
-
-- **When removing an assumption, list what it was quietly guaranteeing.** "All eight levels
-  exist" guarantees every cross-level check, every ladder's hole, and every renderer's depth.
-- **Write the test for each "built from X" claim with an X that differs from the default.** For
-  memory: a save with a remembered tile the generator would never mark.
-- **Run the game by hand per section,** not only at the end.
+Existing saves keep their hole (a saved level wins over the recipe). Tests that read
+`surface_start`'s hole (the F3 readout's `h`, D-107's dead hole) move to a hole that exists
+elsewhere, or build one.
 
 ## Carried into this slice
 
-From [NEXT.md](./NEXT.md) at the 005 close:
-- **Generation on first descent** (Derik, 2026-11-02).
-- **The level-change fade is a black overlay** (D-142). A dark that's already near black may
-  want it restyled; that's a judgment for the by-hand walk, not a checklist item.
-- **The dead Surface hole** (D-140) is kept for judging how a hole reads in the dark; but the
-  Surface is lit (D-144), so −1's holes are where that's judged.
-- **Still open from 005, for Derik by hand:** F3's hole as `h`, pruning after several
-  `--new-game` launches, the load time, and the fade with a held dig.
+- **005's by-hand items**, never reported.
+- **`hardness_of` and `dig_hardness` on the tuning profile** (Derik's question): settled by
+  D-150, and moved in section B.
+- **The temporary Surface hole** (D-140).
