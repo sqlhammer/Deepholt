@@ -4,9 +4,12 @@
 > forty-five seconds to set a timber prop, or the room fills with rubble. Narrow tunnels never
 > fail; the deeper you go, the narrower "wide" becomes.
 
-*Proposed by Claude, 2026-11-08, for Derik's approval. Scope and every fork settled in planning
+*Proposed by Claude, 2026-11-08; approved the same day with the bindings below. Scope and every
+fork settled in planning
 ([D-163](../docs/design-decisions.md#d-163--slice-010-is-holding-it-up-the-support-rule-collapse-timber-props-the-overlay)
-to D-166). Agent mode on a `slice-010` branch. Nothing is built until Derik approves this brief.*
+to D-166). Agent mode on a `slice-010` branch. **Built, 963 tests green; waiting on the by-hand
+walk** ([log](./log/010-holding-it-up.md)). Outcome 1's "18 tiles wide … then red" is 19 under the
+rule as written; the log says why.*
 
 ## Where we are
 

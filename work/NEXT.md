@@ -1,22 +1,9 @@
 # Next
 
-Sketches, not commitments. Slice 009 is done and merged ([log](./log/009-letting-go.md));
-neither 008's nor 009's by-hand outcomes have been walked. Cheap to throw
-away; expect them to change.
+Sketches, not commitments. Slice 010 is built ([log](./log/010-holding-it-up.md)) and waits on
+the by-hand walk, as do 008's and 009's. Cheap to throw away; expect them to change.
 
 ---
-
-## 010 — Holding it up
-
-The support rule: excavated space has to be held up or it fails (pillar
-[P4](../docs/game-overview.md), [digging-and-structure §2](../docs/systems/digging-and-structure.md)).
-Depth-scaled support radius, timber props (the reserved D-pad down, ui-ux §2.5), three ceiling
-states and a telegraphed failure countdown, then local collapse into rubble, and clearing it.
-The support overlay comes with it. Milestone M2.
-
-What 008 and 009 change here: a timber prop is a second costed item for build mode, from the
-timber a new game starts with. A collapse that buries things meets drops (D-160): rubble over a
-drop is a new case. Clearing rubble is the "clear" verb, with yields of its own.
 
 ## 011 — Getting it home
 
@@ -61,4 +48,14 @@ Found during 005, not recorded anywhere else. None of it is decided.
 - **A `Worlds.with_levels` that adds a blank level under the deepest one asked for** would end the
   test-world trap that has come back three times since D-143 (008's log).
 - **Coverage at the end of slice 009: 97.6%.**
-- **Pad LB is contested** once the hotbar arrives (009 bound the take key there).
+- **Pad LB is contested** once the hotbar arrives (009 bound the take key there). 010 bound RB
+  to cycling build items, which the hotbar will also want.
+- **Coverage at the end of slice 010: 96.6%** (009 closed at 97.6%). The gap is `_draw` code and
+  input-handler branches, which headless Godot can't run.
+- **Countdowns run only on levels a player is on** (010's choice, not put to Derik). The rate
+  machine decides whether a failing room should keep counting while you're away.
+- **The support doc's "widest hall" column is one tile off the rule as written** (010's log): 17 wide
+  is still amber at R = 8, red starts at 19.
+- **Not built from digging-and-structure §4:** coverage rings around supports, ghosted column
+  suggestions, and the header showing the depth's R. Cut stone columns (+1 at −2) are the next
+  support kind; they would be a new object kind beside the prop.
