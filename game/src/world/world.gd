@@ -35,6 +35,10 @@ signal breach_requested(actor: Actor, tile: WorldPos, tool_power: float)
 signal tile_breached(actor: Actor, tile: WorldPos)
 signal breach_refused(actor: Actor, tile: WorldPos, reason: BREACH_REFUSAL)
 
+# An actor too heavy to climb the ladder it tried (D-159). `tile` is
+# where the ladder would have taken it.
+signal climb_refused(actor: Actor, tile: WorldPos)
+
 signal place_requested(actor: Actor, kind: int, tile: WorldPos)
 signal remove_requested(actor: Actor, fixture_id: int)
 signal move_requested(actor: Actor, fixture_id: int, to: WorldPos)

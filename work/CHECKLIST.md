@@ -59,9 +59,11 @@ Slice 007's checklist is in git history (last at `76c5d8d`).
 
 - [x] *Decide:* where the 150% ladder refusal lives. *`Ladder.target_for`, shown by
   `RefusalNotice` (D-159).*
-- [ ] The load curve in the profile (the appendix's table), and in `Actor.speed`. [3]
-- [ ] Above 150%, a ladder refuses, and says why. Ramps still work (D-030). [3]
-- [ ] Tests: speed at each band's edges; the ladder at 150% and just over; an NPC. [3, 6]
+- [x] The load curve in the profile (the appendix's table), and in `Actor.speed`. [3]
+- [x] Above 150%, a ladder refuses, and says why. Ramps still work (D-030). [3] *`Ladder.can_climb`
+  is the rule; `Actor.interact` asks it and announces `World.climb_refused`, which
+  `RefusalNotice` shows.*
+- [x] Tests: speed at each band's edges; the ladder at 150% and just over; an NPC. [3, 6]
 - [ ] By hand: walk empty, half, full, over; try the ladder over 150%. [3]
 
 ## E. The ladder's cost

@@ -66,6 +66,16 @@ const DEFAULT_ID: String = "default"
 # (D-158).
 @export var carry_capacity_kg: float = 0.0
 
+# The load curve (D-030, tuning appendix §2): walking speed's
+# multiplier at each load, as (load, multiplier) points, load being a
+# share of capacity; straight lines between them; and the multiplier
+# past the last point.
+@export var load_speed_points: Array[Vector2] = []
+@export var load_speed_beyond: float = 0.0
+
+# Past this load, no ladder can be climbed (D-030, D-159).
+@export var ladder_load_limit: float = 0.0
+
 # What a new game's first player starts with, item id -> count
 # (D-156): the ten timber a ladder is built from.
 @export var starting_items: Dictionary[StringName, int] = {}

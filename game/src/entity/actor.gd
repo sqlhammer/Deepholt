@@ -148,6 +148,11 @@ func breach(p_breach_intent: bool) -> void:
 func interact() -> bool:
 	var target: WorldPos = Ladder.target_for(current_level, current_WorldPos, facing)
 	if target == null: return false
+	# Too heavy to climb (D-030, D-159): refused, and announced on this
+	# actor's world for whatever tells the player
+	if not Ladder.can_climb(current_level.world.tuning, load_ratio()):
+		current_level.world.climb_refused.emit(self, target)
+		return false
 	return move_to(target)
 
 
@@ -359,7 +364,8 @@ func _get_speed() -> float:
 	if not current_level: return 0.0
 	if not current_level.world: return 0.0
 	if not current_level.world.tuning: return 0.0
-	return current_level.world.tuning.walk_speed
+	var tuning: TuningProfile = current_level.world.tuning
+	return tuning.walk_speed * Carrying.speed_factor(tuning, load_ratio())
 
 
 
