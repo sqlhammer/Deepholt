@@ -79,6 +79,13 @@ const DEFAULT_ID: String = "default"
 # What placing a ladder costs, item id -> count (D-156): four timber.
 @export var ladder_cost: Dictionary[StringName, int] = {}
 
+# Yields and automatic pickup fill a pack only to this share of its
+# capacity (D-160): past it is the take key's, on purpose.
+@export var auto_fill_limit: float = 0.0
+# How far a player picks drops up from, in tiles around it (D-160): 1
+# is its own tile and the eight around it.
+@export var pickup_reach: int = 0
+
 # What a new game's first player starts with, item id -> count
 # (D-156): the ten timber a ladder is built from.
 @export var starting_items: Dictionary[StringName, int] = {}

@@ -1,16 +1,16 @@
-# Slice 008 checklist
+# Slice 009 checklist
 
 Working list for [NOW.md](./NOW.md). **Agent mode for the whole slice** (Derik, 2026-11-08), on a
-`slice-008` branch: Claude builds, in small commits, the suite green before each; Derik merges the
-PR and verifies by hand. Forks are taken one at a time, before the section that needs them, and
-each lands as a `D-nnn`. Numbers in brackets are the brief's outcomes.
+`slice-009` branch: Claude builds, in small commits, the suite green before each; Derik merges the
+PR and verifies by hand. Every fork was settled in planning. Numbers in brackets are the brief's
+outcomes.
 
-Ordered so the game runs at the end of every section: items and the pack first (nothing to see
-yet but the HUD), then yields (the pack fills), then weight (you feel it), then the ladder's cost.
+Ordered so the game runs at the end of every section: drops first (something on the ground),
+then yields that overflow into them, then pickup and the take key, then the inventory.
 
-Slice 007's checklist is in git history (last at `76c5d8d`).
+Slice 008's checklist is in git history (last at `0f34fe3`).
 
-**Closed 2026-11-08** by Derik, merged into `main` before a by-hand walk, so 009 could build on
+**Closed 2026-11-08** by Derik, merged into `main` before a by-hand walk, so 010 could build on
 it. The by-hand items below are left unticked, to be walked later.
 
 ---
@@ -19,87 +19,64 @@ it. The by-hand items below are left unticked, to be walked later.
 
 *Settled with Derik, 2026-11-08.*
 
-- [x] Scope: yields, a weight-limited pack, the load curve, the carry HUD, a timber cost; no
-  shedding and no inventory screen
-  ([D-156](../docs/design-decisions.md#d-156--slice-008-is-the-pack-yields-weight-the-load-curve-and-a-timber-cost)).
-- [x] 1 stone per wall for now; 2–4 ore per vein; 10 starting timber, 4 per ladder; the "dragon
-  bag" randomizer deferred (D-156).
-- [x] Agent mode on a `slice-008` branch, PR to `main`.
-- [x] Every fork below, settled in planning as D-157 to D-159.
+- [x] Scope, fill to 100%, the take key, the overlay
+  ([D-160](../docs/design-decisions.md#d-160--slice-009-is-letting-go-drops-dropping-pickup-to-100-a-take-key-an-inventory-overlay)).
+- [x] Drops through the world, per level, saved, never decaying; drawn like actors (D-161).
+- [x] The inventory doesn't pause (D-162).
+- [x] Agent mode on a `slice-009` branch, PR to `main`.
 
-## B. Items and the pack
+## B. Drops
 
-- [x] *Decide:* how items are defined. *Full schema, `.tres` per item, `ItemRegistry` (D-157).*
-- [x] *Decide:* where the pack lives and how it's saved. *On each actor, in its save entry; an
-  older save loads empty (D-157).*
-- [x] *Decide:* the HUD's carry weight. *Bottom center, bar and number, bands marked (D-159).*
-- [x] Items: stone, copper ore and timber, with the appendix's weights (content-schema §3). *In
-  `content/items/`; `Item` and `ItemRegistry` in `src/entity/items/`, beside `ToolData`. The
-  registry is a static class loading on first use, not an autoload (no world state, D-124).*
-- [x] The pack: what an actor carries, its total weight kept current (trap 3), its capacity from
-  the profile (60 kg).
-- [x] A new game's first player starts with the profile's starting items (10 timber); a load
-  restores the saved pack instead (trap 6). [1]
-- [x] The pack round-trips through a save; an unknown item id is reported, never dropped (trap
-  5). [5]
-- [x] The carry weight on the HUD, for the followed actor (D-045). [1]
-- [x] Tests: weights add up; capacity from the profile; save and load; an unknown id; an NPC has
-  its own pack. [5, 6]
-- [ ] By hand: `--new-game` shows 20 / 60 kg. [1]
+- [x] A per-level store of drops: item stacks by tile, the same item merging, announcing changes
+  (trap 2).
+- [x] Drops are saved with their level; a load reports a drop with an unknown item or outside its
+  level, never dropping it silently (trap 5). [6]
+- [x] The world's drop request moves items from an actor's pack onto its tile. [4, 7]
+- [x] Drops are drawn: a small placeholder sprite per item (Claude), shown only on Sensed or Lit
+  tiles (D-161). [5] *`DropRenderer` draws a colored square per item, up to four to a tile.*
+- [x] Tests: merging, saving and loading, a drop request, the dark. [5, 6, 7]
 
-## C. Yields
+## C. Yields that overflow
 
-- [x] *Decide:* who puts a yield in the pack, and what a dirt wall yields. *The world; dirt
-  nothing; uncapped; drops later (D-158).*
-- [x] Yield rules in `Digging`, numbers in the profile (D-150): 1 stone per rock wall, none for
-  dirt; 2–4 ore per vein, copper ore for copper.
-- [x] The digging actor's pack gets the yield, never "the" player's (trap 2); a dig with no actor
-  yields nothing. [2, 6, 7]
-- [x] Tests: a wall, a vein's range, an NPC's dig, a dig with no actor, a second world. [6, 7]
-- [ ] By hand: dig a wall and a copper vein, and watch the weight. [2]
+- [x] One rule for how much fits under a load limit (trap 1), in `Carrying`.
+- [x] A dig's yield fills the digger's pack to 100%, and the rest drops at the dug tile, a stack
+  split if only part fits (D-160). [1, 8]
+- [x] Tests: a full pack, a partial fit, an NPC digger, no actor. [1, 8]
 
-## D. Weight you feel
+## D. Pickup and the take key
 
-- [x] *Decide:* where the 150% ladder refusal lives. *`Ladder.target_for`, shown by
-  `RefusalNotice` (D-159).*
-- [x] The load curve in the profile (the appendix's table), and in `Actor.speed`. [3]
-- [x] Above 150%, a ladder refuses, and says why. Ramps still work (D-030). [3] *`Ladder.can_climb`
-  is the rule; `Actor.interact` asks it and announces `World.climb_refused`, which
-  `RefusalNotice` shows.*
-- [x] Tests: speed at each band's edges; the ladder at 150% and just over; an NPC. [3, 6]
-- [ ] By hand: walk empty, half, full, over; try the ladder over 150%. [3]
+- [x] Auto-pickup: a player, on each tile step, takes drops from its own and the 8 adjacent
+  tiles, up to 100%; the rest stays; NPCs never pick up. Through the world (D-161). [2, 7]
+- [x] What you just dropped isn't picked straight back up (trap 3).
+- [x] A load restores drops without anyone picking them up (trap 4).
+- [x] The take key takes everything in reach, whatever the load. [3]
+- [x] Bindings: take `T` / pad LB (trap 6).
+- [x] Tests: the 100% limit, the reach, an NPC, the take key past 150%, a load. [2, 3, 7]
 
-## E. The ladder's cost
+## E. The inventory overlay
 
-- [x] *Decide:* who checks and takes a cost. *The fixture gatekeeper, with one rule the preview
-  shares (D-159).*
-- [x] The ladder's cost in the profile (4 timber); placing takes it from the requesting actor's
-  pack; a placement with no actor costs nothing. [4] *One rule, `Building`, in `src/world/`, asked by
-  the gatekeeper (a new `CANNOT_AFFORD` refusal) and by the cursor.*
-- [x] Build mode's preview shows the cost and refuses what you can't afford, with the reason
-  (ui-ux §7). [4]
-- [x] Tests: placing takes the cost; can't afford is refused by both the preview and the
-  gatekeeper; generation and loads place for free. [4]
-- [ ] By hand: place ladders until the timber runs out. [4]
+- [x] Tab / pad Menu toggles it; walking works, digging, breaching and building don't (D-162).
+- [x] The pack's items with their weights, sorted by value density (ui-ux §5).
+- [x] Drop one (`X` / pad A) and drop the stack (`Z` / pad X), only while it's open (trap 6). [4]
+- [x] Tests: the sort, dropping one and a stack, the keys doing nothing else while open. [4]
 
 ## F. Done
 
 - [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-  *890 tests, 46 scripts.*
-- [x] `python scripts/coverage.py` run; uncovered lines looked at (007 closed at 97.5%).
+  *909 tests, 47 scripts.*
+- [x] `python scripts/coverage.py` run; uncovered lines looked at (008 closed at 97.6%).
   *97.6%.*
-- [ ] By hand: outcomes 1–5 walked in one sitting, launched outside the editor at least once.
+- [ ] By hand: outcomes 1–6 walked in one sitting, launched outside the editor at least once.
 - [x] Claude reviews the slice. *In the log.*
-- [x] Claude writes `log/008-what-you-carry.md`.
-- [x] Claude re-sketches [NEXT.md](./NEXT.md), with shedding weight as the next slice (D-156).
+- [x] Claude writes `log/009-letting-go.md`.
+- [x] Claude re-sketches [NEXT.md](./NEXT.md).
 
 ---
 
 ### Not in this slice, worth knowing
 
-- **Dropping, discarding and picking up** (D-156): the next slice. Drops for yields that don't
-  fit, picked up from adjacent tiles up to 150%, are the model ahead (D-158).
-- **The inventory screen** with per-item weight and sort by value density (ui-ux §5).
+- **Drops that decay** (D-160): never, for now.
 - **The "dragon bag" yield randomizer** (D-156).
-- **Climb-time multipliers** (appendix §2): ladders are instant, so there's nothing to slow.
-- **Smelting, ingots and other ores** (D-031): no stations yet.
+- **A take-this preview on the ground** (ui-ux §5): the take key takes everything; choosing what to
+  take waits for a better inventory.
+- **Containers and chutes** that would hold or move drops.

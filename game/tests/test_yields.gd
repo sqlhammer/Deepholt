@@ -47,19 +47,34 @@ func test_an_ore_vein_yields_two_to_four_ore_and_no_stone() -> void:
 		_world.level_at(1).level_tiles.set_ore(x, 1, TileKind.ORE.COPPER)
 		var before: int = actor.pack.count_of(&"copper_ore")
 		_dig(actor, x)
-		var got: int = actor.pack.count_of(&"copper_ore") - before
+		# Into the pack while it fits, onto the dug tile after (D-160)
+		var dropped: int = _world.level_at(1).level_drops.at(Vector2i(x, 1)).get(&"copper_ore", 0)
+		var got: int = actor.pack.count_of(&"copper_ore") - before + dropped
 		assert_between(got, 2, 4, "2-4 at x = %d" % x)
 		seen[got] = true
 	assert_eq(actor.pack.count_of(&"stone"), 0, "ore, not stone")
 	assert_eq(seen.size(), 3, "every count from 2 to 4 comes up: %s" % [seen.keys()])
 
 
-func test_a_digs_yield_goes_past_full() -> void:
+# D-160 replaced D-158's "no cap": a yield fills the pack to 100%, and
+# the rest drops on the dug tile.
+func test_a_full_packs_yield_drops_on_the_dug_tile() -> void:
 	var actor: Actor = _digger()
-	actor.pack.add(&"stone", 40)
+	actor.pack.add(&"stone", 20)
 	_dig(actor, 0)
-	assert_eq(actor.pack.count_of(&"stone"), 41, "uncapped (D-158)")
-	assert_gt(actor.load_ratio(), 2.0, "over 200%")
+	assert_eq(actor.pack.count_of(&"stone"), 20, "full: nothing more goes in")
+	assert_eq(_world.level_at(1).level_drops.at(Vector2i(0, 1)), {&"stone": 1},
+		"it lies where it was dug")
+
+
+func test_a_yield_that_partly_fits_is_split() -> void:
+	var actor: Actor = _digger()
+	actor.pack.add(&"stone", 18)
+	_world.level_at(1).level_tiles.set_ore(0, 1, TileKind.ORE.COPPER)
+	_dig(actor, 0)
+	var dropped: int = _world.level_at(1).level_drops.at(Vector2i(0, 1)).get(&"copper_ore", 0)
+	assert_eq(actor.pack.count_of(&"copper_ore"), 1, "one 5 kg ore fits in 6 kg of room")
+	assert_between(dropped, 1, 3, "the rest dropped")
 
 
 # P5: the rule asks nobody who dug.

@@ -3432,3 +3432,56 @@ up to 100%; a hard cap at 150% (the ladder rule could then never fire).
 gatekeeper, would build for free); a number only, or a top corner; the check in
 `Actor.interact` (a later route would need its own).
 
+---
+
+### D-160 — Slice 009 is letting go: drops, dropping, pickup to 100%, a take key, an inventory overlay
+**Decided** (by Derik, planning slice 009, 2026-11-08). Builds the model
+[D-158](#d-158--yields-go-into-the-diggers-pack-uncapped-drops-come-later) recorded, and amends it.
+
+- **Drops:** items lying on the ground, a saved per-level store of item stacks on tiles, the same
+  item merging on a tile. They never disappear on their own, for now.
+- **Yields fill the pack to 100%; what doesn't fit drops** at the dug tile, a stack split if only
+  part fits. This replaces D-158's "no cap".
+- **Players pick drops up automatically** from their own and the eight adjacent tiles, **up to
+  100%** (D-158 said 150%). Only players pick up.
+- **A take key** picks up everything within that reach regardless of the limit: the deliberate
+  way into the 100–150% band, where D-030's slowdown and ladder rule apply.
+- **An inventory overlay** lists the pack with each item's weight, sorted by value density
+  ([ui-ux §5](./ui-ux-and-controls.md)), and drops one or a whole stack onto the player's tile.
+
+*Why:* weight can now be shed, and digging never strands you over the ladder limit: going past
+100% is always a choice.
+
+*Considered:* filling to 150% with the ladder rule moved to "at 150%", or left at "above" (where
+it could never fire); dropping with a key (heaviest first, or cycling); drops decaying (stone
+only, or everything); taking more from the inventory screen, or with interact on a drop.
+
+---
+
+### D-161 — Drops change through the world, and are drawn like actors
+**Decided** (by Derik, planning slice 009, 2026-11-08).
+
+- **Each level holds its drops,** like its fixtures, and saves them. Dropping, picking up and
+  taking are requests on the world, checked and answered like a dig or a placement, so an NPC
+  or a second player goes through the same door
+  ([D-078](#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime),
+  [D-125](#d-125--the-gatekeepers-are-the-same-request-and-outcome-signals-on-the-world-instance)).
+- **In the dark, a drop is shown only on Sensed or Lit tiles**
+  ([D-148](#d-148--in-the-dark-other-actors-are-hidden-and-fixtures-are-dimmed-with-their-tile)'s
+  rule for actors): Remembered shows no entities (D-033). You have to remember where you left
+  things.
+
+*Considered:* the actor moving items itself (every later system would repeat the rules); drawing
+drops like fixtures, dimmed when Remembered.
+
+---
+
+### D-162 — The inventory is an overlay; nothing pauses
+**Decided** (by Derik, planning slice 009, 2026-11-08).
+
+The inventory opens over the running game. Walking still works; digging, breaching and building
+don't while it's open. A pause would mean nothing once there's a second player
+(pillar [P5](./game-overview.md)).
+
+*Considered:* pausing while it's open.
+

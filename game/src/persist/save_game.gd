@@ -264,8 +264,16 @@ static func _load_file(file_path: String, why: Array[String]) -> LoadedGame:
 		why.append("has no actor that could be placed")
 		loaded.free_world()
 		return null
-	# An item this build doesn't know is kept in its pack and reported,
-	# never dropped (D-157)
+	# An item this build doesn't know is kept, in a pack or on the
+	# ground, and reported, never dropped (D-157, D-160)
+	for level: Level in world.levels():
+		for tile: Vector2i in level.level_drops.tiles():
+			for id: StringName in level.level_drops.at(tile):
+				if ItemRegistry.find(id) != null: continue
+				var dropped: String = "A drop of '%s' on depth %d is an item this build doesn't have." % [
+					id, level.depth]
+				loaded.problems.append(dropped)
+				push_warning(dropped)
 	for actor: Actor in world.actors():
 		for id: StringName in actor.pack.unknown_ids():
 			var problem: String = "%s carries '%s', an item this build doesn't have." % [
@@ -500,7 +508,9 @@ static func _serialize_level(level: Level) -> Dictionary:
 	
 	_serialize_tile_layers(level_data, level)
 	level_data["fixtures"] = _serialize_fixtures(level.level_fixtures)
-	
+	# What lies on the ground (D-160)
+	level_data["drops"] = level.level_drops.to_save()
+		
 	return level_data
 
 
@@ -662,8 +672,28 @@ static func _deserialize_level(p_depth: int, p_level: Dictionary, world: World) 
 	# generated, as a missing tile layer does.
 	if p_level.has("fixtures"):
 		level.level_fixtures = _deserialize_fixtures(p_depth, p_level.fixtures)
+	# A save from before drops has none
+	_deserialize_drops(p_level.get("drops", []), level)
 
 	return level
+
+
+# Each saved stack back onto its tile. An entry that isn't a stack, or
+# lies outside the level, is skipped with a warning; an unknown item
+# is kept, and the load reports it (D-160, slice 009 trap 5).
+static func _deserialize_drops(p_drops: Variant, level: Level) -> void:
+	if not p_drops is Array: return
+	for entry: Variant in p_drops:
+		if not entry is Dictionary or not entry.get("item") is String \
+				or not entry.get("count") is int or not entry.get("x") is int \
+				or not entry.get("y") is int or entry.count <= 0:
+			push_warning("A drop on depth %d isn't an item stack; skipped: %s" % [level.depth, entry])
+			continue
+		if TileKind.is_sentinel(level.level_tiles.get_top(entry.x, entry.y)):
+			push_warning("A drop of %s on depth %d at (%d, %d) is outside the level; skipped." % [
+				entry.item, level.depth, entry.x, entry.y])
+			continue
+		level.level_drops.add(Vector2i(entry.x, entry.y), StringName(entry.item), entry.count)
 
 
 # Whether a saved level has every tile layer and its fixtures, so

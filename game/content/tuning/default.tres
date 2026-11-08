@@ -35,3 +35,5 @@ ladder_load_limit = 1.5
 ladder_cost = Dictionary[StringName, int]({
 &"timber": 4
 })
+auto_fill_limit = 1.0
+pickup_reach = 1

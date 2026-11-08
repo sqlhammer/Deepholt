@@ -7,6 +7,8 @@ var depth: int:
 var level_seed: int
 var level_tiles: LevelTiles
 var level_fixtures: LevelFixtures
+# The items lying on this level (D-160)
+var level_drops: LevelDrops = LevelDrops.new()
 # The world this level belongs to, set by the world when it takes the
 # level in (D-126). Null until then. A level never moves between
 # worlds.

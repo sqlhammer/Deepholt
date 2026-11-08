@@ -8,6 +8,8 @@ var view: View
 var visibility: Visibility
 # Build mode's cursor for the local player (D-154)
 var build_cursor: BuildCursor
+# The local player's inventory overlay (D-162)
+var inventory: InventoryOverlay
 # The world being played, inside GameViewport at the origin (D-128).
 # Handed by reference to whatever needs it; nothing looks it up.
 var world: World
@@ -88,6 +90,9 @@ func set_user_control(actor: Actor) -> void:
 	build_cursor.set_active(false)
 	build_cursor.actor = actor
 	input.build = build_cursor
+	inventory.set_open(false)
+	inventory.actor = actor
+	input.inventory = inventory
 	add_child(input)
 	_input_handlers.append(input)
 	
@@ -400,6 +405,11 @@ func _create_view() -> void:
 	build_cursor = BuildCursor.new()
 	build_cursor.visibility = visibility
 	$GameViewport.add_child(build_cursor)
+	# What lies on the ground (D-160), drawn like actors in the dark
+	var drops: DropRenderer = DropRenderer.new()
+	drops.watch(view)
+	drops.watch_visibility(visibility)
+	$GameViewport.add_child(drops)
 	# A breach in progress shows as cracks on the floor (D-153)
 	var cracks: BreachCracks = BreachCracks.new()
 	cracks.watch(view)
@@ -413,6 +423,9 @@ func _create_view() -> void:
 	var carry: CarryHud = CarryHud.new()
 	add_child(carry)
 	carry.watch(view)
+	# What the local player carries, and dropping it (D-160, D-162)
+	inventory = InventoryOverlay.new()
+	add_child(inventory)
 
 
 # The one way a world comes in, at launch, for a new game and on a
@@ -426,6 +439,9 @@ func _swap_world(new_world: World) -> void:
 	if build_cursor != null:
 		build_cursor.set_active(false)
 		build_cursor.actor = null
+	if inventory != null:
+		inventory.set_open(false)
+		inventory.actor = null
 	_free_world()
 	_attach_world(new_world)
 	# A loaded world may run under another profile (D-136)
