@@ -510,7 +510,11 @@ static func _serialize_level(level: Level) -> Dictionary:
 	level_data["fixtures"] = _serialize_fixtures(level.level_fixtures)
 	# What lies on the ground (D-160)
 	level_data["drops"] = level.level_drops.to_save()
-		
+	# The countdowns running here (D-163); not written when there are none
+	if level.support != null:
+		var countdowns: Array = level.support.to_save()
+		if not countdowns.is_empty(): level_data["collapse"] = countdowns
+
 	return level_data
 
 
@@ -620,6 +624,9 @@ static func _deserialize_levels(p_levels: Dictionary, world: World) -> void:
 		var level: Level = _deserialize_level(level_key, p_levels[level_key], world)
 		if not level: continue
 		world.add_level(level)
+		# The world judges the level's tiles as it takes it in; the saved
+		# countdowns go back on the regions that are failing (D-163)
+		level.support.restore(p_levels[level_key].get("collapse", []))
 
 
 # Every fixture id in the save that a well-formed entry holds.

@@ -72,7 +72,7 @@ static func free_tile_near(start: WorldPos, tiles: LevelTiles, actors: Array[Act
 static func _is_free(tile: Vector2i, depth: int, tiles: LevelTiles, actors: Array[Actor]) -> bool:
 	var ground: int = tiles.get_ground(tile.x, tile.y)
 	if not TileKind.is_passable(tiles.get_top(tile.x, tile.y), ground): return false
-	if TileKind.is_ramp(ground): return false
+	if TileKind.is_ramp(ground) or tiles.is_blocked(tile.x, tile.y): return false
 	var tile_rect: Rect2 = Rect2(Vector2(tile * TileSpace.TILE_PIXELS),
 		Vector2(TileSpace.TILE_PIXELS, TileSpace.TILE_PIXELS))
 	for actor: Actor in actors:

@@ -12,6 +12,7 @@ extends RefCounted
 static func cost_of(tuning: TuningProfile, kind: int) -> Dictionary[StringName, int]:
 	match kind:
 		ObjectKind.OBJECT.LADDER: return tuning.ladder_cost
+		ObjectKind.OBJECT.TIMBER_PROP: return tuning.prop_cost
 	var free: Dictionary[StringName, int] = {}
 	return free
 

@@ -9,7 +9,8 @@ autosave_interval_seconds = 300.0
 walk_speed = 85.0
 hardness = Dictionary[int, float]({
 2: 6.0,
-3: 4.0
+3: 4.0,
+5: 6.4
 })
 ore_dig_multiplier = 1.5
 level_change_fade_seconds = 0.5
@@ -37,3 +38,8 @@ ladder_cost = Dictionary[StringName, int]({
 })
 auto_fill_limit = 1.0
 pickup_reach = 1
+support_radius_by_depth = Array[int]([0, 8, 7, 6, 5, 4, 3, 3])
+collapse_countdown_seconds = 45.0
+prop_cost = Dictionary[StringName, int]({
+&"timber": 2
+})

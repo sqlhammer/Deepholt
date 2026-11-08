@@ -17,6 +17,7 @@ extends Node2D
 const TEXTURES: Dictionary = {
 	ObjectKind.OBJECT.LADDER: preload("res://src/render/ladder.png"),
 	ObjectKind.OBJECT.BRAZIER: preload("res://src/render/brazier.png"),
+	ObjectKind.OBJECT.TIMBER_PROP: preload("res://src/render/timber_prop.png"),
 }
 
 # Kinds deliberately not drawn (D-091: the world spawn is invisible to
@@ -77,8 +78,14 @@ func _apply_states() -> void:
 # The state of the tile the sprite stands on (for a ladder top, the
 # hole), as a material, or hidden.
 func _apply_state(sprite: Sprite2D) -> void:
-	if _visibility == null: return
 	var tile: Vector2i = sprite.get_meta("tile")
+	# Under rubble a fixture is buried: kept, but out of sight (D-166)
+	if _shown_tiles != null and _shown_tiles.get_top(tile.x, tile.y) != TileKind.TOP.OPEN:
+		sprite.visible = false
+		return
+	if _visibility == null:
+		sprite.visible = true
+		return
 	match _visibility.state_at(tile.x, tile.y):
 		Visibility.STATE.LIT:
 			sprite.visible = true
@@ -209,12 +216,26 @@ func sprite_for(id: int) -> Sprite2D:
 # under it in `below` (D-107). `below` is null for the deepest level.
 func show_ladder_tops(shown_tiles: LevelTiles, below: LevelFixtures) -> void:
 	_listen_below(below)
+	_listen_to_tiles(shown_tiles)
 	_shown_tiles = shown_tiles
 	for id: int in _top_sprites.keys():
 		_remove_top(id)
 	if below == null: return
 	for ladder: Fixture in below.of_kind(ObjectKind.OBJECT.LADDER):
 		_add_top(ladder)
+
+
+# Redraws when the shown level's tiles change, so a collapse buries
+# fixtures and clearing the rubble brings them back (D-166).
+func _listen_to_tiles(tiles: LevelTiles) -> void:
+	if _shown_tiles == tiles: return
+	if _shown_tiles != null and _shown_tiles.tile_changed.is_connected(_on_tile_changed):
+		_shown_tiles.tile_changed.disconnect(_on_tile_changed)
+	tiles.tile_changed.connect(_on_tile_changed)
+
+
+func _on_tile_changed(_x: int, _y: int, layer: LevelTiles.LAYER, _tiles: LevelTiles) -> void:
+	if layer == LevelTiles.LAYER.TOP: _apply_states()
 
 
 # The same disconnect as _listen_to, for the level below: without it,

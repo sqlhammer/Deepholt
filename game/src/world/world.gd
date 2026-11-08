@@ -42,6 +42,15 @@ signal take_requested(actor: Actor)
 signal items_dropped(actor: Actor, tile: WorldPos, id: StringName, count: int)
 signal items_picked_up(actor: Actor, tile: WorldPos, id: StringName, count: int)
 
+# A failing region began its countdown (D-163, D-166). `depth` is its
+# level; `tiles` are the region's.
+signal ceiling_failing(depth: int, tiles: Array[Vector2i])
+# A countdown ran out: these tiles are rubble now.
+signal collapsed(depth: int, tiles: Array[Vector2i])
+# An actor caught under a collapse was moved to the nearest open tile
+# (D-163).
+signal actor_moved_clear(actor: Actor, from: WorldPos, to: WorldPos)
+
 # An actor too heavy to climb the ladder it tried (D-159). `tile` is
 # where the ladder would have taken it.
 signal climb_refused(actor: Actor, tile: WorldPos)
@@ -96,6 +105,9 @@ enum FIXTURE_REFUSAL {
 	FIXTURE_NOT_EXISTS,
 	# The requesting actor's pack can't pay the cost (D-159)
 	CANNOT_AFFORD,
+	# A fixture that blocks its tile (D-165) can't go where an actor
+	# stands: it would wall the actor in
+	ACTOR_ON_TILE,
 }
 
 var world_seed: int
@@ -163,8 +175,80 @@ func add_level(level: Level) -> bool:
 	level.world = self
 	_levels[level.depth] = level
 	_levels_node.add_child(level)
+	_hold_up(level)
 	level_added.emit(level)
 	return true
+
+
+# Starts judging a level's excavations (D-163) under this world's
+# numbers, and carries out the collapses it announces. Its depth's R is
+# the profile's; a depth the profile doesn't cover has no ceiling.
+func _hold_up(level: Level) -> void:
+	var table: Array[int] = tuning.support_radius_by_depth
+	var reach: int = table[level.depth] if level.depth < table.size() else 0
+	# Zero is no ceiling: the Surface is open sky
+	level.support = LevelSupport.new(level, reach if reach > 0 else -1,
+		tuning.collapse_countdown_seconds)
+	level.support.region_failing.connect(_on_region_failing.bind(level))
+	level.support.collapse_due.connect(_collapse.bind(level))
+
+
+# --- time ---
+
+# Countdowns run in a running world: one built outside the tree, by a
+# load, is still until it is swapped in, so nothing can fall while it
+# is built (slice 010 trap 5).
+func _physics_process(delta: float) -> void:
+	advance_time(delta)
+
+
+# Runs the countdowns on every level a player is on by `delta`
+# seconds. A level nobody is on stands still, so nothing falls out of
+# sight; the rate machine that lets a place run while you are away
+# comes later. A test drives time by calling this.
+func advance_time(delta: float) -> void:
+	for level: Level in _levels_with_players():
+		if level.support != null: level.support.advance(delta)
+
+
+func _levels_with_players() -> Array[Level]:
+	var found: Array[Level] = []
+	for actor: Actor in players():
+		if actor.current_level != null and actor.current_level not in found:
+			found.append(actor.current_level)
+	return found
+
+
+func _on_region_failing(tiles: Array[Vector2i], level: Level) -> void:
+	ceiling_failing.emit(level.depth, tiles)
+
+
+# The tiles fill with rubble (D-166) and whoever is under them is
+# moved clear (D-163). Fixtures and drops stay where they are: buried,
+# not destroyed. The change is gathered, so the rule judges it once.
+func _collapse(tiles: Array[Vector2i], level: Level) -> void:
+	level.support.hold()
+	for tile: Vector2i in tiles:
+		level.level_tiles.set_top(tile.x, tile.y, TileKind.TOP.RUBBLE)
+	level.support.release()
+	_move_caught_clear(level)
+	collapsed.emit(level.depth, tiles)
+
+
+# Any actor on the level whose feet no longer fit where it stands goes
+# to the nearest tile it can stand on.
+func _move_caught_clear(level: Level) -> void:
+	for actor: Actor in actors():
+		if actor.current_level != level: continue
+		if TileCollision.fits(level.level_tiles, actor.get_world_box()): continue
+		var from: WorldPos = actor.current_WorldPos
+		var others: Array[Actor] = actors()
+		others.erase(actor)
+		var target: WorldPos = Spawning.free_tile_near(from, level.level_tiles, others)
+		if target == null or not actor.move_to(target):
+			push_error("%s is buried at %s with nowhere to go." % [actor.actor_name, from])
+			continue
+		actor_moved_clear.emit(actor, from, target)
 
 
 # The level at a depth, or null if this world has none there.
@@ -250,6 +334,8 @@ func _pick_up(actor: Actor, limit: float, skip: WorldPos) -> void:
 		for dx in range(-reach, reach + 1):
 			var tile: Vector2i = Vector2i(here.x + dx, here.y + dy)
 			if skip != null and tile == Vector2i(skip.x, skip.y): continue
+			# Under rubble is buried, out of reach (D-166)
+			if level.level_tiles.get_top(tile.x, tile.y) != TileKind.TOP.OPEN: continue
 			var lying: Dictionary = level.level_drops.at(tile)
 			for id: StringName in lying:
 				var n: int = lying[id] if is_inf(limit) else \
@@ -379,6 +465,9 @@ func _dig_tile(actor: Actor, tile: WorldPos) -> void:
 			if found[id] > fits:
 				level.level_drops.add(Vector2i(tile.x, tile.y), id, found[id] - fits)
 				items_dropped.emit(actor, tile, id, found[id] - fits)
+	# Marked before it opens, so the support rule hears of an excavated
+	# tile (D-164)
+	level.level_tiles.mark_excavated(tile.x, tile.y)
 	level.level_tiles.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
 	level.level_tiles.set_ore(tile.x, tile.y, TileKind.ORE.NONE)
 	tile_dug.emit(actor, tile)
@@ -403,6 +492,9 @@ func _on_breach_requested(actor: Actor, tile: WorldPos, tool_power: float) -> vo
 	var upper: LevelTiles = level_at(tile.depth).level_tiles
 	var lower: LevelTiles = level_at(tile.depth + 1).level_tiles
 	upper.set_ground(tile.x, tile.y, TileKind.GROUND.HOLE)
+	# The landing is rock a player opened (D-164); the hole's own
+	# tile was open floor already
+	lower.mark_excavated(tile.x, tile.y)
 	lower.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
 	lower.set_ore(tile.x, tile.y, TileKind.ORE.NONE)
 	tile_breached.emit(actor, tile)
@@ -466,6 +558,9 @@ func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
 	if reason != FIXTURE_REFUSAL.NONE:
 		request_refused.emit(actor, FIXTURE_VERB.PLACE, tile, reason)
 		return
+	if blocks_actor(level, kind, tile):
+		request_refused.emit(actor, FIXTURE_VERB.PLACE, tile, FIXTURE_REFUSAL.ACTOR_ON_TILE)
+		return
 	# Paid from the requesting actor's own pack; free with no actor
 	# (D-159)
 	if not Building.can_afford(tuning, actor, kind):
@@ -476,6 +571,19 @@ func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
 	var fixture: Fixture = Fixture.new(kind, tile, fixture_ids.allocate())
 	level.level_fixtures.add(fixture)
 	fixture_placed.emit(actor, fixture)
+
+
+# Whether a fixture of `kind` on `tile` would wall in an actor standing
+# there: it blocks walking (D-165) and an actor's feet touch the tile.
+# A read, so build mode's preview asks what the gatekeeper does.
+func blocks_actor(level: Level, kind: int, tile: WorldPos) -> bool:
+	if not ObjectKind.blocks_walking(kind): return false
+	var size: float = TileSpace.TILE_PIXELS
+	var tile_rect: Rect2 = Rect2(Vector2(tile.x, tile.y) * size, Vector2(size, size))
+	for actor: Actor in actors():
+		if actor.current_level == level and actor.get_world_box().intersects(tile_rect):
+			return true
+	return false
 
 
 func _on_remove_requested(actor: Actor, fixture_id: int) -> void:
@@ -508,6 +616,10 @@ func _on_move_requested(actor: Actor, fixture_id: int, to: WorldPos) -> void:
 		Vector2i(to.x, to.y), target.level_tiles, target.level_fixtures, tiles_above, fixture)
 	if reason != FIXTURE_REFUSAL.NONE:
 		request_refused.emit(actor, FIXTURE_VERB.MOVE, to, reason)
+		return
+
+	if blocks_actor(target, fixture.kind, to):
+		request_refused.emit(actor, FIXTURE_VERB.MOVE, to, FIXTURE_REFUSAL.ACTOR_ON_TILE)
 		return
 
 	var from: WorldPos = fixture.tile

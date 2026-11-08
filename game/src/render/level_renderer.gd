@@ -26,6 +26,7 @@ enum AtlasCell {
 	RAMP_DOWN_W,
 	RAMP_UP_W,
 	HOLE,
+	RUBBLE,
 }
 
 
@@ -184,6 +185,7 @@ func _top_cells() -> PackedInt32Array:
 	cells[TileKind.TOP.OPEN] = AtlasCell.EMPTY
 	cells[TileKind.TOP.MINABLE_ROCK] = AtlasCell.MINABLE_ROCK
 	cells[TileKind.TOP.MINABLE_DIRT] = AtlasCell.MINABLE_DIRT
+	cells[TileKind.TOP.RUBBLE] = AtlasCell.RUBBLE
 	cells[TileKind.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.EMPTY
 	return cells
 

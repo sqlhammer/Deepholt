@@ -31,6 +31,8 @@ static func lit_tiles(level: Level, tuning: TuningProfile) -> Array[Vector2i]:
 		var radius: int = radius_of(fixture.kind, tuning)
 		if radius < 0: continue
 		var from: Vector2i = Vector2i(fixture.tile.x, fixture.tile.y)
+		# Buried under rubble, a light gives none (D-166)
+		if level.level_tiles.get_top(from.x, from.y) != TileKind.TOP.OPEN: continue
 		for tile: Vector2i in Senses.flood(level.level_tiles, from, radius):
 			lit[tile] = true
 	var found: Array[Vector2i] = []

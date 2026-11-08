@@ -260,3 +260,74 @@ func test_a_placement_with_no_actor_is_free() -> void:
 func test_the_preview_shows_the_cost() -> void:
 	assert_eq(Building.cost_text(_world.tuning, ObjectKind.OBJECT.LADDER), "4 timber", "the cost")
 	assert_eq(Building.cost_text(_world.tuning, ObjectKind.OBJECT.BRAZIER), "", "nothing for free")
+
+
+# --- the second item: a timber prop (D-165) ---
+
+func test_the_cursor_cycles_between_a_ladder_and_a_prop() -> void:
+	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "a ladder to begin with")
+	_cursor.cycle_item()
+	assert_eq(_cursor.item, ObjectKind.OBJECT.TIMBER_PROP, "then a prop")
+	_cursor.cycle_item()
+	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "and round again")
+	_cursor.select_item(ObjectKind.OBJECT.BRAZIER)
+	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "an item it can't place is ignored")
+
+
+func test_a_prop_is_placed_on_open_floor_at_the_cursor_for_two_timber() -> void:
+	_cursor.select_item(ObjectKind.OBJECT.TIMBER_PROP)
+	_cursor.set_tile(Vector2i(3, 0))
+	assert_eq(_cursor.problem(), BuildCursor.PROBLEM.NONE, "valid on floor")
+	assert_true(_cursor.place(), "asked")
+	assert_eq(_world.level_at(1).level_fixtures.of_kind(ObjectKind.OBJECT.TIMBER_PROP).size(), 1,
+		"on the player's own level")
+	assert_eq(_actor.pack.count_of(&"timber"), 38, "two timber")
+
+
+func test_a_prop_preview_refuses_rock_a_taken_tile_and_the_dark() -> void:
+	_cursor.select_item(ObjectKind.OBJECT.TIMBER_PROP)
+	_cursor.set_tile(Vector2i(0, 4))
+	assert_eq(_cursor.problem(), BuildCursor.PROBLEM.TOO_DARK, "behind rock, unsensed")
+	_cursor.set_tile(HOLE)
+	assert_eq(_cursor.problem(), BuildCursor.PROBLEM.NOT_OPEN_FLOOR, "a hole is no floor")
+	_cursor.set_tile(Vector2i(3, 0))
+	_cursor.place()
+	assert_eq(_cursor.problem(), BuildCursor.PROBLEM.TILE_OCCUPIED, "one prop to a tile")
+	_cursor.set_tile(Vector2i.ZERO)
+	assert_eq(_cursor.problem(), BuildCursor.PROBLEM.ACTOR_IN_WAY, "not on the player")
+
+
+func test_the_prop_preview_agrees_with_the_gatekeeper() -> void:
+	_cursor.select_item(ObjectKind.OBJECT.TIMBER_PROP)
+	for x in range(-5, 6):
+		_cursor.set_tile(Vector2i(x, 0))
+		var valid: bool = _cursor.problem() == BuildCursor.PROBLEM.NONE
+		var before: int = _world.level_at(1).level_fixtures.all().size()
+		_world.place_requested.emit(_actor, ObjectKind.OBJECT.TIMBER_PROP, WorldPos.new(x, 0, 1))
+		var placed: bool = _world.level_at(1).level_fixtures.all().size() > before
+		assert_eq(valid, placed, "x = %d" % x)
+
+
+func test_the_quick_key_places_at_the_cursor_in_build_mode_whatever_is_selected() -> void:
+	var handler: InputHandler = add_child_autofree(InputHandler.new())
+	handler.setup(_actor, func() -> Vector2: return Vector2.ZERO)
+	handler.build = _cursor
+	_cursor.set_tile(Vector2i(4, 0))
+	handler._quick_prop()
+	assert_eq(_world.level_at(1).level_fixtures.of_kind(ObjectKind.OBJECT.TIMBER_PROP)[0].tile.x, 4,
+		"at the cursor")
+
+
+func test_the_quick_key_outside_build_mode_places_on_the_faced_tile() -> void:
+	_cursor.set_active(false)
+	var handler: InputHandler = add_child_autofree(InputHandler.new())
+	handler.setup(_actor, func() -> Vector2: return Vector2.ZERO)
+	handler.build = _cursor
+	_actor.facing = Vector2i(1, 0)
+	handler._quick_prop()
+	assert_eq(_world.level_at(1).level_fixtures.of_kind(ObjectKind.OBJECT.TIMBER_PROP)[0].tile.x, 1,
+		"beside the player, where it faces")
+
+
+func test_the_prop_cost_is_shown() -> void:
+	assert_eq(Building.cost_text(_world.tuning, ObjectKind.OBJECT.TIMBER_PROP), "2 timber", "the cost")

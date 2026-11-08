@@ -234,3 +234,28 @@ func test_the_hand_made_hole_on_minus_one_shows_the_ladder_top() -> void:
 	var top: Sprite2D = renderer.top_sprite_for(ladder.id)
 	assert_not_null(top, "from -1, the hole at (14, -2) shows its ladder")
 	if top: assert_eq(top.position, Vector2(14, -2) * 16.0, "in the hole")
+
+
+# --- props and burial (D-165, D-166) ---
+
+func test_a_prop_has_art_that_rises_from_its_tile() -> void:
+	_levels[1].level_fixtures.add(Fixture.new(ObjectKind.OBJECT.TIMBER_PROP,
+		WorldPos.new(SPOT.x, SPOT.y, 1), 31))
+	var renderer: FixtureRenderer = _renderer()
+	renderer.show_fixtures(_levels[1].level_fixtures)
+	renderer.show_ladder_tops(_levels[1].level_tiles, null)
+	var sprite: Sprite2D = renderer.sprite_for(31)
+	assert_not_null(sprite, "drawn")
+
+
+func test_a_fixture_under_rubble_is_hidden_and_comes_back() -> void:
+	_levels[1].level_fixtures.add(_ladder(1, 32))
+	var renderer: FixtureRenderer = _renderer()
+	renderer.show_fixtures(_levels[1].level_fixtures)
+	renderer.show_ladder_tops(_levels[1].level_tiles, null)
+	var sprite: Sprite2D = renderer.sprite_for(32)
+	assert_true(sprite.visible, "seen to begin with")
+	_levels[1].level_tiles.set_top(SPOT.x, SPOT.y, TileKind.TOP.RUBBLE)
+	assert_false(sprite.visible, "buried")
+	_levels[1].level_tiles.set_top(SPOT.x, SPOT.y, TileKind.TOP.OPEN)
+	assert_true(sprite.visible, "back once cleared")

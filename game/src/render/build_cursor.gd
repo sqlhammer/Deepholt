@@ -9,8 +9,9 @@ extends Node2D
 # fixture gatekeeper enforces, so the two can't disagree.
 #
 # A ladder is aimed at a hole on the player's own level, and placed on
-# the level below at the same (x, y) (D-154). Only on a tile the
-# player can sense or see lit: nobody builds blind.
+# the level below at the same (x, y) (D-154). A timber prop is placed
+# on open floor at the cursor, on the player's own level (D-165). Only
+# on a tile the player can sense or see lit: nobody builds blind.
 
 # The preview refused a placement before asking the world: shown like
 # any refusal.
@@ -26,6 +27,9 @@ enum PROBLEM {
 	LANDING_OCCUPIED,
 	OUTSIDE_LEVEL,
 	CANNOT_AFFORD,
+	NOT_OPEN_FLOOR,
+	TILE_OCCUPIED,
+	ACTOR_IN_WAY,
 }
 
 const REASONS: Dictionary = {
@@ -36,7 +40,14 @@ const REASONS: Dictionary = {
 	PROBLEM.LANDING_OCCUPIED: "Something below is in the way.",
 	PROBLEM.OUTSIDE_LEVEL: "That's past the edge of the level.",
 	PROBLEM.CANNOT_AFFORD: "You don't have enough to build that.",
+	PROBLEM.NOT_OPEN_FLOOR: "A prop stands on open floor.",
+	PROBLEM.TILE_OCCUPIED: "Something is already there.",
+	PROBLEM.ACTOR_IN_WAY: "Someone is standing there.",
 }
+
+# What build mode can place, in the order the cycle key goes (ui-ux
+# §2.5's hotbar: keys 1 and 2).
+const ITEMS: Array[int] = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.TIMBER_PROP]
 
 # How long the stick holds a direction before the cursor steps again,
 # in seconds. Feel, not tuning.
@@ -50,6 +61,8 @@ var actor: Actor
 var visibility: Visibility
 # The cursor's tile on the actor's level
 var tile: Vector2i = Vector2i.ZERO
+# What the cursor places: one of ITEMS
+var item: int = ObjectKind.OBJECT.LADDER
 
 var _stick_wait: float = 0.0
 
@@ -71,6 +84,19 @@ func set_active(value: bool) -> void:
 	visible = active
 	if active: tile = _actor_tile()
 	queue_redraw()
+
+
+# --- what it places ---
+
+func select_item(kind: int) -> void:
+	if kind not in ITEMS: return
+	item = kind
+	queue_redraw()
+
+
+# The next item in ITEMS, wrapping.
+func cycle_item() -> void:
+	select_item(ITEMS[(ITEMS.find(item) + 1) % ITEMS.size()])
 
 
 # --- moving it (ui-ux §2.1: same reach for both inputs) ---
@@ -119,13 +145,17 @@ func _actor_tile() -> Vector2i:
 
 # --- what can go there ---
 
-func problem() -> PROBLEM:
+# Why `kind` (the selected item when none is given) can't go at the
+# cursor, or NONE.
+func problem(kind: int = -1) -> PROBLEM:
+	if kind == -1: kind = item
 	if actor == null or actor.current_level == null: return PROBLEM.OUTSIDE_LEVEL
 	var level: Level = actor.current_level
 	var tiles: LevelTiles = level.level_tiles
 	if TileKind.is_sentinel(tiles.get_ground(tile.x, tile.y)): return PROBLEM.OUTSIDE_LEVEL
 	if visibility != null and visibility.state_at(tile.x, tile.y) < Visibility.STATE.SENSED:
 		return PROBLEM.TOO_DARK
+	if kind == ObjectKind.OBJECT.TIMBER_PROP: return _prop_problem(level)
 	var below: Level = level.world.level_at(level.depth + 1)
 	if below == null: return PROBLEM.NO_LEVEL_BELOW
 	# The fixture gatekeeper's own rule, for a ladder below this tile
@@ -143,18 +173,40 @@ func problem() -> PROBLEM:
 	return PROBLEM.LANDING_NOT_PASSABLE
 
 
-# Asks the actor's world for a ladder below the cursor's hole. The
-# world answers: a placement, or a refusal the notice shows. Asks
-# nothing when the preview already says no, and says why.
-func place() -> bool:
+# The gatekeeper's own rules for a prop on the cursor's tile of the
+# player's level: open floor, nothing there, nobody standing on it, and
+# the cost (D-159, D-165).
+func _prop_problem(level: Level) -> PROBLEM:
+	var rule: World.FIXTURE_REFUSAL = FixturePlacement.problem(ObjectKind.OBJECT.TIMBER_PROP, tile,
+		level.level_tiles, level.level_fixtures, null)
+	match rule:
+		World.FIXTURE_REFUSAL.NONE: pass
+		World.FIXTURE_REFUSAL.TILE_OCCUPIED: return PROBLEM.TILE_OCCUPIED
+		World.FIXTURE_REFUSAL.TILE_NOT_EXISTS: return PROBLEM.OUTSIDE_LEVEL
+		_: return PROBLEM.NOT_OPEN_FLOOR
+	if level.world.blocks_actor(level, ObjectKind.OBJECT.TIMBER_PROP,
+			WorldPos.new(tile.x, tile.y, level.depth)):
+		return PROBLEM.ACTOR_IN_WAY
+	if not Building.can_afford(level.world.tuning, actor, ObjectKind.OBJECT.TIMBER_PROP):
+		return PROBLEM.CANNOT_AFFORD
+	return PROBLEM.NONE
+
+
+# Asks the actor's world to place `kind` (the selected item when none
+# is given) at the cursor: a ladder below the cursor's hole, a prop on
+# the cursor's floor. The world answers: a placement, or a refusal the
+# notice shows. Asks nothing when the preview already says no, and says
+# why.
+func place(kind: int = -1) -> bool:
 	if not active: return false
-	var why: PROBLEM = problem()
+	if kind == -1: kind = item
+	var why: PROBLEM = problem(kind)
 	if why != PROBLEM.NONE:
 		cursor_refused.emit(REASONS.get(why, ""))
 		return false
 	var world: World = actor.current_level.world
-	world.place_requested.emit(actor, ObjectKind.OBJECT.LADDER,
-		WorldPos.new(tile.x, tile.y, actor.depth + 1))
+	var depth: int = actor.depth + 1 if kind == ObjectKind.OBJECT.LADDER else actor.depth
+	world.place_requested.emit(actor, kind, WorldPos.new(tile.x, tile.y, depth))
 	return true
 
 
@@ -174,8 +226,7 @@ func _draw() -> void:
 	# Valid: a solid frame and a check; invalid: a dashed frame and a
 	# cross
 	# The cost, always, beside the cursor (ui-ux §7)
-	var cost: String = Building.cost_text(actor.current_level.world.tuning,
-		ObjectKind.OBJECT.LADDER)
+	var cost: String = Building.cost_text(actor.current_level.world.tuning, item)
 	if cost != "":
 		draw_string(ThemeDB.fallback_font, corner + Vector2(size + 2, size - 4), cost,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 8, color)

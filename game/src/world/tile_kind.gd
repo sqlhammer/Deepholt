@@ -56,6 +56,9 @@ const TOP: Dictionary = {
 	"MINABLE_ROCK": 2,
 	"MINABLE_DIRT": 3,
 	"IMPENETRABLE_ROCK": 4,
+	# What a collapse leaves (D-166): solid, cleared like a dig, and
+	# no support. Never reused.
+	"RUBBLE": 5,
 }
 
 const ORE: Dictionary = {
@@ -68,11 +71,20 @@ const ORE: Dictionary = {
 # each is belongs to the kind (D-081), and the number is the tuning
 # profile's (D-135), so every kind here needs a hardness in every
 # profile.
-const DIGGABLE: Array[int] = [TOP.MINABLE_ROCK, TOP.MINABLE_DIRT]
+const DIGGABLE: Array[int] = [TOP.MINABLE_ROCK, TOP.MINABLE_DIRT, TOP.RUBBLE]
+
+# The solid tops that hold a ceiling up (D-163): rock, dirt and
+# impenetrable walls. Rubble never does. The one owner of "support",
+# beside the props, which are fixtures.
+const SUPPORTING: Array[int] = [TOP.MINABLE_ROCK, TOP.MINABLE_DIRT, TOP.IMPENETRABLE_ROCK]
 
 
 static func is_diggable(kind: int) -> bool:
 	return kind in DIGGABLE
+
+
+static func is_supporting(kind: int) -> bool:
+	return kind in SUPPORTING
 
 
 static func is_ramp(ground_kind: int) -> bool:
