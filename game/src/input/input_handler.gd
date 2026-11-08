@@ -10,6 +10,10 @@ var paused: bool = false
 # Build mode's cursor (D-154). While it's active, the mouse or the
 # right stick moves the cursor instead of aiming, and primary places.
 var build: BuildCursor
+# The inventory overlay (D-162). While it's open, walking still works,
+# and drop one / drop the stack act on it; nothing digs, breaches,
+# builds or interacts (slice 009 trap 6).
+var inventory: InventoryOverlay
 
 # The game-wide keys. The handler only asks; the game decides what a
 # save or a load is (R-P10).
@@ -73,6 +77,16 @@ func _build_mode(move: Vector2, delta: float) -> void:
 	if Input.is_action_just_pressed("primary_action"): build.place()
 
 
+func _inventory_mode(move: Vector2) -> void:
+	actor.aim(Vector2.ZERO, move)
+	actor.primary_action(false)
+	actor.breach(false)
+	if Input.is_action_just_pressed("ui_up"): inventory.select(-1)
+	if Input.is_action_just_pressed("ui_down"): inventory.select(1)
+	if Input.is_action_just_pressed("drop_one"): inventory.drop_one()
+	if Input.is_action_just_pressed("drop_stack"): inventory.drop_stack()
+
+
 func _physics_process(delta: float) -> void:
 	if actor == null or actor is not Actor:
 		return
@@ -81,6 +95,15 @@ func _physics_process(delta: float) -> void:
 	var move: Vector2 = Input.get_vector(
 		"move_left", "move_right", "move_up", "move_down")
 	actor.move(move)
+	if inventory != null and Input.is_action_just_pressed("inventory"):
+		inventory.toggle()
+		if inventory.is_open and build != null: build.set_active(false)
+	if inventory != null and inventory.is_open:
+		_inventory_mode(move)
+		return
+	# The take key: everything in reach, whatever the load (D-160)
+	if Input.is_action_just_pressed("take"):
+		actor.current_level.world.take_requested.emit(actor)
 	if build != null and Input.is_action_just_pressed("build_mode"): build.toggle()
 	if build != null and build.active:
 		_build_mode(move, delta)

@@ -35,6 +35,13 @@ signal breach_requested(actor: Actor, tile: WorldPos, tool_power: float)
 signal tile_breached(actor: Actor, tile: WorldPos)
 signal breach_refused(actor: Actor, tile: WorldPos, reason: BREACH_REFUSAL)
 
+# Items leaving and joining packs through the ground (D-160, D-161).
+# `tile` is where the items lie.
+signal drop_requested(actor: Actor, id: StringName, count: int)
+signal take_requested(actor: Actor)
+signal items_dropped(actor: Actor, tile: WorldPos, id: StringName, count: int)
+signal items_picked_up(actor: Actor, tile: WorldPos, id: StringName, count: int)
+
 # An actor too heavy to climb the ladder it tried (D-159). `tile` is
 # where the ladder would have taken it.
 signal climb_refused(actor: Actor, tile: WorldPos)
@@ -96,6 +103,10 @@ var world_seed: int
 # first time it's used, so a world's yields repeat. Not saved; a load
 # starts a fresh sequence.
 var _yield_rng: RandomNumberGenerator
+# Where each actor last dropped something, by instance id, so it isn't
+# picked straight back up: kept until the actor steps off that tile
+# (slice 009 trap 3).
+var _dropped_at: Dictionary[int, WorldPos] = {}
 # World-wide, so an id alone finds a fixture or an actor (D-104,
 # D-114). Each world numbers its own: generating or loading another
 # never resets these (D-118).
@@ -136,6 +147,8 @@ func _init(p_tuning: TuningProfile = null) -> void:
 
 	dig_requested.connect(_on_dig_requested)
 	breach_requested.connect(_on_breach_requested)
+	drop_requested.connect(_on_drop_requested)
+	take_requested.connect(_on_take_requested)
 	place_requested.connect(_on_place_requested)
 	remove_requested.connect(_on_remove_requested)
 	move_requested.connect(_on_move_requested)
@@ -191,8 +204,60 @@ func add_actor(actor: Actor) -> void:
 # arriving at a depth grows the world below it.
 func _on_actor_moved(actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> void:
 	_remember_around(actor)
+	_auto_pickup(actor)
 	if old_pos != null and old_pos.depth == new_pos.depth: return
 	generate_below(new_pos.depth)
+
+
+# --- drops (D-160, D-161) ---
+
+# Moves up to `count` of an item from the actor's pack onto its tile.
+func _on_drop_requested(actor: Actor, id: StringName, count: int) -> void:
+	if actor == null or actor.current_level == null or actor.current_level.world != self: return
+	var n: int = mini(count, actor.pack.count_of(id))
+	if n <= 0: return
+	var here: WorldPos = actor.current_WorldPos
+	actor.pack.remove(id, n)
+	actor.current_level.level_drops.add(Vector2i(here.x, here.y), id, n)
+	_dropped_at[actor.get_instance_id()] = here
+	items_dropped.emit(actor, here, id, n)
+
+
+# A player takes what lies within reach as it moves, up to the fill
+# limit. Never an NPC (D-160), and never what it just put down, until
+# it steps off that tile.
+func _auto_pickup(actor: Actor) -> void:
+	if actor.actor_kind != ActorKind.ACTOR.PLAYER: return
+	var dropped: WorldPos = _dropped_at.get(actor.get_instance_id())
+	if dropped != null and not dropped.equals(actor.current_WorldPos):
+		_dropped_at.erase(actor.get_instance_id())
+		dropped = null
+	_pick_up(actor, tuning.auto_fill_limit, dropped)
+
+
+# The take key: everything within reach, whatever the load (D-160).
+func _on_take_requested(actor: Actor) -> void:
+	if actor == null or actor.current_level == null or actor.current_level.world != self: return
+	_pick_up(actor, INF, null)
+
+
+func _pick_up(actor: Actor, limit: float, skip: WorldPos) -> void:
+	var level: Level = actor.current_level
+	var here: WorldPos = actor.current_WorldPos
+	if level == null or here == null or level.level_drops.is_empty(): return
+	var reach: int = tuning.pickup_reach
+	for dy in range(-reach, reach + 1):
+		for dx in range(-reach, reach + 1):
+			var tile: Vector2i = Vector2i(here.x + dx, here.y + dy)
+			if skip != null and tile == Vector2i(skip.x, skip.y): continue
+			var lying: Dictionary = level.level_drops.at(tile)
+			for id: StringName in lying:
+				var n: int = lying[id] if is_inf(limit) else \
+					Carrying.fits(tuning, actor.pack, id, lying[id], limit)
+				if n <= 0: continue
+				level.level_drops.take(tile, id, n)
+				actor.pack.add(id, n)
+				items_picked_up.emit(actor, WorldPos.new(tile.x, tile.y, level.depth), id, n)
 
 
 # --- memory (D-145) ---
@@ -306,8 +371,14 @@ func _dig_tile(actor: Actor, tile: WorldPos) -> void:
 		var tiles: LevelTiles = level.level_tiles
 		var found: Dictionary[StringName, int] = Digging.yield_of(tuning,
 			tiles.get_top(tile.x, tile.y), tiles.get_ore(tile.x, tile.y), _yields())
+		# Into the pack up to the fill limit; the rest drops where it was
+		# dug (D-160)
 		for id: StringName in found:
-			actor.pack.add(id, found[id])
+			var fits: int = Carrying.fits(tuning, actor.pack, id, found[id], tuning.auto_fill_limit)
+			actor.pack.add(id, fits)
+			if found[id] > fits:
+				level.level_drops.add(Vector2i(tile.x, tile.y), id, found[id] - fits)
+				items_dropped.emit(actor, tile, id, found[id] - fits)
 	level.level_tiles.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
 	level.level_tiles.set_ore(tile.x, tile.y, TileKind.ORE.NONE)
 	tile_dug.emit(actor, tile)
