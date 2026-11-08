@@ -29,6 +29,7 @@ const PLACE_REASONS: Dictionary = {
 	World.FIXTURE_REFUSAL.TILE_NOT_PASSABLE: "There's no floor below for it to stand on.",
 	World.FIXTURE_REFUSAL.NO_HOLE_ABOVE: "A ladder goes in a hole.",
 	World.FIXTURE_REFUSAL.TILE_OCCUPIED: "Something below is in the way.",
+	World.FIXTURE_REFUSAL.CANNOT_AFFORD: "You don't have enough to build that.",
 }
 
 var text: String:
@@ -66,10 +67,12 @@ func _on_shown_world_changed(world: World, _depth: int) -> void:
 	if is_instance_valid(_world) and _world.breach_refused.is_connected(_on_breach_refused):
 		_world.breach_refused.disconnect(_on_breach_refused)
 		_world.request_refused.disconnect(_on_request_refused)
+		_world.climb_refused.disconnect(_on_climb_refused)
 	_world = world
 	if _world != null:
 		_world.breach_refused.connect(_on_breach_refused)
 		_world.request_refused.connect(_on_request_refused)
+		_world.climb_refused.connect(_on_climb_refused)
 
 
 # Build mode's own preview refusals (D-154): too dark, not a hole.
@@ -81,6 +84,11 @@ func _on_request_refused(actor: Actor, _verb: World.FIXTURE_VERB, _tile: WorldPo
 		reason: World.FIXTURE_REFUSAL) -> void:
 	if _view == null or actor != _view.actor: return
 	show_text(PLACE_REASONS.get(reason, "That can't go there."))
+
+
+func _on_climb_refused(actor: Actor, _tile: WorldPos) -> void:
+	if _view == null or actor != _view.actor: return
+	show_text("Too heavy to climb.")
 
 
 func _on_breach_refused(actor: Actor, _tile: WorldPos, reason: World.BREACH_REFUSAL) -> void:

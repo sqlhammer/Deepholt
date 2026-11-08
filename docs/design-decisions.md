@@ -3338,3 +3338,97 @@ will be found.
 `E`); `Tab` for build mode (reserved for the inventory); on the pad, primary held toward the
 floor (brings back the held-dig trap D-153 avoided) or D-pad left (a survival binding).
 
+---
+
+### D-156 — Slice 008 is the pack: yields, weight, the load curve, and a timber cost
+**Decided** (by Derik, planning slice 008, 2026-11-08). Builds the first of
+[D-013](#d-013--inventory-is-weight-limited-there-is-no-teleport)'s weight-limited inventory and
+[D-030](#d-030--stamina-exists-for-combat-only-the-load-curve-carries-weight)'s load curve.
+
+- **Digging yields items into the digger's pack.** Every minable wall yields **1 stone** (3 kg)
+  for now. Every ore vein yields **2–4 of its ore** (copper ore, 5 kg).
+- **The pack is weight-limited** (60 kg base), with no teleport. Load slows walking by the tuning
+  appendix's curve, and **above 150% a ladder can't be climbed**. Carry weight is always on the
+  HUD ([ui-ux §5](./ui-ux-and-controls.md)).
+- **A new game starts with 10 timber** (2 kg each), and **a ladder costs 4**. Build mode shows the
+  cost and refuses what you can't afford. Both numbers are profile numbers.
+- **Out of 008:** dropping or discarding anything, and an inventory screen. A player whose pack
+  makes them stuck restarts for now; shedding weight comes next slice.
+
+*Why:* weight is the pillar ([P1](./game-overview.md)). A pack that fills and a load you can
+feel are the smallest playable test of it, and a starting timber stack makes building a choice
+from minute one without a wood system.
+
+*Considered:* a stone every few tiles, a chance per wall, or only marked stone tiles; discarding
+from the pack, dropping into the world, or yields skipping a full pack; ladders staying free, or
+roots on −1 yielding timber; 20 or 6 starting timber.
+
+*Deferred, by Derik:* **a "dragon bag" randomizer for yields.** An imaginary bag holds N cubes:
+some mean nothing, some mean "yield 1", some "yield X", and their ratio is the probability. The
+digger draws from the bag until it's empty, then it's refilled. It gives streaks that feel
+random but can't run away, unlike an independent chance per wall. It replaces "1 stone per
+tile" when stone's volume needs managing.
+
+---
+
+### D-157 — Items are schema resources with a registry; each actor carries a saved pack
+**Decided** (by Derik, planning slice 008, 2026-11-08). Builds
+[content-schema §3](./tech/content-schema.md)'s `Item` and
+[D-156](#d-156--slice-008-is-the-pack-yields-weight-the-load-curve-and-a-timber-cost)'s pack.
+
+- **An `Item` resource with every schema field** (`id`, `display_key`, `weight_kg`, `stack_max`,
+  `trade_value`, `tags`), one `.tres` per item in `content/items/`, loaded by id at startup by an
+  `ItemRegistry`, as `TilePrefabRegistry` does for prefabs. An unknown id is a loud error.
+  `trade_value` and `stack_max` get placeholders until something reads them.
+- **A pack on every actor,** NPCs included (pillar [P5](./game-overview.md)): counts by item id
+  and a running total weight, its capacity from the actor's world's profile. Saved in the
+  actor's save entry as item id → count. A save from before packs loads an empty pack, and an
+  item id this build doesn't know is reported, never dropped.
+
+*Why:* the schema is already the documented home of items, and a registry makes a broken id a
+startup error rather than a silent null.
+
+*Considered:* the schema with items preloaded as constants; a const table in code; a
+world-level store of packs keyed by actor id.
+
+---
+
+### D-158 — Yields go into the digger's pack, uncapped; drops come later
+**Decided** (by Derik, planning slice 008, 2026-11-08).
+
+- **The world puts a dig's yield into the digging actor's pack**, answering the dig it already
+  knows the actor and tile for. Rock walls yield 1 stone, dirt walls nothing, ore veins 2–4 of
+  their ore. A dig with no actor yields nothing.
+- **There is no hard cap.** A yield always goes into the pack, so a pack can pass 150% and
+  [D-030](#d-030--stamina-exists-for-combat-only-the-load-curve-carries-weight)'s ladder rule
+  applies as written.
+- **The model this is heading toward, by Derik:** a yield that doesn't fit becomes a **drop** on
+  the ground, and a player **picks drops up automatically** from its own and the eight adjacent
+  tiles, up to 150% of capacity, so digging can go on with a full pack and the yield is
+  collected later. Only players pick up. Not built in 008.
+
+*Why:* the pack is what 008 tests, and the over-100% band has to be reachable to test it.
+
+*Considered:* real drops now (a saved per-level store); yields into the pack only while they
+fit, lost otherwise; drops that aren't saved; pickup only from the tile you step onto, or only
+up to 100%; a hard cap at 150% (the ladder rule could then never fire).
+
+---
+
+### D-159 — The cost is the gatekeeper's; the HUD bar sits bottom center; the ladder rule checks load
+**Decided** (by Derik, planning slice 008, 2026-11-08).
+
+- **One cost rule, used by the fixture gatekeeper and build mode's preview.** The gatekeeper
+  refuses a placement the requesting actor can't afford (a new refusal reason) and takes the cost
+  when it places. A placement with no actor (generation, a load) is free.
+- **The carry weight is a slim bar at the bottom center** (where the hotbar will sit) with
+  "20 / 60 kg" beside it. It marks 100%, changes at the 50%, 100% and 150% bands, and draws past
+  150% as a hatched overflow. It's for the followed actor
+  ([D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer)).
+- **The ladder rule refuses an actor over 150%** (`Ladder.target_for`), with a reason shown by
+  `RefusalNotice`. Ramps don't check it (D-030).
+
+*Considered:* the build cursor taking the cost (an NPC, or anything else that asks the
+gatekeeper, would build for free); a number only, or a top corner; the check in
+`Actor.interact` (a later route would need its own).
+

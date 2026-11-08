@@ -31,6 +31,8 @@ func before_each() -> void:
 	_actor = Actor.create(Global.actor_packed_scene, "Builder", WorldPos.new(0, 0, 1),
 		_world.level_at(1), ActorKind.ACTOR.PLAYER)
 	_world.add_actor(_actor)
+	# Ladders cost timber (D-156); enough for every test's placements
+	_actor.pack.add(&"timber", 40)
 	_view = add_child_autofree(View.new())
 	_vis = add_child_autofree(Visibility.new())
 	_vis.watch(_view)
@@ -189,6 +191,7 @@ func test_an_npc_places_and_a_second_world_is_untouched() -> void:
 	var npc: Actor = Actor.create(Global.actor_packed_scene, "Npc", WorldPos.new(-1, 0, 1),
 		_world.level_at(1), ActorKind.ACTOR.NULL)
 	_world.add_actor(npc)
+	npc.pack.add(&"timber", 4)
 	_world.place_requested.emit(npc, ObjectKind.OBJECT.LADDER, WorldPos.new(HOLE.x, HOLE.y, 2))
 	assert_eq(_world.level_at(2).level_fixtures.of_kind(ObjectKind.OBJECT.LADDER).size(), 1,
 		"placed")
@@ -230,3 +233,30 @@ func test_a_refused_placement_is_shown() -> void:
 	_world.request_refused.emit(_actor, World.FIXTURE_VERB.PLACE, WorldPos.new(1, 0, 2),
 		World.FIXTURE_REFUSAL.NO_HOLE_ABOVE)
 	assert_eq(notice.text, "A ladder goes in a hole.", "with why")
+
+
+# --- the cost (D-156, D-159) ---
+
+func test_placing_takes_the_cost_from_the_placers_pack() -> void:
+	_place_at_hole()
+	assert_eq(_actor.pack.count_of(&"timber"), 36, "four timber")
+
+
+func test_cant_afford_is_refused_by_the_preview_and_the_gatekeeper() -> void:
+	_actor.pack.remove(&"timber", 37)
+	_cursor.set_tile(HOLE)
+	assert_eq(_cursor.problem(), BuildCursor.PROBLEM.CANNOT_AFFORD, "the preview, with 3")
+	_world.place_requested.emit(_actor, ObjectKind.OBJECT.LADDER, WorldPos.new(HOLE.x, HOLE.y, 2))
+	assert_eq(get_signal_parameters(_world, "request_refused")[3],
+		World.FIXTURE_REFUSAL.CANNOT_AFFORD, "the gatekeeper too")
+	assert_eq(_actor.pack.count_of(&"timber"), 3, "nothing taken")
+
+
+func test_a_placement_with_no_actor_is_free() -> void:
+	_world.place_requested.emit(null, ObjectKind.OBJECT.LADDER, WorldPos.new(HOLE.x, HOLE.y, 2))
+	assert_signal_emitted(_world, "fixture_placed", "generation and loads build for free")
+
+
+func test_the_preview_shows_the_cost() -> void:
+	assert_eq(Building.cost_text(_world.tuning, ObjectKind.OBJECT.LADDER), "4 timber", "the cost")
+	assert_eq(Building.cost_text(_world.tuning, ObjectKind.OBJECT.BRAZIER), "", "nothing for free")

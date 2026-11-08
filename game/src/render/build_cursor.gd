@@ -25,6 +25,7 @@ enum PROBLEM {
 	LANDING_NOT_PASSABLE,
 	LANDING_OCCUPIED,
 	OUTSIDE_LEVEL,
+	CANNOT_AFFORD,
 }
 
 const REASONS: Dictionary = {
@@ -34,6 +35,7 @@ const REASONS: Dictionary = {
 	PROBLEM.LANDING_NOT_PASSABLE: "There's no floor below for it to stand on.",
 	PROBLEM.LANDING_OCCUPIED: "Something below is in the way.",
 	PROBLEM.OUTSIDE_LEVEL: "That's past the edge of the level.",
+	PROBLEM.CANNOT_AFFORD: "You don't have enough to build that.",
 }
 
 # How long the stick holds a direction before the cursor steps again,
@@ -130,7 +132,11 @@ func problem() -> PROBLEM:
 	var rule: World.FIXTURE_REFUSAL = FixturePlacement.problem(ObjectKind.OBJECT.LADDER, tile,
 		below.level_tiles, below.level_fixtures, tiles)
 	match rule:
-		World.FIXTURE_REFUSAL.NONE: return PROBLEM.NONE
+		World.FIXTURE_REFUSAL.NONE:
+			# The gatekeeper's own cost rule (D-159)
+			if not Building.can_afford(level.world.tuning, actor, ObjectKind.OBJECT.LADDER):
+				return PROBLEM.CANNOT_AFFORD
+			return PROBLEM.NONE
 		World.FIXTURE_REFUSAL.NO_HOLE_ABOVE: return PROBLEM.NOT_A_HOLE
 		World.FIXTURE_REFUSAL.TILE_OCCUPIED: return PROBLEM.LANDING_OCCUPIED
 		World.FIXTURE_REFUSAL.TILE_NOT_EXISTS: return PROBLEM.OUTSIDE_LEVEL
@@ -167,6 +173,12 @@ func _draw() -> void:
 	var color: Color = VALID_COLOR if valid else INVALID_COLOR
 	# Valid: a solid frame and a check; invalid: a dashed frame and a
 	# cross
+	# The cost, always, beside the cursor (ui-ux §7)
+	var cost: String = Building.cost_text(actor.current_level.world.tuning,
+		ObjectKind.OBJECT.LADDER)
+	if cost != "":
+		draw_string(ThemeDB.fallback_font, corner + Vector2(size + 2, size - 4), cost,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, 8, color)
 	if valid:
 		draw_rect(Rect2(corner, Vector2(size, size)), color, false, 1.0)
 		draw_polyline(PackedVector2Array([corner + Vector2(4, 8), corner + Vector2(7, 11),

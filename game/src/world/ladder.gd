@@ -20,6 +20,12 @@ const ARRIVAL_ORDER: Array[Vector2i] = [
 	Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 
 
+# Whether a load lets an actor climb a ladder at all (D-030, D-159):
+# past the profile's limit (150%), it can't. Ramps don't ask.
+static func can_climb(tuning: TuningProfile, load_ratio: float) -> bool:
+	return load_ratio <= tuning.ladder_load_limit
+
+
 # Where interact takes an actor standing on `here`, on `level`, and
 # facing `facing`, or null if it doesn't take a ladder. The levels
 # above and below come from the level's world (D-126).

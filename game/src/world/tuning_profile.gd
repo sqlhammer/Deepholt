@@ -38,6 +38,12 @@ const DEFAULT_ID: String = "default"
 # without it (tuning appendix, section 4).
 @export var ore_dig_multiplier: float = 0.0
 
+# What digging yields (D-156): stone per rock wall, and the range of
+# ore an ore vein gives.
+@export var rock_wall_stone: int = 0
+@export var ore_yield_min: int = 0
+@export var ore_yield_max: int = 0
+
 # Each level's floor hardness, by depth: its stratum's number from the
 # tuning appendix (D-151).
 @export var floor_hardness_by_depth: Array[float] = []
@@ -54,6 +60,28 @@ const DEFAULT_ID: String = "default"
 # How far a brazier's light reaches, in steps through open space
 # (D-149).
 @export var brazier_light_radius: int = 0
+
+# How much a pack carries before its load counts as over 100%, in kg
+# (D-013, tuning appendix §3). Not a cap: a pack can go past it
+# (D-158).
+@export var carry_capacity_kg: float = 0.0
+
+# The load curve (D-030, tuning appendix §2): walking speed's
+# multiplier at each load, as (load, multiplier) points, load being a
+# share of capacity; straight lines between them; and the multiplier
+# past the last point.
+@export var load_speed_points: Array[Vector2] = []
+@export var load_speed_beyond: float = 0.0
+
+# Past this load, no ladder can be climbed (D-030, D-159).
+@export var ladder_load_limit: float = 0.0
+
+# What placing a ladder costs, item id -> count (D-156): four timber.
+@export var ladder_cost: Dictionary[StringName, int] = {}
+
+# What a new game's first player starts with, item id -> count
+# (D-156): the ten timber a ladder is built from.
+@export var starting_items: Dictionary[StringName, int] = {}
 
 ## Presentation
 

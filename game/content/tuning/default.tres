@@ -22,3 +22,16 @@ floor_hardness_by_depth = Array[float]([6.0, 10.0, 18.0, 30.0, 48.0, 70.0, 100.0
 breach_time_multiplier = 8.0
 breach_tool_multiplier = 1.2
 build_cursor_radius = 5
+carry_capacity_kg = 60.0
+starting_items = Dictionary[StringName, int]({
+&"timber": 10
+})
+rock_wall_stone = 1
+ore_yield_min = 2
+ore_yield_max = 4
+load_speed_points = Array[Vector2]([Vector2(0.5, 1), Vector2(0.8, 0.84), Vector2(1, 0.72), Vector2(1.5, 0.44)])
+load_speed_beyond = 0.32
+ladder_load_limit = 1.5
+ladder_cost = Dictionary[StringName, int]({
+&"timber": 4
+})

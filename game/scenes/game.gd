@@ -291,6 +291,7 @@ func _ready() -> void:
 	$DebugOverlay.show_load_source(load_source, SaveGame.FORMAT_VERSION)
 	_swap_world(LevelGenerator.generate_world(hash(WORLD_SEED_TEXT), _launch_profile()))
 	_spawn_player("DefaultName")
+	_give_starting_items(active_actor)
 	_prune_kept_saves()
 	_start_autosave()
 
@@ -408,6 +409,10 @@ func _create_view() -> void:
 	add_child(refusals)
 	refusals.watch(view)
 	refusals.watch_cursor(build_cursor)
+	# The followed actor's carry weight, always on screen (D-159)
+	var carry: CarryHud = CarryHud.new()
+	add_child(carry)
+	carry.watch(view)
 
 
 # The one way a world comes in, at launch, for a new game and on a
@@ -484,6 +489,16 @@ func _free_inputhandlers() -> void:
 		handler.set_physics_process(false)
 		handler.queue_free()
 	_input_handlers.clear()
+
+
+# A new game's first player starts with the profile's starting items
+# (D-156). Only that one: a later spawn starts empty, and a load
+# restores what was saved (slice 008 trap 6).
+func _give_starting_items(actor: Actor) -> void:
+	if actor == null: return
+	var items: Dictionary[StringName, int] = world.tuning.starting_items
+	for id: StringName in items:
+		actor.pack.add(id, items[id])
 
 
 func _spawn_player(_name: String) -> void:

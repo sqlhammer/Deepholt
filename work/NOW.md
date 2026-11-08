@@ -1,162 +1,139 @@
-# Slice 007 — Dig your own way down
+# Slice 008 — What you carry
 
-> Stand beside the floor, breach it into a hole, switch to build mode, and set a ladder in it.
-> Climb down to a level nobody built a way into. Your flint can break the Surface's floor and
-> −1's, but not −2's.
+> Dig a tunnel and your pack fills: a stone from every wall, copper from every vein. Fill it and
+> you feel it in your legs, and above half again over the limit, the ladder home won't take
+> you. You start with ten timber, and every ladder you place costs four.
 
-*Proposed by Claude, 2026-11-08, for Derik's approval. Scope set in planning: breach a floor and
-place a ladder, free of cost for now; Agent mode on a `slice-007` branch. Nothing is built until
+*Proposed by Claude, 2026-11-08, for Derik's approval. Scope set in planning
+([D-156](../docs/design-decisions.md#d-156--slice-008-is-the-pack-yields-weight-the-load-curve-and-a-timber-cost)):
+yields, a weight-limited pack, the load curve, the carry HUD, and a timber cost for ladders,
+with no dropping or inventory screen. Agent mode on a `slice-008` branch. Nothing is built until
 Derik approves this brief.*
 
 ## Where we are
 
-Slice 006 is done ([log](./log/006-down-into-the-dark.md)): levels are generated one ahead of
-arrival, and underground is dark: Sensed, Remembered, and Lit by braziers. Derik walked it, and
-the Sensed and Remembered greys were retuned after his first look (0.5 and 0.2).
+Slice 007 is done and merged ([log](./log/007-dig-your-own-way-down.md)): a player can breach a
+floor, place a ladder in build mode, and climb down. Digging a wall leaves nothing behind but
+the open tile, and nothing in the game is an item.
 
-**What a player can do today:** walk, dig walls (the dig capability, through the world's tile
-gatekeeper), and take the ramps and ladders the generator placed. Nothing makes a hole or
-places a fixture at runtime. The world's fixture gatekeeper (`place_requested`,
-`move_requested`) has only ever been called by tests.
+**What exists to build on:**
+- **The dig** goes through the world's tile gatekeeper: `dig_requested` → `tile_dug(actor,
+  tile)`. The world knows who dug what, before the tile changes.
+- **The tuning profile** holds every number, and `Digging` holds the digging rules (D-150).
+- **Placement** goes through the world's fixture gatekeeper, and build mode's preview asks the
+  same rule (D-154). A cost is one more rule in both.
+- **An actor's save entry** holds its id, kind, name, depth, tile and facing (D-114). A pack
+  would be one more field, editing format v1 in place (D-133).
+- **Walk speed** comes from the profile through `Actor.speed` (D-135). Ladders are instant
+  (D-108; the fade is presentation, D-142), so the appendix's climb-time multipliers have
+  nothing to slow yet. Only the 150% rule applies to climbing.
 
-**What 007 adds, per the design:**
-- **Breach**, the floor verb: "slower, deliberate, requires a tool of that stratum's tier. This is
-  the *only* remaining hard tool gate on descent"
-  ([digging-and-structure §1](../docs/systems/digging-and-structure.md)). The tuning appendix
-  gives `breach_seconds = (hardness × 8) / tool_power` and `breach requires tool_power ≥
-  hardness × 1.2` ([tuning appendix §4](../docs/tuning-appendix.md)). With flint (16): the
-  Surface's floor in 3.0 s, −1's in 5.0 s, −2's refused (it needs bronze).
-- **A build mode with the anchored cursor**: a grid cursor clamped to about 5 tiles around the
-  character, the same reach and rules for mouse and stick
-  ([ui-ux §2.1, §7](../docs/ui-ux-and-controls.md)). The ladder is its only item for now.
-- **Placing a ladder**, free for now. The cost (wood) arrives with items and inventory, and the
-  build mode is shaped so a cost slots in without rebuilding it.
+**The numbers** ([tuning appendix §2–3](../docs/tuning-appendix.md)): a 60 kg pack; stone 3 kg,
+copper ore 5 kg, timber 2 kg; walking 5.0 tiles/s up to 50% load, falling to 4.2 at 80%, 3.6 at
+100%, 2.2 at 150%, and 1.6 beyond, where ladders are impossible.
 
 ## What should be true when you stop
 
 By hand, unless marked:
 
-1. On −1, face the floor beside you and breach it. It takes about 5 seconds with flint, and the
-   tile becomes a hole. On −2 the same breach is refused, and the game says why.
-2. Toggle build mode. A cursor appears on the grid within about 5 tiles of you, moved by the
-   mouse or the right stick, and the screen shows whether a ladder can go where it points.
-3. Point at your hole and place a ladder. Its top shows in the hole, and interact takes you down
-   to −2, then back up.
-4. Save, relaunch: the hole and the ladder are still there, and the ladder still works.
-5. The temporary Surface hole is gone on a `--new-game` (D-140).
-6. *Automated:* a breach goes through the world's tile gatekeeper and is refused under-tier,
-   out of bounds, on the deepest level, and on a tile that isn't floor.
-7. *Automated:* a ladder placed at runtime takes the world's next fixture id, survives a save,
-   relights nothing, and is drawn, including its top, on both levels.
-8. *Automated:* every rule holds for an NPC and in a second world (pillar
-   [P5](../docs/game-overview.md)).
+1. `--new-game`: the HUD shows your carry weight, 20 of 60 kg, the ten timber you start with.
+2. Dig a rock wall: the weight rises by 3 kg; a dirt wall adds nothing. Dig a copper vein (on −2, by Greyseam's brazier): it
+   rises by 10 to 20 kg.
+3. Past half full you walk slower, and slower again near and past full. At over 150%, interact
+   on a ladder refuses, and says why.
+4. Place a ladder: the preview shows its cost of 4 timber, and placing takes it. With fewer than
+   4 left, the preview and the placement refuse, and say why.
+5. Save and relaunch: the pack is as you left it.
+6. *Automated:* yields, costs and the load curve are each player's own, never "the" player's, and
+   an NPC's dig yields into its own pack (pillar [P5](../docs/game-overview.md)).
+7. *Automated:* a dig with no actor (a test, or later a collapse) yields nothing and errors
+   nothing.
 
 ## Mode
 
-**Agent**, for the whole slice (Derik, 2026-11-08), on a `slice-007` branch with small commits,
+**Agent**, for the whole slice (Derik, 2026-11-08), on a `slice-008` branch with small commits,
 one or more per section, the suite green before each; Derik merges the PR. Claude stops for
 every design fork below, one at a time, and for anything else with long-term consequences.
 
 ## What you're deciding
 
-Every fork was settled in planning on 2026-11-08, as D-150 to D-154. The list stays as the
+Every fork was settled in planning on 2026-11-08, as D-157 to D-159. The list stays as the
 record of what was weighed:
 
-- **Where the digging rules live:** a static `Digging` class in `src/world/`, taking the profile
-  for its numbers; the profile holds only numbers
-  ([D-150](../docs/design-decisions.md#d-150--digging-rules-live-in-a-static-digging-class-that-takes-the-profile)).
-- **A floor's hardness:** its level's, from the appendix's stratum table, in the profile, with
-  the appendix's breach formula
-  ([D-151](../docs/design-decisions.md#d-151--a-floors-hardness-is-its-levels)).
-- **What's beneath a breach:** the breach clears the landing below, both levels in one request,
-  whole or not at all. Only plain open floor with both ends clear can be breached; nobody falls
-  ([D-152](../docs/design-decisions.md#d-152--a-breach-opens-a-hole-and-clears-its-landing-only-plain-floor-with-both-ends-clear)).
-- **How you breach:** its own input, held while facing the floor (`R` / pad `X`)
-  ([D-153](../docs/design-decisions.md#d-153--breaching-has-its-own-input-held-while-facing-the-floor)).
-- **Build mode:** `E` / `Y` toggles it; the mouse or right stick moves the cursor; primary
-  places. A ladder is aimed at a hole on your own level, and the cursor acts only on Sensed or
-  Lit tiles
-  ([D-154](../docs/design-decisions.md#d-154--build-mode-follows-ui-ux-a-ladder-is-aimed-at-a-hole-you-can-see)).
+- **Items:** the full content-schema `Item` resource, one `.tres` each in `content/items/`, and
+  an `ItemRegistry`
+  ([D-157](../docs/design-decisions.md#d-157--items-are-schema-resources-with-a-registry-each-actor-carries-a-saved-pack)).
+- **The pack:** on every actor, saved in its entry as item id → count; an older save loads an
+  empty pack (D-157).
+- **Yields:** the world puts them in the digger's pack, uncapped. Rock gives 1 stone, dirt
+  nothing, ore veins 2–4 ore. The model ahead, not built in 008, is drops on the ground for
+  what doesn't fit, picked up automatically from adjacent tiles up to 150%
+  ([D-158](../docs/design-decisions.md#d-158--yields-go-into-the-diggers-pack-uncapped-drops-come-later)).
+- **The cost:** one rule, used by the fixture gatekeeper and the preview; placing with no actor
+  is free
+  ([D-159](../docs/design-decisions.md#d-159--the-cost-is-the-gatekeepers-the-hud-bar-sits-bottom-center-the-ladder-rule-checks-load)).
+- **The HUD:** a slim bar at the bottom center with "20 / 60 kg", marking the bands (D-159).
+- **The 150% rule:** in `Ladder.target_for`, shown by `RefusalNotice` (D-159).
 
 ## Already settled
 
-- **A ladder is a fixture on the lower level, under a hole on the level above**
-  ([D-089](../docs/design-decisions.md#d-089--a-ladder-is-an-object-on-the-lower-level-a-hole-is-a-ground-kind-a-ramp-is-a-tile-kind)).
-  The ladder rule, both ways, and the tie (facing a usable hole goes down,
-  [D-139](../docs/design-decisions.md#d-139--on-a-ladder-facing-a-usable-hole-interact-goes-down))
-  already work.
-- **Tiles change only through the world's tile gatekeeper, and fixtures only through its fixture
-  gatekeeper**, as requests answered on the actor's own world
-  ([D-078](../docs/design-decisions.md#d-078--world-is-the-only-thing-that-changes-tiles-at-runtime),
-  [D-125](../docs/design-decisions.md#d-125--the-gatekeepers-are-the-same-request-and-outcome-signals-on-the-world-instance),
-  [D-126](../docs/design-decisions.md#d-126--a-level-knows-its-world-everything-else-reaches-the-world-through-a-level)).
-- **Hardness belongs to tile kinds; the one tool is flint, power 16**
-  ([D-081](../docs/design-decisions.md#d-081--hardness-belongs-to-tile-kinds-the-pre-alpha-tool-is-a-flint-pickaxe)).
-  Tuning numbers live in the world's profile
-  ([D-135](../docs/design-decisions.md#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it)).
-- **No pixel precision, no click-drag; every placement snaps to a character-anchored cursor;
-  mouse and stick have the same reach** ([ui-ux §1, §2.1](../docs/ui-ux-and-controls.md)).
-- **Valid and invalid placement show by shape and icon as well as color**
-  ([ui-ux §7](../docs/ui-ux-and-controls.md)).
-- **Levels exist one ahead of arrival** (D-143), so the level below a breach always exists,
-  except below the deepest.
-- **The temporary Surface hole comes out in this slice**
-  ([D-140](../docs/design-decisions.md#d-140--the-temporary-surface-hole-stays-until-slice-007)).
-- **Light and memory follow tile and fixture changes already** (D-145, D-149): a breach and a
-  placed ladder update the dark without new wiring.
-- **No system assumes one actor** (pillar [P5](../docs/game-overview.md)); the build cursor is
-  presentation and may know the local player
-  ([D-045](../docs/design-decisions.md#d-045--no-player-singleton-carves-out-the-presentation-layer)).
+- **Weight-limited, no teleport**
+  ([D-013](../docs/design-decisions.md#d-013--inventory-is-weight-limited-there-is-no-teleport)).
+  The answer to tedium is cheaper logistics, never a bigger pack.
+- **The load curve carries the whole feeling of weight, and above 150% you can't climb a
+  ladder**
+  ([D-030](../docs/design-decisions.md#d-030--stamina-exists-for-combat-only-the-load-curve-carries-weight)).
+- **Overweight is a slowdown, not a block** ([ui-ux §5](../docs/ui-ux-and-controls.md)).
+- **Items are `.tres` resources with stable `snake_case` ids, never reused or renamed**
+  ([content-schema §1, §3](../docs/tech/content-schema.md)). Saves reference them.
+- **Every number lives in the profile; the rules live beside what they're about**
+  ([D-135](../docs/design-decisions.md#d-135--the-world-holds-its-tuning-profile-every-number-in-code-moves-into-it),
+  [D-150](../docs/design-decisions.md#d-150--digging-rules-live-in-a-static-digging-class-that-takes-the-profile)).
+- **Tiles and fixtures change only through the world's gatekeepers** (D-078, D-125).
+- **Format v1 is edited in place** until the first playtest
+  ([D-133](../docs/design-decisions.md#d-133--save-format-version-1-is-settled-when-the-first-build-goes-to-someone-else)).
+- **The scope** ([D-156](../docs/design-decisions.md#d-156--slice-008-is-the-pack-yields-weight-the-load-curve-and-a-timber-cost)):
+  1 stone per wall, 2–4 ore per vein, 10 starting timber, 4 per ladder; no shedding in 008.
 
 ## Traps
 
-### 1. The tile gatekeeper only knows one change
+### 1. A pack nobody can empty
 
-`World._on_dig_requested` sets a tile's top to open. A breach changes the *ground* to a hole,
-and may change the level below (the landing). It needs its own request, refusal reasons and
-outcome, and two levels changing in one request must not be half-applied if the second
-refuses.
+Without dropping or discarding, a full pack stays full, and with no cap (D-158) it keeps
+filling. A player at 151% can't climb home. This is accepted for 008 (restart); shedding, and
+drops for what doesn't fit, come later. Don't let a test or the by-hand walk
+treat it as a bug, and don't quietly add a way out.
 
-### 2. A hole under someone
+### 2. "The player's" pack
 
-An actor standing on a tile that becomes a hole is standing on something impassable. Refuse
-breaching your own tile, and decide what happens to anyone else standing there (an NPC, a
-second player): refuse, or move them.
+The pack belongs to whichever actor dug. A yield routed to the local player, the followed actor,
+or the first player in the world would break with a second player or an NPC digging (P5). The
+dig's request already names its actor: use that one.
 
-### 3. The fixture gatekeeper's first real caller
+### 3. Speed is read every physics tick
 
-Placement has only run in tests. The first runtime placement draws a fixture id from the
-world's counter, the renderer draws it, and the next save writes it, so check the counter
-carries on across a save and load (D-130). And a ladder placed under a hole on the *upper*
-level has to redraw the ladder top there, through the fixture renderer's `_below` listener.
+`Actor.speed` is read every tick for every actor. A load curve that sums the pack each time is a
+loop per actor per tick. Keep the pack's total weight as a number that changes when the pack
+changes.
 
-### 4. Ladder rules check the shape, not the story
+### 4. A cost checked in two places can disagree
 
-`FixturePlacement` requires a hole above and passable ground for a ladder. If the landing below
-is rock, placement is refused with `TILE_NOT_PASSABLE`. That's correct, but the player needs to
-know why, and the "what's beneath" fork decides whether it ever happens.
+The preview and the gatekeeper must use one rule for "can this actor afford it", or the cursor
+shows green and the placement refuses. Same lesson as 007's placement preview.
 
-### 5. Input modes multiply
+### 5. Saving a pack is saving ids
 
-Build mode turns primary action into "place". A held dig, a held breach, the level-change fade
-(input paused, D-142) and F5/F6 all meet here. Decide what each does when build mode toggles
-mid-action.
+A pack saved as item ids must load against the items this build has. An unknown id (a renamed
+item, an edited file) is reported like an unknown fixture kind (D-113), never silently dropped
+or turned into nothing.
 
-### 6. The dark hides the target
+### 6. The new game's timber
 
-Underground, most tiles are Unknown or Remembered. The cursor has to be readable on black, and
-the rules must not let you breach or place on a tile you can't sense. Or they should let you,
-and that's a decision.
-
-### 7. Removing the Surface hole changes `surface_start`
-
-Existing saves keep their hole (a saved level wins over the recipe). Tests that read
-`surface_start`'s hole (the F3 readout's `h`, D-107's dead hole) move to a hole that exists
-elsewhere, or build one.
+The ten starting timber belong to a *new* player, not to every spawn, and not to a loaded one. A
+load restores the saved pack; only a new game's first player gets the starting stack.
 
 ## Carried into this slice
 
-- **005's by-hand items**, never reported.
-- **`hardness_of` and `dig_hardness` on the tuning profile** (Derik's question): settled by
-  D-150, and moved in section B.
-- **The temporary Surface hole** (D-140).
+- **007's by-hand outcomes** weren't reported walked.
+- **Shedding weight** (drop or discard) is the next slice's, by Derik's choice (D-156).
+- **The "dragon bag" yield randomizer** is deferred (D-156) until stone's volume needs managing.
