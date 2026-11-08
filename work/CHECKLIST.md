@@ -86,9 +86,9 @@ Slice 007's checklist is in git history (last at `76c5d8d`).
 - [x] `python scripts/coverage.py` run; uncovered lines looked at (007 closed at 97.5%).
   *97.6%.*
 - [ ] By hand: outcomes 1–5 walked in one sitting, launched outside the editor at least once.
-- [ ] Claude reviews the slice.
-- [ ] Claude writes `log/008-what-you-carry.md`.
-- [ ] Claude re-sketches [NEXT.md](./NEXT.md), with shedding weight as the next slice (D-156).
+- [x] Claude reviews the slice. *In the log.*
+- [x] Claude writes `log/008-what-you-carry.md`.
+- [x] Claude re-sketches [NEXT.md](./NEXT.md), with shedding weight as the next slice (D-156).
 
 ---
 
