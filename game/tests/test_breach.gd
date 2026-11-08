@@ -222,3 +222,31 @@ func test_the_followed_actors_refusal_is_shown_and_others_are_not() -> void:
 	assert_string_contains(notice.text, "too hard", "the player's own, with why")
 	notice._process(RefusalNotice.SHOW_SECONDS + 0.1)
 	assert_eq(notice.text, "", "and it goes")
+
+
+# --- showing it work (D-153) ---
+
+func test_cracks_grow_in_stages_with_the_work() -> void:
+	assert_eq(BreachCracks.stage_for(0.0, 80.0), 0, "nothing yet")
+	assert_eq(BreachCracks.stage_for(1.0, 80.0), 1, "the first crack at once")
+	assert_eq(BreachCracks.stage_for(40.0, 80.0), 3, "halfway")
+	assert_eq(BreachCracks.stage_for(79.0, 80.0), BreachCracks.STAGES, "all of them near the end")
+	assert_eq(BreachCracks.stage_for(5.0, 0.0), 0, "no work, no cracks")
+
+
+func test_cracks_follow_the_followed_actors_breach() -> void:
+	var view: View = add_child_autofree(View.new())
+	var cracks: BreachCracks = add_child_autofree(BreachCracks.new())
+	cracks.watch(view)
+	var actor: Actor = _breacher()
+	view.follow(actor)
+	_hold(actor, 60)
+	cracks._process(TICK)
+	assert_gt(cracks.stage, 0, "cracking")
+	assert_eq(cracks.tile, SPOT, "on the floor being breached")
+	# Drawn for a frame while they show
+	await get_tree().process_frame
+	actor.breach_intent = true
+	actor.breach(false)
+	cracks._process(TICK)
+	assert_eq(cracks.stage, 0, "gone on release")

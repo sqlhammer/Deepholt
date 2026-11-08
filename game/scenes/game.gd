@@ -399,6 +399,10 @@ func _create_view() -> void:
 	build_cursor = BuildCursor.new()
 	build_cursor.visibility = visibility
 	$GameViewport.add_child(build_cursor)
+	# A breach in progress shows as cracks on the floor (D-153)
+	var cracks: BreachCracks = BreachCracks.new()
+	cracks.watch(view)
+	$GameViewport.add_child(cracks)
 	# Why the local player's action was refused (D-141, D-152)
 	var refusals: RefusalNotice = RefusalNotice.new()
 	add_child(refusals)

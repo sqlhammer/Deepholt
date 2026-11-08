@@ -35,6 +35,9 @@ Slice 006's checklist is in git history (last at `701740b`).
   applied whole or not at all (trap 1). Refused: under-tier, outside the level, the deepest
   level, not open floor, a tile someone stands on (trap 2). [6]
 - [x] The breach capability: progress at `breach_seconds`, reset like a dig. [1]
+- [x] Breaching shows it's working (Derik, after the build): `BreachCracks` draws cracks on the
+  floor being breached, in four stages from the capability's progress, for the followed actor,
+  gone on release or refusal. An actor animation and sound wait for art and audio.
 - [x] Refusals are shown to the player (the first reader of a refusal reason, D-141's
   "feedback"). *`RefusalNotice`: the followed actor's refusal, for 2.5 s at the bottom of the
   screen.*

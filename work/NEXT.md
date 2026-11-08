@@ -61,3 +61,6 @@ Found during 005, not recorded anywhere else. None of it is decided.
   built in 007.
 - **Pad X is contested** once tools can be swapped (D-155).
 - **Coverage at the end of slice 007: 97.5%.**
+- **Digging and breaching have no actor animation or sound.** A breach shows cracks on its tile
+  (007); a dig has nothing but the tile vanishing. Both want a working animation once there's
+  art, and strikes once there's audio.
