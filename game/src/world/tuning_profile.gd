@@ -55,6 +55,15 @@ const DEFAULT_ID: String = "default"
 # (D-149).
 @export var brazier_light_radius: int = 0
 
+# How much a pack carries before its load counts as over 100%, in kg
+# (D-013, tuning appendix §3). Not a cap: a pack can go past it
+# (D-158).
+@export var carry_capacity_kg: float = 0.0
+
+# What a new game's first player starts with, item id -> count
+# (D-156): the ten timber a ladder is built from.
+@export var starting_items: Dictionary[StringName, int] = {}
+
 ## Presentation
 
 # How long a level change's fade through black lasts, out and back in

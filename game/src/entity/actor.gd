@@ -19,6 +19,8 @@ var action_intent: bool = false
 # Held to breach the floor faced (D-153). Its own intent, so a press
 # held through a dig never turns into a breach of the floor it opened.
 var breach_intent: bool = false
+# What this actor carries (D-157). Every actor has one, NPCs too (P5).
+var pack: Pack = Pack.new()
 var aim_vector: Vector2 = Vector2.ZERO
 var facing: Vector2i = Vector2i(0,1) # Default = Down
 
@@ -343,6 +345,14 @@ func _on_move_intent_changed(p_move_intent: Vector2) -> void:
 		Vector2(0,1): _walk(DIRECTION.DOWN)
 		Vector2(-1,0): _walk(DIRECTION.LEFT)
 		Vector2(1,0): _walk(DIRECTION.RIGHT)
+
+
+# How loaded the pack is, against the capacity of this actor's world:
+# 1.0 is full, past 1.0 overloaded (D-158). 0 with no world.
+func load_ratio() -> float:
+	if not current_level or not current_level.world: return 0.0
+	var capacity: float = current_level.world.tuning.carry_capacity_kg
+	return pack.total_weight / capacity if capacity > 0.0 else 0.0
 
 
 func _get_speed() -> float:

@@ -264,6 +264,14 @@ static func _load_file(file_path: String, why: Array[String]) -> LoadedGame:
 		why.append("has no actor that could be placed")
 		loaded.free_world()
 		return null
+	# An item this build doesn't know is kept in its pack and reported,
+	# never dropped (D-157)
+	for actor: Actor in world.actors():
+		for id: StringName in actor.pack.unknown_ids():
+			var problem: String = "%s carries '%s', an item this build doesn't have." % [
+				actor.actor_name, id]
+			loaded.problems.append(problem)
+			push_warning(problem)
 
 	# Last, after anything that could draw an id (D-130)
 	_restore_counters(world, file_data)
@@ -540,7 +548,10 @@ static func _serialize_actor(actor: Actor) -> Dictionary:
 	actor_data["facing"] = {}
 	actor_data.facing["x"] = actor.facing.x
 	actor_data.facing["y"] = actor.facing.y
-	
+
+	# What it carries, item id -> count (D-157)
+	actor_data["pack"] = actor.pack.to_save()
+
 	return actor_data
 
 
@@ -575,6 +586,9 @@ static func _deserialize_actor(p_actor: Dictionary, p_actor_id: int, world: Worl
 
 	var facing: Dictionary = p_actor.facing
 	actor.facing = Vector2i(facing.x, facing.y)
+
+	# A save from before packs loads an empty one (D-157)
+	actor.pack = Pack.from_save(p_actor.get("pack", {}))
 
 	return actor
 

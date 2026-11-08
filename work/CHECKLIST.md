@@ -30,15 +30,17 @@ Slice 007's checklist is in git history (last at `76c5d8d`).
 - [x] *Decide:* where the pack lives and how it's saved. *On each actor, in its save entry; an
   older save loads empty (D-157).*
 - [x] *Decide:* the HUD's carry weight. *Bottom center, bar and number, bands marked (D-159).*
-- [ ] Items: stone, copper ore and timber, with the appendix's weights (content-schema §3).
-- [ ] The pack: what an actor carries, its total weight kept current (trap 3), its capacity from
+- [x] Items: stone, copper ore and timber, with the appendix's weights (content-schema §3). *In
+  `content/items/`; `Item` and `ItemRegistry` in `src/entity/items/`, beside `ToolData`. The
+  registry is a static class loading on first use, not an autoload (no world state, D-124).*
+- [x] The pack: what an actor carries, its total weight kept current (trap 3), its capacity from
   the profile (60 kg).
-- [ ] A new game's first player starts with the profile's starting items (10 timber); a load
+- [x] A new game's first player starts with the profile's starting items (10 timber); a load
   restores the saved pack instead (trap 6). [1]
-- [ ] The pack round-trips through a save; an unknown item id is reported, never dropped (trap
+- [x] The pack round-trips through a save; an unknown item id is reported, never dropped (trap
   5). [5]
-- [ ] The carry weight on the HUD, for the followed actor (D-045). [1]
-- [ ] Tests: weights add up; capacity from the profile; save and load; an unknown id; an NPC has
+- [x] The carry weight on the HUD, for the followed actor (D-045). [1]
+- [x] Tests: weights add up; capacity from the profile; save and load; an unknown id; an NPC has
   its own pack. [5, 6]
 - [ ] By hand: `--new-game` shows 20 / 60 kg. [1]
 
