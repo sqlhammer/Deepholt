@@ -17,7 +17,9 @@ func _ready() -> void:
 	actor.action_ended.connect(action_ended)
 
 
-func dig(delta: float, tool_speed: float, target_tile: WorldPos, level: Level) -> void:
+# One tick of digging `target_tile` with `tool`: progress at the tool's
+# power for the tile's kind (D-168) until it reaches the hardness.
+func dig(delta: float, tool: ToolData, target_tile: WorldPos, level: Level) -> void:
 	if _target_tile_changed(target_tile):
 		_reset_progress()
 	
@@ -30,7 +32,7 @@ func dig(delta: float, tool_speed: float, target_tile: WorldPos, level: Level) -
 		_reset_progress()
 		return
 	
-	progress += tool_speed * delta
+	progress += Digging.dig_power(level.world.tuning, tool, kind) * delta
 	if _is_dig_complete(): 
 		level.world.dig_requested.emit(actor, target_tile)
 

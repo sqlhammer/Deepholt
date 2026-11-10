@@ -17,6 +17,15 @@ const OBJECT: Dictionary = {
 }
 
 
+# What each kind is called on screen: build mode's cursor and the
+# inventory's build section. Presentation text, kept beside the ids so
+# a new kind gets its name where it gets its number.
+const NAMES: Dictionary = {
+	OBJECT.LADDER: "Ladder",
+	OBJECT.BRAZIER: "Brazier",
+	OBJECT.TIMBER_PROP: "Timber prop",
+}
+
 # The kinds that keep anyone from walking onto their tile (D-165).
 const BLOCKS_WALKING: Array[int] = [OBJECT.TIMBER_PROP]
 
@@ -24,6 +33,10 @@ const BLOCKS_WALKING: Array[int] = [OBJECT.TIMBER_PROP]
 # support for the support rule. A timber prop's R bonus is +0; the
 # stronger columns come with their own kinds.
 const HOLDS_CEILING: Array[int] = [OBJECT.TIMBER_PROP]
+
+
+static func display_name(kind: int) -> String:
+	return NAMES.get(kind, "")
 
 
 static func blocks_walking(kind: int) -> bool:

@@ -1,125 +1,152 @@
-# Slice 010 — Holding it up
+# Slice 011 — Tools in hand
 
-> Dig out a room wider than the rock can span and the ceiling starts to crack. You have
-> forty-five seconds to set a timber prop, or the room fills with rubble. Narrow tunnels never
-> fail; the deeper you go, the narrower "wide" becomes.
+> Press 2 and the pick in your hands becomes a shovel: dirt flies, rock barely scratches. Open
+> the pack with the pad alone, move the shovel to slot 5, see what the stone at your feet would
+> weigh before you take it. Drop your pick, and you're digging with your hands.
 
-*Proposed by Claude, 2026-11-08; approved the same day with the bindings below. Scope and every
-fork settled in planning
-([D-163](../docs/design-decisions.md#d-163--slice-010-is-holding-it-up-the-support-rule-collapse-timber-props-the-overlay)
-to D-166). Agent mode on a `slice-010` branch. **Built, 963 tests green; waiting on the by-hand
-walk** ([log](./log/010-holding-it-up.md)). Outcome 1's "18 tiles wide … then red" is 19 under the
-rule as written; the log says why.*
+*Proposed by Claude, 2026-11-09, for Derik's approval. Scope and every fork settled in planning
+([D-167](../docs/design-decisions.md#d-167--pad-a-takes-from-the-ground-when-theres-nothing-to-interact-with)
+to D-174). Agent mode on a `slice-011` branch. **Approved by Derik the same day, with the numbers
+and bindings below as proposed** (the pick at 0.8 s on rubble, the wheel included). **Built, 1008 tests green; waiting on the
+by-hand walk** ([log](./log/011-tools-in-hand.md)). One binding changed while building: the
+inventory's sections switch with the arrow keys and D-pad ←/→, not Tab and LB/RB, because Tab
+closes the inventory; the log says why. **Then, at Derik's request, the inventory became a grid**
+(D-175 to D-178): outcome 4 is now "the grid with the pad alone: move the focus over the grid and
+both bars, pick the shovel up off the tool row and put it in slot 5, swap two cells, sort with
+R3".*
 
 ## Where we are
 
-Slices 008 and 009 are merged ([008](./log/008-what-you-carry.md),
-[009](./log/009-letting-go.md)), **neither walked by hand yet.** A player can dig, breach, carry,
-drop and pick up, and build ladders that cost timber. Nothing about excavation is unsafe: a room of
-any size stands forever.
+Slice 010 is merged ([log](./log/010-holding-it-up.md)); **no by-hand walk of 008, 009 or 010 has
+been reported.** A player carries a weighted pack, drops and takes, builds ladders and props, and
+digs with one fixed tool, a flint pick (`Actor.equipped`, D-077). Build mode picks its item with
+`1` / `2` and pad RB; the inventory (Tab / Start) is a minimal list.
 
-**What 010 adds** ([digging-and-structure §2–4](../docs/systems/digging-and-structure.md)):
-- **The support rule:** every excavated tile is Stable within R tiles (Chebyshev) of a support,
-  Marginal at R+1, Failing beyond. R is 8 at −1, falling to 3 at −6 and −7.
-- **Only what players dig is judged** (D-164): a saved "excavated" bit, so natural caves never
-  fail.
-- **A countdown, 45 s, per connected failing region,** saved and resumed; a support cancels it.
-- **Collapse:** the region fills with rubble, a new top kind cleared like a dig, yielding nothing;
-  what's under it is buried, not destroyed; anyone caught is moved clear.
-- **Timber props:** a fixture, 2 timber, a support, blocks walking; placed from build mode or the
-  quick key.
-- **The overlay:** ceiling tiles tinted green, amber, red.
+**What 011 adds:**
+- **Tools are pack items** with a weight; only the player drops one, never an overflow (D-169).
+- **A shovel** beside the pick, and **bare hands** for an empty slot (D-171). Speed is power times
+  a multiplier for the tool's class and the tile's kind (D-168). **Only a selected pick breaches**
+  (D-174).
+- **One eight-slot hotbar** at the bottom center: tools outside build mode, buildables inside it
+  (D-170). `1`–`8`, a click, the mouse wheel, pad LB/RB.
+- **An inventory screen** with a focus highlight for the pad and keys, assigning to slots, a weight
+  bar, every row's weight, and the take-this preview (D-172).
+- **Pad A takes** when there's nothing to interact with (D-167); LB/RB go to the hotbar.
 
 ## What should be true when you stop
 
 By hand, unless marked:
 
-1. On −1, dig a corridor: nothing warns, however long it is. Dig a room 18 tiles wide: its middle
-   goes amber, then red, and cracks spread with a notice.
-2. Set a prop in the room's middle (F, or build mode's second item) before the time runs out: the
-   cracks stop and the overlay turns green.
-3. Let a countdown run out: the red tiles fill with rubble; if you stood there, you're moved
-   clear. Dig the rubble out (fast, no stone).
-4. A ladder or a drop under rubble is still there once it's cleared.
-5. Save with a countdown running and relaunch: it resumes, not restarts.
-6. Toggle the overlay (V): green, amber and red over what you've dug.
-7. *Automated:* natural caves never fail; a 2-wide tunnel never fails at any depth; R falls with
-   depth; an NPC's digging is judged the same (pillar [P5](../docs/game-overview.md)).
+1. A new game shows the hotbar with the pick in 1 and the shovel in 2. `2` (or a click on slot 2,
+   or the wheel, or pad RB) selects the shovel: dirt digs about twice as fast, rock much slower.
+2. With the shovel selected, `R` / pad X refuses: "Breaching needs a pick." Select the pick and
+   it breaches.
+3. Press `B`: the bar shows ladder and prop, selected the same way. Press `B` again: the tools
+   come back, with the same one selected.
+4. Open the inventory with the pad alone: the D-pad moves a highlight; every row shows its weight;
+   a weight bar heads the screen. Move the shovel to slot 5, and the ladder to build slot 3.
+5. Stand on drops: the inventory's preview shows the load after taking them. Pad A (away from a
+   ladder) takes them, with a notice saying so.
+6. Drop the pick from the inventory: its slot empties, and digging with it selected is bare hands
+   (slow, no breach). Walk back over it: it returns to the first empty slot.
+7. Fill the pack past full with stone: the overflow drops stone, never a tool.
+8. Save and relaunch: the slots, the selection and the build slots are kept.
+9. *Automated:* the multiplier table for every class and kind; an NPC digs with its own selected
+   tool (no player singleton, D-045); an old save with no hotbar loads with the starting layout.
 
 ## Mode
 
-**Agent**, for the whole slice (Derik, 2026-11-08), on a `slice-010` branch with small commits,
-one or more per section, the suite green before each; Derik merges the PR. Every fork was settled
-in planning; Claude stops for anything new with long-term consequences.
+**Agent**, for the whole slice (Derik, 2026-11-09), on a `slice-011` branch with small commits,
+**one or more per section** (010's log: stage by section, even when files overlap), the suite
+green before each; Derik merges the PR. Claude stops for anything new with long-term consequences.
 
 ## What you're deciding
 
-Every fork was settled in planning on 2026-11-08 (D-163 to D-166). The list stays as the record:
+Every fork was settled on 2026-11-09 (D-167 to D-174). **The numbers and the bindings below were
+approved with the brief,** each put to Derik as its own question.
 
-- **Scope:** the rule, the countdown, collapse and clearing, props, the overlay (D-163).
-- **Only what players dig** (D-164), after talking it through: R already makes narrow digging
-  free, so only wide player-made rooms need props.
-- **The countdown is saved; caught actors are moved clear** (D-163).
-- **Props:** a fixture, 2 timber, blocks its tile (D-165).
-- **Rubble:** a top kind, cleared like a dig, no yield; buried, not destroyed (D-166).
-- **45 s, cracks, a notice, the overlay** (D-166).
+**Proposed numbers** (all in the profile, D-135):
 
-**Proposed bindings, checked against `project.godot`** (part of approving this brief):
+| | Rock | Dirt | Rubble | Notes |
+|---|---|---|---|---|
+| Pick, power 16 | ×1 (0.375 s) | ×1 (0.25 s) | **×0.5 (0.8 s)** | Today's speeds, except rubble |
+| Shovel, power 16 | ×0.4 (0.94 s) | ×2 (0.125 s) | ×1 (0.4 s) | Can't breach |
+| Bare hands, power 8 | ×1 (0.75 s) | ×1 (0.5 s) | ×1 (0.8 s) | Can't breach |
 
-| Action | Keyboard | Pad | Note |
+Ore takes 1.5× its rock's time, as today. **Rubble gets slower with the pick** (0.4 s today, set
+in 010): the tuning appendix says 0.4 s *with a shovel*, so the shovel takes that number and the
+pick earns its "wrong tool" penalty. Say if you'd rather keep the pick at 0.4 s.
+
+Weights: **pick 3 kg, shovel 2.5 kg** (5.5 of the 60 kg pack). Trade value 1 each, a placeholder
+like 008's.
+
+**Proposed bindings, checked against `project.godot`:**
+
+| Action | Keyboard / mouse | Pad | Note |
 |---|---|---|---|
-| Support overlay | `V` | L3 | As ui-ux §4 has them |
-| Quick prop (at the cursor in build mode, else the faced tile) | `F` | D-pad ↓ | ui-ux §2.5's reserved binding; D-pad ↓ still moves the inventory's selection while it's open |
-| Build item: ladder / prop | `1` / `2` | RB cycles | ui-ux's hotbar keys; RB is the hotbar's, which doesn't exist yet |
+| Select slot | `1`–`8`, click a slot, wheel | LB / RB (previous / next) | Replaces 010's build-item keys and RB |
+| Take | `T` (stays) | **A**, when nothing to interact with | Moves off LB (D-167) |
+| Breach | `R` | X | Settled for good (D-171) |
+| Inventory focus | arrow keys, hover | D-pad | |
+| Assign focused item to a slot | `1`–`8` while focused | Y, then LB / RB to choose, A to confirm, B to cancel | Y is build mode outside the inventory; inside it's free |
+| Drop one / drop stack | `X` / `Z` (stay) | A / X (stay) | Inside the inventory, A drops; outside, A interacts or takes |
+| Build-slot section | Tab between "Tools" and "Build" in the inventory | LB / RB switch section while not assigning | Where build slots are rearranged (D-174) |
 
 ## Already settled
 
-- **The rule, the R table, the states, the countdown's purpose, collapse and burial**
-  ([digging-and-structure §2–4](../docs/systems/digging-and-structure.md),
-  [D-014](../docs/design-decisions.md)).
-- **No upward cascade in pre-alpha** ([pre-alpha-scope §4](../docs/pre-alpha-scope.md)).
-- **The player is never surprised by a collapse they couldn't prevent** (§2's countdown).
-- **Costs through the fixture gatekeeper, one rule shared with the preview** (D-159).
-- **Memory's byte has seven reserved bits** (D-147); "excavated" takes one.
-- **The stuck-actor rule moves an actor off an impassable tile** (D-115).
+- **The weight pillar:** a weight bar, every item's weight visible, sort by value per kilo, the
+  preview ([ui-ux §5](../docs/ui-ux-and-controls.md), [D-013](../docs/design-decisions.md)).
+- **Tool classes and power** ([content-schema](../docs/tech/content-schema.md),
+  [tuning appendix](../docs/tuning-appendix.md), D-081's bare hands at 8).
+- **The pick is the one hard gate on descent** ([crafting-and-progression §4](../docs/systems/crafting-and-progression.md)).
+- **Mouse parity:** no reach, precision or information the pad lacks (ui-ux §3).
+- **No player singleton** (D-045): the hotbar belongs to an actor.
 - **Every number in the profile** (D-135); **format v1 edited in place** (D-133).
 
 ## Traps
 
-### 1. The rule must be cheap enough to run on every dig
+### 1. `Actor.equipped` is read in many places
 
-A naive check measures every excavated tile against every support. Recompute only around the
-change (R+2 tiles), with a distance transform over that window, and keep each level's states as
-derived data that's never saved.
+Dig, breach, the action signals and the save all read one preloaded `ToolData`. Replacing it with
+"the selected slot's tool, or bare hands" has to reach every reader at once, and the tests that
+assume a flint pick have to say which tool they hold. A grep for `equipped` is the checklist.
 
-### 2. A dig changes supports, not just ceilings
+### 2. `ToolData` and `Item` are two resources today
 
-Digging a wall removes a support. A tile that was Stable can become Failing because of a dig
-three tiles away. The recompute window is around the dug tile, not just the tile itself.
+A tool must be an item (weight, stack, registry) *and* have a class and power. Either `Item`
+grows tool fields or a tool item points at its tool data. One owner, not a copy of power in two
+places.
 
-### 3. A countdown's region changes while it runs
+### 3. Overflow must never take a tool
 
-Digging more of a failing room grows its region; a prop can split it. A region's timer belongs to
-its tiles: tiles that join keep the oldest time left, tiles that leave lose it, and a region that
-splits keeps the time in both halves.
+009's yield path drops what doesn't fit. Tools never arrive as yields today, but a picked-up
+tool that doesn't fit (take past 100%) is the same path. The rule belongs in one place.
 
-### 4. Burial must not lose anything
+### 4. A hotbar slot points at an item, and items move
 
-A ladder, a brazier or a drop under rubble is kept and saved, and comes back when the rubble is
-cleared. Rubble over a ladder's hole or its landing makes the ladder unusable, not gone.
+Dropping the selected tool empties its slot; taking it back puts it in the first empty slot, not
+necessarily its old one (D-171). A slot must never point at an item the pack no longer has, and
+two identical tools must each have a slot.
 
-### 5. Collapse during a load
+### 5. Pad A now does two things
 
-A countdown saved at one second left must not collapse while the load is still building
-(slice 004's lesson, D-143's). Countdowns tick only in a running world.
+Outside the inventory A interacts, then takes; inside it, it drops one. The input handler's order
+decides which, and a wrong order (take before a ladder) changes how climbing feels. The notice
+says which happened.
 
-### 6. The new top kind meets every existing rule
+### 6. Old saves
 
-Rubble is solid: collision, the flood (D-145: a face, not open), the dig (diggable, with its own
-hardness), the breach (not plain floor), the renderer (art: a placeholder cell), and the save
-(top kinds are bytes; a new id, never reused).
+A save from 010 has an equipped path and no hotbar. It loads with the starting layout (pick in 1,
+shovel in 2, and the tools added to the pack), and the problems list says so.
+
+### 7. Two meanings of a slot key
+
+`1`–`8` select a slot, but inside the inventory they assign the focused item. The handler must
+check the inventory first, or pressing 3 to assign also switches tools.
 
 ## Carried into this slice
 
-- **008's and 009's by-hand walks**, not yet done.
-- **The "dragon bag" randomizer** (D-156) and **drop decay** (D-160) stay deferred.
+- **008's, 009's and 010's by-hand walks**, not reported.
+- **010's open numbers:** "18 wide goes red" is 19 under the rule; countdowns tick only on levels
+  a player is on.
+- **Deferred:** the radial menu, the hammer, the lantern, tiers, crafting, durability, blueprints.

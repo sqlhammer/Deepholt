@@ -7,4 +7,5 @@ script = ExtResource("1_4qgne")
 tool_name = "Flint Pickaxe"
 verb = "dig"
 tier = 1
-speed = 16.0
+tool_class = 2
+power = 16.0

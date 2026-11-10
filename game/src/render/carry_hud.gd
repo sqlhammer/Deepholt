@@ -1,8 +1,8 @@
 class_name CarryHud
-extends CanvasLayer
+extends ScaledHud
 
 # The followed actor's carry weight, always on screen (D-159, ui-ux
-# §5): a slim bar at the bottom center, where the hotbar will sit, and
+# §5): a slim bar at the bottom center, above the hotbar, and
 # "20 / 60 kg" beside it. The bar runs to 150% of capacity, with a
 # mark at 100%; its color changes at the load curve's bands (50%,
 # 100%, 150%), and past 150% the end is hatched. Presentation: it
@@ -28,15 +28,17 @@ var _label: Label
 
 
 func _init() -> void:
+	super()
 	name = "CarryHud"
 	layer = 80
 	var box: HBoxContainer = HBoxContainer.new()
 	box.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	box.offset_bottom = -8
+	# Above the hotbar (ui-ux §4)
+	box.offset_bottom = -30
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	add_child(box)
+	root.add_child(box)
 	_bar = Control.new()
 	_bar.custom_minimum_size = BAR_SIZE
 	_bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -44,7 +46,7 @@ func _init() -> void:
 	box.add_child(_bar)
 	_label = Label.new()
 	_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	_label.add_theme_constant_override("outline_size", 4)
+	_label.add_theme_constant_override("outline_size", 2)
 	box.add_child(_label)
 
 

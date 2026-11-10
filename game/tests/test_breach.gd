@@ -146,6 +146,8 @@ func test_a_second_world_is_untouched() -> void:
 func _breacher(kind: int = ActorKind.ACTOR.PLAYER) -> Actor:
 	var actor: Actor = Actor.create(Global.actor_packed_scene, "Breacher", _at(1, SPOT - Vector2i(1, 0)),
 		_world.level_at(1), kind)
+	# Only a held pick breaches (D-174)
+	actor.pack.add(&"flint_pickaxe", 1)
 	_world.add_actor(actor)
 	var capability: CapabilityBreach = load("res://src/entity/capabilities/capability_breach.tscn").instantiate()
 	capability.actor = actor
@@ -160,7 +162,7 @@ func _capability(actor: Actor) -> CapabilityBreach:
 
 func _hold(actor: Actor, ticks: int) -> void:
 	for i in range(ticks):
-		_capability(actor).breach(TICK, FLINT, _at(1), _world.level_at(1))
+		_capability(actor).breach(TICK, _pick(FLINT), _at(1), _world.level_at(1))
 
 
 func test_a_held_breach_takes_its_time_then_asks() -> void:
@@ -186,7 +188,7 @@ func test_releasing_loses_the_work() -> void:
 func test_an_under_tier_floor_is_refused_at_once_and_once() -> void:
 	var actor: Actor = _breacher()
 	for i in range(10):
-		_capability(actor).breach(TICK, 10.0, _at(1), _world.level_at(1))
+		_capability(actor).breach(TICK, _pick(10.0), _at(1), _world.level_at(1))
 	assert_signal_emit_count(_world, "breach_refused", 1, "one refusal")
 	assert_eq(_reason(), World.BREACH_REFUSAL.TOOL_TOO_WEAK, "with the reason")
 	assert_eq(_capability(actor).progress, 0.0, "and no work done")
@@ -250,3 +252,34 @@ func test_cracks_follow_the_followed_actors_breach() -> void:
 	actor.breach(false)
 	cracks._process(TICK)
 	assert_eq(cracks.stage, 0, "gone on release")
+
+
+func _pick(power: float) -> ToolData:
+	var tool: ToolData = ToolData.new()
+	tool.tool_class = ToolData.CLASS.PICK
+	tool.power = power
+	return tool
+
+
+# --- the tool in hand (D-174) ---
+
+func test_breaching_needs_the_pick_selected() -> void:
+	var actor: Actor = _breacher()
+	actor.pack.add(&"flint_shovel", 1)
+	actor.hotbar.select_tool(1)
+	watch_signals(_world)
+	for i in range(3):
+		_capability(actor).breach(TICK, actor.tool(), _at(1), _world.level_at(1))
+	assert_signal_emit_count(_world, "breach_refused", 1, "refused once, at once")
+	assert_eq(_reason(), World.BREACH_REFUSAL.NEEDS_PICK, "the shovel can't")
+	actor.hotbar.select_tool(2)
+	assert_eq(_world.breach_problem(_at(1), actor.tool().power, actor),
+		World.BREACH_REFUSAL.NEEDS_PICK, "nor bare hands")
+	actor.hotbar.select_tool(0)
+	assert_eq(_world.breach_problem(_at(1), actor.tool().power, actor),
+		World.BREACH_REFUSAL.NONE, "the pick can")
+
+
+func test_the_breach_notice_says_a_pick_is_needed() -> void:
+	assert_eq(RefusalNotice.BREACH_REASONS[World.BREACH_REFUSAL.NEEDS_PICK],
+		"Breaching needs a pick.", "the brief's words")

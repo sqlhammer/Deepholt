@@ -1,11 +1,16 @@
 # Next
 
-Sketches, not commitments. Slice 010 is done and merged ([log](./log/010-holding-it-up.md)); no
-by-hand walk of 008, 009 or 010 has been reported. Cheap to throw away; expect them to change.
+Sketches, not commitments. Slice 011, tools in hand, is done and merged
+([log](./log/011-tools-in-hand.md)); no item-by-item walk of 008 to 011 has been reported. Cheap
+to throw away; expect them to change.
 
 ---
 
-## 011 — Getting it home
+## 012 — Getting it home
+
+*What 011 changes here:* a chute and a winch are buildables, so they take build slots (D-170),
+and the inventory's build section lists them. A crate is a pack item or a fixture; which one it
+is decides whether it can be hotbarred.
 
 The first vertical logistics past the ladder ([vertical-logistics §2](../docs/systems/vertical-logistics-and-power.md)):
 a chute for items going down, and the hand winch for one crate going up. It's the answer
@@ -56,6 +61,15 @@ Found during 005, not recorded anywhere else. None of it is decided.
   machine decides whether a failing room should keep counting while you're away.
 - **The support doc's "widest hall" column is one tile off the rule as written** (010's log): 17 wide
   is still amber at R = 8, red starts at 19.
+- **Coverage at the end of slice 011: 96.1%** (010 closed at 96.6%). The gap is the hotbar's and
+  the inventory's drawing, a click on a slot, and the notice's text paths.
+- **Pad A confirming without also dropping is untested through `Input`** (011's log: a tap
+  leaks across tests within a frame). The handler's order covers it; a test helper that waits
+  out a frame without breaking the older tests would close it.
+- **A second player spawned later digs bare-handed:** only a new game's first player gets the
+  starting items (008's rule), and tools are starting items now (011).
+- **Pad Y in the inventory assigns; outside it, Y is build mode.** The radial (LT) and the hammer
+  will want more pad buttons; the pad is nearly full.
 - **Not built from digging-and-structure §4:** coverage rings around supports, ghosted column
   suggestions, and the header showing the depth's R. Cut stone columns (+1 at −2) are the next
   support kind; they would be a new object kind beside the prop.

@@ -111,3 +111,18 @@ func test_a_second_world_is_untouched() -> void:
 	_dig(_digger(), 0)
 	assert_eq(other.level_at(1).level_tiles.get_top(0, 1), TileKind.TOP.MINABLE_ROCK,
 		"the other world's rock")
+
+
+# Overflow never takes a tool (D-169, slice 011 trap 3): a full pack
+# drops the yield, and the tools stay carried and held.
+func test_a_full_packs_overflow_never_drops_a_tool() -> void:
+	var actor: Actor = _digger()
+	actor.pack.add(&"flint_pickaxe", 1)
+	actor.pack.add(&"flint_shovel", 1)
+	actor.pack.add(&"stone", 18)
+	_dig(actor, 0)
+	var lying: Dictionary = _world.level_at(1).level_drops.at(Vector2i(0, 1))
+	assert_eq(lying.keys(), [&"stone"], "only stone drops")
+	assert_eq(actor.pack.count_of(&"flint_pickaxe"), 1, "the pick stays")
+	assert_eq(actor.pack.count_of(&"flint_shovel"), 1, "the shovel stays")
+	assert_eq(actor.hotbar.tools.slice(0, 2), [&"flint_pickaxe", &"flint_shovel"], "both held")

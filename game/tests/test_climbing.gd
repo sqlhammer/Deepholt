@@ -100,3 +100,58 @@ func test_the_interact_button_climbs_once_per_press() -> void:
 	await wait_physics_frames(2)
 	handler._physics_process(0.0)
 	assert_eq(actor.depth, 2, "holding the button doesn't climb again")
+
+
+# --- pad A: interact first, take otherwise (D-167, trap 5) ---
+
+func _pad_a(actor: Actor) -> void:
+	var handler: InputHandler = add_child_autofree(InputHandler.new())
+	handler.setup(actor, func() -> Vector2: return Vector2.ZERO)
+	handler.set_physics_process(false)
+	handler.interact_or_take()
+
+
+func test_pad_a_at_a_ladder_climbs_and_leaves_the_ground_alone() -> void:
+	var actor: Actor = _actor_at(BESIDE_HOLE, 1, Vector2i(0, -1))
+	_world.level_at(1).level_drops.add(BESIDE_HOLE, &"stone", 2)
+	_pad_a(actor)
+	assert_eq(actor.depth, 2, "it climbed")
+	assert_eq(actor.pack.count_of(&"stone"), 0, "and took nothing")
+
+
+func test_pad_a_away_from_a_ladder_takes_and_says_so() -> void:
+	var actor: Actor = _actor_at(BESIDE_HOLE, 1, Vector2i(0, 1))
+	_world.level_at(1).level_drops.add(BESIDE_HOLE, &"stone", 2)
+	watch_signals(_world)
+	_pad_a(actor)
+	assert_eq(actor.depth, 1, "no climb")
+	assert_eq(actor.pack.count_of(&"stone"), 2, "it took the stone")
+	assert_signal_emitted_with_parameters(_world, "took", [actor, {&"stone": 2}])
+
+
+func test_pad_a_at_a_ladder_too_heavy_to_climb_refuses_rather_than_takes() -> void:
+	var actor: Actor = _actor_at(BESIDE_HOLE, 1, Vector2i(0, -1))
+	actor.pack.add(&"stone", 40)
+	_world.level_at(1).level_drops.add(BESIDE_HOLE, &"stone", 2)
+	watch_signals(_world)
+	_pad_a(actor)
+	assert_signal_emitted(_world, "climb_refused", "too heavy")
+	assert_eq(actor.pack.count_of(&"stone"), 40, "nothing taken")
+
+
+# The keyboard keeps both keys apart; only the pad's A does both.
+func test_only_pad_a_both_interacts_and_takes() -> void:
+	assert_eq(_buttons(&"interact_or_take"), [JOY_BUTTON_A], "pad A")
+	assert_eq(_buttons(&"interact"), [], "E only: no pad button")
+	assert_eq(_buttons(&"take"), [], "T only: LB went to the hotbar")
+	assert_eq(_buttons(&"hotbar_prev"), [JOY_BUTTON_LEFT_SHOULDER], "LB")
+	assert_eq(_buttons(&"hotbar_next"), [JOY_BUTTON_RIGHT_SHOULDER], "RB")
+	assert_eq(_buttons(&"breach"), [JOY_BUTTON_X], "X stays breach (D-171)")
+	assert_eq(_buttons(&"inventory_pick"), [JOY_BUTTON_A], "A picks up in the inventory")
+
+
+func _buttons(action: StringName) -> Array:
+	var found: Array = []
+	for event: InputEvent in InputMap.action_get_events(action):
+		if event is InputEventJoypadButton: found.append(event.button_index)
+	return found

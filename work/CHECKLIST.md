@@ -1,88 +1,84 @@
-# Slice 010 checklist
+# Slice 011 checklist
 
-Working list for [NOW.md](./NOW.md). **Agent mode for the whole slice** (Derik, 2026-11-08), on a
-`slice-010` branch: Claude builds, in small commits, the suite green before each; Derik merges the
-PR and verifies by hand. Every fork was settled in planning. Numbers in brackets are the brief's
-outcomes.
+Working list for [NOW.md](./NOW.md). **Agent mode for the whole slice** (Derik, 2026-11-09), on a
+`slice-011` branch: Claude builds, one or more commits per section, the suite green before each;
+Derik merges the PR and verifies by hand. Numbers in brackets are the brief's outcomes.
 
-Ordered so the game runs at the end of every section: the rule and the overlay first (you can see
-what's safe), then props (you can fix it), then the countdown (it matters), then collapse.
+Ordered so the game runs at the end of every section: tools as items first (nothing visible
+changes), then the hotbar (you can swap), then the inventory screen, then the rebinds.
 
-Slice 009's checklist is in git history (last at the 009 close).
+Slice 010's checklist is in git history (last at the 010 close).
 
-**Closed 2026-11-09** by Derik, merged into `main`. No by-hand walk was reported to Claude, so
-the by-hand items below are left unticked.
+**Closed 2026-11-09** by Derik, merged into `main` after seeing the hotbar fix and the grid
+inventory in play. No item-by-item walk was reported, so the by-hand items stay unticked.
 
 ---
 
 ## A. Decided in planning
 
-*Settled with Derik, 2026-11-08.*
+*Settled with Derik, 2026-11-09.*
 
-- [x] Scope: the rule, the countdown, collapse and clearing, props, the overlay
-  ([D-163](../docs/design-decisions.md#d-163--slice-010-is-holding-it-up-the-support-rule-collapse-timber-props-the-overlay)).
-- [x] Only excavated tiles are judged (D-164).
-- [x] Props: a fixture, 2 timber, blocks its tile (D-165).
-- [x] Rubble: a top kind, cleared like a dig, no yield; 45 s with cracks and a notice (D-166).
-- [x] Agent mode on a `slice-010` branch, PR to `main`.
+- [x] Scope: tools in hand; reverses D-077 (D-173).
+- [x] Pad A takes when there's nothing to interact with (D-167).
+- [x] Speed is power × a class-and-kind multiplier; only a pick breaches (D-168).
+- [x] Tools are pack items; only the player drops one (D-169).
+- [x] One hotbar, tools outside build mode, buildables inside (D-170).
+- [x] X stays breach; tools fill slots themselves; an empty slot is bare hands (D-171).
+- [x] The inventory screen: focus, assigning, weights, the preview (D-172).
+- [x] Breach needs the pick selected; build slots rearrangeable (D-174).
+- [x] The numbers and the bindings in the brief, approved with it.
 
-## B. The support rule and the overlay
+## B. Tools as items
 
-- [ ] The "excavated" bit in memory's flags (D-147, D-164), set by digs and breaches (both the
-  dug tile and a breach's landing), saved with memory. [7]
-- [ ] R by depth in the profile (the doc's table); a support rule (`Support`, static, taking the
-  profile): Stable, Marginal, Failing per excavated tile; supports are solid non-rubble tiles and
-  props (D-163). [1, 7]
-- [ ] Each level keeps its derived states, recomputed in a window around a change (traps 1, 2).
-- [ ] The overlay: `V` / L3 tints excavated tiles green, amber, red, for the shown level. [6]
-- [ ] Tests: a 2-wide tunnel never fails at any depth; a room 2R+2 wide fails in its middle; R
-  falls with depth; natural caves never judged; a dig far away changes a state; an NPC. [1, 7]
+- [x] Tools are items with a class and power, one owner (trap 2); `flint_pickaxe` and `shovel`
+  item resources; bare hands as a class, not an item.
+- [x] The class-and-kind multiplier table and tool weights in the profile (D-168).
+- [x] New games start with the pick and the shovel in the pack.
+- [x] Overflow never drops a tool (trap 3). [7]
+- [x] Tests: the table for every class and kind; the pick's speeds unchanged except rubble; an
+  overflow keeps tools. [1, 7, 9]
 
-## C. Timber props
+## C. The hotbar
 
-- [ ] A `PROP` fixture kind: a placeholder sprite, blocks walking, a support (D-165).
-- [ ] Its cost in the profile (2 timber), through `Building` (D-159).
-- [ ] Build mode's second item: `1` / `2` pick ladder or prop, RB cycles; the preview uses the
-  gatekeeper's rule for each.
-- [ ] The quick key (`F` / D-pad ↓): at the cursor in build mode, else the faced tile.
-- [ ] Tests: a prop restores support; it costs 2 timber; it blocks walking; the quick key. [2]
+- [x] Eight tool slots and eight build slots on every actor (D-045), saved with the pack;
+  starting layout; old saves get it with a problem noted (trap 6). [8, 9]
+- [x] The selected slot's tool, or bare hands, replaces `Actor.equipped` everywhere (trap 1).
+- [x] Breach refused without a selected pick, with the notice (D-174). [2]
+- [x] A tool entering the pack takes the first empty slot; dropping one empties its slot (trap 4).
+  [6]
+- [x] The bar at the bottom center under the carry bar; its contents follow build mode. [1, 3]
+- [x] Selection: `1`–`8`, click, wheel, pad LB / RB; 010's build-item keys absorbed. [1, 3]
+- [x] Tests: selection, the build-mode swap, the breach refusal, slot filling and emptying, NPCs
+  dig with their own tool, save and old save. [2, 3, 6, 8, 9]
 
-## D. The countdown
+## D. The inventory screen
 
-- [ ] A failing region's countdown, 45 s in the profile, ticking only in a running world (trap
-  5); regions that grow, shrink and split keep the oldest time (trap 3). [1, 2]
-- [ ] Saved with its level, resumed on load. [5]
-- [ ] The warning: cracks in three stages on failing tiles, and a notice; Marginal shows nothing
-  but amber in the overlay. [1]
-- [ ] Tests: a prop cancels it; it resumes after a load; it doesn't tick during a load; a split
-  region. [2, 5]
+- [x] A focus highlight: D-pad, arrows, hover and click; drop one and stack act on the focus. [4]
+- [x] A weight bar at the top; every row's weight; still sorted by value per kilo. [4]
+- [x] Tools and Build sections; assigning the focused entry to a slot (trap 7). [4]
+- [x] The take-this preview for drops in reach. [5]
+- [x] Tests: focus movement and wrap, assigning, the preview's number. [4, 5]
 
-## E. Collapse and rubble
+## E. Rebinds
 
-- [ ] A `RUBBLE` top kind: solid, not a support, not open to the flood, diggable at the profile's
-  rubble hardness (about 0.4 s with flint), yields nothing, a placeholder atlas cell (trap 6).
-- [ ] A countdown that ends fills its region with rubble through the world's tile gatekeeper;
-  anyone caught is moved to the nearest open tile, with a notice (D-163). [3]
-- [ ] What's under rubble is buried: fixtures and drops kept and saved, hidden and unusable until
-  cleared; a buried brazier gives no light (trap 4). [4]
-- [ ] Tests: collapse fills the region; an actor is moved; a ladder and a drop come back after
-  clearing; clearing yields nothing; rubble isn't a support. [3, 4]
+- [x] Take moves to pad A after interact (trap 5); keyboard `T` stays; the notice says it took. [5]
+- [x] `project.godot`: hotbar slots, wheel, LB / RB; take off LB; inventory assign on Y.
+- [x] Tests: A climbs at a ladder and takes elsewhere. [5]
 
 ## F. Done
 
-- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-- [ ] `python scripts/coverage.py` run; uncovered lines looked at (009 closed at 97.6%).
-- [ ] By hand: outcomes 1–6 walked in one sitting, launched outside the editor at least once.
-- [ ] Claude reviews the slice.
-- [ ] Claude writes `log/010-holding-it-up.md`.
-- [ ] Claude re-sketches [NEXT.md](./NEXT.md).
+- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
+- [x] `python scripts/coverage.py` run; uncovered lines looked at (010 closed at 96.6%).
+- [ ] By hand: outcomes 1–8 walked in one sitting, launched outside the editor at least once.
+- [x] Claude reviews the slice.
+- [x] Claude writes `log/011-tools-in-hand.md`.
+- [x] Claude re-sketches [NEXT.md](./NEXT.md).
 
 ---
 
 ### Not in this slice, worth knowing
 
-- **The upward cascade and reinforced floors** (cut from pre-alpha).
-- **Cut stone, iron-braced and ancestral columns** (their R bonuses).
-- **Damage and stun from a collapse**, which need health.
-- **The overlay's rings and ghosted suggestions** (digging-and-structure §4).
-- **Sound** for the countdown.
+- **The radial menu** (LT), the **hammer** (removal) and the **lantern** (D-pad ↑).
+- **Tool tiers in use, crafting and durability.**
+- **Blueprints** (ui-ux §7).
+- **Cut stone columns,** still the next support kind.

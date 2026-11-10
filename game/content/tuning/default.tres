@@ -13,6 +13,16 @@ hardness = Dictionary[int, float]({
 5: 6.4
 })
 ore_dig_multiplier = 1.5
+tool_multipliers = Dictionary[int, Dictionary]({
+2: {
+5: 0.5
+},
+3: {
+2: 0.4,
+3: 2.0,
+5: 1.0
+}
+})
 level_change_fade_seconds = 0.5
 levels_to_generate_on_new_game = Array[int]([0, 1])
 sense_radius = 7
@@ -25,7 +35,9 @@ breach_tool_multiplier = 1.2
 build_cursor_radius = 5
 carry_capacity_kg = 60.0
 starting_items = Dictionary[StringName, int]({
-&"timber": 10
+&"timber": 10,
+&"flint_pickaxe": 1,
+&"flint_shovel": 1
 })
 rock_wall_stone = 1
 ore_yield_min = 2

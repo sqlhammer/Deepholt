@@ -264,18 +264,21 @@ func test_the_preview_shows_the_cost() -> void:
 
 # --- the second item: a timber prop (D-165) ---
 
-func test_the_cursor_cycles_between_a_ladder_and_a_prop() -> void:
-	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "a ladder to begin with")
-	_cursor.cycle_item()
-	assert_eq(_cursor.item, ObjectKind.OBJECT.TIMBER_PROP, "then a prop")
-	_cursor.cycle_item()
-	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "and round again")
-	_cursor.select_item(ObjectKind.OBJECT.BRAZIER)
-	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "an item it can't place is ignored")
+# What the cursor places is the selected build slot (D-170, D-174)
+func test_the_cursor_places_the_selected_build_slot() -> void:
+	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "slot 1: a ladder to begin with")
+	_actor.hotbar.select_build(1)
+	assert_eq(_cursor.item, ObjectKind.OBJECT.TIMBER_PROP, "slot 2: a prop")
+	_actor.hotbar.select_build(2)
+	assert_eq(_cursor.item, ObjectKind.OBJECT.NULL, "slot 3: nothing")
+	assert_eq(_cursor.problem(), BuildCursor.PROBLEM.NOTHING_SELECTED, "and the preview says so")
+	assert_false(_cursor.place(), "nothing asked")
+	_actor.hotbar.assign_build(ObjectKind.OBJECT.LADDER, 2)
+	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "the ladder moved to slot 3")
 
 
 func test_a_prop_is_placed_on_open_floor_at_the_cursor_for_two_timber() -> void:
-	_cursor.select_item(ObjectKind.OBJECT.TIMBER_PROP)
+	_actor.hotbar.select_build(1)
 	_cursor.set_tile(Vector2i(3, 0))
 	assert_eq(_cursor.problem(), BuildCursor.PROBLEM.NONE, "valid on floor")
 	assert_true(_cursor.place(), "asked")
@@ -285,7 +288,7 @@ func test_a_prop_is_placed_on_open_floor_at_the_cursor_for_two_timber() -> void:
 
 
 func test_a_prop_preview_refuses_rock_a_taken_tile_and_the_dark() -> void:
-	_cursor.select_item(ObjectKind.OBJECT.TIMBER_PROP)
+	_actor.hotbar.select_build(1)
 	_cursor.set_tile(Vector2i(0, 4))
 	assert_eq(_cursor.problem(), BuildCursor.PROBLEM.TOO_DARK, "behind rock, unsensed")
 	_cursor.set_tile(HOLE)
@@ -298,7 +301,7 @@ func test_a_prop_preview_refuses_rock_a_taken_tile_and_the_dark() -> void:
 
 
 func test_the_prop_preview_agrees_with_the_gatekeeper() -> void:
-	_cursor.select_item(ObjectKind.OBJECT.TIMBER_PROP)
+	_actor.hotbar.select_build(1)
 	for x in range(-5, 6):
 		_cursor.set_tile(Vector2i(x, 0))
 		var valid: bool = _cursor.problem() == BuildCursor.PROBLEM.NONE
@@ -331,3 +334,23 @@ func test_the_quick_key_outside_build_mode_places_on_the_faced_tile() -> void:
 
 func test_the_prop_cost_is_shown() -> void:
 	assert_eq(Building.cost_text(_world.tuning, ObjectKind.OBJECT.TIMBER_PROP), "2 timber", "the cost")
+
+
+# --- what the cursor says it places (ui-ux §7) ---
+
+func test_the_cursor_names_what_it_places_and_its_cost() -> void:
+	assert_eq(_cursor.label_text(), "Ladder · 4 timber", "slot 1")
+	_actor.hotbar.select_build(1)
+	assert_eq(_cursor.label_text(), "Timber prop · 2 timber", "slot 2")
+	_actor.hotbar.select_build(2)
+	assert_eq(_cursor.label_text(), "", "an empty slot says nothing")
+
+
+func test_the_ghost_is_the_fixtures_own_art() -> void:
+	assert_eq(BuildCursor.ghost_texture(ObjectKind.OBJECT.TIMBER_PROP),
+		FixtureRenderer.TEXTURES[ObjectKind.OBJECT.TIMBER_PROP], "the prop's sprite")
+	assert_eq(BuildCursor.ghost_texture(ObjectKind.OBJECT.LADDER), FixtureRenderer.LADDER_TOP,
+		"a ladder seen down the hole")
+	assert_null(BuildCursor.ghost_texture(ObjectKind.OBJECT.NULL), "nothing for nothing")
+	for kind: int in Hotbar.BUILDABLE:
+		assert_ne(ObjectKind.display_name(kind), "", "every buildable has a name: %d" % kind)

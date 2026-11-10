@@ -345,7 +345,7 @@ func test_pressing_primary_begins_the_action_once() -> void:
 	assert_signal_emit_count(actor, "action_begun", 1,
 		"held across ticks, it begins once")
 	assert_eq(get_signal_parameters(actor, "action_begun"), ["dig"],
-		"with the equipped tool's verb")
+		"with the held tool's verb")
 
 
 func test_releasing_primary_ends_the_action_once() -> void:
@@ -424,7 +424,8 @@ func test_holding_dig_opens_the_faced_tile_on_screen() -> void:
 	# dig fails instead of looping forever, and retuning the tool or
 	# the rock doesn't break the test.
 	var rock: float = Digging.hardness_of(TuningProfile.default_profile(), TileKind.TOP.MINABLE_ROCK)
-	var dig_seconds: float = rock / actor.equipped.speed
+	var dig_seconds: float = rock / Digging.dig_power(TuningProfile.default_profile(),
+		actor.tool(), TileKind.TOP.MINABLE_ROCK)
 	var limit: int = ceili(dig_seconds * 60.0) + 10
 	actor.primary_action(true)
 	var ticks: int = 0

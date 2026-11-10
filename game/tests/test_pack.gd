@@ -162,7 +162,9 @@ func test_a_save_from_before_packs_loads_an_empty_pack() -> void:
 	world.level_at(0).level_tiles.set_top(0, 0, TileKind.TOP.OPEN)
 	var actor: Actor = SaveGame._deserialize_actor(data, 1, world)
 	autofree(actor)
-	assert_true(actor.pack.is_empty(), "no pack entry, an empty pack")
+	assert_eq(actor.pack.count_of(&"timber"), 0, "no pack entry, nothing saved")
+	assert_eq(actor.pack.to_save().keys(), ["flint_pickaxe", "flint_shovel"],
+		"only the tools a player saved before tools is given")
 
 
 # --- a new game (trap 6) ---
@@ -177,7 +179,11 @@ func _game() -> Node:
 func test_a_new_games_player_starts_with_ten_timber() -> void:
 	var game: Node = _game()
 	assert_eq(game.active_actor.pack.count_of(&"timber"), 10, "ten timber")
-	assert_eq(game.active_actor.pack.total_weight, 20.0, "20 kg")
+	assert_eq(game.active_actor.pack.count_of(&"flint_pickaxe"), 1, "a pick (D-169)")
+	assert_eq(game.active_actor.pack.count_of(&"flint_shovel"), 1, "and a shovel")
+	assert_eq(game.active_actor.pack.total_weight, 25.5, "20 kg of timber, 5.5 of tools")
+	assert_eq(game.active_actor.hotbar.tools.slice(0, 2), [&"flint_pickaxe", &"flint_shovel"],
+		"pick in 1, shovel in 2")
 
 
 func test_a_second_player_starts_empty() -> void:
@@ -200,9 +206,9 @@ func test_a_load_restores_the_pack_and_adds_nothing() -> void:
 func test_the_hud_shows_the_followed_actors_load() -> void:
 	var game: Node = _game()
 	var hud: CarryHud = game.get_node("CarryHud")
-	assert_eq(hud.text, "20 / 60 kg", "a new game")
+	assert_eq(hud.text, "25.5 / 60 kg", "a new game")
 	game.active_actor.pack.add(&"stone", 5)
-	assert_eq(hud.text, "35 / 60 kg", "follows the pack")
+	assert_eq(hud.text, "40.5 / 60 kg", "follows the pack")
 	await get_tree().process_frame
 
 

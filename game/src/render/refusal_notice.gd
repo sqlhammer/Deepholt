@@ -1,5 +1,5 @@
 class_name RefusalNotice
-extends CanvasLayer
+extends ScaledHud
 
 # Tells the player why their action was refused (D-141's feedback,
 # D-152): a line at the bottom of the screen, gone after a few
@@ -21,6 +21,7 @@ const BREACH_REASONS: Dictionary = {
 	World.BREACH_REFUSAL.LANDING_NOT_EXISTS: "Below that is past the edge of the next level.",
 	World.BREACH_REFUSAL.LANDING_BLOCKED: "Something below is in the way.",
 	World.BREACH_REFUSAL.TOOL_TOO_WEAK: "This floor is too hard for your tool.",
+	World.BREACH_REFUSAL.NEEDS_PICK: "Breaching needs a pick.",
 }
 
 const PLACE_REASONS: Dictionary = {
@@ -43,6 +44,7 @@ var _remaining: float = 0.0
 
 
 func _init() -> void:
+	super()
 	name = "RefusalNotice"
 	layer = 90
 	_label = Label.new()
@@ -50,11 +52,12 @@ func _init() -> void:
 	_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	_label.offset_bottom = -24
+	# Above the carry bar and the hotbar
+	_label.offset_bottom = -48
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	_label.add_theme_constant_override("outline_size", 6)
-	add_child(_label)
+	_label.add_theme_constant_override("outline_size", 2)
+	root.add_child(_label)
 
 
 func watch(view: View) -> void:
@@ -71,6 +74,7 @@ func _on_shown_world_changed(world: World, _depth: int) -> void:
 		_world.climb_refused.disconnect(_on_climb_refused)
 		_world.ceiling_failing.disconnect(_on_ceiling_failing)
 		_world.actor_moved_clear.disconnect(_on_actor_moved_clear)
+		_world.took.disconnect(_on_took)
 	_world = world
 	if _world != null:
 		_world.breach_refused.connect(_on_breach_refused)
@@ -78,6 +82,7 @@ func _on_shown_world_changed(world: World, _depth: int) -> void:
 		_world.climb_refused.connect(_on_climb_refused)
 		_world.ceiling_failing.connect(_on_ceiling_failing)
 		_world.actor_moved_clear.connect(_on_actor_moved_clear)
+		_world.took.connect(_on_took)
 
 
 # Build mode's own preview refusals (D-154): too dark, not a hole.
@@ -101,6 +106,22 @@ func _on_ceiling_failing(depth: int, _tiles: Array[Vector2i]) -> void:
 func _on_actor_moved_clear(actor: Actor, _from: WorldPos, _to: WorldPos) -> void:
 	if _view == null or actor != _view.actor: return
 	show_text("The ceiling came down on you.")
+
+
+# The take key says what it did (D-167), so pad A taking instead of
+# climbing is never a mystery.
+func _on_took(actor: Actor, items: Dictionary) -> void:
+	if _view == null or actor != _view.actor: return
+	show_text(took_text(items))
+
+
+static func took_text(items: Dictionary) -> String:
+	if items.is_empty(): return "Nothing in reach to take."
+	var parts: PackedStringArray = []
+	for id: StringName in items:
+		var item: Item = ItemRegistry.find(id)
+		parts.append("%d %s" % [items[id], item.display_key if item != null else String(id)])
+	return "Took %s." % ", ".join(parts)
 
 
 func _on_climb_refused(actor: Actor, _tile: WorldPos) -> void:

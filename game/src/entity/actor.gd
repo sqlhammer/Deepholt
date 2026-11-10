@@ -20,7 +20,28 @@ var action_intent: bool = false
 # held through a dig never turns into a breach of the floor it opened.
 var breach_intent: bool = false
 # What this actor carries (D-157). Every actor has one, NPCs too (P5).
-var pack: Pack = Pack.new()
+# A load replaces it, so the hotbar follows the new one.
+var pack: Pack:
+	get: return _pack
+	set(value):
+		_pack = value
+		hotbar.watch(_pack)
+		grid.watch(_pack, hotbar)
+var _pack: Pack
+# What this actor holds (D-170): its tool slots and build slots, kept
+# agreeing with the pack. Replaced on a load like the pack; set the
+# pack first, or the slots are reconciled against the old one.
+var hotbar: Hotbar = Hotbar.new():
+	set(value):
+		hotbar = value
+		hotbar.watch(_pack)
+		grid.watch(_pack, hotbar)
+# Where each thing in the pack sits in the inventory's grid (D-175),
+# following the pack and the hotbar. Replaced on a load, last.
+var grid: PackGrid = PackGrid.new():
+	set(value):
+		grid = value
+		grid.watch(_pack, hotbar)
 var aim_vector: Vector2 = Vector2.ZERO
 var facing: Vector2i = Vector2i(0,1) # Default = Down
 
@@ -32,8 +53,6 @@ var speed: float:
 	get: return _get_speed()
 @export var feet_box: Rect2 = Rect2(-5, 1, 10, 6)
 
-# TODO: Temporary equip. Refactor later.
-var equipped: ToolData = preload("res://src/entity/tools/flint_pickaxe.tres")
 
 const facing_frames: Dictionary = {
 	"UP": 1,
@@ -57,6 +76,16 @@ var _depth: int = -1
 var depth: int:
 	get: return _depth
 	set(value): set_depth(value)
+
+
+func _init() -> void:
+	pack = Pack.new()
+
+
+# What this actor digs with: its selected tool slot's tool, or bare
+# hands (D-171).
+func tool() -> ToolData:
+	return hotbar.tool()
 
 
 static func create(p_scene: PackedScene, p_name: String, p_world_pos: WorldPos, p_level: Level, p_kind: int, p_actor_id: int = -1) -> Actor:
@@ -131,8 +160,8 @@ func primary_action(p_action_intent: bool) -> void:
 	action_intent = p_action_intent
 	
 	if prior_intent != action_intent:
-		if action_intent: emit_signal("action_begun", equipped.verb)
-		else: emit_signal("action_ended", equipped.verb)
+		if action_intent: emit_signal("action_begun", tool().verb)
+		else: emit_signal("action_ended", tool().verb)
 
 
 func breach(p_breach_intent: bool) -> void:
@@ -140,6 +169,14 @@ func breach(p_breach_intent: bool) -> void:
 		var capability: CapabilityBreach = get_node_or_null("Capabilities/CapabilityBreach")
 		if capability: capability.reset()
 	breach_intent = p_breach_intent
+
+
+# Whether the interact button would do something here: a ladder to
+# use, whether or not the load lets it be climbed. Pad A takes from
+# the ground only when this is false (D-167, slice 011 trap 5).
+func has_interaction() -> bool:
+	if current_level == null or current_WorldPos == null: return false
+	return Ladder.target_for(current_level, current_WorldPos, facing) != null
 
 
 # The interact button (D-101). Today it only uses ladders: the Ladder
@@ -169,7 +206,7 @@ func _primary_action(delta: float) -> void:
 	if not action_intent: 
 		return
 	
-	var verb: String = equipped.verb
+	var verb: String = tool().verb
 	match verb:
 		"dig": _dig(delta, _get_target_tile())
 
@@ -181,13 +218,13 @@ func _get_target_tile() -> WorldPos:
 
 func _dig(delta: float, target_tile: WorldPos) -> void: 
 	var capability: CapabilityDig = get_node_or_null("Capabilities/CapabilityDig")
-	if capability: capability.dig(delta, equipped.speed, target_tile, current_level)
+	if capability: capability.dig(delta, tool(), target_tile, current_level)
 
 
 func _breach(delta: float) -> void:
 	if not breach_intent: return
 	var capability: CapabilityBreach = get_node_or_null("Capabilities/CapabilityBreach")
-	if capability: capability.breach(delta, equipped.speed, _get_target_tile(), current_level)
+	if capability: capability.breach(delta, tool(), _get_target_tile(), current_level)
 
 
 func _physics_process(delta: float) -> void:

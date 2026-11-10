@@ -1,5 +1,7 @@
 extends GutTest
 
+const Worlds = preload("res://tests/worlds.gd")
+
 # SaveGame: live levels to plain save data and back (D-109), the file
 # it writes, the slot folders it finds, and what a refused load leaves
 # behind. The data holds plain types only, so it can be read back with
@@ -914,6 +916,7 @@ func _actor_entry(depth: int) -> Dictionary:
 		"actor_kind": 1,
 		"worldpos": {"x": 3, "y": -2, "depth": depth},
 		"facing": {"x": -1, "y": 0},
+		"hotbar": {},
 	}
 
 
@@ -940,6 +943,42 @@ func test_an_actor_on_a_depth_that_did_not_load_is_skipped() -> void:
 	assert_eq(actors, [] as Array[Actor], "no actor without its level")
 	assert_push_warning("didn't load")
 	assert_eq(_orphans(), before, "and none was left orphaned")
+
+
+# --- load_game: the hotbar (D-170, slice 011 trap 6) ---
+
+func test_a_players_hotbar_round_trips() -> void:
+	var world: World = autofree(Worlds.with_levels([0]))
+	world.level_at(0).level_tiles.set_top(0, 0, TileKind.TOP.OPEN)
+	var player: Actor = Actor.create(Global.actor_packed_scene, "P", WorldPos.new(0, 0, 0),
+		world.level_at(0), ActorKind.ACTOR.PLAYER)
+	world.add_actor(player)
+	player.pack.add(&"flint_pickaxe", 1)
+	player.pack.add(&"flint_shovel", 1)
+	player.hotbar.assign_tool(&"flint_shovel", 5)
+	player.hotbar.select_tool(5)
+	player.hotbar.assign_build(ObjectKind.OBJECT.LADDER, 3)
+	var entry: Dictionary = SaveGame._serialize_actors(world.actors())[player.actor_id]
+	var back: Actor = autofree(SaveGame._deserialize_actor(entry, 99, world))
+	assert_eq(back.hotbar.tools, player.hotbar.tools, "the tool slots")
+	assert_eq(back.hotbar.builds, player.hotbar.builds, "the build slots")
+	assert_eq(back.tool(), player.tool(), "the shovel, selected")
+	assert_eq(back.pack.count_of(&"flint_pickaxe"), 1, "and nothing added")
+
+
+func test_a_save_from_before_tools_gives_the_starting_tools_and_says_so() -> void:
+	var old: Dictionary = _actor_entry(0)
+	old.erase("hotbar")
+	_write_save({"levels": SaveGame._serialize_levels(_generated_world()), "actors": {10: old}})
+	var loaded_game: SaveGame.LoadedGame = SaveGame.load_game(TEST_SLOT)
+	var actor: Actor = loaded_game.world.actors()[0]
+	assert_eq(actor.pack.count_of(&"flint_pickaxe"), 1, "a pick")
+	assert_eq(actor.pack.count_of(&"flint_shovel"), 1, "a shovel")
+	assert_eq(actor.tool(), ItemRegistry.get_item(&"flint_pickaxe").tool, "the pick in slot 1")
+	assert_eq(loaded_game.problems.size(), 1, "one report")
+	assert_string_contains(loaded_game.problems[0], "saved before tools were carried")
+	assert_push_warning("saved before tools")
+	loaded_game.free_world()
 
 
 # --- load_game: the fixture report (D-113) ---
