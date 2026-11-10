@@ -46,7 +46,7 @@ All are on by default in a debug build, and each can be switched off from F3.
 | Channel | Records |
 |---|---|
 | `moves` | Each tile step; each level change; every `move_to` with its cause and caller; any jump of more than one tile in a frame, flagged when no `move_to` explains it |
-| `world` | Dig, breach, chop, build, drop and take requests, their results, and refusals with the reason by name |
+| `world` | The world's answers: digs, breaches, fellings, placements, drops and takes done, and refusals with the reason by name. Not the requests: the world answers inside its own handler, before a later listener hears the request, and every request ends in one answer |
 | `input` | Each action pressed or released, and the device scheme in use |
 | `save` | Saves, loads and world swaps: what asked, the file, the time taken, problems |
 | `support` | Regions starting to fail, collapses, actors moved clear |

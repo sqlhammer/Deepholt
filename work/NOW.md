@@ -8,7 +8,8 @@
 and approved planning and building it in Agent mode. Forks settled as
 [D-193](../docs/design-decisions.md#d-193--slice-013-is-a-debug-log-the-log-is-a-static-class-that-never-writes-on-the-games-thread)
 to D-197. Design: [logging-and-telemetry §1](../docs/tech/logging-and-telemetry.md). Built on a
-`slice-013` branch from `fix-world-edge` (PR #9), so it carries D-192.*
+`slice-013` branch from `fix-world-edge` (PR #9), so it carries D-192. **Built, 1106 tests
+green; waiting on the by-hand walk** ([log](./log/013-what-just-happened.md)).*
 
 ## Where we are
 
