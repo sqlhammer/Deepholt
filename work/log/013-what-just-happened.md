@@ -1,6 +1,7 @@
 # 013 — What just happened
 
-*Written by Claude, 2026-11-10.*
+*Written by Claude, 2026-11-10. Accepted by Derik the same day; the by-hand walk below was not
+reported done.*
 
 > You breach a floor and find yourself forty tiles back, where you came into the level. Nothing
 > said why. Next time, Ctrl+F9 puts the last ten minutes in a folder: every step, every key, every

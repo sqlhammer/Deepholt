@@ -1,6 +1,7 @@
 # Next
 
-Sketches, not commitments. Slice 013, what just happened, is the debug log (in NOW.md). Slice 012, a world worth digging, is closed and merged
+Sketches, not commitments. Slice 013, what just happened, the debug log, is accepted
+([log](./log/013-what-just-happened.md)); PR #10 waits on #9. Slice 012, a world worth digging, is closed and merged
 ([log](./log/012-a-world-worth-digging.md)); its by-hand walk, like 008 to 011's, was not reported.
 Cheap to throw away; expect them to change.
 
