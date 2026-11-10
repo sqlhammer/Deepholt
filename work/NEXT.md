@@ -1,8 +1,9 @@
 # Next
 
 Sketches, not commitments. Slice 013, what just happened, the debug log, is accepted
-([log](./log/013-what-just-happened.md)); PR #10 waits on #9. Slice 014, telemetry, is built
-([log](./log/014-how-it-plays-for-other-people.md)) and waits on the by-hand walk. Slice 012, a world worth digging, is closed and merged
+([log](./log/013-what-just-happened.md)); PR #10 waits on #9. Slice 014, telemetry, is closed
+([log](./log/014-how-it-plays-for-other-people.md)); PRs #9, #10 and #11 wait to be merged, in that
+order. Slice 012, a world worth digging, is closed and merged
 ([log](./log/012-a-world-worth-digging.md)); its by-hand walk, like 008 to 011's, was not reported.
 Cheap to throw away; expect them to change.
 

@@ -1,6 +1,7 @@
 # 014 — How it plays for other people
 
-*Written by Claude, 2026-11-10.*
+*Written by Claude, 2026-11-10. Closed by Derik the same day; the by-hand walk below is left
+for a later acceptance test.*
 
 > A tester plays for an hour on their own machine and quits. One zip is waiting for them to send.
 > Back home, a script reads it: two trips below, the second one forty minutes and overloaded half
