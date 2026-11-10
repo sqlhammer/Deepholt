@@ -250,8 +250,8 @@ func _draw() -> void:
 	# What it is and what it costs, always, beside the cursor (ui-ux §7)
 	var label: String = label_text()
 	if label != "":
-		draw_string(ThemeDB.fallback_font, corner + Vector2(size + 2, size - 4), label,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, 8, color)
+		draw_string(ScaledHud.FONT, corner + Vector2(size + 2, size - 4), label,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, ScaledHud.FONT_SIZE, color)
 	if valid:
 		draw_rect(Rect2(corner, Vector2(size, size)), color, false, 1.0)
 		draw_polyline(PackedVector2Array([corner + Vector2(4, 8), corner + Vector2(7, 11),

@@ -1,16 +1,13 @@
-# Slice 011 checklist
+# Slice 012 checklist
 
 Working list for [NOW.md](./NOW.md). **Agent mode for the whole slice** (Derik, 2026-11-09), on a
-`slice-011` branch: Claude builds, one or more commits per section, the suite green before each;
+`slice-012` branch: Claude builds, one or more commits per section, the suite green before each;
 Derik merges the PR and verifies by hand. Numbers in brackets are the brief's outcomes.
 
-Ordered so the game runs at the end of every section: tools as items first (nothing visible
-changes), then the hotbar (you can swap), then the inventory screen, then the rebinds.
+Ordered so the game runs at the end of every section: the small changes first (R, ladders), then
+the axe and trees (a reason to be on the Surface), then the Surface itself, then what's below.
 
-Slice 010's checklist is in git history (last at the 010 close).
-
-**Closed 2026-11-09** by Derik, merged into `main` after seeing the hotbar fix and the grid
-inventory in play. No item-by-item walk was reported, so the by-hand items stay unticked.
+Slice 011's checklist is in git history (last at the 011 close).
 
 ---
 
@@ -18,67 +15,69 @@ inventory in play. No item-by-item walk was reported, so the by-hand items stay 
 
 *Settled with Derik, 2026-11-09.*
 
-- [x] Scope: tools in hand; reverses D-077 (D-173).
-- [x] Pad A takes when there's nothing to interact with (D-167).
-- [x] Speed is power × a class-and-kind multiplier; only a pick breaches (D-168).
-- [x] Tools are pack items; only the player drops one (D-169).
-- [x] One hotbar, tools outside build mode, buildables inside (D-170).
-- [x] X stays breach; tools fill slots themselves; an empty slot is bare hands (D-171).
-- [x] The inventory screen: focus, assigning, weights, the preview (D-172).
-- [x] Breach needs the pick selected; build slots rearrangeable (D-174).
-- [x] The numbers and the bindings in the brief, approved with it.
+- [x] Scope (D-179).
+- [x] The Surface: meadow, rock, road through a cut to the ramp, from the seed (D-180).
+- [x] Trees: a fixture, axe only, timber (D-181).
+- [x] The axe; axe, pick, shovel, no timber (D-182).
+- [x] Copper and tin in small veins at tunable shares (D-183), on −2 only (D-187).
+- [x] Two or more hand-made caves per level, placed by seed (D-184).
+- [x] No preloaded ladders (D-185).
+- [x] R halved, rounding up (D-186).
+- [x] The numbers in the brief, approved with it.
 
-## B. Tools as items
+## B. Small changes
 
-- [x] Tools are items with a class and power, one owner (trap 2); `flint_pickaxe` and `shovel`
-  item resources; bare hands as a class, not an item.
-- [x] The class-and-kind multiplier table and tool weights in the profile (D-168).
-- [x] New games start with the pick and the shovel in the pack.
-- [x] Overflow never drops a tool (trap 3). [7]
-- [x] Tests: the table for every class and kind; the pick's speeds unchanged except rubble; an
-  overflow keeps tools. [1, 7, 9]
+- [x] R table 0, 4, 4, 3, 3, 2, 2, 2; support tests follow. [5]
+- [x] Greyseam's ladder removed; tests that climbed it build their own. [4]
 
-## C. The hotbar
+## C. The axe and trees
 
-- [x] Eight tool slots and eight build slots on every actor (D-045), saved with the pack;
-  starting layout; old saves get it with a problem noted (trap 6). [8, 9]
-- [x] The selected slot's tool, or bare hands, replaces `Actor.equipped` everywhere (trap 1).
-- [x] Breach refused without a selected pick, with the notice (D-174). [2]
-- [x] A tool entering the pack takes the first empty slot; dropping one empties its slot (trap 4).
-  [6]
-- [x] The bar at the bottom center under the carry bar; its contents follow build mode. [1, 3]
-- [x] Selection: `1`–`8`, click, wheel, pad LB / RB; 010's build-item keys absorbed. [1, 3]
-- [x] Tests: selection, the build-mode swap, the breach refusal, slot filling and emptying, NPCs
-  dig with their own tool, save and old save. [2, 3, 6, 8, 9]
+- [x] A flint axe item and tool class, its multipliers; the starting kit. [2]
+- [x] A TREE fixture kind: blocks walking, placeholder art, a renderer texture.
+- [x] Chopping: the primary action facing a tree; axe only, refused otherwise; work in the
+  profile; the world fells it and yields timber, overflowing to the ground. [2]
+- [x] Tests: chop time, yield, refusal, overflow, a felled tree's tile is walkable. [2]
 
-## D. The inventory screen
+## D. The Surface
 
-- [x] A focus highlight: D-pad, arrows, hover and click; drop one and stack act on the focus. [4]
-- [x] A weight bar at the top; every row's weight; still sorted by value per kilo. [4]
-- [x] Tools and Build sections; assigning the focused entry to a slot (trap 7). [4]
-- [x] The take-this preview for drops in reach. [5]
-- [x] Tests: focus movement and wrap, assigning, the preview's number. [4, 5]
+- [x] Generation steps, in order: meadow ground, rock disc and quarter, the road and its cut,
+  dirt patches, the spawn, trees (trap 1). [1, 3]
+- [x] Tests: road open to the ramp, spawn on the road, trees off the road and rock, the quarter,
+  same seed same Surface, another seed another. [1, 3, 6]
 
-## E. Rebinds
+## E. Ores and caves
 
-- [x] Take moves to pad A after interact (trap 5); keyboard `T` stays; the notice says it took. [5]
-- [x] `project.godot`: hotbar slots, wheel, LB / RB; take off LB; inventory assign on Y.
-- [x] Tests: A climbs at a ladder and takes elsewhere. [5]
+- [x] Tin: ore id, item, icon. [4]
+- [x] Cave prefabs (five shapes) and their placement: 2–3 per level, sealed, apart (trap 4). [4]
+- [x] Veins by share into −2's minable rock; none on −1 (trap 4, D-187). [4]
+- [x] Tests: −2's shares near the profile's, −1 still has no ore, caves sealed and apart, caves
+  never judged. [4, 6]
+
+## G. A sharp HUD and the window (added 2026-11-10)
+
+- [x] The HUD at a whole-number scale, on a frame over the game picture of at least 576 × 360
+  (D-188). [7]
+- [x] Press Start 2P at 8 px, imported without anti-aliasing, hinting or sub-pixel positions;
+  its license beside it (D-189). [7]
+- [x] 32 px cells and slots, six grid rows shown with scroll arrows, bare weights, wrapped words;
+  the weight bar and refusals hide under the open inventory (D-190). [7]
+- [x] Exclusive full screen at launch; F11 to a window and back (D-191). [7]
+- [x] Tests: the scale is whole and the frame never under 576 × 360 on common screens; the font
+  imported sharp; the board fits the smallest frame; wrapping; the F11 modes and window size.
+- [x] Screenshots taken from the running game at 1280 × 800 and 1920 × 1080.
 
 ## F. Done
 
 - [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-- [x] `python scripts/coverage.py` run; uncovered lines looked at (010 closed at 96.6%).
-- [ ] By hand: outcomes 1–8 walked in one sitting, launched outside the editor at least once.
+- [x] `python scripts/coverage.py` run; uncovered lines looked at (011 closed at 96.1%).
+- [ ] By hand: outcomes 1–5 walked in one sitting, launched outside the editor at least once.
 - [x] Claude reviews the slice.
-- [x] Claude writes `log/011-tools-in-hand.md`.
+- [x] Claude writes `log/012-a-world-worth-digging.md`.
 - [x] Claude re-sketches [NEXT.md](./NEXT.md).
 
 ---
 
 ### Not in this slice, worth knowing
 
-- **The radial menu** (LT), the **hammer** (removal) and the **lantern** (D-pad ↑).
-- **Tool tiers in use, crafting and durability.**
-- **Blueprints** (ui-ux §7).
-- **Cut stone columns,** still the next support kind.
+- **Regrowing trees,** coal and iron, −1's own resources, caves below −2.
+- **A real tree sprite** and real ore icons: placeholders, as before.

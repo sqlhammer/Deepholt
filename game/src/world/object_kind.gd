@@ -14,6 +14,8 @@ const OBJECT: Dictionary = {
 	"BRAZIER": 3,
 	# A timber prop (D-165): a support, and it blocks its tile.
 	"TIMBER_PROP": 4,
+	# A tree on the Surface (D-181): felled with an axe for timber.
+	"TREE": 5,
 }
 
 
@@ -24,10 +26,11 @@ const NAMES: Dictionary = {
 	OBJECT.LADDER: "Ladder",
 	OBJECT.BRAZIER: "Brazier",
 	OBJECT.TIMBER_PROP: "Timber prop",
+	OBJECT.TREE: "Tree",
 }
 
 # The kinds that keep anyone from walking onto their tile (D-165).
-const BLOCKS_WALKING: Array[int] = [OBJECT.TIMBER_PROP]
+const BLOCKS_WALKING: Array[int] = [OBJECT.TIMBER_PROP, OBJECT.TREE]
 
 # The kinds that hold a ceiling up (D-163): their tile counts as a
 # support for the support rule. A timber prop's R bonus is +0; the

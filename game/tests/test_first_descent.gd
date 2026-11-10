@@ -142,6 +142,7 @@ func test_the_real_levels_generate_without_problems() -> void:
 func test_a_ladder_with_no_hole_above_it_is_a_problem_between_levels() -> void:
 	var world: World = _world()
 	var lower: Level = LevelGenerator.generate_into(world, 2)
+	preload("res://tests/worlds.gd").place_ladder(world, 2, HOLE)
 	world.level_at(1).level_tiles.set_ground(HOLE.x, HOLE.y, TileKind.GROUND.ROCK)
 	var problems: Array[String] = LevelGenerator.problems_between(world.level_at(1), lower)
 	assert_eq(problems.size(), 1, "the ladder under the filled hole: %s" % [problems])
@@ -199,9 +200,10 @@ func test_f3_lists_the_generated_depths_and_the_last_time() -> void:
 	assert_string_starts_with(overlay.levels_text(), "Surface, -1, -2  (last ", "-2 and its time")
 
 
-# -1 is shown before -2 exists; the ladder's top appears in -1's hole
-# once -2 is generated (the lesson's trap: the renderer listened to
-# nothing).
+# -1 is shown before -2 exists; once -2 arrives the renderer listens
+# to it, so a ladder built there shows its top in -1's hole (the
+# lesson's trap: the renderer listened to nothing). Generation places
+# no ladder itself (D-185).
 func test_ladder_tops_appear_when_the_level_below_arrives() -> void:
 	var world: World = add_child_autofree(LevelGenerator.generate_world(0))
 	var actor: Actor = _actor(world, BESIDE_HOLE)
@@ -210,6 +212,7 @@ func test_ladder_tops_appear_when_the_level_below_arrives() -> void:
 	var renderer: FixtureRenderer = add_child_autofree(FixtureRenderer.new())
 	renderer.watch(view)
 	assert_eq(renderer._top_sprites.size(), 0, "no -2, so no ladder under the hole yet")
-	var lower: Level = world.generate_below(1)
-	var ladder: Fixture = lower.level_fixtures.of_kind(ObjectKind.OBJECT.LADDER)[0]
-	assert_not_null(renderer.top_sprite_for(ladder.id), "its top shows once -2 arrives")
+	world.generate_below(1)
+	assert_eq(renderer._top_sprites.size(), 0, "-2 arrives with no ladder (D-185)")
+	var ladder: Fixture = preload("res://tests/worlds.gd").place_ladder(world, 2, HOLE)
+	assert_not_null(renderer.top_sprite_for(ladder.id), "one built there shows its top")

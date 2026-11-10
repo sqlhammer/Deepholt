@@ -974,7 +974,8 @@ func test_a_save_from_before_tools_gives_the_starting_tools_and_says_so() -> voi
 	var actor: Actor = loaded_game.world.actors()[0]
 	assert_eq(actor.pack.count_of(&"flint_pickaxe"), 1, "a pick")
 	assert_eq(actor.pack.count_of(&"flint_shovel"), 1, "a shovel")
-	assert_eq(actor.tool(), ItemRegistry.get_item(&"flint_pickaxe").tool, "the pick in slot 1")
+	assert_eq(actor.pack.count_of(&"flint_axe"), 1, "an axe (D-182)")
+	assert_eq(actor.tool(), ItemRegistry.get_item(&"flint_axe").tool, "the axe in slot 1")
 	assert_eq(loaded_game.problems.size(), 1, "one report")
 	assert_string_contains(loaded_game.problems[0], "saved before tools were carried")
 	assert_push_warning("saved before tools")
@@ -1689,11 +1690,12 @@ func test_a_load_returns_a_world_outside_the_tree_with_its_levels_and_actors() -
 # load brought back (D-130).
 func test_saved_counters_are_restored() -> void:
 	var world: World = _world_with_player()
-	world.fixture_ids.restore(40)
+	# Past every id generation drew: the Surface's trees take hundreds
+	world.fixture_ids.restore(5000)
 	world.actor_ids.restore(9)
 	_save_world(world)
 	var loaded_game: SaveGame.LoadedGame = SaveGame.load_game(TEST_SLOT)
-	assert_eq(loaded_game.world.fixture_ids.peek(), 40, "the fixture counter carries on")
+	assert_eq(loaded_game.world.fixture_ids.peek(), 5000, "the fixture counter carries on")
 	assert_eq(loaded_game.world.actor_ids.peek(), 9, "and the actor counter")
 	loaded_game.free_world()
 

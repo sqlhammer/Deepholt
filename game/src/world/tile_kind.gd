@@ -65,6 +65,8 @@ const ORE: Dictionary = {
 	"NULL": 0,
 	"NONE": 1,
 	"COPPER": 2,
+	# Tin (D-183), on -2 beside copper. Never reused.
+	"TIN": 3,
 }
 
 # The top kinds that can be dug: the one owner of "diggable". How hard

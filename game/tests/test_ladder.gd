@@ -106,6 +106,8 @@ func test_the_worked_example_from_the_lesson() -> void:
 	# A new world starts at the Surface and -1 (D-143); the ladder is
 	# on -2
 	LevelGenerator.generate_into(_world, 2)
+	# Generation places no ladder (D-185): one built under the hole
+	preload("res://tests/worlds.gd").place_ladder(_world, 2)
 	_assert_at(_target(14, -1, 1, Vector2i(0, -1)), WorldPos.new(14, -2, 2), "down from (14, -1) facing north")
 	_assert_at(_target(14, -2, 2, Vector2i(0, -1)), WorldPos.new(15, -2, 1),
 		"still facing north, (14, -3) is rock: up at (15, -2), east")

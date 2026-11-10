@@ -37,6 +37,7 @@ const TOP_CHARS: Dictionary = {
 const ORE_CHARS: Dictionary = {
 	".": TileKind.ORE.NONE,
 	"c": TileKind.ORE.COPPER,
+	"t": TileKind.ORE.TIN,
 	"0": TileKind.ORE.NONE,
 }
 

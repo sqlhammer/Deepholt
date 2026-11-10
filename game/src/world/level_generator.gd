@@ -118,11 +118,21 @@ static func _tiles_with_ground(tiles: LevelTiles, kind: int) -> Array[Vector2i]:
 # to each step that needs it in a fixed order. Two steps each calling
 # rng_for() would get the same sequence and correlated results.
 # `fixture_ids` is the counter of the world the level is built for.
-static func generate_level(recipe: LevelRecipe, world_seed: int, fixture_ids: IdAllocator) -> Level:
+# `tuning` is the profile of the world it's for; the default without
+# one.
+static func generate_level(recipe: LevelRecipe, world_seed: int, fixture_ids: IdAllocator,
+		tuning: TuningProfile = null) -> Level:
+	if tuning == null: tuning = TuningProfile.default_profile()
 	var level: Level = Global.level_packed_scene.instantiate()
 	level.setup(recipe.bound.depth, world_seed, recipe.bound)
 	var rng: RandomNumberGenerator = rng_for(level)
+	var surface: SurfaceGeneration.Layout = null
+	if recipe.generator == &"surface": surface = SurfaceGeneration.before(level, rng, tuning)
 	apply_fixed_placements(level, recipe, fixture_ids)
+	if surface != null: SurfaceGeneration.after(level, surface, rng, tuning, fixture_ids)
+	# Caves before ore, so veins run in the rock around them (trap 4)
+	RockGeneration.place_caves(level, recipe, rng, tuning)
+	RockGeneration.place_veins(level, rng, tuning)
 	place_world_spawns(level, recipe, rng, fixture_ids)
 	return level
 
@@ -136,7 +146,7 @@ static func generate_into(world: World, depth: int) -> Level:
 	var recipe: LevelRecipe = LevelRecipes.TABLE.get_recipe(depth)
 	if not recipe: return null
 	
-	var level: Level = generate_level(recipe, world.world_seed, world.fixture_ids)
+	var level: Level = generate_level(recipe, world.world_seed, world.fixture_ids, world.tuning)
 	world.add_level(level)
 	
 	return level

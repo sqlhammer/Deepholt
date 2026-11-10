@@ -3765,3 +3765,200 @@ pad drop-one (A).
 - 011's "Y, then LB/RB, then A" way of assigning is gone: picking up and putting down replaces it.
 
 *Considered:* X drop one and Y drop all; hold A to drop.
+
+---
+
+### D-179 — Slice 012 is polish: a Surface worth walking, trees, ores and caves below, gentler supports
+**Decided** (by Derik, planning slice 012, 2026-11-09). Moves "Getting it home" to 013.
+
+- **In:** the Surface's meadow, rock, road and trees (D-180, D-181); the axe and a new starting
+  kit (D-182); ores and caves on −1 and −2 (D-183, D-184); no preloaded ladders (D-185); the
+  support radius halved (D-186).
+- **Out:** regrowing trees, more ores than tin, caves below −2, crafting.
+
+*Why:* the mechanics so far need a world that gives them something to do before more are added.
+
+---
+
+### D-180 — The Surface is an open meadow around a rock mass, with a road to the ramp, drawn from the seed
+**Decided** (by Derik, planning slice 012, 2026-11-09). Amends the Surface's recipe (D-084's
+fixed placement).
+
+- **Grass and dirt are open, walkable ground** under open sky. **Rock is solid:** a mass about 20
+  tiles around the ramp down, and one quarter of the level.
+- **A winding dirt road** crosses the meadow to the rock's edge, **and continues as a cleared
+  passage through the rock right up to the ramp.** The world spawn is at the road's far end, out
+  on the meadow.
+- **The road, the rock quarter and the trees are drawn from the world seed**, the same for the
+  same seed. The rock around the entrance is always there.
+
+*Why:* the first thing a player sees should be a place, with the way in visible from the start.
+
+*Considered:* a solid Surface of dirt and rock (trees only where dug); open rock floor with
+outcrops; a fixed, hand-made Surface; a road that stops 20 tiles short of the ramp, leaving the
+rest to dig (Derik's first framing, changed in planning).
+
+---
+
+### D-181 — A tree is a fixture, chopped with an axe only, for timber
+**Decided** (by Derik, planning slice 012, 2026-11-09).
+
+- **A tree is a new fixture kind** standing on open grass. It blocks walking.
+- **Chopping is the primary action, held facing a tree.** **Only an axe chops;** anything else is
+  refused ("Chopping needs an axe."), as only a pick breaches (D-174).
+- **A felled tree is gone and yields timber** into the pack, overflowing to the ground like a dig
+  (D-160). Trees don't regrow yet.
+
+*Considered:* a tree as a top kind, cut like a dig, any tool slowly; a tree that regrows.
+
+---
+
+### D-182 — The axe; a new game starts with an axe, a pick and a shovel, and no timber
+**Decided** (by Derik, planning slice 012, 2026-11-09). Amends D-156's ten starting timber.
+
+- **A flint axe:** a tool class of its own, an item like the pick and shovel (D-169).
+- **The starting kit is the axe in slot 1, the pick in 2, the shovel in 3, and no timber.** The
+  first job is chopping timber for a ladder or a prop.
+
+*Considered:* the axe and pick only; the axe alone.
+
+---
+
+### D-183 — −1 and −2 have copper and tin in small veins, at tunable shares
+**Decided** (by Derik, planning slice 012, 2026-11-09). **Reverses Derik's earlier choice to keep
+−1 free of copper** (slice 006).
+
+- **Tin is a new ore,** beside copper, with its own item.
+- **Ore comes in small veins** of a few tiles, scattered through the rock by the seed. **Each ore's
+  share of the rock is set per depth in the tuning profile.**
+
+*Considered:* copper only; copper, tin and coal; single scattered tiles; large rare veins.
+
+---
+
+### D-184 — Each of −1 and −2 has at least two natural caves, hand-made and placed by the seed
+**Decided** (by Derik, planning slice 012, 2026-11-09).
+
+- **A small set of hand-made cave prefabs.** Each level places at least two, chosen and placed by
+  the world seed, sealed in rock and away from the fixed placements and each other: found by
+  digging.
+- Caves are natural, so the support rule never judges them (D-164).
+
+*Considered:* caves grown by a rule; caves at fixed spots.
+
+---
+
+### D-185 — No ladder is placed by generation; ramps stay
+**Decided** (by Derik, planning slice 012, 2026-11-09).
+
+- **The hand-made levels lose their ladders.** A hole with no ladder under it stays legal (D-089);
+  the ramps are the way between levels until a player builds a ladder.
+
+---
+
+### D-186 — The support radius is halved, rounding up
+**Decided** (by Derik, planning slice 012, 2026-11-09). Amends
+[D-163](#d-163--slice-010-is-holding-it-up-the-support-rule-collapse-timber-props-the-overlay)'s R
+table.
+
+- **R by depth becomes −1: 4, −2: 4, −3: 3, −4: 3, −5: 2, −6: 2, −7: 2** (the Surface still
+  has none). Red starts at 11 wide on −1. A 2-wide tunnel still never fails anywhere.
+
+*Why:* the room needed before a collapse was too large to ever feel the rule.
+
+*Considered:* rounding down (4, 3, 3, 2, 2, 1, 1); a flat 4 everywhere.
+
+---
+
+### D-187 — Ore is on −2 only; −1 stays free of metal ore, as the strata table says
+**Decided** (by Derik, planning slice 012, 2026-11-09). **Corrects
+[D-183](#d-183--1-and-2-have-copper-and-tin-in-small-veins-at-tunable-shares)**, which put copper
+and tin on −1 as well, and said it reversed only Derik's slice-006 choice. In fact it contradicted
+the design docs, which Claude hadn't checked:
+[world-and-generation §2](./world-and-generation.md) gives −1 Rootshelf clay, flint, root fibre
+and cave fungus ("safe by design") and −2 Greyseam copper, tin and coal;
+[pre-alpha-scope](./pre-alpha-scope.md) and the tier spine in
+[crafting-and-progression §2](./systems/crafting-and-progression.md) agree (T0 at −1, bronze at
+−2).
+
+- **Copper and tin veins on −2 only,** at tunable shares (D-183's veins and tuning stand).
+- **−1 keeps no metal ore,** and slice 006's test pinning "Rootshelf has no copper" stays.
+- **Caves stay on both levels** (D-184).
+- Coal, the third of −2's signature resources, waits for a use.
+
+*Considered:* a trace of copper on −1; copper and tin on both levels, amending the strata table.
+
+---
+
+### D-188 — The HUD is drawn at a whole-number scale on its own frame, over the game picture
+**Decided** (by Derik, during slice 012, 2026-11-10). Amends how slice 011's screen layers are
+scaled; the game picture is unchanged.
+
+- **The HUD is scaled by the largest whole number that leaves it a frame of at least 576 × 360
+  HUD pixels,** never under 1, and covers the game picture, not its black bars. On the Steam
+  Deck (D-044) that is 2, a 640 × 400 frame, where the game is scaled by 2.5; at 1920 × 1080 it is
+  3, a 576 × 360 frame.
+- **Everything on the HUD is laid out to fit 576 × 360,** anchored to the frame's edges or its
+  center, so the frame may be any size at or above that.
+- The HUD's pixels may be a little finer than the game's (2 against 2.5 on the Deck).
+
+*Why:* the HUD was scaled with the game, by 2.5 on the Deck, so no HUD pixel was a whole number
+of screen pixels and its text was soft.
+
+*Considered:* drawing text at the window's full resolution (sharp but smooth, out of keeping
+with the pixel art); keeping the HUD's scale equal to the game's.
+
+---
+
+### D-189 — The HUD's text is Press Start 2P, at 8 px
+**Decided** (by Derik, during slice 012, 2026-11-10).
+
+- **Press Start 2P** (SIL Open Font License 1.1; the license ships beside it in
+  `content/fonts/`), drawn only at 8 px, the size its pixel grid is drawn on, with anti-aliasing,
+  hinting and sub-pixel positioning off on import. The build cursor's label in the world uses it
+  too.
+- The F3 debug overlay keeps the engine's font.
+
+*Why:* a bitmap-style font drawn at its own size and scaled by a whole number stays sharp.
+
+*Considered:* Tiny5 and Micro 5 (mixed case, narrower), Silkscreen (capitals only), Jersey 10
+(its pixel grid needs a font size of 18.67, which Godot can't draw).
+
+---
+
+### D-190 — Inventory cells are 32 px with six rows shown; a cell's weight is a bare number
+**Decided** (by Derik, during slice 012, 2026-11-10). Amends
+[D-175](#d-175--the-inventory-is-a-grid-the-pack-in-8-x-8-build-slots-down-the-right-tool-slots-along-the-bottom)'s grid board.
+
+- **Cells and slots are 32 px** (34 px apart), the hotbar's slots too: the number on top, the
+  icon under it, and in a grid cell the weight under that.
+- **Six of the grid's rows show at once;** the rest scroll, with an arrow at the edge that has
+  more. The build column keeps its eight slots and runs past the tool row; its last two lead left
+  to the tool row's end.
+- **A cell's weight is in kilos without the unit,** whole kilos from 10 up, so four characters
+  always fit. Per-item weight stays always visible (ui-ux §5).
+- The words under the board wrap at 480 px: the focused thing, the take preview over two lines
+  at most, the keys.
+- The weight bar and refusal notices hide while the inventory is open, as the hotbar already
+  did: the board now covers most of the frame.
+
+*Why:* at 8 px a letter, "2.5kg" is 40 px, wider than the old 24 px cell; ui-ux §5 rules out
+moving the weight off the cell.
+
+*Considered:* a second, narrower font (Tiny5) for the numbers in cells, keeping 24 px cells and
+all eight rows.
+
+---
+
+### D-191 — The game launches in exclusive full screen; F11 switches to a window and back
+**Decided** (by Derik, during slice 012, 2026-11-10).
+
+- **Exclusive full screen at launch,** where it was borderless full screen: Windows drew its
+  taskbar over the borderless window.
+- **F11 toggles to a window** at the project's window size (1280 × 800), shrunk to fit the
+  screen's usable area if it must be and centered, **and back** to exclusive full screen.
+- On the Steam Deck the mode makes no difference: SteamOS runs every game full screen.
+
+*Why:* the taskbar hid the hotbar on a laptop.
+
+*Considered:* staying borderless and working around the taskbar.

@@ -223,6 +223,8 @@ func test_tops_are_only_for_the_level_below_the_shown_one() -> void:
 func test_the_hand_made_hole_on_minus_one_shows_the_ladder_top() -> void:
 	_world = add_child_autofree(LevelGenerator.generate_world(0))
 	LevelGenerator.generate_into(_world, 2)
+	# Generation places no ladder (D-185): one built under the hole
+	preload("res://tests/worlds.gd").place_ladder(_world, 2)
 	var actor: Actor = Actor.create(Global.actor_packed_scene, "Test", WorldPos.new(14, -1, 1), _world.level_at(1), ActorKind.ACTOR.PLAYER)
 	_world.add_actor(actor)
 	var view: View = View.new()

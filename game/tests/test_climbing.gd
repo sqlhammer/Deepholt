@@ -5,6 +5,7 @@ extends GutTest
 # moves itself (D-093). Uses the hand-made levels: the hole on -1 and
 # the ladder on -2, both at (14, -2).
 
+const Worlds = preload("res://tests/worlds.gd")
 const BESIDE_HOLE: Vector2i = Vector2i(14, -1)
 const LADDER: Vector2i = Vector2i(14, -2)
 
@@ -17,6 +18,8 @@ func before_each() -> void:
 	# A new world starts with the Surface and -1 only (D-143). The
 	# ladder is on -2, so it's built here rather than by an arrival.
 	LevelGenerator.generate_into(_world, 2)
+	# Generation places no ladder (D-185): one built under -1's hole
+	Worlds.place_ladder(_world, 2)
 
 
 func after_each() -> void:

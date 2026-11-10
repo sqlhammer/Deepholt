@@ -46,13 +46,23 @@ func test_one_level_per_recipe_in_order() -> void:
 		assert_eq(levels[index].depth, index, "level %d is depth %d" % [index, index])
 
 
+# The start room is stamped into the Surface's rock (D-180): its open
+# tiles stay open and its ramp is where the prefab puts it. The road
+# may cut through the room's walls, so the walls aren't pinned.
 func test_the_surface_recipe_stamps_the_start_prefab() -> void:
 	var level: Level = _generate(LevelRecipes.TABLE.get_recipe(0))
-	var expected: LevelTiles = LevelTiles.new(LevelRecipes.TABLE.get_bounds(0))
-	LevelGridLoader.stamp(expected, TilePrefabRegistry.get_prefab(&"surface_start"), Vector2i.ZERO)
-	# assert_true, not assert_eq: a failing assert_eq prints every byte.
-	assert_true(level.level_tiles.top == expected.top, "the Surface is surface_start at the axis")
-	assert_true(level.level_tiles.ground == expected.ground, "ground too")
+	var prefab: TilePrefab = TilePrefabRegistry.get_prefab(&"surface_start")
+	var top: Dictionary = LevelGridLoader._to_anchored_tiles(prefab.top)
+	var ground: Dictionary = LevelGridLoader._to_anchored_tiles(prefab.ground)
+	var open: int = 0
+	for tile: Vector2i in top:
+		if top[tile] != "." and top[tile] != "0": continue
+		open += 1
+		assert_eq(level.level_tiles.get_top(tile.x, tile.y), TileKind.TOP.OPEN, "%s open" % tile)
+		if ground[tile] == "e":
+			assert_eq(level.level_tiles.get_ground(tile.x, tile.y), TileKind.GROUND.RAMP_DOWN_E,
+				"the ramp at %s" % tile)
+	assert_gt(open, 20, "the room was checked")
 
 
 func test_a_recipe_with_no_placements_is_the_default_fill() -> void:

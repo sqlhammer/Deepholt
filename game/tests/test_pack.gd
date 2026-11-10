@@ -163,7 +163,7 @@ func test_a_save_from_before_packs_loads_an_empty_pack() -> void:
 	var actor: Actor = SaveGame._deserialize_actor(data, 1, world)
 	autofree(actor)
 	assert_eq(actor.pack.count_of(&"timber"), 0, "no pack entry, nothing saved")
-	assert_eq(actor.pack.to_save().keys(), ["flint_pickaxe", "flint_shovel"],
+	assert_eq(actor.pack.to_save().keys(), ["flint_axe", "flint_pickaxe", "flint_shovel"],
 		"only the tools a player saved before tools is given")
 
 
@@ -176,14 +176,17 @@ func _game() -> Node:
 	return game
 
 
-func test_a_new_games_player_starts_with_ten_timber() -> void:
+# D-182: an axe, a pick and a shovel, and no timber: the first job is
+# chopping it.
+func test_a_new_games_player_starts_with_three_tools_and_no_timber() -> void:
 	var game: Node = _game()
-	assert_eq(game.active_actor.pack.count_of(&"timber"), 10, "ten timber")
+	assert_eq(game.active_actor.pack.count_of(&"timber"), 0, "no timber")
+	assert_eq(game.active_actor.pack.count_of(&"flint_axe"), 1, "an axe")
 	assert_eq(game.active_actor.pack.count_of(&"flint_pickaxe"), 1, "a pick (D-169)")
 	assert_eq(game.active_actor.pack.count_of(&"flint_shovel"), 1, "and a shovel")
-	assert_eq(game.active_actor.pack.total_weight, 25.5, "20 kg of timber, 5.5 of tools")
-	assert_eq(game.active_actor.hotbar.tools.slice(0, 2), [&"flint_pickaxe", &"flint_shovel"],
-		"pick in 1, shovel in 2")
+	assert_eq(game.active_actor.pack.total_weight, 8.0, "2.5 + 3 + 2.5 kg")
+	assert_eq(game.active_actor.hotbar.tools.slice(0, 3),
+		[&"flint_axe", &"flint_pickaxe", &"flint_shovel"], "axe in 1, pick in 2, shovel in 3")
 
 
 func test_a_second_player_starts_empty() -> void:
@@ -195,10 +198,11 @@ func test_a_second_player_starts_empty() -> void:
 
 func test_a_load_restores_the_pack_and_adds_nothing() -> void:
 	var game: Node = _game()
-	game.active_actor.pack.remove(&"timber", 4)
+	game.active_actor.pack.add(&"timber", 6)
 	assert_true(game.save_game(), "saved")
 	assert_eq(game.load_game(), game.REFUSAL_REASON.NONE, "loaded")
 	assert_eq(game.active_actor.pack.count_of(&"timber"), 6, "what was saved, nothing more")
+	assert_eq(game.active_actor.pack.count_of(&"flint_axe"), 1, "one axe, not a second")
 
 
 # --- the HUD (D-159) ---
@@ -206,9 +210,9 @@ func test_a_load_restores_the_pack_and_adds_nothing() -> void:
 func test_the_hud_shows_the_followed_actors_load() -> void:
 	var game: Node = _game()
 	var hud: CarryHud = game.get_node("CarryHud")
-	assert_eq(hud.text, "25.5 / 60 kg", "a new game")
+	assert_eq(hud.text, "8 / 60 kg", "a new game")
 	game.active_actor.pack.add(&"stone", 5)
-	assert_eq(hud.text, "40.5 / 60 kg", "follows the pack")
+	assert_eq(hud.text, "23 / 60 kg", "follows the pack")
 	await get_tree().process_frame
 
 

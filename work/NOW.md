@@ -1,152 +1,139 @@
-# Slice 011 — Tools in hand
+# Slice 012 — A world worth digging
 
-> Press 2 and the pick in your hands becomes a shovel: dirt flies, rock barely scratches. Open
-> the pack with the pad alone, move the shovel to slot 5, see what the stone at your feet would
-> weigh before you take it. Drop your pick, and you're digging with your hands.
+> You wake on a meadow at the end of a dirt road. Trees stand around you; the road winds toward
+> a mass of grey rock and through a cut in it, down to the ramp. You have an axe and no timber.
+> Below, the rock hides caves nobody made, and further down, at the Greyseam, it is seamed with
+> copper and tin.
 
 *Proposed by Claude, 2026-11-09, for Derik's approval. Scope and every fork settled in planning
-([D-167](../docs/design-decisions.md#d-167--pad-a-takes-from-the-ground-when-theres-nothing-to-interact-with)
-to D-174). Agent mode on a `slice-011` branch. **Approved by Derik the same day, with the numbers
-and bindings below as proposed** (the pick at 0.8 s on rubble, the wheel included). **Built, 1008 tests green; waiting on the
-by-hand walk** ([log](./log/011-tools-in-hand.md)). One binding changed while building: the
-inventory's sections switch with the arrow keys and D-pad ←/→, not Tab and LB/RB, because Tab
-closes the inventory; the log says why. **Then, at Derik's request, the inventory became a grid**
-(D-175 to D-178): outcome 4 is now "the grid with the pad alone: move the focus over the grid and
-both bars, pick the shovel up off the tool row and put it in slot 5, swap two cells, sort with
-R3".*
+([D-179](../docs/design-decisions.md#d-179--slice-012-is-polish-a-surface-worth-walking-trees-ores-and-caves-below-gentler-supports)
+to D-187; D-187 corrects D-183: ore on −2 only). Agent mode on a `slice-012` branch. **Approved
+by Derik the same day, with the numbers below as proposed.** **Built, 1074 tests green.
+Closed and merged 2026-11-10** at Derik's word ([log](./log/012-a-world-worth-digging.md)); the
+by-hand walk was not reported, so its boxes stay unticked. A sharp HUD and the
+window (D-188 to D-191) were added on 2026-11-10, at Derik's request.*
 
 ## Where we are
 
-Slice 010 is merged ([log](./log/010-holding-it-up.md)); **no by-hand walk of 008, 009 or 010 has
-been reported.** A player carries a weighted pack, drops and takes, builds ladders and props, and
-digs with one fixed tool, a flint pick (`Actor.equipped`, D-077). Build mode picks its item with
-`1` / `2` and pad RB; the inventory (Tab / Start) is a minimal list.
+Slice 011 is merged ([log](./log/011-tools-in-hand.md)). The Surface is solid rock around a small
+open start; −1 and −2 are hand-made rooms in solid rock, with no ore on −1 and only the hand-made
+room's few copper tiles on −2, and −2's landing comes with a ladder. Timber exists only as the
+ten a new game starts with. The support rule fails a room 19 wide on −1.
 
-**What 011 adds:**
-- **Tools are pack items** with a weight; only the player drops one, never an overflow (D-169).
-- **A shovel** beside the pick, and **bare hands** for an empty slot (D-171). Speed is power times
-  a multiplier for the tool's class and the tile's kind (D-168). **Only a selected pick breaches**
-  (D-174).
-- **One eight-slot hotbar** at the bottom center: tools outside build mode, buildables inside it
-  (D-170). `1`–`8`, a click, the mouse wheel, pad LB/RB.
-- **An inventory screen** with a focus highlight for the pad and keys, assigning to slots, a weight
-  bar, every row's weight, and the take-this preview (D-172).
-- **Pad A takes** when there's nothing to interact with (D-167); LB/RB go to the hotbar.
+**What 012 adds:**
+- **The Surface** (D-180): open grass and dirt, a rock mass ~20 tiles around the ramp and one
+  rock quarter, a seeded winding road that runs through a cut in the rock to the ramp, the spawn
+  at its far end.
+- **Trees** (D-181): a fixture on the meadow, chopped with the axe only, for timber.
+- **The axe and the kit** (D-182): axe, pick, shovel; no timber.
+- **Below:** copper and tin veins on −2 only (D-183, D-187); at least two sealed natural caves on
+  each of −1 and −2 (D-184).
+- **No preloaded ladders** (D-185), and **R halved** (D-186).
+- **Added mid-slice (2026-11-10): a sharp HUD and the window.** The HUD at a whole-number scale
+  on its own frame (D-188), in Press Start 2P (D-189), with 32 px cells and six rows shown in the
+  inventory (D-190); exclusive full screen at launch and F11 for a window (D-191).
 
 ## What should be true when you stop
 
 By hand, unless marked:
 
-1. A new game shows the hotbar with the pick in 1 and the shovel in 2. `2` (or a click on slot 2,
-   or the wheel, or pad RB) selects the shovel: dirt digs about twice as fast, rock much slower.
-2. With the shovel selected, `R` / pad X refuses: "Breaching needs a pick." Select the pick and
-   it breaches.
-3. Press `B`: the bar shows ladder and prop, selected the same way. Press `B` again: the tools
-   come back, with the same one selected.
-4. Open the inventory with the pad alone: the D-pad moves a highlight; every row shows its weight;
-   a weight bar heads the screen. Move the shovel to slot 5, and the ladder to build slot 3.
-5. Stand on drops: the inventory's preview shows the load after taking them. Pad A (away from a
-   ladder) takes them, with a notice saying so.
-6. Drop the pick from the inventory: its slot empties, and digging with it selected is bare hands
-   (slow, no breach). Walk back over it: it returns to the first empty slot.
-7. Fill the pack past full with stone: the overflow drops stone, never a tool.
-8. Save and relaunch: the slots, the selection and the build slots are kept.
-9. *Automated:* the multiplier table for every class and kind; an NPC digs with its own selected
-   tool (no player singleton, D-045); an old save with no hotbar loads with the starting layout.
+1. A new game starts on a meadow at the end of a dirt road, with trees around. The road winds to
+   a mass of rock and through a cleared cut in it to the ramp. One quarter of the Surface is rock.
+2. The hotbar holds the axe, pick and shovel; the pack has no timber. Facing a tree with the axe,
+   holding the action fells it in about 3 s for 4 timber. With the pick: "Chopping needs an axe."
+3. A new world (a new seed) has a different road, rock quarter and trees.
+4. Digging on −1 finds no ore but sooner or later breaks into a cave. On −2, copper and tin in
+   small veins, and caves too. No ladder stands below the hole on −1.
+5. A room 11 wide on −1 goes red in the middle; 9 wide stays amber at most.
+6. *Automated:* the road reaches the ramp and is open all the way; the spawn is on the road; no
+   tree on the road or in rock; trees on open grass only; −2's ore shares near the profile's
+   numbers; −1 has no ore; at least two caves per level, sealed, not overlapping the fixed
+   placements; caves never judged; the same seed builds the same world; a save from 011 still
+   loads.
+7. The HUD's text and icons are sharp, with no soft edges, on the Deck's 1280 × 800 and on a
+   1080p screen; the inventory fits on screen with its six rows, the build column and the words
+   under it. The game opens full screen with no taskbar over it; F11 gives a window and back.
 
 ## Mode
 
-**Agent**, for the whole slice (Derik, 2026-11-09), on a `slice-011` branch with small commits,
-**one or more per section** (010's log: stage by section, even when files overlap), the suite
-green before each; Derik merges the PR. Claude stops for anything new with long-term consequences.
+**Agent**, for the whole slice (Derik, 2026-11-09), on a `slice-012` branch with commits per
+section, the suite green before each; Derik merges the PR. Claude stops for anything new with
+long-term consequences.
 
 ## What you're deciding
 
-Every fork was settled on 2026-11-09 (D-167 to D-174). **The numbers and the bindings below were
-approved with the brief,** each put to Derik as its own question.
+Every fork was settled on 2026-11-09 (D-179 to D-187). **Still yours, as part of approving this
+brief: the numbers.** All of them go in the tuning profile.
 
-**Proposed numbers** (all in the profile, D-135):
-
-| | Rock | Dirt | Rubble | Notes |
-|---|---|---|---|---|
-| Pick, power 16 | ×1 (0.375 s) | ×1 (0.25 s) | **×0.5 (0.8 s)** | Today's speeds, except rubble |
-| Shovel, power 16 | ×0.4 (0.94 s) | ×2 (0.125 s) | ×1 (0.4 s) | Can't breach |
-| Bare hands, power 8 | ×1 (0.75 s) | ×1 (0.5 s) | ×1 (0.8 s) | Can't breach |
-
-Ore takes 1.5× its rock's time, as today. **Rubble gets slower with the pick** (0.4 s today, set
-in 010): the tuning appendix says 0.4 s *with a shovel*, so the shovel takes that number and the
-pick earns its "wrong tool" penalty. Say if you'd rather keep the pick at 0.4 s.
-
-Weights: **pick 3 kg, shovel 2.5 kg** (5.5 of the 60 kg pack). Trade value 1 each, a placeholder
-like 008's.
-
-**Proposed bindings, checked against `project.godot`:**
-
-| Action | Keyboard / mouse | Pad | Note |
-|---|---|---|---|
-| Select slot | `1`–`8`, click a slot, wheel | LB / RB (previous / next) | Replaces 010's build-item keys and RB |
-| Take | `T` (stays) | **A**, when nothing to interact with | Moves off LB (D-167) |
-| Breach | `R` | X | Settled for good (D-171) |
-| Inventory focus | arrow keys, hover | D-pad | |
-| Assign focused item to a slot | `1`–`8` while focused | Y, then LB / RB to choose, A to confirm, B to cancel | Y is build mode outside the inventory; inside it's free |
-| Drop one / drop stack | `X` / `Z` (stay) | A / X (stay) | Inside the inventory, A drops; outside, A interacts or takes |
-| Build-slot section | Tab between "Tools" and "Build" in the inventory | LB / RB switch section while not assigning | Where build slots are rearranged (D-174) |
+| What | Proposed | Why |
+|---|---|---|
+| Rock around the ramp | a disc of radius 20 | D-180's "about 20" |
+| Rock quarter | one of four, by seed, of the 90-radius Surface | D-180 |
+| Road | 2 tiles wide, from ~70 tiles out, winding (a seeded walk that bends every 6–12 tiles) | Reads as a road, not a corridor |
+| Dirt on the meadow | the road, plus scattered patches (~10% of the meadow) | "Dirt and grass" |
+| Trees | ~4% of open grass, not within 2 of the road or the spawn | Plenty to chop, room to walk |
+| Chopping | tree work 48 at axe power 16: **3 s** | A deliberate act, shorter than a breach |
+| Timber per tree | **4** | One ladder per tree, two props |
+| Axe | flint, power 16, 2.5 kg; digs rock ×0.25, dirt ×0.5, rubble ×0.5 | Fells trees; a poor digger |
+| Copper share of −2's rock | 3% | Ore when you dig, not in every wall |
+| Tin share of −2's rock | 2% | Rarer than copper |
+| Ore on −1 | none | D-187 |
+| Vein size | 3–8 tiles | D-183's small veins |
+| Tin ore | 5 kg, value 6 (as copper; tuning appendix §1) | Placeholder value, like 008's |
+| Caves per level | 2–3 of 5 hand-made shapes, ≥ 12 tiles from the fixed rooms and each other | D-184 |
+| R by depth | 0, 4, 4, 3, 3, 2, 2, 2 | D-186 |
 
 ## Already settled
 
-- **The weight pillar:** a weight bar, every item's weight visible, sort by value per kilo, the
-  preview ([ui-ux §5](../docs/ui-ux-and-controls.md), [D-013](../docs/design-decisions.md)).
-- **Tool classes and power** ([content-schema](../docs/tech/content-schema.md),
-  [tuning appendix](../docs/tuning-appendix.md), D-081's bare hands at 8).
-- **The pick is the one hard gate on descent** ([crafting-and-progression §4](../docs/systems/crafting-and-progression.md)).
-- **Mouse parity:** no reach, precision or information the pad lacks (ui-ux §3).
-- **No player singleton** (D-045): the hotbar belongs to an actor.
+- **What each stratum holds** ([world-and-generation §2](../docs/world-and-generation.md), the
+  tier spine): −1 has no metal ore; −2 is copper, tin and coal (D-187).
+- **Levels are generated from recipes, deterministically from the world seed** (D-084, slice
+  002's trap 8): the same seed, the same world.
+- **Ramps come in pairs, both under open tops** (D-095); a hole with no ladder is legal (D-089).
+- **Only what players dig is judged** (D-164); the Surface has no ceiling (010).
+- **Fixtures go through the gatekeeper; yields overflow to the ground** (D-159, D-160).
 - **Every number in the profile** (D-135); **format v1 edited in place** (D-133).
 
 ## Traps
 
-### 1. `Actor.equipped` is read in many places
+### 1. The Surface is generated now, not stamped
 
-Dig, breach, the action signals and the save all read one preloaded `ToolData`. Replacing it with
-"the selected slot's tool, or bare hands" has to reach every reader at once, and the tests that
-assume a flint pick have to say which tool they hold. A grep for `equipped` is the checklist.
+Today the Surface is one prefab on solid rock. The meadow, rock, road, trees and spawn become
+generation steps in a fixed order, each drawing from the level's one generator (D-084). A step
+that draws a different number of values shifts every step after it, so a change to the road
+changes the trees: tests pin rules, not tile-for-tile layouts.
 
-### 2. `ToolData` and `Item` are two resources today
+### 2. The road must reach the ramp, open all the way
 
-A tool must be an item (weight, stack, registry) *and* have a class and power. Either `Item`
-grows tool fields or a tool item points at its tool data. One owner, not a copy of power in two
-places.
+A seeded walk can wander off or double back. The road is built from waypoints toward the ramp
+and checked: every road tile is open, the last one touches the ramp's tile, and the spawn is on
+the first.
 
-### 3. Overflow must never take a tool
+### 3. Trees are many fixtures
 
-009's yield path drops what doesn't fit. Tools never arrive as yields today, but a picked-up
-tool that doesn't fit (take past 100%) is the same path. The rule belongs in one place.
+~4% of the meadow is several hundred trees, each a fixture with a sprite and an id. The fixture
+renderer, the save and the blocked set all take them; the generator must not place one on the
+road, in rock, on the spawn, or where the gatekeeper would refuse it.
 
-### 4. A hotbar slot points at an item, and items move
+### 4. Ore and caves after the fixed rooms
 
-Dropping the selected tool empties its slot; taking it back puts it in the first empty slot, not
-necessarily its old one (D-171). A slot must never point at an item the pack no longer has, and
-two identical tools must each have a slot.
+Caves are stamped before ore, away from the fixed placements, and sealed (a rock margin all
+round). Veins go only into minable rock on −2, never into a room's open tiles. −1 gets caves and
+nothing else (D-187), and slice 006's "Rootshelf has no copper" test stays.
 
-### 5. Pad A now does two things
+### 5. Saves from 011
 
-Outside the inventory A interacts, then takes; inside it, it drops one. The input handler's order
-decides which, and a wrong order (take before a ladder) changes how climbing feels. The notice
-says which happened.
+An 011 save holds its levels whole, so it loads as it was: no trees, the old Surface. Only new
+worlds get the new generation. A level generated later (−2 on first descent, D-143) uses the new
+rules in an old world, which is fine.
 
-### 6. Old saves
+### 6. Tests built on the hand-made levels
 
-A save from 010 has an equipped path and no hotbar. It loads with the starting layout (pick in 1,
-shovel in 2, and the tools added to the pack), and the problems list says so.
-
-### 7. Two meanings of a slot key
-
-`1`–`8` select a slot, but inside the inventory they assign the focused item. The handler must
-check the inventory first, or pressing 3 to assign also switches tools.
+The climbing tests use −2's ladder; the support tests and others assume R = 8; tests assume ten
+starting timber and the pick in slot 1. Each changes with its decision, and says which.
 
 ## Carried into this slice
 
-- **008's, 009's and 010's by-hand walks**, not reported.
-- **010's open numbers:** "18 wide goes red" is 19 under the rule; countdowns tick only on levels
-  a player is on.
-- **Deferred:** the radial menu, the hammer, the lantern, tiers, crafting, durability, blueprints.
+- **By-hand walks of 008 to 011,** not reported item by item.
+- **Deferred:** regrowing trees, coal and iron, −1's own resources (clay, flint, root fibre,
+  fungus), caves below −2, crafting, the rate machine.

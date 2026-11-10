@@ -41,6 +41,11 @@ signal drop_requested(actor: Actor, id: StringName, count: int)
 signal take_requested(actor: Actor)
 signal items_dropped(actor: Actor, tile: WorldPos, id: StringName, count: int)
 signal items_picked_up(actor: Actor, tile: WorldPos, id: StringName, count: int)
+# Felling a tree (D-181): asked when the work is done, answered with
+# the tree gone and its timber given, or a refusal.
+signal chop_requested(actor: Actor, tile: WorldPos)
+signal tree_felled(actor: Actor, tile: WorldPos)
+signal chop_refused(actor: Actor, tile: WorldPos, reason: CHOP_REFUSAL)
 # The take key's answer (D-167): everything it took, item id -> count,
 # empty when nothing was in reach. Auto-pickup doesn't announce this.
 signal took(actor: Actor, items: Dictionary)
@@ -91,6 +96,13 @@ enum BREACH_REFUSAL {
 	# The actor isn't holding a pick (D-174). Asked first: the tool in
 	# hand is the answer whatever floor is faced.
 	NEEDS_PICK,
+}
+
+# Why a tree wasn't felled (D-181).
+enum CHOP_REFUSAL {
+	NONE,
+	NO_TREE,
+	NEEDS_AXE,
 }
 
 enum FIXTURE_VERB {
@@ -167,6 +179,7 @@ func _init(p_tuning: TuningProfile = null) -> void:
 	breach_requested.connect(_on_breach_requested)
 	drop_requested.connect(_on_drop_requested)
 	take_requested.connect(_on_take_requested)
+	chop_requested.connect(_on_chop_requested)
 	place_requested.connect(_on_place_requested)
 	remove_requested.connect(_on_remove_requested)
 	move_requested.connect(_on_move_requested)
@@ -489,20 +502,59 @@ func _dig_tile(actor: Actor, tile: WorldPos) -> void:
 		var tiles: LevelTiles = level.level_tiles
 		var found: Dictionary[StringName, int] = Digging.yield_of(tuning,
 			tiles.get_top(tile.x, tile.y), tiles.get_ore(tile.x, tile.y), _yields())
-		# Into the pack up to the fill limit; the rest drops where it was
-		# dug (D-160)
-		for id: StringName in found:
-			var fits: int = Carrying.fits(tuning, actor.pack, id, found[id], tuning.auto_fill_limit)
-			actor.pack.add(id, fits)
-			if found[id] > fits:
-				level.level_drops.add(Vector2i(tile.x, tile.y), id, found[id] - fits)
-				items_dropped.emit(actor, tile, id, found[id] - fits)
+		_give(actor, level, tile, found)
 	# Marked before it opens, so the support rule hears of an excavated
 	# tile (D-164)
 	level.level_tiles.mark_excavated(tile.x, tile.y)
 	level.level_tiles.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
 	level.level_tiles.set_ore(tile.x, tile.y, TileKind.ORE.NONE)
 	tile_dug.emit(actor, tile)
+
+
+# A yield into the actor's pack up to the fill limit; the rest drops
+# where it came from (D-160).
+func _give(actor: Actor, level: Level, tile: WorldPos, found: Dictionary[StringName, int]) -> void:
+	for id: StringName in found:
+		var fits: int = Carrying.fits(tuning, actor.pack, id, found[id], tuning.auto_fill_limit)
+		actor.pack.add(id, fits)
+		if found[id] > fits:
+			level.level_drops.add(Vector2i(tile.x, tile.y), id, found[id] - fits)
+			items_dropped.emit(actor, tile, id, found[id] - fits)
+
+
+# --- felling trees (D-181) ---
+
+# The tree standing on `tile`, or null.
+func tree_at(tile: WorldPos) -> Fixture:
+	var level: Level = level_at(tile.depth)
+	if level == null: return null
+	for fixture: Fixture in level.level_fixtures.at(Vector2i(tile.x, tile.y)):
+		if fixture.kind == ObjectKind.OBJECT.TREE: return fixture
+	return null
+
+
+# Why felling the tree on `tile` would be refused, or NONE. A read:
+# the capability asks before the work, so the wrong tool hears at once.
+func chop_problem(tile: WorldPos, actor: Actor) -> CHOP_REFUSAL:
+	if tree_at(tile) == null: return CHOP_REFUSAL.NO_TREE
+	if actor != null and not Digging.chops(actor.tool()): return CHOP_REFUSAL.NEEDS_AXE
+	return CHOP_REFUSAL.NONE
+
+
+# The tree is removed like any fixture, and its timber given like a
+# dig's yield.
+func _on_chop_requested(actor: Actor, tile: WorldPos) -> void:
+	var reason: CHOP_REFUSAL = chop_problem(tile, actor)
+	if reason != CHOP_REFUSAL.NONE:
+		chop_refused.emit(actor, tile, reason)
+		return
+	var level: Level = level_at(tile.depth)
+	var tree: Fixture = level.level_fixtures.remove(tree_at(tile).id)
+	fixture_removed.emit(actor, tree)
+	if actor != null and tuning.tree_timber > 0:
+		var timber: Dictionary[StringName, int] = {&"timber": tuning.tree_timber}
+		_give(actor, level, tile, timber)
+	tree_felled.emit(actor, tile)
 
 
 func _yields() -> RandomNumberGenerator:

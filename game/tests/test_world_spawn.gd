@@ -45,7 +45,8 @@ func test_the_same_seed_gives_the_same_spawn() -> void:
 	assert_true(a.tile.equals(b.tile), "same tile both times: %s, %s" % [a.tile, b.tile])
 
 
-func test_the_surface_spawn_is_in_the_start_room_on_open_floor() -> void:
+# The spawn is at the road's far end, out on the meadow (D-180).
+func test_the_surface_spawn_is_on_the_road_out_on_the_meadow() -> void:
 	var level: Level = LevelGenerator.generate_level(LevelRecipes.TABLE.get_recipe(0), 0,
 		IdAllocator.new())
 	autofree(level)
@@ -54,7 +55,8 @@ func test_the_surface_spawn_is_in_the_start_room_on_open_floor() -> void:
 	assert_true(TileKind.is_passable(tiles.get_top(spawn.tile.x, spawn.tile.y),
 		tiles.get_ground(spawn.tile.x, spawn.tile.y)), "an actor could stand there")
 	assert_false(TileKind.is_ramp(tiles.get_ground(spawn.tile.x, spawn.tile.y)), "not the ramp")
-	assert_lte(spawn.tile.x * spawn.tile.x + spawn.tile.y * spawn.tile.y, 64, "within 8 of the anchor")
+	assert_eq(tiles.get_ground(spawn.tile.x, spawn.tile.y), TileKind.GROUND.DIRT, "on the road")
+	assert_gt(Vector2(spawn.tile.x, spawn.tile.y).length(), 50.0, "out on the meadow")
 
 
 func test_only_passable_non_ramp_tiles_are_candidates() -> void:

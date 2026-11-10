@@ -1,12 +1,15 @@
 # Next
 
-Sketches, not commitments. Slice 011, tools in hand, is done and merged
-([log](./log/011-tools-in-hand.md)); no item-by-item walk of 008 to 011 has been reported. Cheap
-to throw away; expect them to change.
+Sketches, not commitments. Slice 012, a world worth digging, is closed and merged
+([log](./log/012-a-world-worth-digging.md)); its by-hand walk, like 008 to 011's, was not reported.
+Cheap to throw away; expect them to change.
 
 ---
 
-## 012 — Getting it home
+## 013 — Getting it home
+
+*What 012 changes here:* ore is on −2 now, and home is −1, so the haul is real: copper and tin
+come up a level. A new game starts with no timber, so a chute or winch costs chopping first.
 
 *What 011 changes here:* a chute and a winch are buildables, so they take build slots (D-170),
 and the inventory's build section lists them. A crate is a pack item or a fixture; which one it
@@ -70,6 +73,13 @@ Found during 005, not recorded anywhere else. None of it is decided.
   starting items (008's rule), and tools are starting items now (011).
 - **Pad Y in the inventory assigns; outside it, Y is build mode.** The radial (LT) and the hammer
   will want more pad buttons; the pad is nearly full.
+- **Coverage at the end of slice 012: 95.0%** (011 closed at 96.1%, after its grid inventory).
+  The gap is drawing code: the grid inventory (70%), the overlays and cracks.
+- **The suite takes ~41 s** (21 s before 012): a new world generates a ~55 ms Surface and ~700
+  trees, and many tests build one. A smaller Surface recipe for tests would bring it back.
+- **The Surface's start room still has four copper tiles** in its walls (012's log); the strata
+  table gives the Surface no metal ore.
+- **−1's own resources** (clay, flint, root fibre, cave fungus) and **coal on −2** aren't built.
 - **Not built from digging-and-structure §4:** coverage rings around supports, ghosted column
   suggestions, and the header showing the depth's R. Cut stone columns (+1 at −2) are the next
   support kind; they would be a new object kind beside the prop.

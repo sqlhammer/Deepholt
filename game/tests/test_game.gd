@@ -10,6 +10,10 @@ const SAVES_ROOT: String = SaveDirs.TEST_ROOT + "/game"
 
 var _game: Node
 
+# Open floor in -1's hand-made home cave.
+static func _minus_one_home() -> WorldPos:
+	return WorldPos.new(0, 0, 1)
+
 
 func before_each() -> void:
 	_game = load("res://scenes/game.tscn").instantiate()
@@ -40,6 +44,11 @@ func _handler_for(actor: Actor) -> InputHandler:
 		if child is InputHandler and child.actor == actor and not child.is_queued_for_deletion():
 			return child
 	return null
+
+
+func test_f11_listens_from_launch() -> void:
+	assert_true(_game.get_node_or_null("FullscreenToggle") is FullscreenToggle,
+		"the full-screen toggle (D-191)")
 
 
 # --- saves ---
@@ -109,7 +118,7 @@ func test_changing_level_saves_with_the_player_on_the_new_level() -> void:
 	var actor: Actor = _game.active_actor
 	var here: WorldPos = actor.current_WorldPos
 	assert_false(FileAccess.file_exists(_save_file()), "no save yet")
-	assert_true(actor.move_to(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
+	assert_true(actor.move_to(_minus_one_home()), "the player moves to -1")
 	assert_true(FileAccess.file_exists(_save_file()), "the move saved")
 	var saved: Dictionary = SaveGame.get_save_data(SAVES_ROOT.path_join("slot-001"))
 	assert_eq(saved.actors[actor.actor_id].worldpos.depth, 1, "with the player on -1")
@@ -379,12 +388,12 @@ func _actor_with_id(id: int) -> Actor:
 	return null
 
 
-# The player, moved straight down onto -1. The Surface spawn sits
-# over -1's home cave, so the landing is open, and off the spawn.
+# The player, moved onto -1's home cave: open, and off the spawn,
+# which is now out on the Surface's road (D-180).
 func _player_on_minus_one() -> Actor:
 	var actor: Actor = _game.active_actor
 	var here: WorldPos = actor.current_WorldPos
-	assert_true(actor.move_to(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
+	assert_true(actor.move_to(_minus_one_home()), "the player moves to -1")
 	return actor
 
 
@@ -962,7 +971,7 @@ func test_mouse_maps_through_top_and_bottom_bars() -> void:
 func _player_down_a_level() -> Actor:
 	var actor: Actor = _game.active_actor
 	var here: WorldPos = actor.current_WorldPos
-	assert_true(actor.move_to(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
+	assert_true(actor.move_to(_minus_one_home()), "the player moves to -1")
 	return actor
 
 
@@ -1020,7 +1029,7 @@ func test_a_load_mid_fade_ends_the_fade() -> void:
 func test_the_screen_follows_the_player_down_a_level() -> void:
 	var actor: Actor = _actors()[0]
 	var here: WorldPos = actor.current_WorldPos
-	assert_true(actor.move_to(WorldPos.new(here.x, here.y, 1)), "the player moves to -1")
+	assert_true(actor.move_to(_minus_one_home()), "the player moves to -1")
 	# The screen switches halfway through the fade (D-142)
 	_game.view.finish_transition()
 	var renderer: LevelRenderer = _game.get_node("GameViewport/LevelRenderer")

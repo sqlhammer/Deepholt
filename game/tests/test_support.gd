@@ -18,7 +18,7 @@ var _level: Level
 
 
 func before_each() -> void:
-	_world = autofree(Worlds.with_levels([0, 1, 2, 3, 4, 5, 6, 7]))
+	_world = autofree(Worlds.with_levels([0, 1, 2, 3, 4, 5, 6, 7], 0, wide_profile()))
 	_level = _world.level_at(1)
 	watch_signals(_world)
 
@@ -84,10 +84,33 @@ const WIDE: Rect2i = Rect2i(-10, -10, 21, 21)
 
 # --- R by depth (§2's table, in the profile) ---
 
+# The rule's tests run under 010's R table, whose rooms they measure
+# (R = 8 at -1); the default profile's own table is D-186's, pinned
+# below. The rule is the same for any table.
+static func wide_profile() -> TuningProfile:
+	var profile: TuningProfile = TuningProfile.default_profile().duplicate()
+	profile.support_radius_by_depth = [0, 8, 7, 6, 5, 4, 3, 3]
+	return profile
+
+
 func test_r_falls_with_depth_and_the_surface_has_no_ceiling() -> void:
 	var expected: Array[int] = [-1, 8, 7, 6, 5, 4, 3, 3]
 	for depth in range(8):
 		assert_eq(_world.level_at(depth).support.radius, expected[depth], "depth %d" % depth)
+
+
+# D-186: halved, rounding up. Red starts at 11 wide on -1.
+func test_the_default_r_is_halved() -> void:
+	assert_eq(TuningProfile.default_profile().support_radius_by_depth,
+		[0, 4, 4, 3, 3, 2, 2, 2] as Array[int], "4, 4, 3, 3, 2, 2, 2")
+	var world: World = autofree(Worlds.with_levels([1]))
+	var level: Level = world.level_at(1)
+	_dig_room(level, Rect2i(-5, -5, 11, 11))
+	assert_eq(level.support.state_at(Vector2i.ZERO), LevelSupport.STATE.FAILING, "11 wide: red")
+	var other: World = autofree(Worlds.with_levels([1]))
+	_dig_room(other.level_at(1), Rect2i(-4, -4, 9, 9))
+	assert_eq(other.level_at(1).support.state_at(Vector2i.ZERO), LevelSupport.STATE.MARGINAL,
+		"9 wide: amber at most")
 
 
 func test_state_for_the_three_bands() -> void:
@@ -477,9 +500,16 @@ func _saved(player: Actor) -> void:
 		SaveGame.REFUSAL_REASON.NONE, "saved")
 
 
+# A load runs under the profile the save names, found by its id: the
+# default, so this world is built under it too (D-186's R = 4 at -1,
+# which fails the wide room's middle 11 x 11).
 func test_a_countdown_resumes_after_a_save_not_restarts() -> void:
+	_world = autofree(Worlds.with_levels([0, 1, 2, 3, 4, 5, 6, 7]))
+	_level = _world.level_at(1)
 	var player: Actor = _player_on(1)
 	_dig_room(_level, WIDE)
+	var failing: int = _level.support.failing_tiles().size()
+	assert_eq(failing, 121, "the middle 11 x 11 fails at R = 4")
 	_world.advance_time(30.0)
 	_saved(player)
 	var loaded: SaveGame.LoadedGame = SaveGame.load_game(SLOT)
@@ -487,7 +517,7 @@ func test_a_countdown_resumes_after_a_save_not_restarts() -> void:
 		fail_test("refused")
 		return
 	var level: Level = loaded.world.level_at(1)
-	assert_eq(level.support.failing_tiles().size(), 9, "the same region")
+	assert_eq(level.support.failing_tiles().size(), failing, "the same region")
 	assert_almost_eq(level.support.remaining_at(Vector2i.ZERO), 15.0, 0.001, "15 s left, not 45")
 	assert_true(level.level_tiles.is_excavated(0, 0), "the excavation came back")
 	loaded.free_world()
