@@ -11,7 +11,8 @@ to be planned with every fork asked up front. Forks settled as
 to D-207 (D-207 corrects how D-203 keeps a crash's last minutes). Design:
 [logging-and-telemetry §2](../docs/tech/logging-and-telemetry.md#2-play-test-telemetry-level-2).
 Planned on a `slice-014` branch from `slice-013` (PR #10, itself on #9). **Agent mode** (Derik,
-2026-11-10).*
+2026-11-10). **Built, 1122 tests green; waiting on the by-hand walk**
+([log](./log/014-how-it-plays-for-other-people.md)).*
 
 ## Where we are
 

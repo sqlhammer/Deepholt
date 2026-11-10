@@ -21,32 +21,32 @@ Slice 013's checklist is in git history (last at the 013 acceptance).
 
 ## B. Builds
 
-- [ ] The 4.7.2 export templates installed (trap 1).
-- [ ] Windows and Linux export presets with the `playtest` feature tag. [1, 4]
-- [ ] `Log.enabled` for playtest builds: the ring and the rolling file, no session file (trap 2).
+- [x] The 4.7.2 export templates installed (trap 1).
+- [x] Windows and Linux export presets with the `playtest` feature tag. [1, 4]
+- [x] `Log.enabled` for playtest builds: the ring and the rolling file, no session file (trap 2).
 
 ## C. Recording
 
-- [ ] A `Telemetry` recorder: the session file, events as they happen, recording only with the
+- [x] A `Telemetry` recorder: the session file, events as they happen, recording only with the
   tag or the test flag. [1, 4]
-- [ ] Session events; the open marker and the crash found at the next launch (trap 3). [3]
-- [ ] Trips per player, by the agreed definition; time overloaded; kilos home. [1, 2]
-- [ ] Friction: refusals by reason, climbs refused. [2]
-- [ ] Health: frame-time histograms and percentiles (trap 5); save, load and generation times;
+- [x] Session events; the open marker and the crash found at the next launch (trap 3). [3]
+- [x] Trips per player, by the agreed definition; time overloaded; kilos home. [1, 2]
+- [x] Friction: refusals by reason, climbs refused. [2]
+- [x] Health: frame-time histograms and percentiles (trap 5); save, load and generation times;
   error counts. [2]
-- [ ] The summary at session end; the zip at quit and after a crash (trap 4). [1, 3]
+- [x] The summary at session end; the zip at quit and after a crash (trap 4). [1, 3]
 
 ## D. Reading
 
-- [ ] `scripts/telemetry_report.py`: per session and overall, and the pre-alpha criteria it can
+- [x] `scripts/telemetry_report.py`: per session and overall, and the pre-alpha criteria it can
   speak to. [2]
-- [ ] A fixture zip for its test. [5]
+- [x] A fixture zip for its test. [5]
 
 ## E. Done
 
-- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-- [ ] `python scripts/coverage.py` run; uncovered lines looked at.
+- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
+- [x] `python scripts/coverage.py` run; uncovered lines looked at.
 - [ ] By hand: outcomes 1–4, from an exported build.
-- [ ] Claude reviews the slice.
-- [ ] Claude writes `log/014-how-it-plays-for-other-people.md`.
-- [ ] Claude re-sketches [NEXT.md](./NEXT.md).
+- [x] Claude reviews the slice.
+- [x] Claude writes `log/014-how-it-plays-for-other-people.md`.
+- [x] Claude re-sketches [NEXT.md](./NEXT.md).
