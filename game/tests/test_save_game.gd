@@ -1690,11 +1690,12 @@ func test_a_load_returns_a_world_outside_the_tree_with_its_levels_and_actors() -
 # load brought back (D-130).
 func test_saved_counters_are_restored() -> void:
 	var world: World = _world_with_player()
-	world.fixture_ids.restore(40)
+	# Past every id generation drew: the Surface's trees take hundreds
+	world.fixture_ids.restore(5000)
 	world.actor_ids.restore(9)
 	_save_world(world)
 	var loaded_game: SaveGame.LoadedGame = SaveGame.load_game(TEST_SLOT)
-	assert_eq(loaded_game.world.fixture_ids.peek(), 40, "the fixture counter carries on")
+	assert_eq(loaded_game.world.fixture_ids.peek(), 5000, "the fixture counter carries on")
 	assert_eq(loaded_game.world.actor_ids.peek(), 9, "and the actor counter")
 	loaded_game.free_world()
 

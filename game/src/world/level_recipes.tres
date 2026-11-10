@@ -13,12 +13,12 @@ radius = 90
 [sub_resource type="Resource" id="Placement_surface_start"]
 script = ExtResource("4_placement")
 prefab_id = &"surface_start"
-spawn_radius = 8
 
 [sub_resource type="Resource" id="Recipe_0"]
 script = ExtResource("2_recipe")
 bound = SubResource("Bound_0")
 fixed_placements = Array[ExtResource("4_placement")]([SubResource("Placement_surface_start")])
+generator = &"surface"
 
 [sub_resource type="Resource" id="Bound_1"]
 script = ExtResource("1_bound")

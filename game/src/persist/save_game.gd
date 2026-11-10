@@ -699,7 +699,10 @@ static func _deserialize_level(p_depth: int, p_level: Dictionary, world: World) 
 	else:
 		var shaped: LevelRecipe = LevelRecipe.new(bound)
 		shaped.fixed_placements = recipe.fixed_placements
-		level = LevelGenerator.generate_level(shaped, world.world_seed, world.fixture_ids)
+		# Its own generation too: the Surface's spawn is the road's (D-180)
+		shaped.generator = recipe.generator
+		level = LevelGenerator.generate_level(shaped, world.world_seed, world.fixture_ids,
+			world.tuning)
 	# The save is the source of truth: its seed, never one recomputed
 	level.level_seed = p_level["level_seed"]
 

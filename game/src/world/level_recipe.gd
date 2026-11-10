@@ -11,6 +11,9 @@ class_name LevelRecipe
 # Prefabs this level always has, stamped in order before anything
 # placed by rules (D-084).
 @export var fixed_placements: Array[PrefabPlacement] = []
+# A level's own generation, run around its fixed placements: "surface"
+# for the Surface's meadow, rock, road and trees (D-180); "" for none.
+@export var generator: StringName = &""
 
 
 func _init(p_bound: LevelBound = null) -> void:

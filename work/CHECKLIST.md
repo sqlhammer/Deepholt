@@ -40,9 +40,9 @@ Slice 011's checklist is in git history (last at the 011 close).
 
 ## D. The Surface
 
-- [ ] Generation steps, in order: meadow ground, rock disc and quarter, the road and its cut,
+- [x] Generation steps, in order: meadow ground, rock disc and quarter, the road and its cut,
   dirt patches, the spawn, trees (trap 1). [1, 3]
-- [ ] Tests: road open to the ramp, spawn on the road, trees off the road and rock, the quarter,
+- [x] Tests: road open to the ramp, spawn on the road, trees off the road and rock, the quarter,
   same seed same Surface, another seed another. [1, 3, 6]
 
 ## E. Ores and caves

@@ -104,6 +104,19 @@ const DEFAULT_ID: String = "default"
 # How long a failing region has before it falls, in seconds (D-166).
 @export var collapse_countdown_seconds: float = 0.0
 
+# The Surface (D-180): the rock disc around the ramp; the road's
+# length from its start to the ramp, its legs' lengths, its width; the
+# share of the meadow that's dirt; the share of open grass with a
+# tree, and how far trees stand off the road and the spawn.
+@export var surface_rock_radius: int = 0
+@export var surface_road_length: float = 0.0
+@export var surface_road_bend_min: float = 0.0
+@export var surface_road_bend_max: float = 0.0
+@export var surface_road_width: int = 0
+@export var surface_dirt_share: float = 0.0
+@export var surface_tree_share: float = 0.0
+@export var surface_tree_clearance: int = 0
+
 # Felling a tree (D-181): the work an axe does, at its power per
 # second (48 at flint's 16 is 3 s), and the timber it gives.
 @export var tree_work: float = 0.0

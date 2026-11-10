@@ -35,12 +35,15 @@ func test_every_open_tile_of_the_surface_start_room_is_open_on_minus_one() -> vo
 	var surface: Level = _level(0)
 	var rootshelf: Level = _level(1)
 	var checked: int = 0
-	for y in range(-3, 3):
-		for x in range(-1, 7):
-			if not _is_open(surface, Vector2i(x, y)): continue
-			checked += 1
-			assert_true(_is_open(rootshelf, Vector2i(x, y)),
-				"(%d, %d) is open on the Surface and on -1" % [x, y])
+	# The room as stamped: the road may also cut its walls (D-180)
+	var top: Dictionary = LevelGridLoader._to_anchored_tiles(
+		TilePrefabRegistry.get_prefab(&"surface_start").top)
+	for tile: Vector2i in top:
+		if top[tile] != "." and top[tile] != "0": continue
+		if not _is_open(surface, tile): continue
+		checked += 1
+		assert_true(_is_open(rootshelf, tile),
+			"(%d, %d) is open on the Surface and on -1" % [tile.x, tile.y])
 	assert_gt(checked, 20, "the start room was actually checked")
 
 
