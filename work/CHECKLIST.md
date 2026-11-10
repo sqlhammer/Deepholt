@@ -10,6 +10,9 @@ what's safe), then props (you can fix it), then the countdown (it matters), then
 
 Slice 009's checklist is in git history (last at the 009 close).
 
+**Closed 2026-11-09** by Derik, merged into `main`. No by-hand walk was reported to Claude, so
+the by-hand items below are left unticked.
+
 ---
 
 ## A. Decided in planning

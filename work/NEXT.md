@@ -1,7 +1,7 @@
 # Next
 
-Sketches, not commitments. Slice 010 is built ([log](./log/010-holding-it-up.md)) and waits on
-the by-hand walk, as do 008's and 009's. Cheap to throw away; expect them to change.
+Sketches, not commitments. Slice 010 is done and merged ([log](./log/010-holding-it-up.md)); no
+by-hand walk of 008, 009 or 010 has been reported. Cheap to throw away; expect them to change.
 
 ---
 

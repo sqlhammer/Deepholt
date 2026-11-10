@@ -114,3 +114,14 @@ From the brief, in order: a corridor on −1 that never warns; a room wide enoug
 then red, with cracks and the notice; a prop (`F`, or build mode's second item) set before the
 time runs out; a countdown let run out, standing in it; digging the rubble out; a ladder and a
 drop surviving burial; a save mid-countdown and a relaunch; the overlay on `V`.
+
+---
+
+## Closed
+
+*Added by Claude, 2026-11-09, when the slice was closed.*
+
+Derik closed the slice and merged it into `main` on 2026-11-09. He was walking 008 to 010 by
+hand at the time; no result was reported to Claude, so the by-hand outcomes stay unticked. Anything
+the walk finds is fixed in the next slice or a follow-up. The next slice is tools and the hotbar,
+ahead of "Getting it home".
