@@ -135,7 +135,7 @@ func test_the_road_is_dirt_two_wide_and_the_spawn_is_its_far_end() -> void:
 func test_the_road_winds() -> void:
 	var layout: SurfaceGeneration.Layout = _layout(0)
 	var straight: float = Vector2(layout.road[0] - layout.road[-1]).length()
-	assert_gt(layout.road.size(), straight * 1.1, "longer than a straight line: it bends")
+	assert_gt(float(layout.road.size()), straight * 1.1, "longer than a straight line: it bends")
 
 
 # --- dirt and trees (D-181, trap 3) ---

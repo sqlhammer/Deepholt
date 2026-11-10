@@ -4158,3 +4158,15 @@ caught it while writing the design.
 - At most those few seconds before a crash are lost.
 
 *Considered:* the crash flag alone, with the debug log off in playtest builds.
+
+---
+
+### D-208 — A trip runs from leaving the depth a player started on to coming back up to it
+**Decided** (by Derik, planning slice 014, 2026-11-10). Until there is a home (a bed, M6).
+
+- **A trip starts when a player goes below the depth they started the session on,** and **ends
+  when they come back up to it.** Per player, for every player.
+- **A session that ends below** records its trip as unfinished.
+
+*Why:* criterion 5's backtracking is trips home; with no home yet, where the session began
+stands in for it.

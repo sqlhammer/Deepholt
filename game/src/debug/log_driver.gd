@@ -9,6 +9,11 @@ extends Node
 # A frame this long is over budget: three frames at 60 a second
 const SLOW_FRAME_MSEC: float = 50.0
 
+# Set by the game when its own run started the log's files: then the
+# writer is stopped as the game leaves, however it quits, so the last
+# lines and the rolling file are written
+var owns_session: bool = false
+
 # The actions watched: every one the game defines, not Godot's ui_*
 var _actions: Array[StringName] = []
 # Which are down, so only a change is logged: a stick held past its
@@ -19,6 +24,12 @@ var _down: Dictionary[StringName, bool] = {}
 func _ready() -> void:
 	for action: StringName in InputMap.get_actions():
 		if not String(action).begins_with("ui_"): _actions.append(action)
+
+
+func _exit_tree() -> void:
+	if not owns_session: return
+	Log.unhook_engine()
+	Log.stop_session()
 
 
 func _process(delta: float) -> void:

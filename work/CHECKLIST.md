@@ -1,6 +1,6 @@
 # Slice 014 checklist
 
-Working list for [NOW.md](./NOW.md). **Mode not chosen yet.** Numbers in brackets are the
+Working list for [NOW.md](./NOW.md). **Agent mode** (Derik, 2026-11-10), on `slice-014`. Numbers in brackets are the
 brief's outcomes.
 
 Slice 013's checklist is in git history (last at the 013 acceptance).
@@ -17,7 +17,7 @@ Slice 013's checklist is in git history (last at the 013 acceptance).
 - [x] Session, trips, friction, health (D-202).
 - [x] A crash's flag and last two minutes (D-203), through a rolling file (D-207).
 - [x] No identity (D-204); events and a summary (D-205); a zip and a report script (D-206).
-- [ ] What a trip is (proposed in NOW.md).
+- [x] What a trip is (D-208).
 
 ## B. Builds
 

@@ -46,6 +46,11 @@ func _handler_for(actor: Actor) -> InputHandler:
 	return null
 
 
+func test_a_development_run_records_no_telemetry() -> void:
+	assert_null(_game.telemetry, "only a playtest build records (D-201)")
+	assert_false(DirAccess.dir_exists_absolute(SAVES_ROOT.path_join("telemetry")), "nothing written")
+
+
 func test_f11_listens_from_launch() -> void:
 	assert_true(_game.get_node_or_null("FullscreenToggle") is FullscreenToggle,
 		"the full-screen toggle (D-191)")

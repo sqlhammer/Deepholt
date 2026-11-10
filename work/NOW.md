@@ -10,8 +10,8 @@ to be planned with every fork asked up front. Forks settled as
 [D-198](../docs/design-decisions.md#d-198--slice-014-is-play-test-telemetry-getting-it-home-moves-to-015)
 to D-207 (D-207 corrects how D-203 keeps a crash's last minutes). Design:
 [logging-and-telemetry §2](../docs/tech/logging-and-telemetry.md#2-play-test-telemetry-level-2).
-Planned on a `slice-014` branch from `slice-013` (PR #10, itself on #9). **Not started: the mode
-isn't chosen yet.***
+Planned on a `slice-014` branch from `slice-013` (PR #10, itself on #9). **Agent mode** (Derik,
+2026-11-10).*
 
 ## Where we are
 
@@ -43,7 +43,8 @@ By hand, unless marked:
 
 ## Mode
 
-**Not chosen yet.** Self Coded, Educational Assistant or Agent.
+**Agent** (Derik, 2026-11-10), on `slice-014`, including installing the 4.7.2 export
+templates; Derik merges the PR.
 
 ## What you're deciding
 
@@ -58,9 +59,7 @@ Settled in planning (2026-11-10):
 - **No identity** (D-204); **events and a summary per session** (D-205); **a zip at quit and a
   report script** (D-206).
 
-Still open, proposed here for Derik to accept or change:
-
-- **What a trip is.** There is no home yet (no bed until M6), so: a trip starts when a player goes
+- **What a trip is** (D-208). There is no home yet (no bed until M6), so: a trip starts when a player goes
   below the depth they started the session on, and ends when they come back up to it. A session
   that ends below counts its trip as unfinished.
 

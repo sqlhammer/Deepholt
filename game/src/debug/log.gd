@@ -34,8 +34,14 @@ const KEEP_SESSIONS: int = 30
 const LOG_DIR: String = "user://logs"
 const SESSION_PREFIX: String = "session-"
 
-# False in a release build; tests switch it to check that
-static var enabled: bool = OS.is_debug_build()
+# A crash's record (D-207): the last two minutes, rewritten this often
+const ROLLING_WINDOW_MSEC: int = 2 * 60 * 1000
+const ROLLING_EVERY_MSEC: int = 5000
+
+# On in a debug build, and in a playtest build for a crash's last
+# minutes (D-203, D-207); off in any other release build. Tests switch
+# it to check that.
+static var enabled: bool = OS.is_debug_build() or OS.has_feature("playtest")
 
 static var _mutex: Mutex = Mutex.new()
 static var _off: Dictionary[StringName, bool] = {}
@@ -48,8 +54,14 @@ static var _thread: Thread
 static var _wake: Semaphore
 static var _quitting: bool = false
 static var _session_path: String = ""
+# The rolling crash file, "" when there's none (D-207)
+static var _rolling_path: String = ""
 # The engine hook, kept to take it off again
 static var _hook: EngineHook
+# Engine errors and warnings this run, for telemetry's health counts:
+# how many of each type, and the first few texts
+static var _error_counts: Dictionary[StringName, int] = {}
+static var _first_errors: Array[String] = []
 
 
 # --- recording ---
@@ -91,6 +103,8 @@ static func clear() -> void:
 	_pending.clear()
 	_head = 0
 	_off.clear()
+	_error_counts.clear()
+	_first_errors.clear()
 	_mutex.unlock()
 
 
@@ -159,17 +173,38 @@ static func json_line(entry: Dictionary) -> String:
 # release build. Only the game's own run starts one; tests don't.
 static func start_session(dir: String = LOG_DIR) -> String:
 	if not enabled: return ""
-	if _thread != null: return _session_path
+	if _session_path != "": return _session_path
+	if _thread != null:
+		push_error("The log's session file must start before its rolling file.")
+		return ""
 	DirAccess.make_dir_recursive_absolute(dir)
 	prune(dir, SESSION_PREFIX, KEEP_SESSIONS - 1)
 	_session_path = dir.path_join("%s%s.log" % [SESSION_PREFIX,
 		SaveGame.file_timestamp(int(Time.get_unix_time_from_system()))])
+	_start_writer()
+	event(SAVE, &"session_started", {"file": ProjectSettings.globalize_path(_session_path)})
+	return _session_path
+
+
+# Keeps `path` holding the last two minutes, rewritten every few
+# seconds by the writer thread, for a crash's record (D-207). Playtest
+# builds start it; nothing else does.
+static func start_rolling(path: String) -> void:
+	if not enabled or _rolling_path != "": return
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	_rolling_path = path
+	if _thread == null: _start_writer()
+
+
+static func rolling_path() -> String:
+	return _rolling_path
+
+
+static func _start_writer() -> void:
 	_quitting = false
 	_wake = Semaphore.new()
 	_thread = Thread.new()
 	_thread.start(_write_loop)
-	event(SAVE, &"session_started", {"file": ProjectSettings.globalize_path(_session_path)})
-	return _session_path
 
 
 static func session_path() -> String:
@@ -197,12 +232,16 @@ static func stop_session() -> void:
 	_thread.wait_to_finish()
 	_thread = null
 	_session_path = ""
+	_rolling_path = ""
 
 
 # The writer thread: waits to be woken, takes the whole queue, writes
-# it, and stops once told to and drained.
+# it to the session file if there is one, rewrites the rolling file
+# when it's due, and stops once told to and drained.
 static func _write_loop() -> void:
-	var file: FileAccess = FileAccess.open(_session_path, FileAccess.WRITE)
+	var file: FileAccess = null
+	if _session_path != "": file = FileAccess.open(_session_path, FileAccess.WRITE)
+	var rolled_at: int = -ROLLING_EVERY_MSEC
 	while true:
 		_wake.wait()
 		_mutex.lock()
@@ -213,8 +252,22 @@ static func _write_loop() -> void:
 		if file != null:
 			for entry: Dictionary in batch: file.store_line(line(entry))
 			file.flush()
+		if _rolling_path != "" and (done or Time.get_ticks_msec() - rolled_at >= ROLLING_EVERY_MSEC):
+			_roll()
+			rolled_at = Time.get_ticks_msec()
 		if done: break
 	if file != null: file.close()
+
+
+# The last two minutes into the rolling file, whole: written beside it
+# and renamed over it, so a crash mid-write leaves the last good one.
+static func _roll() -> void:
+	var temporary: String = _rolling_path + ".tmp"
+	var file: FileAccess = FileAccess.open(temporary, FileAccess.WRITE)
+	if file == null: return
+	for entry: Dictionary in recent(ROLLING_WINDOW_MSEC): file.store_line(json_line(entry))
+	file.close()
+	DirAccess.rename_absolute(temporary, _rolling_path)
 
 
 # Deletes the oldest files or folders in `dir` whose names start with
@@ -255,6 +308,22 @@ static func unhook_engine() -> void:
 	_hook = null
 
 
+# What the engine has raised this run, while hooked: a count per type,
+# and the first few texts. For telemetry's health (D-202).
+static func error_counts() -> Dictionary:
+	_mutex.lock()
+	var counts: Dictionary = {"counts": _error_counts.duplicate(), "first": _first_errors.duplicate()}
+	_mutex.unlock()
+	return counts
+
+
+static func _count_error(type: StringName, text: String) -> void:
+	_mutex.lock()
+	_error_counts[type] = _error_counts.get(type, 0) + 1
+	if _first_errors.size() < 10: _first_errors.append("%s: %s" % [type, text])
+	_mutex.unlock()
+
+
 class EngineHook extends Logger:
 	const TYPES: Array[StringName] = [&"error", &"warning", &"script_error", &"shader_error"]
 
@@ -271,8 +340,10 @@ class EngineHook extends Logger:
 				break
 		# Never log the log's own trouble: it would log itself (trap 2)
 		if at.begins_with("log.gd:") or file.ends_with("/log.gd"): return
-		Log.event(ERRORS, TYPES[clampi(error_type, 0, TYPES.size() - 1)], {
-			"text": rationale if rationale != "" else code, "at": at})
+		var type: StringName = TYPES[clampi(error_type, 0, TYPES.size() - 1)]
+		var text: String = rationale if rationale != "" else code
+		Log._count_error(type, text)
+		Log.event(ERRORS, type, {"text": text, "at": at})
 
 	func _log_message(_message: String, _error: bool) -> void:
 		pass
