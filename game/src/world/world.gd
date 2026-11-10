@@ -41,6 +41,9 @@ signal drop_requested(actor: Actor, id: StringName, count: int)
 signal take_requested(actor: Actor)
 signal items_dropped(actor: Actor, tile: WorldPos, id: StringName, count: int)
 signal items_picked_up(actor: Actor, tile: WorldPos, id: StringName, count: int)
+# The take key's answer (D-167): everything it took, item id -> count,
+# empty when nothing was in reach. Auto-pickup doesn't announce this.
+signal took(actor: Actor, items: Dictionary)
 
 # A failing region began its countdown (D-163, D-166). `depth` is its
 # level; `tiles` are the region's.
@@ -325,28 +328,54 @@ func _auto_pickup(actor: Actor) -> void:
 # The take key: everything within reach, whatever the load (D-160).
 func _on_take_requested(actor: Actor) -> void:
 	if actor == null or actor.current_level == null or actor.current_level.world != self: return
-	_pick_up(actor, INF, null)
+	took.emit(actor, _pick_up(actor, INF, null))
 
 
-func _pick_up(actor: Actor, limit: float, skip: WorldPos) -> void:
+# Everything lying within an actor's reach, item id -> count: what the
+# take key would take (D-160), and what the inventory's preview shows
+# (D-172). A read, sharing the take's tiles so the two can't disagree.
+func drops_in_reach(actor: Actor) -> Dictionary[StringName, int]:
+	var found: Dictionary[StringName, int] = {}
+	for tile: Vector2i in _reach_tiles(actor, null):
+		var lying: Dictionary = actor.current_level.level_drops.at(tile)
+		for id: StringName in lying:
+			found[id] = found.get(id, 0) + lying[id]
+	return found
+
+
+# The tiles an actor picks up from: its own and those around it, out
+# to the profile's reach, open and so not buried (D-166), less `skip`.
+func _reach_tiles(actor: Actor, skip: WorldPos) -> Array[Vector2i]:
+	var tiles: Array[Vector2i] = []
 	var level: Level = actor.current_level
 	var here: WorldPos = actor.current_WorldPos
-	if level == null or here == null or level.level_drops.is_empty(): return
+	if level == null or here == null or level.level_drops.is_empty(): return tiles
 	var reach: int = tuning.pickup_reach
 	for dy in range(-reach, reach + 1):
 		for dx in range(-reach, reach + 1):
 			var tile: Vector2i = Vector2i(here.x + dx, here.y + dy)
 			if skip != null and tile == Vector2i(skip.x, skip.y): continue
-			# Under rubble is buried, out of reach (D-166)
 			if level.level_tiles.get_top(tile.x, tile.y) != TileKind.TOP.OPEN: continue
-			var lying: Dictionary = level.level_drops.at(tile)
-			for id: StringName in lying:
-				var n: int = lying[id] if is_inf(limit) else \
-					Carrying.fits(tuning, actor.pack, id, lying[id], limit)
-				if n <= 0: continue
-				level.level_drops.take(tile, id, n)
-				actor.pack.add(id, n)
-				items_picked_up.emit(actor, WorldPos.new(tile.x, tile.y, level.depth), id, n)
+			tiles.append(tile)
+	return tiles
+
+
+# Moves what fits under `limit` from the tiles in reach into the
+# pack. Returns what it took, item id -> count.
+func _pick_up(actor: Actor, limit: float, skip: WorldPos) -> Dictionary[StringName, int]:
+	var taken: Dictionary[StringName, int] = {}
+	var level: Level = actor.current_level
+	for tile: Vector2i in _reach_tiles(actor, skip):
+		var lying: Dictionary = level.level_drops.at(tile)
+		for id: StringName in lying:
+			var n: int = lying[id] if is_inf(limit) else \
+				Carrying.fits(tuning, actor.pack, id, lying[id], limit)
+			if n <= 0: continue
+			level.level_drops.take(tile, id, n)
+			actor.pack.add(id, n)
+			taken[id] = taken.get(id, 0) + n
+			items_picked_up.emit(actor, WorldPos.new(tile.x, tile.y, level.depth), id, n)
+	return taken
 
 
 # --- memory (D-145) ---

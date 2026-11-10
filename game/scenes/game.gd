@@ -10,6 +10,8 @@ var visibility: Visibility
 var build_cursor: BuildCursor
 # The local player's inventory overlay (D-162)
 var inventory: InventoryOverlay
+# The followed actor's hotbar on screen (D-170)
+var hotbar_hud: HotbarHud
 # The support overlay (D-163)
 var support_overlay: SupportOverlay
 # The world being played, inside GameViewport at the origin (D-128).
@@ -96,6 +98,8 @@ func set_user_control(actor: Actor) -> void:
 	inventory.actor = actor
 	input.inventory = inventory
 	input.support_overlay = support_overlay
+	input.hotbar_hud = hotbar_hud
+	hotbar_hud.slot_clicked.connect(input.select_slot)
 	add_child(input)
 	_input_handlers.append(input)
 	
@@ -439,6 +443,12 @@ func _create_view() -> void:
 	# What the local player carries, and dropping it (D-160, D-162)
 	inventory = InventoryOverlay.new()
 	add_child(inventory)
+	# What the followed actor holds (D-170), under the carry bar
+	hotbar_hud = HotbarHud.new()
+	add_child(hotbar_hud)
+	hotbar_hud.watch(view)
+	hotbar_hud.watch_cursor(build_cursor)
+	hotbar_hud.watch_inventory(inventory)
 
 
 # The one way a world comes in, at launch, for a new game and on a

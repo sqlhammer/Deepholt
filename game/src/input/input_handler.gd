@@ -17,6 +17,9 @@ var inventory: InventoryOverlay
 # The support overlay (D-163): toggled with its key, whatever else is
 # open.
 var support_overlay: SupportOverlay
+# The hotbar on screen (D-170): a click on a slot selects it, and a
+# click there never also digs or places.
+var hotbar_hud: HotbarHud
 
 # The game-wide keys. The handler only asks; the game decides what a
 # save or a load is (R-P10).
@@ -64,6 +67,53 @@ func _input(event: InputEvent) -> void:
 		load_requested.emit()
 	if event.is_action_pressed("save_and_quit_to_desktop"):
 		save_and_quit_requested.emit()
+	_hotbar_input(event)
+
+
+# The hotbar's keys (D-170): 1-8 pick a slot, the bumpers and the wheel
+# step along. Read as events, not polled on the physics tick: a wheel
+# notch presses and releases within one frame, which polling can miss.
+func _hotbar_input(event: InputEvent) -> void:
+	if actor == null or paused: return
+	for i in range(Hotbar.SLOTS):
+		if event.is_action_pressed("hotbar_%d" % (i + 1)):
+			select_slot(i)
+			return
+	if event.is_action_pressed("hotbar_prev"): step_slot(-1)
+	elif event.is_action_pressed("hotbar_next"): step_slot(1)
+
+
+# A slot chosen by its key or a click. With the inventory open it's
+# where the focused entry goes (D-172, slice 011 trap 7); in build mode
+# it's a build slot; otherwise a tool slot.
+func select_slot(slot: int) -> void:
+	if actor == null or paused: return
+	if inventory != null and inventory.is_open:
+		inventory.assign_to(slot)
+	elif build != null and build.active:
+		actor.hotbar.select_build(slot)
+	else:
+		actor.hotbar.select_tool(slot)
+
+
+# One slot along. With the inventory choosing a slot to assign to,
+# the choice moves instead; otherwise the open inventory keeps the
+# selection as it is.
+func step_slot(step: int) -> void:
+	if inventory != null and inventory.is_open:
+		if inventory.assigning: inventory.step_assign(step)
+	elif build != null and build.active:
+		actor.hotbar.step_build(step)
+	else:
+		actor.hotbar.step_tool(step)
+
+
+# Whether the mouse is on the hotbar, where a click selects a slot
+# and must not also dig or place.
+func _mouse_on_hotbar() -> bool:
+	if hotbar_hud == null or current_device_scheme != DEVICE_SCHEME.MOUSE_AND_KEYBOARD:
+		return false
+	return hotbar_hud.slot_at(hotbar_hud.get_viewport().get_mouse_position()) != -1
 
 
 # In build mode the cursor takes the aim, facing follows walking, and
@@ -77,13 +127,7 @@ func _build_mode(move: Vector2, delta: float) -> void:
 		build.point_at(mouse_world_position.call())
 	else:
 		build.step(Input.get_vector("aim_left", "aim_right", "aim_up", "aim_down"), delta)
-	# The hotbar (ui-ux §2.5): the number keys pick, the bumper cycles
-	if Input.is_action_just_pressed("build_item_ladder"):
-		build.select_item(ObjectKind.OBJECT.LADDER)
-	if Input.is_action_just_pressed("build_item_prop"):
-		build.select_item(ObjectKind.OBJECT.TIMBER_PROP)
-	if Input.is_action_just_pressed("build_next_item"): build.cycle_item()
-	if Input.is_action_just_pressed("primary_action"): build.place()
+	if Input.is_action_just_pressed("primary_action") and not _mouse_on_hotbar(): build.place()
 
 
 # The reserved quick key (ui-ux §2.5, D-165): a timber prop at the
@@ -102,8 +146,17 @@ func _inventory_mode(move: Vector2) -> void:
 	actor.aim(Vector2.ZERO, move)
 	actor.primary_action(false)
 	actor.breach(false)
-	if Input.is_action_just_pressed("ui_up"): inventory.select(-1)
-	if Input.is_action_just_pressed("ui_down"): inventory.select(1)
+	# Choosing a slot to assign to (D-172): A puts it there, B cancels,
+	# and nothing else in the inventory acts, so A doesn't also drop
+	if inventory.assigning:
+		if Input.is_action_just_pressed("assign_confirm"): inventory.confirm_assign()
+		elif Input.is_action_just_pressed("assign_cancel"): inventory.cancel_assign()
+		return
+	if Input.is_action_just_pressed("ui_up"): inventory.move_focus(-1)
+	if Input.is_action_just_pressed("ui_down"): inventory.move_focus(1)
+	if Input.is_action_just_pressed("ui_left"): inventory.switch_section(-1)
+	if Input.is_action_just_pressed("ui_right"): inventory.switch_section(1)
+	if Input.is_action_just_pressed("inventory_assign"): inventory.begin_assign()
 	if Input.is_action_just_pressed("drop_one"): inventory.drop_one()
 	if Input.is_action_just_pressed("drop_stack"): inventory.drop_stack()
 
@@ -133,7 +186,7 @@ func _physics_process(delta: float) -> void:
 		_build_mode(move, delta)
 	else:
 		actor.aim(_get_aim(), move)
-		actor.primary_action(Input.is_action_pressed("primary_action"))
+		actor.primary_action(Input.is_action_pressed("primary_action") and not _mouse_on_hotbar())
 		# Its own input, so a held dig never becomes a breach (D-153)
 		actor.breach(Input.is_action_pressed("breach"))
 	# A one-shot, polled here on the physics tick rather than handled
@@ -142,6 +195,19 @@ func _physics_process(delta: float) -> void:
 	# in _process as well could count one press twice.
 	if Input.is_action_just_pressed("interact"):
 		actor.interact()
+	# Pad A interacts first, and takes only with nothing to interact
+	# with (D-167). A ladder too heavy to climb is still something to
+	# interact with, so A refuses the climb rather than taking (slice
+	# 011 trap 5).
+	if Input.is_action_just_pressed("interact_or_take"): interact_or_take()
+
+
+# Pad A (D-167): a ladder is used, even one too heavy to climb, which
+# refuses; with nothing to interact with, everything in reach is
+# taken, and the notice says what.
+func interact_or_take() -> void:
+	if actor.has_interaction(): actor.interact()
+	else: actor.current_level.world.take_requested.emit(actor)
 
 
 func _get_aim() -> Vector2:

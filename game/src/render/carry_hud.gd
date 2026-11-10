@@ -2,7 +2,7 @@ class_name CarryHud
 extends CanvasLayer
 
 # The followed actor's carry weight, always on screen (D-159, ui-ux
-# §5): a slim bar at the bottom center, where the hotbar will sit, and
+# §5): a slim bar at the bottom center, above the hotbar, and
 # "20 / 60 kg" beside it. The bar runs to 150% of capacity, with a
 # mark at 100%; its color changes at the load curve's bands (50%,
 # 100%, 150%), and past 150% the end is hatched. Presentation: it
@@ -34,7 +34,8 @@ func _init() -> void:
 	box.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	box.offset_bottom = -8
+	# Above the hotbar (ui-ux §4)
+	box.offset_bottom = -30
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	add_child(box)
 	_bar = Control.new()
