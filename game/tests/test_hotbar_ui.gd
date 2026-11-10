@@ -92,6 +92,30 @@ func test_the_bumpers_and_the_wheel_step_along() -> void:
 		assert_true(wheel, "%s has the wheel" % action)
 
 
+func test_the_bumpers_step_the_build_slots_in_build_mode() -> void:
+	_cursor.set_active(true)
+	_press(&"hotbar_next")
+	assert_eq(_actor.hotbar.selected_build, 1, "the prop's slot")
+	assert_eq(_actor.hotbar.selected_tool, 0, "tools untouched")
+
+
+func test_the_open_inventory_keeps_the_selection_unless_choosing() -> void:
+	_inventory.set_open(true)
+	_press(&"hotbar_next")
+	assert_eq(_actor.hotbar.selected_tool, 0, "LB / RB do nothing to the selection")
+
+
+func test_the_pad_chooses_a_build_slot_from_the_build_section() -> void:
+	_inventory.set_open(true)
+	_inventory.switch_section(1)
+	_inventory.focus_row(1)
+	_inventory.begin_assign()
+	assert_eq(_hud.assign_slot, 1, "the prop is in slot 2")
+	_inventory.step_assign(2)
+	_inventory.confirm_assign()
+	assert_eq(_actor.hotbar.builds[3], ObjectKind.OBJECT.TIMBER_PROP, "now slot 4")
+
+
 func test_a_click_on_a_slot_selects_it() -> void:
 	_hud.slot_clicked.connect(_handler.select_slot)
 	_hud.slot_clicked.emit(1)

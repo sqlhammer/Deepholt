@@ -6,8 +6,11 @@
 
 *Proposed by Claude, 2026-11-09, for Derik's approval. Scope and every fork settled in planning
 ([D-167](../docs/design-decisions.md#d-167--pad-a-takes-from-the-ground-when-theres-nothing-to-interact-with)
-to D-174). Agent mode on a `slice-011` branch. Nothing is built until Derik approves this brief,
-including the numbers and bindings below.*
+to D-174). Agent mode on a `slice-011` branch. **Approved by Derik the same day, with the numbers
+and bindings below as proposed** (the pick at 0.8 s on rubble, the wheel included). **Built, 1008 tests green; waiting on the
+by-hand walk** ([log](./log/011-tools-in-hand.md)). One binding changed while building: the
+inventory's sections switch with the arrow keys and D-pad ←/→, not Tab and LB/RB, because Tab
+closes the inventory; the log says why.*
 
 ## Where we are
 
@@ -56,8 +59,8 @@ green before each; Derik merges the PR. Claude stops for anything new with long-
 
 ## What you're deciding
 
-Every fork was settled on 2026-11-09 (D-167 to D-174). **Still yours, as part of approving this
-brief: the numbers and the bindings.**
+Every fork was settled on 2026-11-09 (D-167 to D-174). **The numbers and the bindings below were
+approved with the brief,** each put to Derik as its own question.
 
 **Proposed numbers** (all in the profile, D-135):
 
