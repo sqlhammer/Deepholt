@@ -114,3 +114,16 @@ From the brief, in order:
    the first empty slot.
 7. Overflow with stone: only stone drops.
 8. Save and relaunch: the slots, the selection and the build slots are kept.
+
+---
+
+## After the build
+
+*Added by Claude, 2026-11-09.*
+
+Derik saw in play that build mode's cursor showed only a cost ("2 timber"), not what it would
+place. Agent mode, his choice of fix: the label now names it ("Timber prop · 2 timber"), and the
+cursor's square holds a faint copy of the fixture's own art, tinted green or red with the
+cursor. A ladder shows as its top seen down the hole, since the ladder itself stands on the level
+below. Display names live beside the ids in `ObjectKind.NAMES`; the inventory's build section
+uses them too. Headless tests check the text and the art chosen, not the drawing.

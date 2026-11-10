@@ -334,3 +334,23 @@ func test_the_quick_key_outside_build_mode_places_on_the_faced_tile() -> void:
 
 func test_the_prop_cost_is_shown() -> void:
 	assert_eq(Building.cost_text(_world.tuning, ObjectKind.OBJECT.TIMBER_PROP), "2 timber", "the cost")
+
+
+# --- what the cursor says it places (ui-ux §7) ---
+
+func test_the_cursor_names_what_it_places_and_its_cost() -> void:
+	assert_eq(_cursor.label_text(), "Ladder · 4 timber", "slot 1")
+	_actor.hotbar.select_build(1)
+	assert_eq(_cursor.label_text(), "Timber prop · 2 timber", "slot 2")
+	_actor.hotbar.select_build(2)
+	assert_eq(_cursor.label_text(), "", "an empty slot says nothing")
+
+
+func test_the_ghost_is_the_fixtures_own_art() -> void:
+	assert_eq(BuildCursor.ghost_texture(ObjectKind.OBJECT.TIMBER_PROP),
+		FixtureRenderer.TEXTURES[ObjectKind.OBJECT.TIMBER_PROP], "the prop's sprite")
+	assert_eq(BuildCursor.ghost_texture(ObjectKind.OBJECT.LADDER), FixtureRenderer.LADDER_TOP,
+		"a ladder seen down the hole")
+	assert_null(BuildCursor.ghost_texture(ObjectKind.OBJECT.NULL), "nothing for nothing")
+	for kind: int in Hotbar.BUILDABLE:
+		assert_ne(ObjectKind.display_name(kind), "", "every buildable has a name: %d" % kind)

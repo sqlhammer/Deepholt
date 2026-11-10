@@ -31,10 +31,6 @@ enum SECTION {
 const BAR_SIZE: Vector2 = Vector2(160, 6)
 const FOCUS_COLOR: Color = Color(1.0, 0.9, 0.45)
 const ROW_COLOR: Color = Color(0.85, 0.85, 0.8)
-const BUILD_NAMES: Dictionary = {
-	ObjectKind.OBJECT.LADDER: "Ladder",
-	ObjectKind.OBJECT.TIMBER_PROP: "Timber prop",
-}
 
 var is_open: bool = false
 var actor: Actor
@@ -336,7 +332,7 @@ func _build_lines() -> PackedStringArray:
 	var tuning: TuningProfile = actor.current_level.world.tuning
 	for i in range(kinds.size()):
 		var slot: int = actor.hotbar.slot_of_build(kinds[i])
-		lines.append("%s %s  %s%s" % [">" if i == focus else " ", BUILD_NAMES.get(kinds[i], "?"),
+		lines.append("%s %s  %s%s" % [">" if i == focus else " ", ObjectKind.display_name(kinds[i]),
 			Building.cost_text(tuning, kinds[i]), "  [%d]" % (slot + 1) if slot != -1 else ""])
 	return lines
 

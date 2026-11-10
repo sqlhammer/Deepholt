@@ -53,6 +53,9 @@ const REASONS: Dictionary = {
 # How long the stick holds a direction before the cursor steps again,
 # in seconds. Feel, not tuning.
 const STICK_REPEAT_SECONDS: float = 0.15
+# How strongly the ghost of what's placed shows through, tinted the
+# cursor's color.
+const GHOST_ALPHA: float = 0.5
 const VALID_COLOR: Color = Color(0.45, 0.95, 0.5)
 const INVALID_COLOR: Color = Color(1.0, 0.4, 0.35)
 
@@ -204,6 +207,26 @@ func place(kind: int = -1) -> bool:
 
 
 
+# --- what it says it places ---
+
+# Beside the cursor: what the selected slot places and what it costs,
+# "Timber prop · 2 timber". "" with nothing selected.
+func label_text(kind: int = -1) -> String:
+	if kind == -1: kind = item
+	var name: String = ObjectKind.display_name(kind)
+	if name == "" or actor == null: return ""
+	var cost: String = Building.cost_text(actor.current_level.world.tuning, kind)
+	return name if cost == "" else "%s · %s" % [name, cost]
+
+
+# The art drawn faintly in the cursor's square: the fixture's own. A
+# ladder stands on the level below, so from here it shows as the top
+# seen down the hole (D-107).
+static func ghost_texture(kind: int) -> Texture2D:
+	if kind == ObjectKind.OBJECT.LADDER: return FixtureRenderer.LADDER_TOP
+	return FixtureRenderer.TEXTURES.get(kind)
+
+
 # --- drawing: valid or not by shape and icon too (ui-ux §7) ---
 
 func _process(_delta: float) -> void:
@@ -218,10 +241,16 @@ func _draw() -> void:
 	var color: Color = VALID_COLOR if valid else INVALID_COLOR
 	# Valid: a solid frame and a check; invalid: a dashed frame and a
 	# cross
-	# The cost, always, beside the cursor (ui-ux §7)
-	var cost: String = Building.cost_text(actor.current_level.world.tuning, item)
-	if cost != "":
-		draw_string(ThemeDB.fallback_font, corner + Vector2(size + 2, size - 4), cost,
+	# What it places, faintly, standing on the tile as the real one will
+	# (its bottom edge on the tile's, D-105)
+	var ghost: Texture2D = ghost_texture(item)
+	if ghost != null:
+		var rise: float = ghost.get_height() - size
+		draw_texture(ghost, corner - Vector2(0, rise), Color(color, GHOST_ALPHA))
+	# What it is and what it costs, always, beside the cursor (ui-ux §7)
+	var label: String = label_text()
+	if label != "":
+		draw_string(ThemeDB.fallback_font, corner + Vector2(size + 2, size - 4), label,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, 8, color)
 	if valid:
 		draw_rect(Rect2(corner, Vector2(size, size)), color, false, 1.0)
