@@ -44,6 +44,11 @@ var grid: PackGrid = PackGrid.new():
 		grid.watch(_pack, hotbar)
 var aim_vector: Vector2 = Vector2.ZERO
 var facing: Vector2i = Vector2i(0,1) # Default = Down
+# For the debug log's jump watch (D-193): the last physics frame a
+# move_to placed the actor, and where it stood when last watched
+var _moved_to_on_frame: int = -10
+var _watched_position: Vector2 = Vector2.ZERO
+var _watched_on_frame: int = -1
 
 @onready var animation_player: AnimationPlayer = $AnimationPlayer
 
@@ -133,7 +138,7 @@ func _move(_motion: Vector2) -> void:
 func _take_ramp(actual_motion: Vector2) -> void:
 	var target: WorldPos = Ramp.target_for(current_level.level_tiles, current_WorldPos, actual_motion)
 	if target != null:
-		move_to(target)
+		move_to(target, &"ramp")
 
 
 func stop() -> void:
@@ -190,7 +195,7 @@ func interact() -> bool:
 	if not Ladder.can_climb(current_level.world.tuning, load_ratio()):
 		current_level.world.climb_refused.emit(self, target)
 		return false
-	return move_to(target)
+	return move_to(target, &"ladder")
 
 
 func _set_actor_kind(value: int) -> void:
@@ -228,6 +233,7 @@ func _breach(delta: float) -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if Log.enabled: _watch_for_jumps()
 	_move(move_intent * speed * delta)
 	_primary_action(delta)
 	_breach(delta)
@@ -243,6 +249,8 @@ func setup(p_name: String, world_pos: WorldPos, level: Level, p_kind: int, p_act
 	var old_pos: WorldPos = current_WorldPos
 	_set_level(level)
 	position = TileSpace.tile_center(Vector2i(world_pos.x, world_pos.y))
+	# Placed, not walked: not a jump
+	_moved_to_on_frame = Engine.get_physics_frames()
 	current_WorldPos = get_current_WorldPos()
 	actor_worldpos_changed.emit(self, old_pos, current_WorldPos)
 	if p_actor_id != -1:
@@ -271,6 +279,9 @@ func _update_WorldPos() -> void:
 	
 	if not old_pos.equals(new_pos):
 		current_WorldPos = new_pos
+		if Log.enabled:
+			Log.event(Log.MOVES, &"stepped" if old_pos.depth == new_pos.depth else &"changed_level",
+				{"actor": actor_id, "from": Log.pos(old_pos), "to": Log.pos(new_pos)})
 		actor_worldpos_changed.emit(self, old_pos, new_pos)
 
 
@@ -317,16 +328,39 @@ func _set_level(level: Level) -> void:
 # test walking uses. Position is set before the level so the move is
 # announced once, with the final tile. Returns false, changing
 # nothing, if there is no level there or the landing is blocked.
-func move_to(target: WorldPos) -> bool:
+#
+# `cause` says what sent it, for the debug log (D-193): every move_to
+# is logged with it and its caller, so a jump no move_to explains
+# stands out.
+func move_to(target: WorldPos, cause: StringName = &"unspecified") -> bool:
+	var from: WorldPos = current_WorldPos
 	var level: Level = _level_in_my_world(target.depth)
-	if level == null: return false
-
-	var landing: Variant = _landing_on(level.level_tiles, target)
+	var landing: Variant = _landing_on(level.level_tiles, target) if level != null else null
+	if Log.enabled:
+		Log.event(Log.MOVES, &"move_to", {"actor": actor_id, "from": Log.pos(from),
+			"to": Log.pos(target), "cause": cause, "ok": landing != null, "by": Log.caller(2)})
 	if landing == null: return false
 
 	position = landing
 	_set_level(level)
+	_moved_to_on_frame = Engine.get_physics_frames()
 	return true
+
+
+# A jump: more than a tile and a half between two physics frames with
+# no move_to this frame or the last to explain it. Logged with where
+# from and to, since the code that moved it has already returned.
+func _watch_for_jumps() -> void:
+	var frame: int = Engine.get_physics_frames()
+	if _watched_on_frame >= 0 and position.distance_to(_watched_position) \
+			> TileSpace.TILE_PIXELS * 1.5 and frame - _moved_to_on_frame > 1:
+		Log.event(Log.MOVES, &"jump", {"actor": actor_id,
+			"from": Log.pos(TileSpace.world_pos_at(_watched_position + feet_box.get_center(),
+				current_level) if current_level != null else null),
+			"to": Log.pos(current_WorldPos), "pixels": position.distance_to(_watched_position),
+			"explained": false})
+	_watched_position = position
+	_watched_on_frame = frame
 
 
 # Where the actor stands on arriving at `target`, or null if it can't.
