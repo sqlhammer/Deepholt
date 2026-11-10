@@ -3962,3 +3962,16 @@ all eight rows.
 *Why:* the taskbar hid the hotbar on a laptop.
 
 *Considered:* staying borderless and working around the taskbar.
+
+---
+
+### D-192 — Past the world's edge is drawn as the fog's black
+**Decided** (by Derik, after slice 012, 2026-11-10).
+
+- **The background past a level's edge is black,** the color unknown tiles are drawn in
+  (D-146), so in the dark the world's end can't be told from unexplored rock. The actor still
+  can't go past the edge, and nothing there is revealed. The letterbox bars are black too.
+- On the Surface, which is always lit (D-144), the edge still shows as grass meeting black.
+
+*Why:* Godot's default grey showed past the edge, so the end of the world was plain to see in
+the fog.
