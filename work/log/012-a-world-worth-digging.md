@@ -1,6 +1,7 @@
 # 012 — A world worth digging
 
-*Written by Claude, 2026-11-09.*
+*Written by Claude, 2026-11-09. Closed and merged 2026-11-10 at Derik's word; the by-hand walk
+below was not reported done.*
 
 > You wake on a meadow at the end of a dirt road. Trees stand around you; the road winds toward
 > a mass of grey rock and through a cut in it, down to the ramp. You have an axe and no timber.

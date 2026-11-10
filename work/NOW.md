@@ -8,8 +8,9 @@
 *Proposed by Claude, 2026-11-09, for Derik's approval. Scope and every fork settled in planning
 ([D-179](../docs/design-decisions.md#d-179--slice-012-is-polish-a-surface-worth-walking-trees-ores-and-caves-below-gentler-supports)
 to D-187; D-187 corrects D-183: ore on −2 only). Agent mode on a `slice-012` branch. **Approved
-by Derik the same day, with the numbers below as proposed.** **Built, 1074 tests green;
-waiting on the by-hand walk** ([log](./log/012-a-world-worth-digging.md)). A sharp HUD and the
+by Derik the same day, with the numbers below as proposed.** **Built, 1074 tests green.
+Closed and merged 2026-11-10** at Derik's word ([log](./log/012-a-world-worth-digging.md)); the
+by-hand walk was not reported, so its boxes stay unticked. A sharp HUD and the
 window (D-188 to D-191) were added on 2026-11-10, at Derik's request.*
 
 ## Where we are

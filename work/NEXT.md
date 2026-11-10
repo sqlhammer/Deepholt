@@ -1,7 +1,7 @@
 # Next
 
-Sketches, not commitments. Slice 012, a world worth digging, is built
-([log](./log/012-a-world-worth-digging.md)) and waits on the by-hand walk, as do 008 to 011.
+Sketches, not commitments. Slice 012, a world worth digging, is closed and merged
+([log](./log/012-a-world-worth-digging.md)); its by-hand walk, like 008 to 011's, was not reported.
 Cheap to throw away; expect them to change.
 
 ---
