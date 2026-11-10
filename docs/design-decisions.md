@@ -3975,3 +3975,68 @@ all eight rows.
 
 *Why:* Godot's default grey showed past the edge, so the end of the world was plain to see in
 the fog.
+
+---
+
+### D-193 — Slice 013 is a debug log; the log is a static class that never writes on the game's thread
+**Decided** (by Derik, planning slice 013, 2026-11-10). Moves "Getting it home" to 014. Design:
+[logging-and-telemetry §1](./tech/logging-and-telemetry.md).
+
+- **A debug log now, play-test telemetry later:** telemetry is drafted in the same design doc and
+  planned as its own slice.
+- **`Log` is a static class** (`Log.event(channel, name, data)`), reachable from any file, with
+  no autoload.
+- **Logging must not cause lag:** a call only appends to memory; a background thread formats
+  and writes the session file. Debug builds only.
+
+*Why:* an actor was moved across −1 after a breach (2026-11-10) and nothing recorded why; the
+play session's log had already been rotated away.
+
+*Considered:* an autoload node; a node that only listens to signals (it can't see causes that
+have no signal).
+
+---
+
+### D-194 — Ctrl+F9 captures a bug report
+**Decided** (by Derik, planning slice 013, 2026-11-10).
+
+- **Ctrl+F9** writes a capture folder: the last minutes of log, a save of the running world, a
+  screenshot, and the build and session facts. Debug builds only.
+
+*Considered:* F9 alone; F8 (the editor's stop key).
+
+---
+
+### D-195 — On a pad, the left trigger and Y held for 2 seconds capture a bug report
+**Decided** (by Derik, planning slice 013, 2026-11-10).
+
+- **Left trigger + Y, held together for 2 seconds,** captures once per hold.
+- Y's own actions (build mode, drop one) are skipped while the left trigger is held, so the
+  combo doesn't change what it captures. The left trigger has no other binding.
+
+*Considered:* L3 + R3; Back + Start (Back quick-saves, Start opens the inventory); LB + RB.
+
+---
+
+### D-196 — Every log channel records by default in a debug build
+**Decided** (by Derik, planning slice 013, 2026-11-10).
+
+- **Channels:** moves, world, input, save, support, perf, errors. **All on at launch;** each can
+  be switched off from F3.
+
+*Why:* the first time a bug happens, its lead-up is already recorded.
+
+*Considered:* input and tile steps off until switched on.
+
+---
+
+### D-197 — Ten minutes in a capture, 30 session logs, 20 captures kept
+**Decided** (by Derik, planning slice 013, 2026-11-10).
+
+- **A capture reaches 10 minutes back.**
+- **The 30 newest session logs are kept,** ours and Godot's own (its default was 5).
+- **The 20 newest captures are kept.**
+- These are the log's own constants, not the tuning profile's: the log runs before any world
+  exists and across worlds, and the profile is a world's.
+
+*Considered:* 5 minutes, 30 logs, all captures; 2 minutes, 10 logs, 20 captures.
