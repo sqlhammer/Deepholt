@@ -163,3 +163,14 @@ Choices made while building it, not put to Derik:
 
 Unseen: no headless run draws, so the grid, its icons and its text sizes haven't been looked at.
 The walk's step 4 now covers the grid.
+
+---
+
+## Closed
+
+*Added by Claude, 2026-11-09, when the slice was closed.*
+
+Derik closed the slice and merged it into `main` on 2026-11-09, after seeing the hotbar fix and
+the grid inventory in play ("Love it"). No item-by-item walk was reported, so the by-hand outcomes
+stay unticked, with 008's, 009's and 010's. The slice ended at 1029 tests in 51 scripts. Next in
+NEXT.md is 012, "Getting it home".

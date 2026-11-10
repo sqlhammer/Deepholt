@@ -9,6 +9,9 @@ changes), then the hotbar (you can swap), then the inventory screen, then the re
 
 Slice 010's checklist is in git history (last at the 010 close).
 
+**Closed 2026-11-09** by Derik, merged into `main` after seeing the hotbar fix and the grid
+inventory in play. No item-by-item walk was reported, so the by-hand items stay unticked.
+
 ---
 
 ## A. Decided in planning

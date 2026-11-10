@@ -1,8 +1,8 @@
 # Next
 
-Sketches, not commitments. Slice 011, tools in hand, is built ([log](./log/011-tools-in-hand.md))
-and waits on the by-hand walk, as do 008's, 009's and 010's. Cheap to throw away; expect them to
-change.
+Sketches, not commitments. Slice 011, tools in hand, is done and merged
+([log](./log/011-tools-in-hand.md)); no item-by-item walk of 008 to 011 has been reported. Cheap
+to throw away; expect them to change.
 
 ---
 
