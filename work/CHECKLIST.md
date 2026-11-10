@@ -55,12 +55,12 @@ Slice 011's checklist is in git history (last at the 011 close).
 
 ## F. Done
 
-- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-- [ ] `python scripts/coverage.py` run; uncovered lines looked at (011 closed at 96.1%).
+- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
+- [x] `python scripts/coverage.py` run; uncovered lines looked at (011 closed at 96.1%).
 - [ ] By hand: outcomes 1–5 walked in one sitting, launched outside the editor at least once.
-- [ ] Claude reviews the slice.
-- [ ] Claude writes `log/012-a-world-worth-digging.md`.
-- [ ] Claude re-sketches [NEXT.md](./NEXT.md).
+- [x] Claude reviews the slice.
+- [x] Claude writes `log/012-a-world-worth-digging.md`.
+- [x] Claude re-sketches [NEXT.md](./NEXT.md).
 
 ---
 
