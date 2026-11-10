@@ -277,6 +277,10 @@ func _notification(what: int) -> void:
 
 
 func _ready() -> void:
+	# F11: full screen or a window (D-191)
+	var fullscreen: FullscreenToggle = FullscreenToggle.new()
+	fullscreen.name = "FullscreenToggle"
+	add_child(fullscreen)
 	$DebugOverlay.game = self
 	$DebugOverlay.connect_timers($ActivePlayTimer, $TotalPlayTimer)
 	# TODO: When we have a main menu, don't start until the game has
@@ -449,6 +453,10 @@ func _create_view() -> void:
 	hotbar_hud.watch(view)
 	hotbar_hud.watch_cursor(build_cursor)
 	hotbar_hud.watch_inventory(inventory)
+	# The load and the refusals too: the inventory, now most of the
+	# frame, shows its own (D-190)
+	carry.watch_inventory(inventory)
+	refusals.watch_inventory(inventory)
 
 
 # The one way a world comes in, at launch, for a new game and on a

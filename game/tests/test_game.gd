@@ -46,6 +46,11 @@ func _handler_for(actor: Actor) -> InputHandler:
 	return null
 
 
+func test_f11_listens_from_launch() -> void:
+	assert_true(_game.get_node_or_null("FullscreenToggle") is FullscreenToggle,
+		"the full-screen toggle (D-191)")
+
+
 # --- saves ---
 
 # The test root holds no slots, so the game picks none, even when the

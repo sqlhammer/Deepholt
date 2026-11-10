@@ -36,7 +36,7 @@ func _init() -> void:
 	box.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	box.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	# Above the hotbar (ui-ux §4)
-	box.offset_bottom = -30
+	box.offset_bottom = -44
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
 	root.add_child(box)
 	_bar = Control.new()

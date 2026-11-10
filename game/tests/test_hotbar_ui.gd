@@ -136,6 +136,17 @@ func test_the_bar_on_screen_hides_while_the_inventory_shows_its_own() -> void:
 	assert_true(_hud.visible, "back")
 
 
+func test_the_load_and_refusals_hide_under_the_open_inventory() -> void:
+	var carry: CarryHud = add_child_autofree(CarryHud.new())
+	var refusals: RefusalNotice = add_child_autofree(RefusalNotice.new())
+	carry.watch_inventory(_inventory)
+	refusals.watch_inventory(_inventory)
+	_inventory.set_open(true)
+	assert_false(carry.visible or refusals.visible, "both hidden: they'd show through it")
+	_inventory.set_open(false)
+	assert_true(carry.visible and refusals.visible, "both back")
+
+
 func test_the_open_inventory_keeps_the_selection() -> void:
 	_inventory.set_open(true)
 	_press(&"hotbar_next")
@@ -184,13 +195,56 @@ func test_the_focused_thing_is_described() -> void:
 
 func test_the_mouse_finds_cells_and_slots() -> void:
 	_inventory.set_open(true)
-	assert_eq(_inventory.place_at(Vector2(30, 20)), [InventoryOverlay.REGION.GRID, 1] as Array[int],
+	assert_eq(_inventory.place_at(Vector2(40, 24)), [InventoryOverlay.REGION.GRID, 1] as Array[int],
 		"the grid's second cell")
-	assert_eq(_inventory.place_at(Vector2(InventoryOverlay.BUILD_X + 2, 20)),
+	assert_eq(_inventory.place_at(Vector2(InventoryOverlay.BUILD_X + 2, 24)),
 		[InventoryOverlay.REGION.BUILD, 0] as Array[int], "the first build slot")
 	assert_eq(_inventory.place_at(Vector2(2, InventoryOverlay.TOOLS_Y + 2)),
 		[InventoryOverlay.REGION.TOOLS, 0] as Array[int], "the first tool slot")
-	assert_eq(_inventory.place_at(Vector2(25, 20)), [-1, -1] as Array[int], "a gap")
+	assert_eq(_inventory.place_at(Vector2(33, 24)), [-1, -1] as Array[int], "a gap")
+	assert_eq(_inventory.place_at(Vector2(2, InventoryOverlay.HEADER + 6 * InventoryOverlay.PITCH
+		- 2)), [-1, -1] as Array[int], "a seventh row isn't shown, so isn't hit")
+
+
+# D-190: 32 px cells, six rows shown, the words wrapped under them;
+# the whole board fits the smallest HUD frame.
+func test_the_board_fits_the_smallest_frame() -> void:
+	var board: Vector2 = InventoryOverlay.BOARD_SIZE + Vector2(8, 8)
+	assert_true(board.x <= ScaledHud.MIN_FRAME.x and board.y <= ScaledHud.MIN_FRAME.y,
+		"%s inside %s" % [board, ScaledHud.MIN_FRAME])
+	_inventory.set_open(true)
+	for text: String in [_inventory.help_text(), "A/click: put down  B/right-click: cancel"]:
+		assert_eq(InventoryOverlay.wrap_text(text).size(), 1, "one line: %s" % text)
+
+
+func test_long_words_wrap_between_words_keeping_double_spaces() -> void:
+	var long: String = "In reach: 12 Stone, 3 Copper ore, 2 Tin ore, 6 Timber (61 kg). Take it all: 86.5 / 60 kg"
+	var lines: PackedStringArray = InventoryOverlay.wrap_text(long)
+	assert_eq(lines.size(), 2, "two lines")
+	assert_eq(" ".join(lines), long, "nothing lost")
+	assert_eq(InventoryOverlay.wrap_text("a  b"), PackedStringArray(["a  b"]), "the gap kept")
+
+
+func test_a_cells_weight_fits_in_four_characters() -> void:
+	assert_eq(InventoryOverlay.cell_weight(2.5), "2.5", "under ten: as the pack says")
+	assert_eq(InventoryOverlay.cell_weight(12.5), "13", "ten and up: whole kilos")
+	assert_eq(InventoryOverlay.cell_weight(30.0), "30", "whole")
+
+
+func test_the_build_columns_last_slots_lead_left_to_the_tool_row() -> void:
+	_inventory.set_open(true)
+	_inventory._focus(InventoryOverlay.REGION.BUILD, 5)
+	_inventory.move(Vector2i.LEFT)
+	assert_eq([_inventory.focus_region, _inventory.focus_index], [InventoryOverlay.REGION.GRID, 47],
+		"slot 6 is level with the grid's sixth row")
+	_inventory._focus(InventoryOverlay.REGION.BUILD, 6)
+	_inventory.move(Vector2i.LEFT)
+	assert_eq([_inventory.focus_region, _inventory.focus_index], [InventoryOverlay.REGION.TOOLS, 7],
+		"slot 7 sits beside the tool row")
+	_inventory._focus(InventoryOverlay.REGION.GRID, 63)
+	assert_eq(_inventory.scroll, 2, "the eighth row scrolls into view")
+	_inventory.move(Vector2i.RIGHT)
+	assert_eq(_inventory.focus_index, 5, "from the bottom shown row: the sixth build slot")
 
 
 # --- picking up and putting down (D-177) ---

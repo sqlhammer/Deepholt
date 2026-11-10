@@ -53,6 +53,19 @@ Slice 011's checklist is in git history (last at the 011 close).
 - [x] Tests: −2's shares near the profile's, −1 still has no ore, caves sealed and apart, caves
   never judged. [4, 6]
 
+## G. A sharp HUD and the window (added 2026-11-10)
+
+- [x] The HUD at a whole-number scale, on a frame over the game picture of at least 576 × 360
+  (D-188). [7]
+- [x] Press Start 2P at 8 px, imported without anti-aliasing, hinting or sub-pixel positions;
+  its license beside it (D-189). [7]
+- [x] 32 px cells and slots, six grid rows shown with scroll arrows, bare weights, wrapped words;
+  the weight bar and refusals hide under the open inventory (D-190). [7]
+- [x] Exclusive full screen at launch; F11 to a window and back (D-191). [7]
+- [x] Tests: the scale is whole and the frame never under 576 × 360 on common screens; the font
+  imported sharp; the board fits the smallest frame; wrapping; the F11 modes and window size.
+- [x] Screenshots taken from the running game at 1280 × 800 and 1920 × 1080.
+
 ## F. Done
 
 - [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.

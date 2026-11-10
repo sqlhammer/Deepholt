@@ -3887,3 +3887,78 @@ and cave fungus ("safe by design") and −2 Greyseam copper, tin and coal;
 - Coal, the third of −2's signature resources, waits for a use.
 
 *Considered:* a trace of copper on −1; copper and tin on both levels, amending the strata table.
+
+---
+
+### D-188 — The HUD is drawn at a whole-number scale on its own frame, over the game picture
+**Decided** (by Derik, during slice 012, 2026-11-10). Amends how slice 011's screen layers are
+scaled; the game picture is unchanged.
+
+- **The HUD is scaled by the largest whole number that leaves it a frame of at least 576 × 360
+  HUD pixels,** never under 1, and covers the game picture, not its black bars. On the Steam
+  Deck (D-044) that is 2, a 640 × 400 frame, where the game is scaled by 2.5; at 1920 × 1080 it is
+  3, a 576 × 360 frame.
+- **Everything on the HUD is laid out to fit 576 × 360,** anchored to the frame's edges or its
+  center, so the frame may be any size at or above that.
+- The HUD's pixels may be a little finer than the game's (2 against 2.5 on the Deck).
+
+*Why:* the HUD was scaled with the game, by 2.5 on the Deck, so no HUD pixel was a whole number
+of screen pixels and its text was soft.
+
+*Considered:* drawing text at the window's full resolution (sharp but smooth, out of keeping
+with the pixel art); keeping the HUD's scale equal to the game's.
+
+---
+
+### D-189 — The HUD's text is Press Start 2P, at 8 px
+**Decided** (by Derik, during slice 012, 2026-11-10).
+
+- **Press Start 2P** (SIL Open Font License 1.1; the license ships beside it in
+  `content/fonts/`), drawn only at 8 px, the size its pixel grid is drawn on, with anti-aliasing,
+  hinting and sub-pixel positioning off on import. The build cursor's label in the world uses it
+  too.
+- The F3 debug overlay keeps the engine's font.
+
+*Why:* a bitmap-style font drawn at its own size and scaled by a whole number stays sharp.
+
+*Considered:* Tiny5 and Micro 5 (mixed case, narrower), Silkscreen (capitals only), Jersey 10
+(its pixel grid needs a font size of 18.67, which Godot can't draw).
+
+---
+
+### D-190 — Inventory cells are 32 px with six rows shown; a cell's weight is a bare number
+**Decided** (by Derik, during slice 012, 2026-11-10). Amends
+[D-175](#d-175--the-inventory-is-a-grid-the-pack-in-8-x-8-build-slots-down-the-right-tool-slots-along-the-bottom)'s grid board.
+
+- **Cells and slots are 32 px** (34 px apart), the hotbar's slots too: the number on top, the
+  icon under it, and in a grid cell the weight under that.
+- **Six of the grid's rows show at once;** the rest scroll, with an arrow at the edge that has
+  more. The build column keeps its eight slots and runs past the tool row; its last two lead left
+  to the tool row's end.
+- **A cell's weight is in kilos without the unit,** whole kilos from 10 up, so four characters
+  always fit. Per-item weight stays always visible (ui-ux §5).
+- The words under the board wrap at 480 px: the focused thing, the take preview over two lines
+  at most, the keys.
+- The weight bar and refusal notices hide while the inventory is open, as the hotbar already
+  did: the board now covers most of the frame.
+
+*Why:* at 8 px a letter, "2.5kg" is 40 px, wider than the old 24 px cell; ui-ux §5 rules out
+moving the weight off the cell.
+
+*Considered:* a second, narrower font (Tiny5) for the numbers in cells, keeping 24 px cells and
+all eight rows.
+
+---
+
+### D-191 — The game launches in exclusive full screen; F11 switches to a window and back
+**Decided** (by Derik, during slice 012, 2026-11-10).
+
+- **Exclusive full screen at launch,** where it was borderless full screen: Windows drew its
+  taskbar over the borderless window.
+- **F11 toggles to a window** at the project's window size (1280 × 800), shrunk to fit the
+  screen's usable area if it must be and centered, **and back** to exclusive full screen.
+- On the Steam Deck the mode makes no difference: SteamOS runs every game full screen.
+
+*Why:* the taskbar hid the hotbar on a laptop.
+
+*Considered:* staying borderless and working around the taskbar.

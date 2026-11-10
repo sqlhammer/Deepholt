@@ -12,7 +12,9 @@ extends ScaledHud
 
 signal slot_clicked(slot: int)
 
-const SLOT_SIZE: Vector2 = Vector2(30, 20)
+# As the inventory's cells: the number on top, the icon under it
+# (D-190)
+const SLOT_SIZE: Vector2 = Vector2(32, 32)
 const GAP: int = 2
 const EMPTY: Color = Color(0, 0, 0, 0.45)
 const FILLED: Color = Color(0, 0, 0, 0.7)
@@ -82,11 +84,6 @@ func _on_followed_moved(actor: Actor) -> void:
 	_actor = actor
 	_actor.hotbar.changed.connect(_on_hotbar_changed)
 	_redraw()
-
-
-# Hidden while the inventory is open: it shows the bars itself.
-func watch_inventory(inventory: InventoryOverlay) -> void:
-	inventory.open_changed.connect(func(open: bool) -> void: visible = not open)
 
 
 func _on_build_mode_changed(active: bool) -> void:
@@ -168,16 +165,19 @@ func _draw_slot(i: int) -> void:
 		border = SELECTED
 		width = 2.0
 	slot.draw_rect(rect, border, false, width)
-	var font: Font = ThemeDB.fallback_font
-	slot.draw_string(font, Vector2(2, 7), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 6, BORDER)
+	var font: Font = ScaledHud.FONT
+	var font_size: int = ScaledHud.FONT_SIZE
+	slot.draw_string(font, Vector2(2, 2 + font_size), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1,
+		font_size, BORDER)
 	var icon: Texture2D = slot_icon(i)
+	var top: float = 3 + font_size
 	if icon != null:
-		# Fitted to the slot's height, keeping its shape: a 16 x 24
-		# fixture shrinks, a 16 x 16 icon sits as drawn
-		var icon_height: float = minf(icon.get_height(), slot.size.y - 2)
+		# Under the number, fitted to the room left, keeping its shape:
+		# a 16 x 24 fixture shrinks, a 16 x 16 icon sits as drawn
+		var icon_height: float = minf(icon.get_height(), slot.size.y - top - 2)
 		var icon_width: float = icon.get_width() * icon_height / icon.get_height()
-		slot.draw_texture_rect(icon, Rect2(Vector2((slot.size.x - icon_width) / 2, 1),
+		slot.draw_texture_rect(icon, Rect2(Vector2(roundf((slot.size.x - icon_width) / 2), top),
 			Vector2(icon_width, icon_height)), false)
 	elif text != "":
 		slot.draw_string(font, Vector2(0, slot.size.y - 3), text, HORIZONTAL_ALIGNMENT_CENTER,
-			slot.size.x, 8, Color.WHITE)
+			slot.size.x, font_size, Color.WHITE)

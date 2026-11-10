@@ -8,8 +8,9 @@
 *Proposed by Claude, 2026-11-09, for Derik's approval. Scope and every fork settled in planning
 ([D-179](../docs/design-decisions.md#d-179--slice-012-is-polish-a-surface-worth-walking-trees-ores-and-caves-below-gentler-supports)
 to D-187; D-187 corrects D-183: ore on −2 only). Agent mode on a `slice-012` branch. **Approved
-by Derik the same day, with the numbers below as proposed.** **Built, 1060 tests green;
-waiting on the by-hand walk** ([log](./log/012-a-world-worth-digging.md)).*
+by Derik the same day, with the numbers below as proposed.** **Built, 1074 tests green;
+waiting on the by-hand walk** ([log](./log/012-a-world-worth-digging.md)). A sharp HUD and the
+window (D-188 to D-191) were added on 2026-11-10, at Derik's request.*
 
 ## Where we are
 
@@ -27,6 +28,9 @@ ten a new game starts with. The support rule fails a room 19 wide on −1.
 - **Below:** copper and tin veins on −2 only (D-183, D-187); at least two sealed natural caves on
   each of −1 and −2 (D-184).
 - **No preloaded ladders** (D-185), and **R halved** (D-186).
+- **Added mid-slice (2026-11-10): a sharp HUD and the window.** The HUD at a whole-number scale
+  on its own frame (D-188), in Press Start 2P (D-189), with 32 px cells and six rows shown in the
+  inventory (D-190); exclusive full screen at launch and F11 for a window (D-191).
 
 ## What should be true when you stop
 
@@ -45,6 +49,9 @@ By hand, unless marked:
    numbers; −1 has no ore; at least two caves per level, sealed, not overlapping the fixed
    placements; caves never judged; the same seed builds the same world; a save from 011 still
    loads.
+7. The HUD's text and icons are sharp, with no soft edges, on the Deck's 1280 × 800 and on a
+   1080p screen; the inventory fits on screen with its six rows, the build column and the words
+   under it. The game opens full screen with no taskbar over it; F11 gives a window and back.
 
 ## Mode
 

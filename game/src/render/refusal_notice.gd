@@ -53,7 +53,7 @@ func _init() -> void:
 	_label.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	# Above the carry bar and the hotbar
-	_label.offset_bottom = -48
+	_label.offset_bottom = -62
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.add_theme_color_override("font_outline_color", Color.BLACK)
 	_label.add_theme_constant_override("outline_size", 2)

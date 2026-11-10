@@ -104,10 +104,56 @@ this slice's to change without asking. Removing them is a one-line prefab edit.
 
 ---
 
+## Added mid-slice: a sharp HUD and the window (2026-11-10)
+
+Derik's screenshots showed soft HUD text and Windows' taskbar over the hotbar. Built in Agent
+mode inside this slice, at his request, on four decisions of his: a whole-number HUD scale on its
+own frame (D-188), Press Start 2P (D-189), 32 px cells with six rows shown (D-190), exclusive full
+screen and F11 (D-191). He chose the font and the cells from mockups rendered at Deck size.
+
+**Result:** 1074 tests in 55 scripts, green. Coverage 94.4% (95.0% before): the new F11 toggle is
+29% covered, since the part that changes the window talks to the operating system, which headless
+tests can't; the inventory's drawing is 68.5% covered, as before. Screenshots from the running
+game at 1280 × 800 and 1920 × 1080 showed the text and icons sharp, and the inventory fitting.
+
+**Choices made while building, not put to Derik:**
+
+- **The HUD's scale is the largest whole number leaving a 576 × 360 frame,** rather than the
+  game's scale rounded down. Rounded down alone, a window just under 2× the game would get a frame
+  of 1:1 HUD pixels, or a frame too small for the inventory. 576 × 360 is what a 16:9 screen gives
+  at any whole scale; the Deck gets 640 × 400.
+- **A cell's weight from 10 kg up is shown in whole kilos** ("13" for 12.5), so it fits in four
+  characters, the cell's width. The exact weight is in the line under the board.
+- **The build column's last two slots lead left to the tool row's end,** since they sit beside it
+  now; the column runs past the six rows shown.
+- **The weight bar and refusal notices hide while the inventory is open.** The first screenshot
+  showed the refusal printed over the inventory's words and the weight bar through its
+  background.
+- **The key help lost a space between groups,** to fit one line at 8 px a letter.
+- **F11's window is 1280 × 800, shrunk to fit a smaller screen,** and centered.
+- **F3 keeps the engine's font**: it's a debug screen, and Press Start 2P is too wide for it.
+
+**What surprised:**
+
+- **Two of the four fonts in the first mockup were drawn wrong.** I took their sizes from their
+  names; Jersey 10's pixel grid needs a font size of 18.67, which no whole size hits, and Micro 5
+  needed 11, not 10. Derik spotted Jersey's mangled letters. The second mockup read each font's
+  grid from its outlines and checked that no pixel came out half-covered.
+- **The first mockup of the bigger cells was drawn wrong too:** it cut the build column off at
+  six slots. The redraw showed all eight running past the tool row, before Derik chose.
+- **`wrap` is one of GDScript's built-in functions,** so a static `wrap()` on the overlay failed to
+  compile; renamed `wrap_text`.
+- **One suite run failed five save tests in `test_game`, which then passed alone and in two full
+  runs.** It came straight after the run that didn't compile, which likely left test saves behind.
+  Not reproduced; noted in case it returns.
+
+---
+
 ## By-hand walk (nothing here has been done)
 
 From the brief, in order: a new game on the meadow at the road's end, trees around, the road
 through a cut to the ramp, a rock quarter; the axe fells a tree in about 3 s for 4 timber, the
 pick is refused; another world has another road and quarter; −1 has caves but no ore, −2 has
 copper and tin in veins and caves, and no ladder stands below −1's hole; an 11-wide room on −1
-goes red.
+goes red. Then the HUD: sharp text and icons on the Deck and on a 1080p screen, the inventory
+fitting with its six rows, no taskbar over the game, F11 to a window and back.
