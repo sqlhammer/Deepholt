@@ -22,6 +22,7 @@ const SELECTED: Color = Color(1.0, 0.9, 0.45)
 # Short names for the slots, which are too narrow for a display name.
 # Anything not listed shows the last word of its name.
 const SHORT_NAMES: Dictionary = {
+	&"flint_axe": "Axe",
 	&"flint_pickaxe": "Pick",
 	&"flint_shovel": "Shovel",
 }

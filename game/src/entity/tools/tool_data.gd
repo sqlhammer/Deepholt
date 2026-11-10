@@ -15,6 +15,7 @@ enum CLASS {
 	BARE_HANDS,
 	PICK,
 	SHOVEL,
+	AXE,
 }
 
 @export var tool_name: String = ""

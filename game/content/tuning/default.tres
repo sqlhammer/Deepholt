@@ -21,6 +21,11 @@ tool_multipliers = Dictionary[int, Dictionary]({
 2: 0.4,
 3: 2.0,
 5: 1.0
+},
+4: {
+2: 0.25,
+3: 0.5,
+5: 0.5
 }
 })
 level_change_fade_seconds = 0.5
@@ -35,10 +40,12 @@ breach_tool_multiplier = 1.2
 build_cursor_radius = 5
 carry_capacity_kg = 60.0
 starting_items = Dictionary[StringName, int]({
-&"timber": 10,
+&"flint_axe": 1,
 &"flint_pickaxe": 1,
 &"flint_shovel": 1
 })
+tree_work = 48.0
+tree_timber = 4
 rock_wall_stone = 1
 ore_yield_min = 2
 ore_yield_max = 4

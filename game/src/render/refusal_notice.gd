@@ -75,6 +75,7 @@ func _on_shown_world_changed(world: World, _depth: int) -> void:
 		_world.ceiling_failing.disconnect(_on_ceiling_failing)
 		_world.actor_moved_clear.disconnect(_on_actor_moved_clear)
 		_world.took.disconnect(_on_took)
+		_world.chop_refused.disconnect(_on_chop_refused)
 	_world = world
 	if _world != null:
 		_world.breach_refused.connect(_on_breach_refused)
@@ -83,6 +84,7 @@ func _on_shown_world_changed(world: World, _depth: int) -> void:
 		_world.ceiling_failing.connect(_on_ceiling_failing)
 		_world.actor_moved_clear.connect(_on_actor_moved_clear)
 		_world.took.connect(_on_took)
+		_world.chop_refused.connect(_on_chop_refused)
 
 
 # Build mode's own preview refusals (D-154): too dark, not a hole.
@@ -106,6 +108,11 @@ func _on_ceiling_failing(depth: int, _tiles: Array[Vector2i]) -> void:
 func _on_actor_moved_clear(actor: Actor, _from: WorldPos, _to: WorldPos) -> void:
 	if _view == null or actor != _view.actor: return
 	show_text("The ceiling came down on you.")
+
+
+func _on_chop_refused(actor: Actor, _tile: WorldPos, reason: World.CHOP_REFUSAL) -> void:
+	if _view == null or actor != _view.actor: return
+	if reason == World.CHOP_REFUSAL.NEEDS_AXE: show_text("Chopping needs an axe.")
 
 
 # The take key says what it did (D-167), so pad A taking instead of

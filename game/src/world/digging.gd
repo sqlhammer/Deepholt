@@ -37,6 +37,11 @@ static func dig_power(tuning: TuningProfile, tool: ToolData, top_kind: int) -> f
 	return tool.power * float(by_kind.get(top_kind, 1.0))
 
 
+# Only an axe fells a tree (D-181).
+static func chops(tool: ToolData) -> bool:
+	return tool != null and tool.tool_class == ToolData.CLASS.AXE
+
+
 # Only a pick breaches (D-168, D-174): the class, before any power.
 static func breaches(tool: ToolData) -> bool:
 	return tool != null and tool.tool_class == ToolData.CLASS.PICK

@@ -974,7 +974,8 @@ func test_a_save_from_before_tools_gives_the_starting_tools_and_says_so() -> voi
 	var actor: Actor = loaded_game.world.actors()[0]
 	assert_eq(actor.pack.count_of(&"flint_pickaxe"), 1, "a pick")
 	assert_eq(actor.pack.count_of(&"flint_shovel"), 1, "a shovel")
-	assert_eq(actor.tool(), ItemRegistry.get_item(&"flint_pickaxe").tool, "the pick in slot 1")
+	assert_eq(actor.pack.count_of(&"flint_axe"), 1, "an axe (D-182)")
+	assert_eq(actor.tool(), ItemRegistry.get_item(&"flint_axe").tool, "the axe in slot 1")
 	assert_eq(loaded_game.problems.size(), 1, "one report")
 	assert_string_contains(loaded_game.problems[0], "saved before tools were carried")
 	assert_push_warning("saved before tools")

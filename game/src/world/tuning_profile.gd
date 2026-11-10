@@ -104,6 +104,11 @@ const DEFAULT_ID: String = "default"
 # How long a failing region has before it falls, in seconds (D-166).
 @export var collapse_countdown_seconds: float = 0.0
 
+# Felling a tree (D-181): the work an axe does, at its power per
+# second (48 at flint's 16 is 3 s), and the timber it gives.
+@export var tree_work: float = 0.0
+@export var tree_timber: int = 0
+
 # What placing a timber prop costs, item id -> count (D-165): two
 # timber.
 @export var prop_cost: Dictionary[StringName, int] = {}

@@ -7,6 +7,9 @@ var progress: float = 0.0
 var tile_hardness: float = 0.0
 var current_tile: WorldPos = WorldPos.new(99,99,99)
 var actor: Actor
+# The tree a refusal was already asked about, so the wrong tool hears
+# "needs an axe" once, not every tick (D-181).
+var _refused_tree: WorldPos
 
 # The gatekeeper is the actor's world, reached through its level
 # (D-126). An actor never changes world, so it is listened to once.
@@ -14,6 +17,8 @@ func _ready() -> void:
 	var world: World = actor.current_level.world
 	world.tile_dug.connect(_on_tile_dug)
 	world.dig_refused.connect(_on_dig_refused)
+	world.tree_felled.connect(_on_tile_dug)
+	world.chop_refused.connect(_on_chop_refused)
 	actor.action_ended.connect(action_ended)
 
 
@@ -24,6 +29,11 @@ func dig(delta: float, tool: ToolData, target_tile: WorldPos, level: Level) -> v
 		_reset_progress()
 	
 	current_tile = target_tile
+	# A tree on the faced tile is felled, not dug (D-181)
+	if level.world.tree_at(target_tile) != null:
+		_chop(delta, tool, target_tile, level)
+		return
+	_refused_tree = null
 	var kind: int = _get_tile_kind(level, target_tile)
 	var ore: int = level.level_tiles.get_ore(target_tile.x, target_tile.y)
 	
@@ -35,6 +45,26 @@ func dig(delta: float, tool: ToolData, target_tile: WorldPos, level: Level) -> v
 	progress += Digging.dig_power(level.world.tuning, tool, kind) * delta
 	if _is_dig_complete(): 
 		level.world.dig_requested.emit(actor, target_tile)
+
+
+# Felling: refused at once without an axe; otherwise work against the
+# profile's tree work at the tool's power, then ask the world.
+func _chop(delta: float, tool: ToolData, target: WorldPos, level: Level) -> void:
+	var world: World = level.world
+	if world.chop_problem(target, actor) != World.CHOP_REFUSAL.NONE:
+		progress = 0.0
+		if _refused_tree == null or not _refused_tree.equals(target):
+			_refused_tree = target
+			world.chop_requested.emit(actor, target)
+		return
+	tile_hardness = world.tuning.tree_work
+	progress += tool.power * delta
+	if _is_dig_complete():
+		world.chop_requested.emit(actor, target)
+
+
+func _on_chop_refused(p_actor: Actor, _tile: WorldPos, _reason: World.CHOP_REFUSAL) -> void:
+	if _matches_attached_actor(p_actor): progress = 0.0
 
 
 func _target_tile_changed(target_tile: WorldPos) -> bool:
@@ -52,6 +82,7 @@ func _on_dig_refused(p_actor: Actor, _tile: WorldPos, _reason: World.DIG_REFUSAL
 
 
 func _reset_progress() -> void:
+	_refused_tree = null
 	progress = 0.0
 	tile_hardness = 0.0
 	current_tile = WorldPos.new(99,99,99)

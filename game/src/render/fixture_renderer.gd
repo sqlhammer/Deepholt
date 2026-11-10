@@ -18,6 +18,7 @@ const TEXTURES: Dictionary = {
 	ObjectKind.OBJECT.LADDER: preload("res://src/render/ladder.png"),
 	ObjectKind.OBJECT.BRAZIER: preload("res://src/render/brazier.png"),
 	ObjectKind.OBJECT.TIMBER_PROP: preload("res://src/render/timber_prop.png"),
+	ObjectKind.OBJECT.TREE: preload("res://src/render/tree.png"),
 }
 
 # Kinds deliberately not drawn (D-091: the world spawn is invisible to

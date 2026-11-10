@@ -32,11 +32,11 @@ Slice 011's checklist is in git history (last at the 011 close).
 
 ## C. The axe and trees
 
-- [ ] A flint axe item and tool class, its multipliers; the starting kit. [2]
-- [ ] A TREE fixture kind: blocks walking, placeholder art, a renderer texture.
-- [ ] Chopping: the primary action facing a tree; axe only, refused otherwise; work in the
+- [x] A flint axe item and tool class, its multipliers; the starting kit. [2]
+- [x] A TREE fixture kind: blocks walking, placeholder art, a renderer texture.
+- [x] Chopping: the primary action facing a tree; axe only, refused otherwise; work in the
   profile; the world fells it and yields timber, overflowing to the ground. [2]
-- [ ] Tests: chop time, yield, refusal, overflow, a felled tree's tile is walkable. [2]
+- [x] Tests: chop time, yield, refusal, overflow, a felled tree's tile is walkable. [2]
 
 ## D. The Surface
 

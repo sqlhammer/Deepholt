@@ -81,4 +81,4 @@ func test_no_two_kinds_on_a_layer_share_an_id() -> void:
 
 func test_object_kind_ids_never_change() -> void:
 	assert_eq(ObjectKind.OBJECT, {"NULL": 0, "LADDER": 1, "WORLD_SPAWN": 2, "BRAZIER": 3,
-		"TIMBER_PROP": 4}, "object ids (D-089, D-092, D-144, D-165)")
+		"TIMBER_PROP": 4, "TREE": 5}, "object ids (D-089, D-092, D-144, D-165, D-181)")
