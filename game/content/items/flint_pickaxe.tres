@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://src/entity/items/item.gd" id="1_item"]
+[ext_resource type="Resource" path="res://src/entity/tools/flint_pickaxe.tres" id="2_tool"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"flint_pickaxe"
+display_key = "Flint Pickaxe"
+weight_kg = 3.0
+stack_max = 999
+trade_value = 1.0
+tags = Array[StringName]([&"tool"])
+tool = ExtResource("2_tool")

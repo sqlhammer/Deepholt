@@ -85,6 +85,9 @@ enum BREACH_REFUSAL {
 	LANDING_NOT_EXISTS,
 	LANDING_BLOCKED,
 	TOOL_TOO_WEAK,
+	# The actor isn't holding a pick (D-174). Asked first: the tool in
+	# hand is the answer whatever floor is faced.
+	NEEDS_PICK,
 }
 
 enum FIXTURE_VERB {
@@ -485,7 +488,7 @@ func _yields() -> RandomNumberGenerator:
 # Checked whole, then applied whole: the floor becomes a hole and the
 # landing below becomes open floor, or nothing changes.
 func _on_breach_requested(actor: Actor, tile: WorldPos, tool_power: float) -> void:
-	var reason: BREACH_REFUSAL = breach_problem(tile, tool_power)
+	var reason: BREACH_REFUSAL = breach_problem(tile, tool_power, actor)
 	if reason != BREACH_REFUSAL.NONE:
 		breach_refused.emit(actor, tile, reason)
 		return
@@ -502,8 +505,10 @@ func _on_breach_requested(actor: Actor, tile: WorldPos, tool_power: float) -> vo
 
 # Why a breach of `tile` with a tool of `tool_power` would be
 # refused, or NONE. A read: the breach capability asks it before
-# spending five seconds, and build mode's preview can too.
-func breach_problem(tile: WorldPos, tool_power: float) -> BREACH_REFUSAL:
+# spending five seconds, and build mode's preview can too. With an
+# actor, its selected tool must be a pick (D-174).
+func breach_problem(tile: WorldPos, tool_power: float, actor: Actor = null) -> BREACH_REFUSAL:
+	if actor != null and not Digging.breaches(actor.tool()): return BREACH_REFUSAL.NEEDS_PICK
 	var level: Level = level_at(tile.depth)
 	if level == null: return BREACH_REFUSAL.LEVEL_NOT_EXISTS
 	var tiles: LevelTiles = level.level_tiles

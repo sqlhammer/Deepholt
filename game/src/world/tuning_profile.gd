@@ -38,6 +38,12 @@ const DEFAULT_ID: String = "default"
 # without it (tuning appendix, section 4).
 @export var ore_dig_multiplier: float = 0.0
 
+# How well each tool class digs each top kind (D-168): class ->
+# (TileKind.TOP id -> multiplier on the tool's power). A kind a class
+# doesn't list is x1. So the shovel (x2 on dirt) digs dirt twice as
+# fast as its power alone would.
+@export var tool_multipliers: Dictionary[int, Dictionary] = {}
+
 # What digging yields (D-156): stone per rock wall, and the range of
 # ore an ore vein gives.
 @export var rock_wall_stone: int = 0

@@ -275,6 +275,12 @@ static func _load_file(file_path: String, why: Array[String]) -> LoadedGame:
 				loaded.problems.append(dropped)
 				push_warning(dropped)
 	for actor: Actor in world.actors():
+		var entry: Variant = file_data.actors.get(actor.actor_id)
+		if entry is Dictionary and _from_before_tools(entry):
+			var given: String = "%s was saved before tools were carried, and was given %s." % [
+				actor.actor_name, ", ".join(starting_tools(world.tuning))]
+			loaded.problems.append(given)
+			push_warning(given)
 		for id: StringName in actor.pack.unknown_ids():
 			var problem: String = "%s carries '%s', an item this build doesn't have." % [
 				actor.actor_name, id]
@@ -565,6 +571,8 @@ static func _serialize_actor(actor: Actor) -> Dictionary:
 
 	# What it carries, item id -> count (D-157)
 	actor_data["pack"] = actor.pack.to_save()
+	# What it holds, slot by slot (D-170)
+	actor_data["hotbar"] = actor.hotbar.to_save()
 
 	return actor_data
 
@@ -603,8 +611,32 @@ static func _deserialize_actor(p_actor: Dictionary, p_actor_id: int, world: Worl
 
 	# A save from before packs loads an empty one (D-157)
 	actor.pack = Pack.from_save(p_actor.get("pack", {}))
+	# The pack first: a hotbar is reconciled with the pack it's given,
+	# and against the actor's empty starting pack it would lose every
+	# saved slot
+	actor.hotbar = Hotbar.from_save(p_actor.get("hotbar"))
+	# A player saved before tools were items gets the starting tools
+	# (slice 011 trap 6); the load reports it
+	if _from_before_tools(p_actor):
+		for id: StringName in starting_tools(world.tuning):
+			actor.pack.add(id, world.tuning.starting_items[id])
 
 	return actor
+
+
+# A player's entry from a save made before the hotbar existed.
+static func _from_before_tools(p_actor: Dictionary) -> bool:
+	return not p_actor.has("hotbar") and p_actor.get("actor_kind") == ActorKind.ACTOR.PLAYER
+
+
+# The tools among a profile's starting items: what a player saved
+# before tools were items is given.
+static func starting_tools(tuning: TuningProfile) -> Array[StringName]:
+	var found: Array[StringName] = []
+	for id: StringName in tuning.starting_items:
+		var item: Item = ItemRegistry.find(id)
+		if item != null and item.is_tool(): found.append(id)
+	return found
 
 
 # Builds each saved level and adds it to `world`. A level that can't

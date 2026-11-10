@@ -21,6 +21,7 @@ const BREACH_REASONS: Dictionary = {
 	World.BREACH_REFUSAL.LANDING_NOT_EXISTS: "Below that is past the edge of the next level.",
 	World.BREACH_REFUSAL.LANDING_BLOCKED: "Something below is in the way.",
 	World.BREACH_REFUSAL.TOOL_TOO_WEAK: "This floor is too hard for your tool.",
+	World.BREACH_REFUSAL.NEEDS_PICK: "Breaching needs a pick.",
 }
 
 const PLACE_REASONS: Dictionary = {

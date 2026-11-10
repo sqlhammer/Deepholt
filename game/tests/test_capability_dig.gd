@@ -51,7 +51,7 @@ func _at(tile: Vector2i) -> WorldPos:
 
 func _tick(tile: Vector2i, times: int = 1) -> void:
 	for i in range(times):
-		_dig.dig(TICK, SPEED, _at(tile), _level)
+		_dig.dig(TICK, _tool(), _at(tile), _level)
 
 
 func _hardness(kind_name: String) -> float:
@@ -89,7 +89,7 @@ func test_an_open_tile_is_not_dug() -> void:
 
 func test_outside_the_level_is_not_dug() -> void:
 	# (90, 1) is inside the array but outside Surface's radial bounds.
-	_dig.dig(TICK, SPEED, WorldPos.new(90, 1, 0), _level)
+	_dig.dig(TICK, _tool(), WorldPos.new(90, 1, 0), _level)
 	assert_eq(_dig.progress, 0.0, "the edge of the level can't be dug")
 
 
@@ -177,7 +177,7 @@ func test_another_actors_completed_dig_leaves_progress_alone() -> void:
 
 func test_changing_target_resets_progress() -> void:
 	_tick(ROCK_TILE, 3)
-	_dig.dig(TICK, SPEED, WorldPos.new(ROCK_TILE.x, ROCK_TILE.y + 1, 0), _level)
+	_dig.dig(TICK, _tool(), WorldPos.new(ROCK_TILE.x, ROCK_TILE.y + 1, 0), _level)
 	assert_almost_eq(_dig.progress, SPEED * TICK, 0.0001,
 		"a new tile starts from zero, plus this tick")
 
@@ -258,8 +258,17 @@ func test_a_depth_change_mid_dig_resets_progress() -> void:
 	var below: Level = Global.level_packed_scene.instantiate()
 	below.setup(1)
 	_world.add_level(below)
-	_dig.dig(TICK, SPEED, WorldPos.new(ROCK_TILE.x, ROCK_TILE.y, 0), _level)
-	_dig.dig(TICK, SPEED, WorldPos.new(ROCK_TILE.x, ROCK_TILE.y, 0), _level)
+	_dig.dig(TICK, _tool(), WorldPos.new(ROCK_TILE.x, ROCK_TILE.y, 0), _level)
+	_dig.dig(TICK, _tool(), WorldPos.new(ROCK_TILE.x, ROCK_TILE.y, 0), _level)
 	assert_almost_eq(_dig.progress, 2.0, 0.001, "two ticks on the Surface")
-	_dig.dig(TICK, SPEED, WorldPos.new(ROCK_TILE.x, ROCK_TILE.y, 1), below)
+	_dig.dig(TICK, _tool(), WorldPos.new(ROCK_TILE.x, ROCK_TILE.y, 1), below)
 	assert_almost_eq(_dig.progress, 1.0, 0.001, "one tick on -1: started over")
+
+
+# A pick of power SPEED: x1 on rock and dirt in the default profile,
+# so one tick still adds SPEED * TICK.
+func _tool() -> ToolData:
+	var tool: ToolData = ToolData.new()
+	tool.tool_class = ToolData.CLASS.PICK
+	tool.power = SPEED
+	return tool

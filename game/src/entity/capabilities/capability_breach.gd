@@ -25,14 +25,17 @@ func _ready() -> void:
 	world.breach_refused.connect(_on_breach_refused)
 
 
-func breach(delta: float, tool_power: float, target: WorldPos, level: Level) -> void:
+# One tick of breaching `target` with `tool`. Only a pick breaches
+# (D-174): anything else is refused at once, like a weak tool.
+func breach(delta: float, tool: ToolData, target: WorldPos, level: Level) -> void:
+	var tool_power: float = tool.power
 	if current_tile == null or not current_tile.equals(target):
 		reset()
 		current_tile = target
 	var world: World = level.world
 	# Asked before any work: a floor this tool can't break, or a tile
 	# that isn't floor, is refused at once, not after five seconds
-	if world.breach_problem(target, tool_power) != World.BREACH_REFUSAL.NONE:
+	if world.breach_problem(target, tool_power, actor) != World.BREACH_REFUSAL.NONE:
 		progress = 0.0
 		if _refused_tile == null or not _refused_tile.equals(target):
 			_refused_tile = target

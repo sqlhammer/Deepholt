@@ -28,6 +28,20 @@ static func dig_hardness(tuning: TuningProfile, top_kind: int, ore_kind: int) ->
 	return value
 
 
+# How fast `tool` works a tile of `top_kind`: its power times its
+# class's multiplier for the kind, x1 when the profile lists none
+# (D-168). Dig seconds = dig_hardness / this.
+static func dig_power(tuning: TuningProfile, tool: ToolData, top_kind: int) -> float:
+	if tool == null: return 0.0
+	var by_kind: Dictionary = tuning.tool_multipliers.get(tool.tool_class, {})
+	return tool.power * float(by_kind.get(top_kind, 1.0))
+
+
+# Only a pick breaches (D-168, D-174): the class, before any power.
+static func breaches(tool: ToolData) -> bool:
+	return tool != null and tool.tool_class == ToolData.CLASS.PICK
+
+
 # The item each ore kind is mined as. Content, not tuning: it moves to
 # an OreType resource (content-schema §3) when there's a second ore.
 const ORE_ITEMS: Dictionary = {
