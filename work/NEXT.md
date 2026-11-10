@@ -1,15 +1,18 @@
 # Next
 
 Sketches, not commitments. Slice 013, what just happened, the debug log, is accepted
-([log](./log/013-what-just-happened.md)); PR #10 waits on #9. Slice 012, a world worth digging, is closed and merged
+([log](./log/013-what-just-happened.md)); PR #10 waits on #9. Slice 014, telemetry, is closed
+([log](./log/014-how-it-plays-for-other-people.md)); PRs #9, #10 and #11 wait to be merged, in that
+order. Slice 012, a world worth digging, is closed and merged
 ([log](./log/012-a-world-worth-digging.md)); its by-hand walk, like 008 to 011's, was not reported.
 Cheap to throw away; expect them to change.
 
 ---
 
-## 014 — Getting it home
+## 015 — Getting it home
 
-*Moved from 013 (2026-11-10): the debug log went first (D-193).*
+*Moved from 013 (2026-11-10): the debug log (D-193), then telemetry (D-198), went first. It adds
+the chute's telemetry events: pre-alpha criterion 1 is a chute before the 5th expedition.*
 
 *What 012 changes here:* ore is on −2 now, and home is −1, so the haul is real: copper and tin
 come up a level. A new game starts with no timber, so a chute or winch costs chopping first.
@@ -25,9 +28,6 @@ input and output: a chute moves a tile's drops to the level below.
 
 ## Not placed yet
 
-- **Play-test telemetry** (Level 2 of
-  [logging-and-telemetry](../docs/tech/logging-and-telemetry.md#2-play-test-telemetry-level-2--draft-for-later-planning)):
-  drafted, its forks listed; planned when play-testing with other people is close.
 - **The rate machine** that lets a hoist haul while you are three levels away.
 - **Procgen beyond the recipe's fixed placements** (D-084's rules and tags).
 - **A title screen and a save-slot menu.** Today launch continues the first slot, and
@@ -41,6 +41,10 @@ None of them are next.
 
 Found during 005, not recorded anywhere else. None of it is decided.
 
+- **Telemetry can carry an actor's name** (found 2026-11-10, writing 014's acceptance walkthrough):
+  the summary's `errors.first` keeps the first ten warnings' text, and some name the actor. Every
+  actor is "DefaultName" today; fix before testers get a build, or D-204 breaks once players
+  name characters.
 - **The two playtime timer scripts are identical** (`active_play_timer.gd`,
   `total_play_timer.gd`); merge them when the clocks are next touched.
 - **`content/tuning/default.tres` has no `uid` yet;** the editor adds one on its first save.

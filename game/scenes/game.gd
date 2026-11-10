@@ -17,6 +17,8 @@ var support_overlay: SupportOverlay
 # Ctrl+F9 or the pad's combo writes a bug report (D-194, D-195);
 # null in a release build
 var bug_capture: BugCapture
+# A playtest build's telemetry (D-198 to D-208); null otherwise
+var telemetry: Telemetry
 # The world being played, inside GameViewport at the origin (D-128).
 # Handed by reference to whatever needs it; nothing looks it up.
 var world: World
@@ -155,10 +157,35 @@ func save_game(reason: StringName = &"unspecified") -> bool:
 	$DebugOverlay.show_save_time(last_save_msec)
 	Log.event(Log.SAVE, &"saved", {"reason": reason, "slot": current_save_slot,
 		"msec": last_save_msec, "result": SaveGame.REFUSAL_REASON.find_key(result)})
+	if telemetry != null:
+		telemetry.record_save(reason, last_save_msec, result == SaveGame.REFUSAL_REASON.NONE)
 	if result != SaveGame.REFUSAL_REASON.NONE:
 		return false
 	
 	return true
+
+
+# The facts a telemetry session starts with (D-202): the build, the
+# machine, the world. Nothing about the person (D-204).
+func _begin_telemetry() -> void:
+	if telemetry == null: return
+	var screen: Vector2i = DisplayServer.screen_get_size()
+	telemetry.begin({
+		"build": ProjectSettings.get_setting("application/config/version", ""),
+		"godot": Engine.get_version_info().string,
+		"os": "%s %s" % [OS.get_name(), OS.get_version()],
+		"gpu": RenderingServer.get_video_adapter_name(),
+		"screen": [screen.x, screen.y],
+		"tuning": world.tuning.id if world != null and world.tuning != null else "",
+		"world_seed": world.world_seed if world != null else 0,
+		"source": String(SaveGame.SOURCE.find_key(load_source)),
+	})
+
+
+# How long this world has been played, for a session's end.
+func _play_facts() -> Dictionary:
+	return {"active_play_seconds": $ActivePlayTimer.seconds,
+		"total_play_seconds": $TotalPlayTimer.seconds}
 
 
 # What isn't the world's (D-130), as it stands now: the local
@@ -215,6 +242,8 @@ func load_game(defer_swap: bool = false) -> REFUSAL_REASON:
 	Log.event(Log.SAVE, &"loaded", {"slot": current_save_slot, "msec": last_load_msec,
 		"source": SaveGame.SOURCE.find_key(slot.source), "problems": loaded.problems.size(),
 		"by": Log.caller(1)})
+	if telemetry != null:
+		telemetry.record_load(last_load_msec, String(SaveGame.SOURCE.find_key(slot.source)))
 	if slot.source == SaveGame.SOURCE.BACKUP: _report_backup_load(slot)
 	$DebugOverlay.show_load_source(load_source, loaded.header.format_version)
 	return REFUSAL_REASON.NONE
@@ -299,17 +328,30 @@ func _ready() -> void:
 	# The debug log (D-193): its session file and the engine's errors
 	# only for the game's own run, never a test's; input, slow frames
 	# and the bug capture (D-194, D-195) whenever there's a game
+	# A playtest build's telemetry (D-201) and the rolling file a crash
+	# leaves its last minutes in (D-207); a debug build's session log
+	# and bug capture (D-194). Files only for the game's own run.
+	var running: bool = get_tree().current_scene == self
 	if Log.enabled:
-		if get_tree().current_scene == self:
-			Log.start_session()
+		if running:
+			if OS.is_debug_build(): Log.start_session()
+			if Telemetry.wanted(): Log.start_rolling(Log.LOG_DIR.path_join("recent.jsonl"))
 			Log.hook_engine()
 		var driver: LogDriver = LogDriver.new()
 		driver.name = "LogDriver"
+		driver.owns_session = running
 		add_child(driver)
-		bug_capture = BugCapture.new()
-		bug_capture.name = "BugCapture"
-		bug_capture.game = self
-		add_child(bug_capture)
+		if OS.is_debug_build():
+			bug_capture = BugCapture.new()
+			bug_capture.name = "BugCapture"
+			bug_capture.game = self
+			add_child(bug_capture)
+	if running and Telemetry.wanted():
+		telemetry = Telemetry.new()
+		telemetry.name = "Telemetry"
+		add_child(telemetry)
+		# Once the world is in: its seed and profile are facts
+		_begin_telemetry.call_deferred()
 	$DebugOverlay.game = self
 	$DebugOverlay.connect_timers($ActivePlayTimer, $TotalPlayTimer)
 	# TODO: When we have a main menu, don't start until the game has
@@ -419,6 +461,8 @@ func _create_fade() -> void:
 func _prepare_then_quit() -> void:
 	save_game(&"quit")
 	Log.event(Log.SAVE, &"quit")
+	# Summary, file, marker, zip, before the log's thread stops (trap 4)
+	if telemetry != null: telemetry.end(_play_facts())
 	Log.unhook_engine()
 	Log.stop_session()
 	get_tree().quit()
@@ -542,6 +586,7 @@ func _swap_in_loaded_world(new_world: World, local_actor_id: int) -> void:
 func _attach_world(new_world: World) -> void:
 	world = new_world
 	WorldLog.watch(world)
+	if telemetry != null: telemetry.watch_world(world)
 	Log.event(Log.SAVE, &"world_swapped_in", {"seed": world.world_seed,
 		"tuning": world.tuning.id if world.tuning != null else ""})
 	game_viewport.add_child(world)
@@ -611,6 +656,7 @@ func _take_actor(actor: Actor) -> Actor:
 	
 	view.track(actor)
 	actor.actor_worldpos_changed.connect(_on_actor_moved)
+	if telemetry != null: telemetry.watch_actor(actor)
 
 	return actor
 

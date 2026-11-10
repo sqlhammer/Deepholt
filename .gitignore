@@ -22,3 +22,9 @@ export_credentials.cfg
 .mono/
 data_*/
 mono_crash.*.json
+
+# Exported builds (D-201)
+build/
+
+# Python bytecode
+__pycache__/

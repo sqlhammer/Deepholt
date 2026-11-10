@@ -4040,3 +4040,133 @@ have no signal).
   exists and across worlds, and the profile is a world's.
 
 *Considered:* 5 minutes, 30 logs, all captures; 2 minutes, 10 logs, 20 captures.
+
+---
+
+### D-198 — Slice 014 is play-test telemetry; "Getting it home" moves to 015
+**Decided** (by Derik, planning slice 014, 2026-11-10). Design:
+[logging-and-telemetry §2](./tech/logging-and-telemetry.md).
+
+- **Telemetry (Level 2) is built next,** ahead of the chute and winch. Chute events (pre-alpha
+  criterion 1, a chute before the 5th expedition) are added when the chute is built.
+
+*Considered:* after "Getting it home", so the chute's events are there from the start.
+
+---
+
+### D-199 — Telemetry is local files, sent by hand
+**Decided** (by Derik, planning slice 014, 2026-11-10).
+
+- **Written to a telemetry folder on the tester's machine;** nothing leaves it unless the tester
+  sends it. No server, no accounts, no third-party service. An upload can be added later behind
+  the same files.
+
+*Considered:* a self-hosted endpoint; third-party services (Sentry, GameAnalytics).
+
+---
+
+### D-200 — Testers agree to telemetry in a tester agreement; no in-game prompt
+**Decided** (by Derik, planning slice 014, 2026-11-10).
+
+- **No prompt or notice in the game.** Testers agree, before they get a build, to what is
+  recorded. Derik owns the agreement's text; the design doc's event list is what it describes.
+
+*Considered:* a first-launch notice with local-only recording; an opt-in prompt.
+
+---
+
+### D-201 — Only playtest builds record, and the slice adds the export presets
+**Decided** (by Derik, planning slice 014, 2026-11-10).
+
+- **Export presets for Windows and Linux** (SteamOS on the Deck), each with a **`playtest`
+  feature tag;** only a build carrying the tag records. Development runs and future store builds
+  don't.
+
+*Considered:* every release build; debug builds too.
+
+---
+
+### D-202 — What telemetry records first: session, trips, friction, health
+**Decided** (by Derik, planning slice 014, 2026-11-10).
+
+- **Session:** start, end, length; a crash when a session's end is missing.
+- **Trips:** each trip below and back, time below, deepest level, kilos carried home, time
+  overloaded (pre-alpha criterion 5, backtracking fatigue).
+- **Friction:** refusals by reason; ladders refused for weight.
+- **Health:** frame-time percentiles; save, load and generation times; error and warning counts.
+- Each later slice adds the events for what it builds.
+
+*Considered:* session and health only; everything the debug log records.
+
+---
+
+### D-203 — A crash leaves a flag and the last two minutes
+**Decided** (by Derik, planning slice 014, 2026-11-10). Amends
+[D-193](#d-193--slice-013-is-a-debug-log-the-log-is-a-static-class-that-never-writes-on-the-games-thread)'s
+"debug builds only".
+
+- **The next launch records that the last session didn't end,** with its length.
+- **In playtest builds the debug log's ring buffer runs, in memory only** (no session file), so
+  the last two minutes before a crash go into the tester's telemetry folder.
+
+*Considered:* the flag alone, with the debug log off in playtest builds.
+
+---
+
+### D-204 — Telemetry carries no tester identity
+**Decided** (by Derik, planning slice 014, 2026-11-10).
+
+- **No tester code, no install id.** Each session stands alone. Testers send their files by hand
+  (D-199), so whose files they are is known from who sent them.
+
+*Considered:* a tester code entered at first launch; a random install id.
+
+---
+
+### D-205 — Each session writes its events and a summary
+**Decided** (by Derik, planning slice 014, 2026-11-10).
+
+- **A JSON-lines event file per session,** written as it goes, so a crash loses little; and **a
+  summary JSON at session end** (totals, percentiles).
+
+*Considered:* the summary only; the events only.
+
+---
+
+### D-206 — The game zips the telemetry at quit; a script reports on it
+**Decided** (by Derik, planning slice 014, 2026-11-10).
+
+- **At quit, and at the next launch after a crash, the game refreshes one zip** of the telemetry
+  folder; testers send that file.
+- **`scripts/telemetry_report.py`** reads any number of zips and prints per-session and overall
+  numbers, including the pre-alpha criteria the data can measure.
+
+*Considered:* testers sending the folder; reading the JSON by hand.
+
+---
+
+### D-207 — The last two minutes survive a crash in a rolling file on disk
+**Decided** (by Derik, planning slice 014, 2026-11-10). **Amends
+[D-203](#d-203--a-crash-leaves-a-flag-and-the-last-two-minutes)**, whose "in memory only" can't
+work: a crash ends the process, and the memory with it. Claude framed the option wrongly and
+caught it while writing the design.
+
+- **In playtest builds the debug log's writer thread rewrites one `recent` file** with the last
+  two minutes of the ring buffer, every few seconds, off the game's thread (D-193). No session
+  file, as before.
+- **After a crash, the next launch copies it into the telemetry folder** as the crash's record.
+- At most those few seconds before a crash are lost.
+
+*Considered:* the crash flag alone, with the debug log off in playtest builds.
+
+---
+
+### D-208 — A trip runs from leaving the depth a player started on to coming back up to it
+**Decided** (by Derik, planning slice 014, 2026-11-10). Until there is a home (a bed, M6).
+
+- **A trip starts when a player goes below the depth they started the session on,** and **ends
+  when they come back up to it.** Per player, for every player.
+- **A session that ends below** records its trip as unfinished.
+
+*Why:* criterion 5's backtracking is trips home; with no home yet, where the session began
+stands in for it.

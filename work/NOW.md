@@ -1,89 +1,126 @@
-# Slice 013 — What just happened
+# Slice 014 — How it plays for other people
 
-> You breach a floor and find yourself forty tiles back, where you came into the level. Nothing
-> said why. Next time, Ctrl+F9 puts the last ten minutes in a folder: every step, every key, every
-> request the world answered, and a save of the moment.
+> A tester plays for an hour on their own machine and quits. One zip is waiting for them to send.
+> Back home, a script reads it: two trips below, the second one forty minutes and overloaded half
+> of it; "Breaching needs a pick" refused eleven times; frame times fine; no crash. And when there
+> is a crash, the two minutes before it.
 
-*Proposed by Claude, 2026-11-10, after Derik asked for a debug log ahead of "Getting it home"
-and approved planning and building it in Agent mode. Forks settled as
-[D-193](../docs/design-decisions.md#d-193--slice-013-is-a-debug-log-the-log-is-a-static-class-that-never-writes-on-the-games-thread)
-to D-197. Design: [logging-and-telemetry §1](../docs/tech/logging-and-telemetry.md). Built on a
-`slice-013` branch from `fix-world-edge` (PR #9), so it carries D-192. **Built, 1106 tests
-green. Accepted by Derik 2026-11-10;** the by-hand walk was not reported, so its boxes stay unticked ([log](./log/013-what-just-happened.md)).*
+*Proposed by Claude, 2026-11-10, after Derik accepted slice 013 and asked for the telemetry slice
+to be planned with every fork asked up front. Forks settled as
+[D-198](../docs/design-decisions.md#d-198--slice-014-is-play-test-telemetry-getting-it-home-moves-to-015)
+to D-207 (D-207 corrects how D-203 keeps a crash's last minutes). Design:
+[logging-and-telemetry §2](../docs/tech/logging-and-telemetry.md#2-play-test-telemetry-level-2).
+Planned on a `slice-014` branch from `slice-013` (PR #10, itself on #9). **Agent mode** (Derik,
+2026-11-10). **Built, 1122 tests green. Closed by Derik 2026-11-10;** the
+by-hand walk is planned as a later acceptance test, so its boxes stay unticked
+([log](./log/014-how-it-plays-for-other-people.md)).*
 
 ## Where we are
 
-Slice 012 is merged ([log](./log/012-a-world-worth-digging.md)). The game logs only its 76
-errors and warnings, through Godot's own file, which keeps five sessions. On 2026-11-10 Derik's
-actor was moved from (46, 1) on −1 back to where it entered the level, right after a breach; the
-hole stayed, so it wasn't a load. A breach from his save, replayed in the real game scene, moved
-nothing, and the session's log had been rotated away.
+Slice 013 is accepted ([log](./log/013-what-just-happened.md)): a debug log in debug builds, a
+bug capture, a session file. Nothing records anything in an exported build, and there are no
+export presets, so there is no build a tester could run. The pre-alpha's success criteria
+([pre-alpha-scope §6](../docs/pre-alpha-scope.md)) are judged on 5–8 unguided testers; criterion
+5, nobody quitting from backtracking fatigue, is the kill switch.
 
 ## What should be true when you stop
 
 By hand, unless marked:
 
-1. Play a minute, press **Ctrl+F9**: a notice names a folder under `captures/`, holding a
-   readable log of that minute (your steps, keys, digs and breaches by actor id), a save that
-   loads, a screenshot and an `info.json`.
-2. On a pad, **left trigger + Y held for 2 s** does the same, once per hold, and Y doesn't toggle
-   build mode while the trigger is held.
-3. F3 lists the log's channels, on or off, and switching one off stops its lines in the session
-   log.
-4. The session log is in `logs/`, written while you play, and the game doesn't stutter for it.
-5. *Automated:* a call costs microseconds and never writes on the game's thread; every
-   `move_to` is logged with its cause; a jump of more than one tile with no `move_to` is logged
-   as unexplained; world requests and refusals, saves and loads, collapses, input and engine
-   errors reach the log; captures and session logs are pruned to 20 and 30; nothing logs in a
-   release build.
+1. Export a Windows playtest build from the new preset and play it for ten minutes, including a
+   trip below and back. Quit. `telemetry/` holds the session's events, its summary and
+   `deepholt-telemetry.zip`.
+2. `python scripts/telemetry_report.py <the zip>` prints the session: its length, the trip (time
+   below, deepest level, kilos home, time overloaded), refusals by reason, frame-time
+   percentiles, save and load times, errors; and which pre-alpha criteria it can and can't speak
+   to yet.
+3. End the playtest build's process from Task Manager mid-play, then launch it again: the report
+   shows a crash, its session's length, and the last two minutes before it.
+4. A development run (from the editor, or an export without the `playtest` tag) writes nothing to
+   `telemetry/`.
+5. *Automated:* trips start and end by the definition below; each group's events and summary
+   totals; percentiles; the crash flag and the rolling file's handover; the zip's contents; no
+   identity anywhere in the data; recording only with the tag; the report script against a
+   fixture zip.
 
 ## Mode
 
-**Agent** (Derik, 2026-11-10), on `slice-013`; Derik merges the PR.
+**Agent** (Derik, 2026-11-10), on `slice-014`, including installing the 4.7.2 export
+templates; Derik merges the PR.
 
 ## What you're deciding
 
-All settled in planning:
+Settled in planning (2026-11-10):
 
-- **The log's form** (D-193): a static class; a call appends to memory, a thread writes.
-- **Capture keys** (D-194, D-195): Ctrl+F9; left trigger + Y held 2 s.
-- **Defaults** (D-196): every channel on.
-- **Retention** (D-197): 10 minutes in a capture, 30 session logs, 20 captures.
+- **Next, before "Getting it home"** (D-198).
+- **Local files, sent by hand** (D-199); **a tester agreement, no prompt** (D-200).
+- **Playtest builds only, with Windows and Linux presets and a `playtest` tag** (D-201).
+- **Session, trips, friction, health** (D-202).
+- **A crash's flag and its last two minutes** (D-203), **through a rolling file on disk**
+  (D-207).
+- **No identity** (D-204); **events and a summary per session** (D-205); **a zip at quit and a
+  report script** (D-206).
+
+- **What a trip is** (D-208). There is no home yet (no bed until M6), so: a trip starts when a player goes
+  below the depth they started the session on, and ends when they come back up to it. A session
+  that ends below counts its trip as unfinished.
 
 ## Already settled
 
-- **No system assumes one player** (rule [D-045](../docs/design-decisions.md)): events name
-  actors by id; nothing logs "the player".
-- **Signals over direct calls** ([coding-standards](../docs/coding-standards.md)): the world's
-  requests, answers, collapses and level additions are logged by listening to its signals.
-- **A save may only be written inside its saves root** (D-109's static class): the capture's
-  save goes through the normal save code, with the capture folder as its root.
+- **One event shape for both levels** ([logging-and-telemetry §1.1](../docs/tech/logging-and-telemetry.md)):
+  telemetry reuses the debug log's `{t, frame, channel, event, data}`.
+- **The debug log's writer never blocks the game** (D-193): the rolling crash file is its work,
+  on its thread.
+- **No system assumes one player** (rule [D-045](../docs/design-decisions.md)): trips are per
+  actor, for every player.
+- **The save records its tuning profile** (D-037, D-116): telemetry names it too, so a session's
+  numbers can be traced.
+- **Signals over direct calls** ([coding-standards](../docs/coding-standards.md)): trips and
+  friction are heard from the world's and the actors' signals, as the debug log's are.
 
 ## Traps
 
-### 1. Threads
+### 1. Export templates
 
-The writer thread and the engine's `Logger` callbacks run off the main thread. Everything they
-share (the ring buffer, the queue) goes behind one mutex; the thread touches nothing else in the
-game. The thread is joined at quit, or the last lines are lost.
+Only Godot 4.5.1's export templates are installed; the game runs on 4.7.2. No build can be made
+until the 4.7.2 templates are installed (Editor → Manage Export Templates, about 1 GB). A by-hand
+step for Derik unless the mode is Agent and he says to download them.
 
-### 2. Logging the logger
+### 2. "Debug builds only" changes
 
-An engine warning raised while logging would log itself. The `Logger` hook ignores anything
-raised from inside `Log`.
+The debug log is off in release builds (D-193); playtest builds are release builds that need its
+ring and the rolling file (D-203, D-207), but not its session file, its stack captures or F3's
+switches. `Log.enabled` becomes "debug build or playtest tag", with the session file still
+debug-only.
 
-### 3. Tests
+### 3. A crash can't be seen from inside
 
-GUT's expected `push_error`s will reach the errors channel; tests start from a cleared log and
-never start the writer thread unless they test it.
+Nothing runs when the process dies. A session marks itself open on disk at start and closed at a
+clean end; the next launch finding it open is the crash. Ending through the window's close
+button, Alt+F4 or the save-and-quit key is a clean end; Task Manager, a power cut or a Deck
+suspend that never resumes is a crash.
 
-### 4. The jump detector needs a cause to compare against
+### 4. The zip at quit
 
-A jump is only "unexplained" if no `move_to` ran for that actor in the same frame. `move_to`
-takes a cause from every caller (ramp, ladder, collapse, spawn, load), and records the call
-stack in debug builds.
+Quit must write the summary, close the event file, stop the log's thread and then zip, in that
+order, before the process ends. A crash skips all of it, which is why the next launch zips too.
+
+### 5. Percentiles without keeping every frame
+
+An hour is ~200,000 frames. Frame times go into fixed buckets (a histogram) per minute;
+percentiles are read from the buckets.
+
+### 6. Tests can't export
+
+`OS.has_feature("playtest")` is false in the editor and in tests. Recording is switched on by the
+tag in a build and by a flag in tests; one test checks the presets carry the tag.
+
+### 7. Nothing identifying
+
+No tester code, install id or names (D-204); but the OS, GPU and screen are recorded. Those
+describe the machine, not the person; the tester agreement (D-200) should say they're collected.
 
 ## Carried into this slice
 
-- **By-hand walks of 008 to 012,** not reported item by item.
-- **The jump bug itself** stays open: this slice is how it gets caught.
+- **By-hand walks of 008 to 013,** not reported item by item.
+- **The jump on −1** stays open until the debug log catches it.
