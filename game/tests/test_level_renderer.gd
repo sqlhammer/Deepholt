@@ -6,6 +6,17 @@ extends GutTest
 # so they are pinned here instead of trusted to the eye.
 
 
+# Past the level's edge nothing is drawn, so the viewport's clear
+# color shows. It must be the black the shader draws unknown tiles
+# in (D-146), or the world's end shows as an edge in the fog.
+func test_past_the_edge_is_the_fogs_black() -> void:
+	assert_eq(ProjectSettings.get_setting("rendering/environment/defaults/default_clear_color"),
+		Color.BLACK, "the clear color")
+	var shader: String = load("res://src/render/level_tiles.gdshader").code
+	assert_string_contains(shader, "vec4 colour = vec4(0.0, 0.0, 0.0, 1.0);",
+		"and unknown is still drawn black")
+
+
 func _surface_with_start() -> LevelTiles:
 	var tiles: LevelTiles = LevelTiles.new(LevelRecipes.TABLE.get_bounds(0))
 	LevelGridLoader.stamp(tiles, TilePrefabRegistry.get_prefab(&"surface_start"), Vector2i.ZERO)
