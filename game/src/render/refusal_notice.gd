@@ -1,5 +1,5 @@
 class_name RefusalNotice
-extends CanvasLayer
+extends ScaledHud
 
 # Tells the player why their action was refused (D-141's feedback,
 # D-152): a line at the bottom of the screen, gone after a few
@@ -44,6 +44,7 @@ var _remaining: float = 0.0
 
 
 func _init() -> void:
+	super()
 	name = "RefusalNotice"
 	layer = 90
 	_label = Label.new()
@@ -55,8 +56,8 @@ func _init() -> void:
 	_label.offset_bottom = -48
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	_label.add_theme_constant_override("outline_size", 6)
-	add_child(_label)
+	_label.add_theme_constant_override("outline_size", 2)
+	root.add_child(_label)
 
 
 func watch(view: View) -> void:

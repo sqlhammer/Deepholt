@@ -1,5 +1,5 @@
 class_name InventoryOverlay
-extends CanvasLayer
+extends ScaledHud
 
 # What the local player carries, what to leave behind, and what goes
 # in the hotbar (ui-ux §5, D-162, D-172). Two sections: the pack, each
@@ -53,6 +53,7 @@ var _row_labels: Array[Label] = []
 
 
 func _init() -> void:
+	super()
 	name = "InventoryOverlay"
 	layer = 85
 	_panel = PanelContainer.new()
@@ -60,7 +61,7 @@ func _init() -> void:
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
 	_panel.visible = false
-	add_child(_panel)
+	root.add_child(_panel)
 	var box: VBoxContainer = VBoxContainer.new()
 	box.add_theme_constant_override("separation", 2)
 	_panel.add_child(box)

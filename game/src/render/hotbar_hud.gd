@@ -1,5 +1,5 @@
 class_name HotbarHud
-extends CanvasLayer
+extends ScaledHud
 
 # The followed actor's hotbar (D-170, ui-ux §4): eight slots at the
 # bottom center, under the carry bar. Outside build mode it shows the
@@ -49,6 +49,7 @@ var _slots: Array[Control] = []
 
 
 func _init() -> void:
+	super()
 	name = "HotbarHud"
 	layer = 80
 	_row = HBoxContainer.new()
@@ -58,7 +59,7 @@ func _init() -> void:
 	_row.offset_bottom = -6
 	_row.add_theme_constant_override("separation", GAP)
 	_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	add_child(_row)
+	root.add_child(_row)
 	for i in range(Hotbar.SLOTS):
 		var slot: Control = Control.new()
 		slot.custom_minimum_size = SLOT_SIZE
@@ -135,8 +136,11 @@ func slot_text(slot: int) -> String:
 
 # The slot under a point on the screen, or -1.
 func slot_at(point: Vector2) -> int:
+	# In the frame's own coordinates: the slots sit in the row, the
+	# row in the frame, so no layer transform enters into it
+	var at: Vector2 = to_design(point)
 	for i in range(_slots.size()):
-		if _slots[i].get_global_rect().has_point(point): return i
+		if Rect2(_row.position + _slots[i].position, _slots[i].size).has_point(at): return i
 	return -1
 
 

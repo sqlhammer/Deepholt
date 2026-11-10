@@ -127,3 +127,10 @@ cursor's square holds a faint copy of the fixture's own art, tinted green or red
 cursor. A ladder shows as its top seen down the hole, since the ladder itself stands on the level
 below. Display names live beside the ids in `ObjectKind.NAMES`; the inventory's build section
 uses them too. Headless tests check the text and the art chosen, not the drawing.
+
+**The hotbar and the carry bar weren't on screen at all** (Derik, in play). The game is drawn
+into a 512 x 320 SubViewport and scaled up, but the screen layers were anchored to the window,
+which is full size: each sat at its real pixel size along the window's bottom edge, under the
+taskbar. This was true of 008's carry bar too, and of the refusal notices; no headless test can
+see it. Every screen layer now extends `ScaledHud`, laid out in the 512 x 320 frame and scaled
+with the game picture, and a test pins the frame, the fit and where the hotbar sits.
