@@ -1,11 +1,12 @@
 # Next
 
 Sketches, not commitments. Slice 010 is done and merged ([log](./log/010-holding-it-up.md)); no
-by-hand walk of 008, 009 or 010 has been reported. Cheap to throw away; expect them to change.
+by-hand walk of 008, 009 or 010 has been reported. Slice 011, tools in hand, is planned in
+[NOW.md](./NOW.md). Cheap to throw away; expect them to change.
 
 ---
 
-## 011 — Getting it home
+## 012 — Getting it home
 
 The first vertical logistics past the ladder ([vertical-logistics §2](../docs/systems/vertical-logistics-and-power.md)):
 a chute for items going down, and the hand winch for one crate going up. It's the answer

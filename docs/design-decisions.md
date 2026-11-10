@@ -3562,3 +3562,141 @@ future prefab and on M3's generation).
 *Considered:* rubble yielding a stone (a collapse becomes stone to manage); a 30 s or 60 s
 countdown.
 
+
+---
+
+### D-167 — Pad A takes from the ground when there's nothing to interact with
+**Decided** (by Derik, planning the tools-and-hotbar slice, 2026-11-09). Amends
+[D-160](#d-160--slice-009-is-letting-go-drops-dropping-pickup-to-100-a-take-key-an-inventory-overlay)'s
+take binding on the pad (LB), which the hotbar now needs.
+
+- **Pad A interacts first** (ladders today, stations and doors later). **With nothing to interact
+  with, A is the take key:** everything in reach, whatever the load.
+- **The keyboard keeps both:** `E` interacts, `T` takes.
+- **The notice says which happened,** so a press that took instead of climbing isn't a mystery.
+
+*Why:* [ui-ux §3](./ui-ux-and-controls.md) already lists "pick up" under A, and LB and RB go to
+the hotbar.
+
+*Considered:* hold A to take (no ambiguity, a delay on every take); a D-pad direction (the
+reserved quick food and heal slots).
+
+*Consequence:* A does two jobs by context. Standing by a ladder with drops at your feet, A
+climbs; taking needs a step away, or `T`.
+
+---
+
+### D-168 — A tool's speed is its power times a multiplier for its class and the tile's kind
+**Decided** (by Derik, planning the tools-and-hotbar slice, 2026-11-09).
+
+- **Dig speed is the tool's power times a multiplier** looked up by tool class and tile kind, in
+  the tuning profile. The starting numbers are set in the brief (for example, the shovel fast on
+  dirt and rubble and slow on rock).
+- **Only a pick breaches.**
+- Bare hands ([D-081](#d-081--hardness-belongs-to-tile-kinds-the-pre-alpha-tool-is-a-flint-pickaxe)'s
+  power 8) is a class with its own multipliers.
+
+*Why:* one table to tune, and the wrong tool is slow, not refused.
+
+*Considered:* a list of the kinds each tool can dig at all (sharper roles, a refusal for the wrong
+tool); both a list and multipliers.
+
+---
+
+### D-169 — Tools are pack items; only the player drops one, never an overflow
+**Decided** (by Derik, planning the tools-and-hotbar slice, 2026-11-09).
+
+- **Tools are items in the pack,** with a weight, so they're part of the weight decision
+  ([D-013](#d-013--inventory-is-weight-limited-there-is-no-teleport)).
+- **A player can drop a tool deliberately** from the inventory. **Overflow and auto-drop never
+  take one.**
+
+*Why:* honest to the weight pillar, and getting stranded without a pick takes a choice.
+
+*Considered:* tools locked to the player (no stuck states, no weight decision); tools dropped
+like any item, overflow included (the easiest way to be stuck below −1).
+
+---
+
+### D-170 — One hotbar whose contents follow build mode: tools outside it, buildables inside
+**Decided** (by Derik, planning the tools-and-hotbar slice, 2026-11-09). Amends
+[ui-ux §2.2](./ui-ux-and-controls.md), whose hotbar was the build catalogue alone.
+
+- **One eight-slot bar at the bottom center.** Outside build mode it holds **tools**; in build
+  mode (`B` / Y, [D-155](#d-155--build-mode-is-b-on-the-keyboard-breach-holds-pad-x-until-tools-can-be-swapped))
+  the same bar holds **buildables** (ladder, prop). Leaving build mode brings the tools back.
+- **The same selection inputs in both:** `1`–`8`, clicking a slot, and the pad's LB/RB. The
+  primary action uses whatever is selected.
+- 010's build-item keys (`1`/`2`, pad RB) become the hotbar's.
+
+*Why:* keeps D-155's build mode and §2.2's build catalogue both true, and one set of keys means
+one thing at a time.
+
+*Considered:* one mixed bar of tools and buildables (retires build mode); a tools-only bar with
+build mode's own picker on other keys.
+
+---
+
+### D-171 — Pad X stays breach; tools fill the hotbar themselves; an empty hand digs bare
+**Decided** (by Derik, planning the tools-and-hotbar slice, 2026-11-09). Settles
+[D-155](#d-155--build-mode-is-b-on-the-keyboard-breach-holds-pad-x-until-tools-can-be-swapped)'s
+open question.
+
+- **Pad X is breach for good.** The hotbar is how tools are swapped, so there's no swap button.
+- **A tool entering the pack takes the first empty hotbar slot** by itself, and can be moved to
+  any slot from the inventory. A new game starts with the pick in 1 and the shovel in 2.
+- **An empty slot is bare hands** (power 8,
+  [D-081](#d-081--hardness-belongs-to-tile-kinds-the-pre-alpha-tool-is-a-flint-pickaxe)). Bare
+  hands can't breach.
+
+*Why:* the hotbar makes a swap button redundant; and a player who drops or deselects a tool can
+always still dig, slowly.
+
+*Considered:* X as "swap to the last tool" (breach needs a new button); slots filled only by
+hand; an empty slot doing nothing (a way to be stuck with no way to dig).
+
+---
+
+### D-172 — The inventory screen: focus that works without a mouse, assigning, weights, a preview
+**Decided** (by Derik, planning the tools-and-hotbar slice, 2026-11-09). Builds on
+[ui-ux §5](./ui-ux-and-controls.md) and 009's overlay.
+
+- **A focus highlight** moved by the D-pad and the arrow keys, and by mouse hover and click, so
+  every action works on every input.
+- **Assigning to the hotbar** from the focused tool.
+- **A weight bar** as the headline, and **every row's weight always shown.**
+- **The take-this preview:** what the load becomes if the drops in reach were taken.
+
+*Why:* all four are in ui-ux §5, and the slice is about controls that work on every input.
+
+---
+
+### D-173 — Slice 011 is tools in hand; tools are expanded in pre-alpha after all
+**Decided** (by Derik, planning slice 011, 2026-11-09). **Reverses
+[D-077](#d-077--one-fixed-tool-stays-in-pre-alpha-tools-are-not-expanded)**, which kept one
+fixed tool with no equipping or swapping. Moves "Getting it home" (chute and winch) back a slice.
+
+- **In:** tools as pack items (D-169); a shovel beside the flint pick, and bare hands (D-168,
+  D-171); the eight-slot hotbar (D-170); the inventory screen (D-172); the pad rebinds (D-167,
+  D-171).
+- **Out:** the radial menu, the hammer, the lantern, tool tiers in use, crafting, durability.
+
+*Why:* [pre-alpha-scope](./pre-alpha-scope.md)'s M1 already lists tools and the hotbar, and the
+next slices (chute, winch, columns) all add things to select and carry.
+
+*Considered:* "Getting it home" first, as sketched after 010.
+
+---
+
+### D-174 — Breaching needs the pick selected; build slots can be rearranged
+**Decided** (by Derik, planning slice 011, 2026-11-09).
+
+- **The breach uses the selected tool.** With anything but a pick selected, the breach is refused
+  with a notice ("Breaching needs a pick."). The selected slot is what's in your hand.
+- **Build mode's slots are rearrangeable** like tool slots, from the inventory screen. A new game
+  starts with the ladder in 1 and the prop in 2.
+
+*Why:* a hotbar only means something if the selection is what you're holding.
+
+*Considered:* breaching with a pick anywhere in the pack; switching to the pick by itself on a
+breach; build slots in a fixed order until the radial menu.
