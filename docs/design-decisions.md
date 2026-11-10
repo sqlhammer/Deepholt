@@ -4170,3 +4170,23 @@ caught it while writing the design.
 
 *Why:* criterion 5's backtracking is trips home; with no home yet, where the session began
 stands in for it.
+
+---
+
+### D-209 — Errors are recorded by where they were raised, not what they said
+**Decided** (by Derik, a mini-slice after 014, 2026-11-10). Amends
+[D-202](#d-202--what-telemetry-records-first-session-trips-friction-health)'s "error and warning
+counts with the first text of each", which broke
+[D-204](#d-204--telemetry-carries-no-tester-identity): some warnings name the actor.
+
+- **Telemetry's health keeps a count per type and per place raised** (`warning at
+  game.gd:612 _local_player`), never the message.
+- **Outside a debug build the debug log's error events keep the place, not the text,** so a
+  playtest build's crash file (D-207) carries no message either. A debug build keeps the text,
+  for Derik's own use.
+
+*Why:* every actor is "DefaultName" today, but once players name their characters, a message
+could carry a name to Derik in a tester's zip. A place in the code can't.
+
+*Considered:* scrubbing actors' names from the text (misses anything else personal a future
+message might hold); counts only (can't tell which warning a tester hit).

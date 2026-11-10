@@ -268,12 +268,29 @@ func test_the_rolling_file_holds_the_last_two_minutes() -> void:
 # --- nothing identifying (D-204) ---
 
 func test_no_identity_is_recorded() -> void:
+	# As a playtest build runs: errors keep their place, not their text,
+	# and a warning naming the player reaches neither the summary nor
+	# the rolling crash file (D-209)
+	Log.enabled = true
+	Log.clear()
+	Log.keep_error_text = false
+	Log.hook_engine()
+	Log.start_rolling(ROLLING)
 	_start()
 	_go(1)
+	push_warning("Tester was on a tile it couldn't stand on.")
+	assert_push_warning("Tester was on")
 	_go(0)
 	_telemetry.end()
+	Log.flush()
+	Log.stop_session()
+	Log.unhook_engine()
+	Log.keep_error_text = OS.is_debug_build()
+	Log.clear()
 	var everything: String = FileAccess.get_file_as_string(DIR.path_join("%s%s.jsonl" % [
-		Telemetry.SESSION_PREFIX, _telemetry.session])) + JSON.stringify(_session_summary())
+		Telemetry.SESSION_PREFIX, _telemetry.session])) + JSON.stringify(_session_summary()) 		+ FileAccess.get_file_as_string(ROLLING)
+	assert_string_contains(JSON.stringify(_session_summary().errors), "warning at test_telemetry.gd",
+		"the warning counted by place")
 	for word: String in ["Tester", OS.get_environment("USERNAME"), "install_id", "tester_code"]:
 		if word == "": continue
 		assert_false(everything.contains(word), "no %s" % word)

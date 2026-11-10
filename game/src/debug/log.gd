@@ -59,9 +59,16 @@ static var _rolling_path: String = ""
 # The engine hook, kept to take it off again
 static var _hook: EngineHook
 # Engine errors and warnings this run, for telemetry's health counts:
-# how many of each type, and the first few texts
+# how many of each type, and how many from each place (never the
+# message, D-209)
 static var _error_counts: Dictionary[StringName, int] = {}
-static var _first_errors: Array[String] = []
+# How often each place raised one, keyed "type at file:line function"
+static var _error_sites: Dictionary[String, int] = {}
+# Whether an error event keeps its message. Only in a debug build:
+# a message can name an actor, and a playtest build's crash file goes
+# to Derik with the tester's telemetry, which names no one (D-204,
+# D-209). Where it was raised is always kept. Tests switch it.
+static var keep_error_text: bool = OS.is_debug_build()
 
 
 # --- recording ---
@@ -104,7 +111,7 @@ static func clear() -> void:
 	_head = 0
 	_off.clear()
 	_error_counts.clear()
-	_first_errors.clear()
+	_error_sites.clear()
 	_mutex.unlock()
 
 
@@ -309,18 +316,20 @@ static func unhook_engine() -> void:
 
 
 # What the engine has raised this run, while hooked: a count per type,
-# and the first few texts. For telemetry's health (D-202).
+# and per place raised. For telemetry's health (D-202); no message
+# text, which can name an actor (D-209).
 static func error_counts() -> Dictionary:
 	_mutex.lock()
-	var counts: Dictionary = {"counts": _error_counts.duplicate(), "first": _first_errors.duplicate()}
+	var counts: Dictionary = {"counts": _error_counts.duplicate(), "sites": _error_sites.duplicate()}
 	_mutex.unlock()
 	return counts
 
 
-static func _count_error(type: StringName, text: String) -> void:
+static func _count_error(type: StringName, at: String) -> void:
 	_mutex.lock()
 	_error_counts[type] = _error_counts.get(type, 0) + 1
-	if _first_errors.size() < 10: _first_errors.append("%s: %s" % [type, text])
+	var site: String = "%s at %s" % [type, at]
+	_error_sites[site] = _error_sites.get(site, 0) + 1
 	_mutex.unlock()
 
 
@@ -341,9 +350,10 @@ class EngineHook extends Logger:
 		# Never log the log's own trouble: it would log itself (trap 2)
 		if at.begins_with("log.gd:") or file.ends_with("/log.gd"): return
 		var type: StringName = TYPES[clampi(error_type, 0, TYPES.size() - 1)]
-		var text: String = rationale if rationale != "" else code
-		Log._count_error(type, text)
-		Log.event(ERRORS, type, {"text": text, "at": at})
+		Log._count_error(type, at)
+		var data: Dictionary = {"at": at}
+		if Log.keep_error_text: data["text"] = rationale if rationale != "" else code
+		Log.event(ERRORS, type, data)
 
 	func _log_message(_message: String, _error: bool) -> void:
 		pass

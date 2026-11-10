@@ -41,10 +41,6 @@ None of them are next.
 
 Found during 005, not recorded anywhere else. None of it is decided.
 
-- **Telemetry can carry an actor's name** (found 2026-11-10, writing 014's acceptance walkthrough):
-  the summary's `errors.first` keeps the first ten warnings' text, and some name the actor. Every
-  actor is "DefaultName" today; fix before testers get a build, or D-204 breaks once players
-  name characters.
 - **The two playtime timer scripts are identical** (`active_play_timer.gd`,
   `total_play_timer.gd`); merge them when the clocks are next touched.
 - **`content/tuning/default.tres` has no `uid` yet;** the editor adds one on its first save.

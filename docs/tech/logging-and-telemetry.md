@@ -99,7 +99,7 @@ The same event shape as the debug log (§1.1), on its own channel names:
 | **Session** | `session_started` (build, OS, screen, GPU, tuning profile, world seed, new or loaded); `session_ended` (length, active play time); `crashed` (a session with no end, found at the next launch, with its length) | Length of play; stability |
 | **Trips** | `trip_started` (depth left from); `trip_ended` (deepest level, time below, kilos carried home); `overloaded` time per trip | Pre-alpha criterion 5, backtracking fatigue |
 | **Friction** | `refused` (verb and reason, counted); `climb_refused` for weight | What the game fails to teach |
-| **Health** | frame-time percentiles (p50, p95, p99) per minute; save, load and generation times; error and warning counts with the first text of each | Performance on testers' machines |
+| **Health** | frame-time percentiles (p50, p95, p99) per minute; save, load and generation times; error and warning counts by type and by the place in the code that raised them, never their text (D-209) | Performance on testers' machines |
 
 **A trip** starts when a player goes below the depth they started the session on, and ends when
 they come back up to it (a proposed definition, until there is a home; see the slice brief).

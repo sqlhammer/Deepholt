@@ -17,6 +17,7 @@ func after_each() -> void:
 	Log.stop_session()
 	Log.unhook_engine()
 	Log.enabled = OS.is_debug_build()
+	Log.keep_error_text = OS.is_debug_build()
 	Log.clear()
 	SaveDirs.remove_tree(DIR)
 
@@ -133,6 +134,28 @@ func test_the_engines_errors_and_warnings_reach_the_log() -> void:
 	assert_string_contains(found[0].data.text, "A test warning", "its text")
 	assert_eq(found[0].channel, Log.ERRORS, "on the errors channel")
 	assert_string_contains(found[0].data.at, "test_log.gd", "where the script raised it")
+
+
+# D-209: outside a debug build an error keeps where it was raised,
+# never what it said, which can name an actor; the counts never keep
+# text at all.
+func test_outside_a_debug_build_errors_keep_their_place_not_their_text() -> void:
+	Log.keep_error_text = false
+	Log.hook_engine()
+	# From one line twice: one place
+	for i in range(2): push_warning("Kestrel was on a tile it couldn't stand on.")
+	assert_push_warning_count(2, "both raised")
+	var found: Array[Dictionary] = _events(&"warning")
+	assert_eq(found.size(), 2, "both logged")
+	assert_false(found[0].data.has("text"), "no message")
+	assert_string_contains(found[0].data.at, "test_log.gd", "the place")
+	var counts: Dictionary = Log.error_counts()
+	assert_false(JSON.stringify(counts).contains("Kestrel"), "no name in the counts")
+	assert_eq(counts.counts[&"warning"], 2, "counted by type")
+	var site: String = counts.sites.keys()[0]
+	assert_true(site.begins_with("warning at test_log.gd:"), "and by place: %s" % site)
+	assert_eq(counts.sites[site], 2, "twice from there")
+	assert_false(counts.has("first"), "no list of texts any more")
 
 
 func test_the_caller_names_where_the_call_came_from() -> void:
