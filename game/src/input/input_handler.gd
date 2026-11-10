@@ -84,7 +84,7 @@ func _hotbar_input(event: InputEvent) -> void:
 
 
 # A slot chosen by its key or a click. With the inventory open it's
-# where the focused entry goes (D-172, slice 011 trap 7); in build mode
+# where the focused thing goes (D-178, slice 011 trap 7); in build mode
 # it's a build slot; otherwise a tool slot.
 func select_slot(slot: int) -> void:
 	if actor == null or paused: return
@@ -96,13 +96,10 @@ func select_slot(slot: int) -> void:
 		actor.hotbar.select_tool(slot)
 
 
-# One slot along. With the inventory choosing a slot to assign to,
-# the choice moves instead; otherwise the open inventory keeps the
-# selection as it is.
+# One slot along. The open inventory keeps the selection as it is.
 func step_slot(step: int) -> void:
-	if inventory != null and inventory.is_open:
-		if inventory.assigning: inventory.step_assign(step)
-	elif build != null and build.active:
+	if inventory != null and inventory.is_open: return
+	if build != null and build.active:
 		actor.hotbar.step_build(step)
 	else:
 		actor.hotbar.step_tool(step)
@@ -146,19 +143,18 @@ func _inventory_mode(move: Vector2) -> void:
 	actor.aim(Vector2.ZERO, move)
 	actor.primary_action(false)
 	actor.breach(false)
-	# Choosing a slot to assign to (D-172): A puts it there, B cancels,
-	# and nothing else in the inventory acts, so A doesn't also drop
-	if inventory.assigning:
-		if Input.is_action_just_pressed("assign_confirm"): inventory.confirm_assign()
-		elif Input.is_action_just_pressed("assign_cancel"): inventory.cancel_assign()
-		return
-	if Input.is_action_just_pressed("ui_up"): inventory.move_focus(-1)
-	if Input.is_action_just_pressed("ui_down"): inventory.move_focus(1)
-	if Input.is_action_just_pressed("ui_left"): inventory.switch_section(-1)
-	if Input.is_action_just_pressed("ui_right"): inventory.switch_section(1)
-	if Input.is_action_just_pressed("inventory_assign"): inventory.begin_assign()
+	# The focus over the grid and the bars (D-175)
+	if Input.is_action_just_pressed("ui_up"): inventory.move(Vector2i.UP)
+	if Input.is_action_just_pressed("ui_down"): inventory.move(Vector2i.DOWN)
+	if Input.is_action_just_pressed("ui_left"): inventory.move(Vector2i.LEFT)
+	if Input.is_action_just_pressed("ui_right"): inventory.move(Vector2i.RIGHT)
+	# Pick up, put down, cancel, drop, sort (D-177, D-178). The mouse's
+	# clicks are the board's own.
+	if Input.is_action_just_pressed("inventory_pick"): inventory.pick_or_place()
+	if Input.is_action_just_pressed("inventory_cancel"): inventory.cancel()
 	if Input.is_action_just_pressed("drop_one"): inventory.drop_one()
 	if Input.is_action_just_pressed("drop_stack"): inventory.drop_stack()
+	if Input.is_action_just_pressed("inventory_sort"): inventory.sort()
 
 
 func _physics_process(delta: float) -> void:

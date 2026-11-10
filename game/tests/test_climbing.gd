@@ -147,7 +147,7 @@ func test_only_pad_a_both_interacts_and_takes() -> void:
 	assert_eq(_buttons(&"hotbar_prev"), [JOY_BUTTON_LEFT_SHOULDER], "LB")
 	assert_eq(_buttons(&"hotbar_next"), [JOY_BUTTON_RIGHT_SHOULDER], "RB")
 	assert_eq(_buttons(&"breach"), [JOY_BUTTON_X], "X stays breach (D-171)")
-	assert_eq(_buttons(&"inventory_assign"), [JOY_BUTTON_Y], "Y assigns in the inventory")
+	assert_eq(_buttons(&"inventory_pick"), [JOY_BUTTON_A], "A picks up in the inventory")
 
 
 func _buttons(action: StringName) -> Array:

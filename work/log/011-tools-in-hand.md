@@ -134,3 +134,32 @@ which is full size: each sat at its real pixel size along the window's bottom ed
 taskbar. This was true of 008's carry bar too, and of the refusal notices; no headless test can
 see it. Every screen layer now extends `ScaledHud`, laid out in the 512 x 320 frame and scaled
 with the game picture, and a test pins the frame, the fit and where the hotbar sits.
+
+**The inventory became a grid** (Derik, D-175 to D-178, Agent mode, inside 011). An 8 x 8 grid
+of the pack, one stack per cell with its icon, count and weight, never a cap; the eight build
+slots in a column on its right and the eight tool slots along its bottom. Things move by
+picking up and putting down (A or a click, B or a right-click cancels); the grid keeps the
+player's order (`PackGrid`, saved per actor as `"grid"`), and R3 / `O` sorts it by value per
+kilo. In the inventory, Y / `X` drop one and X / `Z` drop all; 011's "Y, LB/RB, A" assigning is
+gone. Placeholder 16 x 16 icons for the five items (`content/items/icons/`). The hotbar on screen
+shows icons too, and hides while the inventory is open.
+
+Choices made while building it, not put to Derik:
+
+- **Only a gain fills a tool slot** (D-176's wording made concrete): the hotbar remembers what the
+  pack held and fills slots for the rise. So **a pack replaced wholesale fills nothing**; that
+  happens only on a load, which replaces the hotbar straight after, and a save from before the
+  hotbar still gets its tools placed (a fresh hotbar has seen nothing).
+- **A tool taken off the bar into an occupied cell** lands there and sends that cell's thing to
+  the first empty cell; a tool put on an occupied tool slot from the grid sends the slot's tool
+  to the grid.
+- **The build column holds every buildable** and is rearranged by swapping within it; nothing
+  moves between it and the grid, since a ladder isn't an item.
+- **The focus crosses between regions** at the grid's right edge (to the build column, level
+  with the row) and bottom (to the tool row, same column); the two bars meet at their ends.
+- **More kinds than 64 add rows,** shown eight at a time, scrolled by the focus or the wheel.
+- **The inventory is drawn as one board** with fixed geometry, so the mouse and the pad find
+  cells by the same arithmetic (`place_at`), and the tests check it.
+
+Unseen: no headless run draws, so the grid, its icons and its text sizes haven't been looked at.
+The walk's step 4 now covers the grid.

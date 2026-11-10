@@ -26,6 +26,7 @@ var pack: Pack:
 	set(value):
 		_pack = value
 		hotbar.watch(_pack)
+		grid.watch(_pack, hotbar)
 var _pack: Pack
 # What this actor holds (D-170): its tool slots and build slots, kept
 # agreeing with the pack. Replaced on a load like the pack; set the
@@ -34,6 +35,13 @@ var hotbar: Hotbar = Hotbar.new():
 	set(value):
 		hotbar = value
 		hotbar.watch(_pack)
+		grid.watch(_pack, hotbar)
+# Where each thing in the pack sits in the inventory's grid (D-175),
+# following the pack and the hotbar. Replaced on a load, last.
+var grid: PackGrid = PackGrid.new():
+	set(value):
+		grid = value
+		grid.watch(_pack, hotbar)
 var aim_vector: Vector2 = Vector2.ZERO
 var facing: Vector2i = Vector2i(0,1) # Default = Down
 

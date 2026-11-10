@@ -3,11 +3,12 @@ extends ScaledHud
 
 # The followed actor's hotbar (D-170, ui-ux §4): eight slots at the
 # bottom center, under the carry bar. Outside build mode it shows the
-# tool slots; in build mode, the build slots. The selected slot is
-# outlined, an empty one is dim, and while the inventory is choosing a
-# slot to assign to (D-172) that slot is marked too. Presentation: it
-# follows the view's actor (D-045). A click on a slot is announced,
-# not acted on: the input handler decides what a click means.
+# tool slots; in build mode, the build slots. Each shows its icon (the
+# item's, or the fixture's art), the selected one is outlined, an empty
+# one is dim. It hides while the inventory is open, which shows the
+# bars itself (D-175). Presentation: it follows the view's actor
+# (D-045). A click on a slot is announced, not acted on: the input
+# handler decides what a click means.
 
 signal slot_clicked(slot: int)
 
@@ -17,7 +18,6 @@ const EMPTY: Color = Color(0, 0, 0, 0.45)
 const FILLED: Color = Color(0, 0, 0, 0.7)
 const BORDER: Color = Color(0.6, 0.6, 0.55)
 const SELECTED: Color = Color(1.0, 0.9, 0.45)
-const ASSIGNING: Color = Color(0.45, 0.85, 1.0)
 
 # Short names for the slots, which are too narrow for a display name.
 # Anything not listed shows the last word of its name.
@@ -30,20 +30,13 @@ const BUILD_NAMES: Dictionary = {
 	ObjectKind.OBJECT.TIMBER_PROP: "Prop",
 }
 
-# Whether the build slots are shown: build mode is on (D-170), or the
-# inventory's build section is open (D-174)
+# Whether the build slots are shown: build mode is on (D-170)
 var showing_builds: bool:
-	get: return _build_mode or _inventory_builds
-# The slot the inventory is choosing to assign to, or -1 (D-172)
-var assign_slot: int = -1:
-	set(value):
-		assign_slot = value
-		_redraw()
+	get: return _build_mode
 
 var _view: View
 var _actor: Actor
 var _build_mode: bool = false
-var _inventory_builds: bool = false
 var _row: HBoxContainer
 var _slots: Array[Control] = []
 
@@ -90,11 +83,9 @@ func _on_followed_moved(actor: Actor) -> void:
 	_redraw()
 
 
-# The inventory's section picks the slots shown, and the slot it's
-# choosing is marked.
+# Hidden while the inventory is open: it shows the bars itself.
 func watch_inventory(inventory: InventoryOverlay) -> void:
-	inventory.section_changed.connect(_on_inventory_section_changed)
-	inventory.assign_slot_changed.connect(func(slot: int) -> void: assign_slot = slot)
+	inventory.open_changed.connect(func(open: bool) -> void: visible = not open)
 
 
 func _on_build_mode_changed(active: bool) -> void:
@@ -102,9 +93,7 @@ func _on_build_mode_changed(active: bool) -> void:
 	_redraw()
 
 
-func _on_inventory_section_changed(section: InventoryOverlay.SECTION) -> void:
-	_inventory_builds = section == InventoryOverlay.SECTION.BUILD
-	_redraw()
+
 
 
 func _on_hotbar_changed(_hotbar: Hotbar) -> void:
@@ -130,6 +119,15 @@ func slot_text(slot: int) -> String:
 	var item: Item = ItemRegistry.find(id)
 	return item.display_key.get_slice(" ", item.display_key.get_slice_count(" ") - 1) \
 		if item != null else String(id)
+
+
+# A slot's picture: the item's icon, or the buildable's art; null for
+# an empty slot or a thing with none.
+func slot_icon(slot: int) -> Texture2D:
+	if _actor == null: return null
+	if showing_builds: return FixtureRenderer.TEXTURES.get(_actor.hotbar.builds[slot])
+	var item: Item = ItemRegistry.find(_actor.hotbar.tools[slot])
+	return item.icon if item != null else null
 
 
 # --- the mouse (ui-ux §3: a click on a slot selects it) ---
@@ -168,12 +166,17 @@ func _draw_slot(i: int) -> void:
 	if i == selected():
 		border = SELECTED
 		width = 2.0
-	if i == assign_slot:
-		border = ASSIGNING
-		width = 2.0
 	slot.draw_rect(rect, border, false, width)
 	var font: Font = ThemeDB.fallback_font
 	slot.draw_string(font, Vector2(2, 7), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 6, BORDER)
-	if text != "":
+	var icon: Texture2D = slot_icon(i)
+	if icon != null:
+		# Fitted to the slot's height, keeping its shape: a 16 x 24
+		# fixture shrinks, a 16 x 16 icon sits as drawn
+		var icon_height: float = minf(icon.get_height(), slot.size.y - 2)
+		var icon_width: float = icon.get_width() * icon_height / icon.get_height()
+		slot.draw_texture_rect(icon, Rect2(Vector2((slot.size.x - icon_width) / 2, 1),
+			Vector2(icon_width, icon_height)), false)
+	elif text != "":
 		slot.draw_string(font, Vector2(0, slot.size.y - 3), text, HORIZONTAL_ALIGNMENT_CENTER,
 			slot.size.x, 8, Color.WHITE)

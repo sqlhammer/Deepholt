@@ -3700,3 +3700,68 @@ next slices (chute, winch, columns) all add things to select and carry.
 
 *Considered:* breaching with a pick anywhere in the pack; switching to the pick by itself on a
 breach; build slots in a fixed order until the radial menu.
+
+---
+
+### D-175 — The inventory is a grid: the pack in 8 x 8, build slots down the right, tool slots along the bottom
+**Decided** (by Derik, during slice 011, 2026-11-09). Amends
+[D-172](#d-172--the-inventory-screen-focus-that-works-without-a-mouse-assigning-weights-a-preview)'s
+list.
+
+- **An 8 x 8 grid of the pack**, each cell an item's icon, its count and its weight. **One stack
+  per cell, and the cells are room, never a cap:** weight stays the only limit
+  ([D-013](#d-013--inventory-is-weight-limited-there-is-no-teleport), ui-ux §5). More kinds than
+  cells adds rows.
+- **The eight build slots stand in a column on the grid's right; the eight tool slots run along
+  its bottom.** The weight bar and the take-this preview stay.
+- Every cell shows its weight, never only on hover (ui-ux §5).
+
+*Why:* a picture of the pack reads faster than a list, and the bars sit where the hand goes.
+
+*Considered:* stacks split at the stack size (matters only once stack sizes are small); slots as a
+second limit beside weight (reverses ui-ux §5).
+
+---
+
+### D-176 — A tool lives in its tool slot; only a tool off the bar shows in the grid
+**Decided** (by Derik, during slice 011, 2026-11-09). Refines
+[D-169](#d-169--tools-are-pack-items-only-the-player-drops-one-never-an-overflow) and
+[D-171](#d-171--pad-x-stays-breach-tools-fill-the-hotbar-themselves-an-empty-hand-digs-bare).
+
+- **A tool on the tool bar isn't also in the grid.** A ninth tool, or one moved off the bar, sits
+  in the grid. Its weight counts either way.
+- **A tool takes the first empty slot when it's gained** (picked up, taken, given), not whenever a
+  slot is empty, so one moved into the grid stays there.
+
+*Why:* each thing is in one place on screen.
+
+*Considered:* every tool in the grid, with the bar pointing at it (tools show twice).
+
+---
+
+### D-177 — Things are moved by picking up and putting down; the grid's order is the player's
+**Decided** (by Derik, during slice 011, 2026-11-09).
+
+- **Pick up the focused cell or slot, move the focus anywhere, put it down,** swapping with what's
+  there. The same on the pad (A) and the mouse (a click). Cancel puts it back. No dragging.
+- **The grid keeps the order the player gives it,** saved with the actor, and a **sort** puts it in
+  value-per-kilo order (ui-ux §5) on demand.
+- Only a tool goes on a tool slot, and only a buildable on a build slot.
+
+*Why:* one way to move things, the same on every input (ui-ux §3's parity).
+
+*Considered:* a grid always sorted by value (no arranging by hand); mouse drag and drop.
+
+---
+
+### D-178 — In the inventory: A picks up and puts down, B cancels, Y drops one, X drops all, R3 sorts
+**Decided** (by Derik, during slice 011, 2026-11-09). Amends
+[D-160](#d-160--slice-009-is-letting-go-drops-dropping-pickup-to-100-a-take-key-an-inventory-overlay)'s
+pad drop-one (A).
+
+- **Pad:** A picks up or puts down, B cancels, Y drops one, X drops the stack, R3 sorts.
+- **Keyboard and mouse:** a click or Enter picks up or puts down, a right-click cancels, `X` and
+  `Z` drop as before, `O` sorts, and `1`–`8` put the focused tool in that tool slot.
+- 011's "Y, then LB/RB, then A" way of assigning is gone: picking up and putting down replaces it.
+
+*Considered:* X drop one and Y drop all; hold A to drop.

@@ -1,8 +1,9 @@
 extends GutTest
 
 # The hotbar on screen and the keys that drive it (D-170, D-171), and
-# the inventory screen (D-172, D-174): focus, sections, assigning by
-# key, click and pad, the take-this preview, and the take notice.
+# the grid inventory (D-175 to D-178): the focus over the grid and the
+# bars, picking up and putting down, dropping, sorting, the take-this
+# preview, and the take notice.
 
 const Worlds = preload("res://tests/worlds.gd")
 const PICK: StringName = &"flint_pickaxe"
@@ -99,23 +100,6 @@ func test_the_bumpers_step_the_build_slots_in_build_mode() -> void:
 	assert_eq(_actor.hotbar.selected_tool, 0, "tools untouched")
 
 
-func test_the_open_inventory_keeps_the_selection_unless_choosing() -> void:
-	_inventory.set_open(true)
-	_press(&"hotbar_next")
-	assert_eq(_actor.hotbar.selected_tool, 0, "LB / RB do nothing to the selection")
-
-
-func test_the_pad_chooses_a_build_slot_from_the_build_section() -> void:
-	_inventory.set_open(true)
-	_inventory.switch_section(1)
-	_inventory.focus_row(1)
-	_inventory.begin_assign()
-	assert_eq(_hud.assign_slot, 1, "the prop is in slot 2")
-	_inventory.step_assign(2)
-	_inventory.confirm_assign()
-	assert_eq(_actor.hotbar.builds[3], ObjectKind.OBJECT.TIMBER_PROP, "now slot 4")
-
-
 func test_a_click_on_a_slot_selects_it() -> void:
 	_hud.slot_clicked.connect(_handler.select_slot)
 	_hud.slot_clicked.emit(1)
@@ -128,107 +112,205 @@ func test_a_paused_handler_selects_nothing() -> void:
 	assert_eq(_actor.hotbar.selected_tool, 0, "a fade ignores the keys")
 
 
-# --- the inventory: focus and sections (D-172) ---
+func test_the_bar_shows_icons() -> void:
+	assert_eq(_hud.slot_icon(0), ItemRegistry.get_item(PICK).icon, "the pick's icon")
+	assert_null(_hud.slot_icon(2), "an empty slot has none")
+	_cursor.set_active(true)
+	assert_eq(_hud.slot_icon(1), FixtureRenderer.TEXTURES[ObjectKind.OBJECT.TIMBER_PROP],
+		"a build slot shows the fixture's art")
 
-func test_the_inventory_focus_moves_and_wraps_and_switches_sections() -> void:
+
+func test_every_item_has_an_icon() -> void:
+	for id: StringName in ItemRegistry.ids():
+		var icon: Texture2D = ItemRegistry.get_item(id).icon
+		assert_not_null(icon, "%s has an icon" % id)
+		if icon != null: assert_eq(icon.get_size(), Vector2(16, 16), "%s: 16 x 16" % id)
+
+
+# --- the grid inventory (D-175) ---
+
+func test_the_bar_on_screen_hides_while_the_inventory_shows_its_own() -> void:
 	_inventory.set_open(true)
-	assert_eq(_inventory.section, InventoryOverlay.SECTION.PACK, "the pack first")
-	assert_eq(_inventory.row_count(), 3, "timber, pick, shovel")
-	_inventory.move_focus(-1)
-	assert_eq(_inventory.focus, 2, "up from the top wraps")
-	_inventory.focus_row(1)
-	assert_eq(_inventory.focus, 1, "the mouse moves it too")
-	_inventory.switch_section(1)
-	assert_eq(_inventory.section, InventoryOverlay.SECTION.BUILD, "then the build section")
-	assert_eq(_inventory.focus, 0, "focus starts at the top")
-	assert_true(_hud.showing_builds, "the bar shows build slots for it")
-	assert_string_contains(_inventory.text(), "Ladder  4 timber  [1]", "costs and slots")
+	assert_false(_hud.visible, "hidden")
 	_inventory.set_open(false)
-	assert_false(_hud.showing_builds, "closing brings the tools back")
+	assert_true(_hud.visible, "back")
 
 
-func test_every_row_shows_its_weight_and_its_slot() -> void:
+func test_the_open_inventory_keeps_the_selection() -> void:
 	_inventory.set_open(true)
+	_press(&"hotbar_next")
+	assert_eq(_actor.hotbar.selected_tool, 0, "LB / RB do nothing to the selection")
+
+
+func test_tools_on_the_bar_arent_in_the_grid() -> void:
+	_inventory.set_open(true)
+	assert_eq(_actor.grid.cells.slice(0, 2), [&"timber", &""], "only the timber in the grid")
+	assert_eq(_actor.hotbar.tools.slice(0, 2), [PICK, SHOVEL], "the tools on their bar")
 	var text: String = _inventory.text()
-	assert_string_contains(text, "1 Flint Shovel  2.5 kg  [2]", "the shovel, in slot 2")
-	assert_string_contains(text, "1 Flint Pickaxe  3 kg  [1]", "the pick, in slot 1")
-	assert_string_contains(text, "10 Timber  20 kg", "timber, on no slot")
-	assert_string_contains(text, "25.5 / 60 kg", "the load in the header")
+	assert_string_contains(text, "10 Timber  20 kg", "count and weight")
+	assert_string_contains(text, "Pack  25.5 / 60 kg", "the load in the header")
 
 
-# --- assigning (D-172, trap 7) ---
-
-func _focus_on(id: StringName) -> void:
-	_inventory.focus_row(_inventory.rows().find(id))
-
-
-func test_a_number_key_with_the_inventory_open_assigns_not_selects() -> void:
+func test_the_focus_walks_the_grid_into_the_bars_and_back() -> void:
 	_inventory.set_open(true)
-	_focus_on(SHOVEL)
+	for i in range(7): _inventory.move(Vector2i.RIGHT)
+	assert_eq([_inventory.focus_region, _inventory.focus_index], [InventoryOverlay.REGION.GRID, 7],
+		"the grid's right edge")
+	_inventory.move(Vector2i.RIGHT)
+	assert_eq([_inventory.focus_region, _inventory.focus_index], [InventoryOverlay.REGION.BUILD, 0],
+		"into the build column, level with the row")
+	_inventory.move(Vector2i.LEFT)
+	_inventory.move(Vector2i.LEFT)
+	for i in range(8): _inventory.move(Vector2i.DOWN)
+	assert_eq([_inventory.focus_region, _inventory.focus_index], [InventoryOverlay.REGION.TOOLS, 6],
+		"down off the grid's bottom: the tool row, same column")
+	_inventory.move(Vector2i.RIGHT)
+	_inventory.move(Vector2i.RIGHT)
+	assert_eq([_inventory.focus_region, _inventory.focus_index], [InventoryOverlay.REGION.BUILD, 7],
+		"the tool row's end meets the build column's")
+	_inventory.move(Vector2i.UP)
+	assert_eq(_inventory.focus_index, 6, "up the column")
+
+
+func test_the_focused_thing_is_described() -> void:
+	_inventory.set_open(true)
+	assert_eq(_inventory.details_text(), "10 Timber, 20 kg, 1.00 per kg", "the timber")
+	_inventory._focus(InventoryOverlay.REGION.TOOLS, 1)
+	assert_eq(_inventory.details_text(), "Tool slot 2: 1 Flint Shovel, 2.5 kg, 0.40 per kg",
+		"the shovel")
+	_inventory._focus(InventoryOverlay.REGION.BUILD, 0)
+	assert_eq(_inventory.details_text(), "Build slot 1: Ladder, 4 timber", "the ladder")
+
+
+func test_the_mouse_finds_cells_and_slots() -> void:
+	_inventory.set_open(true)
+	assert_eq(_inventory.place_at(Vector2(30, 20)), [InventoryOverlay.REGION.GRID, 1] as Array[int],
+		"the grid's second cell")
+	assert_eq(_inventory.place_at(Vector2(InventoryOverlay.BUILD_X + 2, 20)),
+		[InventoryOverlay.REGION.BUILD, 0] as Array[int], "the first build slot")
+	assert_eq(_inventory.place_at(Vector2(2, InventoryOverlay.TOOLS_Y + 2)),
+		[InventoryOverlay.REGION.TOOLS, 0] as Array[int], "the first tool slot")
+	assert_eq(_inventory.place_at(Vector2(25, 20)), [-1, -1] as Array[int], "a gap")
+
+
+# --- picking up and putting down (D-177) ---
+
+func _pick(region: InventoryOverlay.REGION, index: int) -> void:
+	_inventory._focus(region, index)
+	_inventory.pick_or_place()
+
+
+func test_cells_swap() -> void:
+	_actor.pack.add(&"stone", 2)
+	_inventory.set_open(true)
+	_pick(InventoryOverlay.REGION.GRID, 0)
+	assert_true(_inventory.holding, "the timber picked up")
+	_pick(InventoryOverlay.REGION.GRID, 9)
+	assert_false(_inventory.holding, "put down")
+	assert_eq(_actor.grid.cells[9], &"timber", "the timber moved")
+	assert_eq(_actor.grid.cells[0], &"", "and left its cell")
+
+
+func test_a_tool_moves_off_the_bar_into_the_grid_and_stays_there() -> void:
+	_inventory.set_open(true)
+	_pick(InventoryOverlay.REGION.TOOLS, 1)
+	_pick(InventoryOverlay.REGION.GRID, 5)
+	assert_eq(_actor.hotbar.tools[1], &"", "off the bar")
+	assert_eq(_actor.grid.cells[5], SHOVEL, "into the cell put down on")
+	assert_eq(_actor.pack.count_of(SHOVEL), 1, "still carried")
+	_actor.pack.add(&"stone", 1)
+	assert_eq(_actor.hotbar.tools[1], &"", "a change to the pack doesn't pull it back (D-176)")
+
+
+func test_a_tool_from_the_grid_onto_a_full_slot_sends_that_tool_to_the_grid() -> void:
+	_inventory.set_open(true)
+	_pick(InventoryOverlay.REGION.TOOLS, 1)
+	_pick(InventoryOverlay.REGION.GRID, 5)
+	_pick(InventoryOverlay.REGION.GRID, 5)
+	_pick(InventoryOverlay.REGION.TOOLS, 0)
+	assert_eq(_actor.hotbar.tools[0], SHOVEL, "the shovel in slot 1")
+	assert_true(_actor.grid.cells.has(PICK), "the pick went to the grid")
+	assert_false(_actor.grid.cells.has(SHOVEL), "and the shovel left it")
+
+
+func test_tool_slots_swap_and_build_slots_swap() -> void:
+	_inventory.set_open(true)
+	_pick(InventoryOverlay.REGION.TOOLS, 0)
+	_pick(InventoryOverlay.REGION.TOOLS, 4)
+	assert_eq(_actor.hotbar.tools[4], PICK, "the pick to slot 5")
+	_pick(InventoryOverlay.REGION.BUILD, 1)
+	_pick(InventoryOverlay.REGION.BUILD, 6)
+	assert_eq(_actor.hotbar.builds[6], ObjectKind.OBJECT.TIMBER_PROP, "the prop to build slot 7")
+
+
+func test_only_tools_on_tool_slots_and_buildables_on_build_slots() -> void:
+	_inventory.set_open(true)
+	_pick(InventoryOverlay.REGION.GRID, 0)
+	_pick(InventoryOverlay.REGION.TOOLS, 3)
+	assert_eq(_actor.hotbar.tools[3], &"", "timber isn't a tool")
+	assert_eq(_inventory.message, "Only tools go on the tool bar.", "and it says so")
+	_pick(InventoryOverlay.REGION.BUILD, 0)
+	_pick(InventoryOverlay.REGION.GRID, 3)
+	assert_eq(_actor.grid.cells[3], &"", "a ladder isn't an item")
+	assert_eq(_inventory.message, "Build slots hold only what you can build.", "and it says so")
+
+
+func test_cancel_puts_it_back_and_an_empty_place_picks_up_nothing() -> void:
+	_inventory.set_open(true)
+	_pick(InventoryOverlay.REGION.GRID, 0)
+	_inventory.cancel()
+	assert_false(_inventory.holding, "nothing held")
+	assert_eq(_actor.grid.cells[0], &"timber", "where it was")
+	_pick(InventoryOverlay.REGION.GRID, 20)
+	assert_false(_inventory.holding, "an empty cell")
+
+
+func test_a_number_key_puts_the_focused_tool_in_that_slot() -> void:
+	_inventory.set_open(true)
+	_inventory._focus(InventoryOverlay.REGION.TOOLS, 1)
 	_press(&"hotbar_5")
 	assert_eq(_actor.hotbar.tools[4], SHOVEL, "the shovel to slot 5")
 	assert_eq(_actor.hotbar.selected_tool, 0, "and the selection didn't move")
-
-
-func test_a_click_on_a_slot_with_the_inventory_open_assigns() -> void:
-	_inventory.set_open(true)
-	_focus_on(PICK)
-	_handler.select_slot(3)
-	assert_eq(_actor.hotbar.tools[3], PICK, "the pick to slot 4")
-
-
-func test_only_tools_go_on_the_hotbar() -> void:
-	_inventory.set_open(true)
-	_focus_on(&"timber")
+	_inventory._focus(InventoryOverlay.REGION.GRID, 0)
 	assert_false(_inventory.assign_to(2), "timber isn't a tool")
-	assert_eq(_inventory.message, "Only tools go on the hotbar.", "and it says so")
-	_inventory.begin_assign()
-	assert_false(_inventory.assigning, "the pad can't begin it either")
 
 
-func test_the_pad_chooses_a_slot_then_confirms_or_cancels() -> void:
+# --- dropping and sorting (D-178) ---
+
+func test_dropping_a_cell_or_a_tool() -> void:
 	_inventory.set_open(true)
-	_focus_on(SHOVEL)
-	_inventory.begin_assign()
-	assert_true(_inventory.assigning, "choosing")
-	assert_eq(_hud.assign_slot, 1, "from the slot it's in")
-	_press(&"hotbar_next")
-	_press(&"hotbar_next")
-	assert_eq(_hud.assign_slot, 3, "LB / RB move the choice")
-	_inventory.cancel_assign()
-	assert_eq(_actor.hotbar.tools[3], &"", "cancelled: nothing moved")
-	assert_eq(_hud.assign_slot, -1, "and the mark is gone")
-	_inventory.begin_assign()
-	_inventory.step_assign(4)
-	_inventory.confirm_assign()
-	assert_eq(_actor.hotbar.tools[5], SHOVEL, "confirmed: in slot 6")
-	assert_false(_inventory.assigning, "and done")
-
-
-func test_build_slots_are_assigned_from_the_build_section() -> void:
-	_inventory.set_open(true)
-	_inventory.switch_section(1)
-	_inventory.focus_row(1)
-	assert_true(_inventory.assign_to(0), "the prop to slot 1")
-	assert_eq(_actor.hotbar.builds.slice(0, 2), [ObjectKind.OBJECT.TIMBER_PROP,
-		ObjectKind.OBJECT.LADDER], "swapped with the ladder")
-
-
-func test_the_build_section_drops_nothing() -> void:
-	_inventory.set_open(true)
-	_inventory.switch_section(1)
+	_inventory.drop_one()
+	assert_eq(_actor.pack.count_of(&"timber"), 9, "one timber")
 	_inventory.drop_stack()
-	_inventory.drop_one()
-	assert_eq(_actor.pack.count_of(&"timber"), 10, "nothing left the pack")
-
-
-func test_dropping_the_held_tool_leaves_bare_hands() -> void:
-	_inventory.set_open(true)
-	_focus_on(PICK)
-	_inventory.drop_one()
-	assert_eq(_actor.hotbar.tools[0], &"", "its slot empties")
+	assert_eq(_actor.pack.count_of(&"timber"), 0, "then the rest")
+	_inventory._focus(InventoryOverlay.REGION.TOOLS, 0)
+	_inventory.drop_stack()
+	assert_eq(_actor.hotbar.tools[0], &"", "the pick's slot empties")
 	assert_eq(_actor.tool(), Hotbar.BARE_HANDS, "bare hands")
-	assert_eq(_world.level_at(1).level_drops.at(Vector2i.ZERO), {PICK: 1}, "it's on the floor")
+	assert_eq(_world.level_at(1).level_drops.at(Vector2i.ZERO), {&"timber": 10, PICK: 1},
+		"all on the floor")
+	_inventory._focus(InventoryOverlay.REGION.BUILD, 0)
+	_inventory.drop_stack()
+	assert_eq(_actor.hotbar.builds[0], ObjectKind.OBJECT.LADDER, "build slots drop nothing")
+
+
+func test_sorting_puts_the_best_value_per_kilo_first() -> void:
+	_actor.pack.add(&"stone", 1)
+	_actor.pack.add(&"copper_ore", 1)
+	_inventory.set_open(true)
+	_inventory.sort()
+	assert_eq(_actor.grid.cells.slice(0, 3), [&"copper_ore", &"timber", &"stone"],
+		"1.2, 1.0, 0.33 per kg")
+
+
+func test_the_pad_buttons_in_the_inventory() -> void:
+	for pair: Array in [[&"inventory_pick", JOY_BUTTON_A], [&"inventory_cancel", JOY_BUTTON_B],
+			[&"drop_one", JOY_BUTTON_Y], [&"drop_stack", JOY_BUTTON_X],
+			[&"inventory_sort", JOY_BUTTON_RIGHT_STICK]]:
+		var found: Array = []
+		for event: InputEvent in InputMap.action_get_events(pair[0]):
+			if event is InputEventJoypadButton: found.append(event.button_index)
+		assert_eq(found, [pair[1]], "%s" % pair[0])
 
 
 # --- the take-this preview (ui-ux §5) ---

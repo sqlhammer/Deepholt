@@ -216,11 +216,17 @@ func test_every_actor_digs_with_its_own_selected_tool() -> void:
 	assert_eq(player.tool(), Hotbar.BARE_HANDS, "the player still holds nothing")
 
 
+# A load replaces the pack, then the hotbar. What a replaced pack
+# already holds isn't a gain (D-176): its tools sit wherever the
+# loaded hotbar put them, or in the grid. What it gains afterwards is.
 func test_replacing_an_actors_pack_keeps_the_hotbar_following_it() -> void:
 	var actor: Actor = autofree(Global.actor_packed_scene.instantiate())
 	var pack: Pack = Pack.new()
 	pack.add(PICK, 1)
 	actor.pack = pack
-	assert_eq(actor.tool(), _tool(PICK), "the new pack's pick")
-	pack.remove(PICK, 1)
+	assert_eq(actor.tool(), Hotbar.BARE_HANDS, "what it held already isn't a gain")
+	assert_eq(actor.grid.cells[0], PICK, "the pick is in the grid")
+	pack.add(SHOVEL, 1)
+	assert_eq(actor.tool(), _tool(SHOVEL), "a gain from the new pack takes slot 1")
+	pack.remove(SHOVEL, 1)
 	assert_eq(actor.tool(), Hotbar.BARE_HANDS, "and it follows the new pack")

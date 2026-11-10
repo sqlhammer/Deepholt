@@ -573,6 +573,8 @@ static func _serialize_actor(actor: Actor) -> Dictionary:
 	actor_data["pack"] = actor.pack.to_save()
 	# What it holds, slot by slot (D-170)
 	actor_data["hotbar"] = actor.hotbar.to_save()
+	# Where things sit in the inventory's grid (D-177)
+	actor_data["grid"] = actor.grid.to_save()
 
 	return actor_data
 
@@ -615,6 +617,7 @@ static func _deserialize_actor(p_actor: Dictionary, p_actor_id: int, world: Worl
 	# and against the actor's empty starting pack it would lose every
 	# saved slot
 	actor.hotbar = Hotbar.from_save(p_actor.get("hotbar"))
+	actor.grid = PackGrid.from_save(p_actor.get("grid"))
 	# A player saved before tools were items gets the starting tools
 	# (slice 011 trap 6); the load reports it
 	if _from_before_tools(p_actor):

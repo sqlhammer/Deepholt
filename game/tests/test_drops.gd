@@ -235,14 +235,13 @@ func test_it_drops_one_or_the_stack() -> void:
 	assert_eq(_drops().at(Vector2i.ZERO), {&"stone": 5}, "all on its tile")
 
 
-func test_selection_wraps_and_a_closed_overlay_drops_nothing() -> void:
+func test_the_focus_stops_at_the_edge_and_a_closed_overlay_drops_nothing() -> void:
 	var actor: Actor = _actor()
 	actor.pack.add(&"stone", 1)
 	actor.pack.add(&"timber", 1)
 	var overlay: InventoryOverlay = _overlay(actor)
-	overlay.move_focus(1)
-	overlay.move_focus(1)
-	assert_eq(overlay.focus, 0, "wrapped round")
+	overlay.move(Vector2i.LEFT)
+	assert_eq(overlay.focus_index, 0, "the grid's left edge holds the focus")
 	overlay.toggle()
 	overlay.drop_one()
 	assert_eq(actor.pack.count_of(&"timber"), 1, "closed: nothing dropped")

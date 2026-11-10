@@ -10,7 +10,10 @@ to D-174). Agent mode on a `slice-011` branch. **Approved by Derik the same day,
 and bindings below as proposed** (the pick at 0.8 s on rubble, the wheel included). **Built, 1008 tests green; waiting on the
 by-hand walk** ([log](./log/011-tools-in-hand.md)). One binding changed while building: the
 inventory's sections switch with the arrow keys and D-pad ←/→, not Tab and LB/RB, because Tab
-closes the inventory; the log says why.*
+closes the inventory; the log says why. **Then, at Derik's request, the inventory became a grid**
+(D-175 to D-178): outcome 4 is now "the grid with the pad alone: move the focus over the grid and
+both bars, pick the shovel up off the tool row and put it in slot 5, swap two cells, sort with
+R3".*
 
 ## Where we are
 
