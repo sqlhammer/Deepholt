@@ -23,12 +23,12 @@ Slice 011's checklist is in git history (last at the 011 close).
 - [x] Two or more hand-made caves per level, placed by seed (D-184).
 - [x] No preloaded ladders (D-185).
 - [x] R halved, rounding up (D-186).
-- [ ] The numbers in the brief (part of approving it).
+- [x] The numbers in the brief, approved with it.
 
 ## B. Small changes
 
-- [ ] R table 0, 4, 4, 3, 3, 2, 2, 2; support tests follow. [5]
-- [ ] Greyseam's ladder removed; tests that climbed it build their own. [4]
+- [x] R table 0, 4, 4, 3, 3, 2, 2, 2; support tests follow. [5]
+- [x] Greyseam's ladder removed; tests that climbed it build their own. [4]
 
 ## C. The axe and trees
 

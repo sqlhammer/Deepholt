@@ -50,11 +50,12 @@ func test_minus_one_has_a_hole_at_the_ladder_spot() -> void:
 	assert_eq(tiles.get_top(LADDER.x, LADDER.y), TileKind.TOP.OPEN, "under an open top")
 
 
-func test_minus_two_has_a_ladder_at_the_ladder_spot() -> void:
+# D-185: generation places no ladder; the floor under the hole is
+# open, so a player can build one there.
+func test_minus_two_has_open_floor_but_no_ladder_under_the_hole() -> void:
 	var level: Level = _level(2)
-	assert_true(_is_open(level, LADDER), "the ladder stands on open floor")
-	assert_true(level.level_fixtures.has_kind_at(LADDER, ObjectKind.OBJECT.LADDER), "a ladder on -2")
-	assert_eq(level.level_fixtures.of_kind(ObjectKind.OBJECT.LADDER).size(), 1, "just the one")
+	assert_true(_is_open(level, LADDER), "open floor for a ladder")
+	assert_eq(level.level_fixtures.of_kind(ObjectKind.OBJECT.LADDER).size(), 0, "none placed")
 
 
 func test_the_hand_made_levels_have_no_ladder_problems() -> void:

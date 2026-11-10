@@ -7,8 +7,8 @@
 
 *Proposed by Claude, 2026-11-09, for Derik's approval. Scope and every fork settled in planning
 ([D-179](../docs/design-decisions.md#d-179--slice-012-is-polish-a-surface-worth-walking-trees-ores-and-caves-below-gentler-supports)
-to D-187; D-187 corrects D-183: ore on −2 only). Agent mode on a `slice-012` branch. Nothing is
-built until Derik approves this brief, including the numbers below.*
+to D-187; D-187 corrects D-183: ore on −2 only). Agent mode on a `slice-012` branch. **Approved
+by Derik the same day, with the numbers below as proposed.***
 
 ## Where we are
 
