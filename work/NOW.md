@@ -1,125 +1,125 @@
-# Slice 009 — Letting go
+# Slice 010 — Holding it up
 
-> Dig until your pack is full and the stone you can't carry falls at your feet. Walk past it
-> later with room to spare and it comes back into your pack. Open the inventory, drop the stone
-> you don't want, and take the ore you do, even past full, if you're willing to walk home slowly.
+> Dig out a room wider than the rock can span and the ceiling starts to crack. You have
+> forty-five seconds to set a timber prop, or the room fills with rubble. Narrow tunnels never
+> fail; the deeper you go, the narrower "wide" becomes.
 
-*Proposed by Claude, 2026-11-08, for Derik's approval. Scope set in planning
-([D-160](../docs/design-decisions.md#d-160--slice-009-is-letting-go-drops-dropping-pickup-to-100-a-take-key-an-inventory-overlay)
-to D-162). Agent mode on a `slice-009` branch. Nothing is built until Derik approves this brief.*
+*Proposed by Claude, 2026-11-08; approved the same day with the bindings below. Scope and every
+fork settled in planning
+([D-163](../docs/design-decisions.md#d-163--slice-010-is-holding-it-up-the-support-rule-collapse-timber-props-the-overlay)
+to D-166). Agent mode on a `slice-010` branch. **Built, 963 tests green; waiting on the by-hand
+walk** ([log](./log/010-holding-it-up.md)). Outcome 1's "18 tiles wide … then red" is 19 under the
+rule as written; the log says why.*
 
 ## Where we are
 
-Slice 008 is merged ([log](./log/008-what-you-carry.md)), **not yet walked by hand.** Every actor
-carries a saved `Pack`; digging yields into the digger's pack with no cap; the load curve slows
-walking and past 150% a ladder refuses; ladders cost four timber. Nothing can leave a pack except
-a ladder's cost.
+Slices 008 and 009 are merged ([008](./log/008-what-you-carry.md),
+[009](./log/009-letting-go.md)), **neither walked by hand yet.** A player can dig, breach, carry,
+drop and pick up, and build ladders that cost timber. Nothing about excavation is unsafe: a room of
+any size stands forever.
 
-**What 009 changes:**
-- **Drops** exist: item stacks lying on tiles, a saved per-level store, like fixtures.
-- **Yields fill the pack to 100%,** and the rest drops at the dug tile (amends D-158's no cap).
-- **Auto-pickup:** a player takes drops from its own and the eight adjacent tiles, up to 100%.
-- **A take key** takes everything in that reach, whatever the load: the deliberate way past
-  100%.
-- **An inventory overlay** lists the pack, sorted by value density, with each item's weight, and
-  drops one or a stack onto your tile.
+**What 010 adds** ([digging-and-structure §2–4](../docs/systems/digging-and-structure.md)):
+- **The support rule:** every excavated tile is Stable within R tiles (Chebyshev) of a support,
+  Marginal at R+1, Failing beyond. R is 8 at −1, falling to 3 at −6 and −7.
+- **Only what players dig is judged** (D-164): a saved "excavated" bit, so natural caves never
+  fail.
+- **A countdown, 45 s, per connected failing region,** saved and resumed; a support cancels it.
+- **Collapse:** the region fills with rubble, a new top kind cleared like a dig, yielding nothing;
+  what's under it is buried, not destroyed; anyone caught is moved clear.
+- **Timber props:** a fixture, 2 timber, a support, blocks walking; placed from build mode or the
+  quick key.
+- **The overlay:** ceiling tiles tinted green, amber, red.
 
 ## What should be true when you stop
 
 By hand, unless marked:
 
-1. Dig with a full pack: the stone appears on the dug tile instead of in your pack.
-2. Walk up to a drop with room in your pack: it comes in, up to 100%, and the rest stays.
-3. Press the take key beside a drop: you take all of it, past 100%, and slow down accordingly.
-4. Open the inventory: your items, heaviest value per kilo first, each with its weight. Drop one
-   stone, then a whole stack: they appear on your tile, and the HUD's weight falls.
-5. In the dark, a drop shows only where you can sense it or it's lit.
-6. Save and relaunch: the drops are where you left them.
-7. *Automated:* drops, pickup and the take key go through the world, for any player, and an
-   NPC never picks up (pillar [P5](../docs/game-overview.md)).
-8. *Automated:* a yield that only partly fits is split: what fits goes in, the rest drops.
+1. On −1, dig a corridor: nothing warns, however long it is. Dig a room 18 tiles wide: its middle
+   goes amber, then red, and cracks spread with a notice.
+2. Set a prop in the room's middle (F, or build mode's second item) before the time runs out: the
+   cracks stop and the overlay turns green.
+3. Let a countdown run out: the red tiles fill with rubble; if you stood there, you're moved
+   clear. Dig the rubble out (fast, no stone).
+4. A ladder or a drop under rubble is still there once it's cleared.
+5. Save with a countdown running and relaunch: it resumes, not restarts.
+6. Toggle the overlay (V): green, amber and red over what you've dug.
+7. *Automated:* natural caves never fail; a 2-wide tunnel never fails at any depth; R falls with
+   depth; an NPC's digging is judged the same (pillar [P5](../docs/game-overview.md)).
 
 ## Mode
 
-**Agent**, for the whole slice (Derik, 2026-11-08), on a `slice-009` branch with small commits,
+**Agent**, for the whole slice (Derik, 2026-11-08), on a `slice-010` branch with small commits,
 one or more per section, the suite green before each; Derik merges the PR. Every fork was settled
 in planning; Claude stops for anything new with long-term consequences.
 
 ## What you're deciding
 
-Every fork was settled in planning on 2026-11-08. The list stays as the record:
+Every fork was settled in planning on 2026-11-08 (D-163 to D-166). The list stays as the record:
 
-- **The scope**, and **fill to 100%, ladders past 150%** (D-160): digging and auto-pickup stop at
-  100%; only the take key goes beyond, so the slow band and the ladder rule are reached on
-  purpose.
-- **Drops through the world, per level, saved, never decaying**
-  ([D-161](../docs/design-decisions.md#d-161--drops-change-through-the-world-and-are-drawn-like-actors)).
-- **Drops drawn like actors in the dark:** Sensed or Lit only (D-161).
-- **The inventory is an overlay; nothing pauses**
-  ([D-162](../docs/design-decisions.md#d-162--the-inventory-is-an-overlay-nothing-pauses)).
+- **Scope:** the rule, the countdown, collapse and clearing, props, the overlay (D-163).
+- **Only what players dig** (D-164), after talking it through: R already makes narrow digging
+  free, so only wide player-made rooms need props.
+- **The countdown is saved; caught actors are moved clear** (D-163).
+- **Props:** a fixture, 2 timber, blocks its tile (D-165).
+- **Rubble:** a top kind, cleared like a dig, no yield; buried, not destroyed (D-166).
+- **45 s, cracks, a notice, the overlay** (D-166).
 
 **Proposed bindings, checked against `project.godot`** (part of approving this brief):
 
 | Action | Keyboard | Pad | Note |
 |---|---|---|---|
-| Open / close the inventory | `Tab` | Menu (Start) | As ui-ux §4 has them |
-| Pick an item in it | ↑ / ↓ | D-pad ↑ / ↓ | The existing `ui_up` / `ui_down` |
-| Drop one | `X` | A | A is interact; it drops while the inventory is open |
-| Drop the stack | `Z` | X | X is breach; breaching is off while it's open |
-| Take everything in reach | `T` | LB | ui-ux reserves LB for the hotbar, which doesn't exist yet; the hotbar's slice decides between them, as D-155 did for X |
+| Support overlay | `V` | L3 | As ui-ux §4 has them |
+| Quick prop (at the cursor in build mode, else the faced tile) | `F` | D-pad ↓ | ui-ux §2.5's reserved binding; D-pad ↓ still moves the inventory's selection while it's open |
+| Build item: ladder / prop | `1` / `2` | RB cycles | ui-ux's hotbar keys; RB is the hotbar's, which doesn't exist yet |
 
 ## Already settled
 
-- **Weight-limited, no teleport; overweight is a slowdown, not a block**
-  ([D-013](../docs/design-decisions.md#d-013--inventory-is-weight-limited-there-is-no-teleport),
-  [ui-ux §5](../docs/ui-ux-and-controls.md)).
-- **Above 150%, no ladders** ([D-030](../docs/design-decisions.md#d-030--stamina-exists-for-combat-only-the-load-curve-carries-weight),
-  D-159).
-- **The inventory's job is deciding what to leave behind:** per-item weight always visible, sort
-  by value density, a take-this preview (ui-ux §5).
-- **Items are `.tres` with stable ids; packs are saved per actor, unknown items kept and
-  reported** ([D-157](../docs/design-decisions.md#d-157--items-are-schema-resources-with-a-registry-each-actor-carries-a-saved-pack)).
-- **World state changes through the world's gatekeepers** (D-078, D-125).
-- **In the dark, entities show only on Sensed or Lit tiles** (D-148).
-- **Format v1 is edited in place** (D-133).
+- **The rule, the R table, the states, the countdown's purpose, collapse and burial**
+  ([digging-and-structure §2–4](../docs/systems/digging-and-structure.md),
+  [D-014](../docs/design-decisions.md)).
+- **No upward cascade in pre-alpha** ([pre-alpha-scope §4](../docs/pre-alpha-scope.md)).
+- **The player is never surprised by a collapse they couldn't prevent** (§2's countdown).
+- **Costs through the fixture gatekeeper, one rule shared with the preview** (D-159).
+- **Memory's byte has seven reserved bits** (D-147); "excavated" takes one.
+- **The stuck-actor rule moves an actor off an impassable tile** (D-115).
+- **Every number in the profile** (D-135); **format v1 edited in place** (D-133).
 
 ## Traps
 
-### 1. Every limit on the pack has to agree
+### 1. The rule must be cheap enough to run on every dig
 
-Yields fill to 100%, auto-pickup to 100%, the take key ignores it, and the ladder stops past 150%.
-One rule (`Carrying`, from the profile) should answer "how much of this fits", so the dig, the
-pickup and the HUD can't disagree.
+A naive check measures every excavated tile against every support. Recompute only around the
+change (R+2 tiles), with a distance transform over that window, and keep each level's states as
+derived data that's never saved.
 
-### 2. Auto-pickup runs every step
+### 2. A dig changes supports, not just ceilings
 
-A player checks nine tiles of drops every tile step. That's cheap only if a level's drops are
-filed by tile, as fixtures are, not scanned whole.
+Digging a wall removes a support. A tile that was Stable can become Failing because of a dig
+three tiles away. The recompute window is around the dug tile, not just the tile itself.
 
-### 3. Drop and pick up in the same frame
+### 3. A countdown's region changes while it runs
 
-Drop a stone on your own tile, and auto-pickup takes it straight back, since it's in reach and
-fits. A dropped stack has to stay down until the player steps off and back, or never be
-auto-picked by the one who dropped it, until they move.
+Digging more of a failing room grows its region; a prop can split it. A region's timer belongs to
+its tiles: tiles that join keep the oldest time left, tiles that leave lose it, and a region that
+splits keeps the time in both halves.
 
-### 4. A load needs drops before actors
+### 4. Burial must not lose anything
 
-A drop under a loaded player could be picked up while the load is still building. The load
-must restore drops without anyone picking them up, as D-143 kept generation out of loads.
+A ladder, a brazier or a drop under rubble is kept and saved, and comes back when the rubble is
+cleared. Rubble over a ladder's hole or its landing makes the ladder unusable, not gone.
 
-### 5. Drops on a level that doesn't exist
+### 5. Collapse during a load
 
-A yield drops on the dug tile, always on an existing level. A drop's save entry names its tile,
-and a load reports a drop outside its level or with an unknown item, never silently drops it.
+A countdown saved at one second left must not collapse while the load is still building
+(slice 004's lesson, D-143's). Countdowns tick only in a running world.
 
-### 6. The new bindings meet old ones
+### 6. The new top kind meets every existing rule
 
-`X` / pad A and `Z` / pad X only mean drop while the inventory is open, and must not also
-interact or breach. Test each in both states.
+Rubble is solid: collision, the flood (D-145: a face, not open), the dig (diggable, with its own
+hardness), the breach (not plain floor), the renderer (art: a placeholder cell), and the save
+(top kinds are bytes; a new id, never reused).
 
 ## Carried into this slice
 
-- **008's by-hand walk**, not yet done.
-- **The "dragon bag" yield randomizer** (D-156) stays deferred.
-- **A `Worlds.with_levels` that adds a blank level below** (008's log) is worth doing if a test
-  here needs it.
+- **008's and 009's by-hand walks**, not yet done.
+- **The "dragon bag" randomizer** (D-156) and **drop decay** (D-160) stay deferred.

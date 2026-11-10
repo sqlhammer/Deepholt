@@ -161,11 +161,12 @@ func _sensed() -> Array[Vector2i]:
 
 # The rule, stateless, so a test can hand it any level, ring and
 # light. Memory's bit 0 is REMEMBERED (D-147) and STATE.REMEMBERED is
-# 1, so a copy of the memory layer is already Unknown and Remembered
-# everywhere. When another memory bit is used, mask it here.
+# 1, so a copy of the memory layer with only that bit is already
+# Unknown and Remembered everywhere. The tiles keep that copy, since
+# memory's other bits (EXCAVATED, D-164) would read as Sensed or Lit.
 static func build(level: Level, sensed: Array[Vector2i], lit: Array[Vector2i]) -> PackedByteArray:
 	var tiles: LevelTiles = level.level_tiles
-	var bytes: PackedByteArray = tiles.memory.duplicate()
+	var bytes: PackedByteArray = tiles.remembered_only.duplicate()
 	if Light.is_daylit(level):
 		bytes.fill(STATE.LIT)
 		return bytes

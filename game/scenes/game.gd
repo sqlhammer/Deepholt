@@ -10,6 +10,8 @@ var visibility: Visibility
 var build_cursor: BuildCursor
 # The local player's inventory overlay (D-162)
 var inventory: InventoryOverlay
+# The support overlay (D-163)
+var support_overlay: SupportOverlay
 # The world being played, inside GameViewport at the origin (D-128).
 # Handed by reference to whatever needs it; nothing looks it up.
 var world: World
@@ -93,6 +95,7 @@ func set_user_control(actor: Actor) -> void:
 	inventory.set_open(false)
 	inventory.actor = actor
 	input.inventory = inventory
+	input.support_overlay = support_overlay
 	add_child(input)
 	_input_handlers.append(input)
 	
@@ -410,6 +413,16 @@ func _create_view() -> void:
 	drops.watch(view)
 	drops.watch_visibility(visibility)
 	$GameViewport.add_child(drops)
+	# What holds the ceiling up (D-163): the overlay, off until toggled,
+	# and the cracks that warn of a failing region (D-166)
+	support_overlay = SupportOverlay.new()
+	support_overlay.watch(view)
+	support_overlay.watch_visibility(visibility)
+	$GameViewport.add_child(support_overlay)
+	var collapse_cracks: CollapseCracks = CollapseCracks.new()
+	collapse_cracks.watch(view)
+	collapse_cracks.watch_visibility(visibility)
+	$GameViewport.add_child(collapse_cracks)
 	# A breach in progress shows as cracks on the floor (D-153)
 	var cracks: BreachCracks = BreachCracks.new()
 	cracks.watch(view)

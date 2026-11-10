@@ -14,6 +14,9 @@ var build: BuildCursor
 # and drop one / drop the stack act on it; nothing digs, breaches,
 # builds or interacts (slice 009 trap 6).
 var inventory: InventoryOverlay
+# The support overlay (D-163): toggled with its key, whatever else is
+# open.
+var support_overlay: SupportOverlay
 
 # The game-wide keys. The handler only asks; the game decides what a
 # save or a load is (R-P10).
@@ -74,7 +77,25 @@ func _build_mode(move: Vector2, delta: float) -> void:
 		build.point_at(mouse_world_position.call())
 	else:
 		build.step(Input.get_vector("aim_left", "aim_right", "aim_up", "aim_down"), delta)
+	# The hotbar (ui-ux §2.5): the number keys pick, the bumper cycles
+	if Input.is_action_just_pressed("build_item_ladder"):
+		build.select_item(ObjectKind.OBJECT.LADDER)
+	if Input.is_action_just_pressed("build_item_prop"):
+		build.select_item(ObjectKind.OBJECT.TIMBER_PROP)
+	if Input.is_action_just_pressed("build_next_item"): build.cycle_item()
 	if Input.is_action_just_pressed("primary_action"): build.place()
+
+
+# The reserved quick key (ui-ux §2.5, D-165): a timber prop at the
+# cursor in build mode, otherwise on the tile faced. The world answers
+# either way, with a placement or a refusal the notice shows.
+func _quick_prop() -> void:
+	if build != null and build.active:
+		build.place(ObjectKind.OBJECT.TIMBER_PROP)
+		return
+	var here: WorldPos = actor.current_WorldPos
+	var faced: WorldPos = WorldPos.new(here.x + actor.facing.x, here.y + actor.facing.y, here.depth)
+	actor.current_level.world.place_requested.emit(actor, ObjectKind.OBJECT.TIMBER_PROP, faced)
 
 
 func _inventory_mode(move: Vector2) -> void:
@@ -95,6 +116,8 @@ func _physics_process(delta: float) -> void:
 	var move: Vector2 = Input.get_vector(
 		"move_left", "move_right", "move_up", "move_down")
 	actor.move(move)
+	if support_overlay != null and Input.is_action_just_pressed("support_overlay"):
+		support_overlay.toggle()
 	if inventory != null and Input.is_action_just_pressed("inventory"):
 		inventory.toggle()
 		if inventory.is_open and build != null: build.set_active(false)
@@ -105,6 +128,7 @@ func _physics_process(delta: float) -> void:
 	if Input.is_action_just_pressed("take"):
 		actor.current_level.world.take_requested.emit(actor)
 	if build != null and Input.is_action_just_pressed("build_mode"): build.toggle()
+	if Input.is_action_just_pressed("quick_prop"): _quick_prop()
 	if build != null and build.active:
 		_build_mode(move, delta)
 	else:

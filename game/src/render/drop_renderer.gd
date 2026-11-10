@@ -19,6 +19,7 @@ const SQUARE: Vector2 = Vector2(4, 4)
 
 var _world: World
 var _drops: LevelDrops
+var _tiles: LevelTiles
 var _visibility: Visibility
 
 
@@ -51,10 +52,19 @@ func _on_shown_depth_changed(_old: int, depth: int) -> void:
 func _show(depth: int) -> void:
 	if _drops != null and _drops.drops_changed.is_connected(_on_drops_changed):
 		_drops.drops_changed.disconnect(_on_drops_changed)
+	if _tiles != null and _tiles.tile_changed.is_connected(_on_tile_changed):
+		_tiles.tile_changed.disconnect(_on_tile_changed)
 	var level: Level = _world.level_at(depth) if is_instance_valid(_world) else null
 	_drops = level.level_drops if level != null else null
+	_tiles = level.level_tiles if level != null else null
 	if _drops != null: _drops.drops_changed.connect(_on_drops_changed)
+	if _tiles != null: _tiles.tile_changed.connect(_on_tile_changed)
 	queue_redraw()
+
+
+# Rubble buries drops, and clearing it brings them back (D-166).
+func _on_tile_changed(_x: int, _y: int, layer: LevelTiles.LAYER, _source: LevelTiles) -> void:
+	if layer == LevelTiles.LAYER.TOP: queue_redraw()
 
 
 func _on_drops_changed(_tile: Vector2i) -> void:
@@ -64,6 +74,7 @@ func _on_drops_changed(_tile: Vector2i) -> void:
 # Whether a tile's drops are drawn: Sensed or Lit, or always without a
 # Visibility.
 func shows(tile: Vector2i) -> bool:
+	if _tiles != null and _tiles.get_top(tile.x, tile.y) != TileKind.TOP.OPEN: return false
 	if _visibility == null: return true
 	return _visibility.state_at(tile.x, tile.y) >= Visibility.STATE.SENSED
 

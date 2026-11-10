@@ -90,6 +90,18 @@ const DEFAULT_ID: String = "default"
 # (D-156): the ten timber a ladder is built from.
 @export var starting_items: Dictionary[StringName, int] = {}
 
+# How far a support holds a ceiling up, in tiles (Chebyshev), by depth
+# (D-163, digging-and-structure §2). Zero is no ceiling at all: the
+# Surface is open sky, so nothing there is judged.
+@export var support_radius_by_depth: Array[int] = []
+
+# How long a failing region has before it falls, in seconds (D-166).
+@export var collapse_countdown_seconds: float = 0.0
+
+# What placing a timber prop costs, item id -> count (D-165): two
+# timber.
+@export var prop_cost: Dictionary[StringName, int] = {}
+
 ## Presentation
 
 # How long a level change's fade through black lasts, out and back in

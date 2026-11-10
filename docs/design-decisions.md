@@ -3485,3 +3485,80 @@ don't while it's open. A pause would mean nothing once there's a second player
 
 *Considered:* pausing while it's open.
 
+---
+
+### D-163 — Slice 010 is holding it up: the support rule, collapse, timber props, the overlay
+**Decided** (by Derik, planning slice 010, 2026-11-08). Builds
+[digging-and-structure §2–4](./systems/digging-and-structure.md) for pre-alpha, without the
+upward cascade (cut, [pre-alpha-scope §4](./pre-alpha-scope.md)).
+
+- **The support rule as written:** a ceiling tile is Stable within R of a support (Chebyshev),
+  Marginal at R+1, Failing beyond. R by depth from the doc's table, in the profile.
+- **A support is anything solid that isn't rubble** (rock, dirt or impenetrable walls) **or a
+  prop.** Rubble never holds anything up.
+- **Failing starts a countdown, 45 s** (a profile number), shared by a connected failing region
+  from the moment its first tile failed. A support that brings the region back cancels it. **The
+  countdown is saved** with its level and resumes on load; the states themselves are derived.
+- **When it runs out, the region's tiles fill with rubble.** An actor caught there is moved to
+  the nearest open tile, with a notice (no damage until there's health,
+  [D-115](#d-115--the-save-names-the-local-actor-an-actor-on-an-impassable-tile-goes-to-the-spawn)'s
+  stuck-actor rule).
+- **A support overlay** tints ceiling tiles green, amber or red; its rings and ghosted
+  suggestions are left for later.
+
+*Why:* P4's rule is the slice; a countdown nobody can see through is a trap, so the warning and
+the overlay come with it.
+
+---
+
+### D-164 — Only what players dig needs holding up
+**Decided** (by Derik, planning slice 010, 2026-11-08, after talking it through).
+
+- **Dug and breached tiles are marked excavated,** a saved-only bit in memory's layer of flags
+  ([D-147](#d-147--memory-is-a-saved-only-layer-of-bit-flags)'s reserved bits), and only
+  excavated tiles are judged by the support rule. Natural caves, from prefabs and generation,
+  hold themselves up.
+- **Narrow digging never needs support:** R does that. A tunnel one or two tiles wide is always
+  within R of a wall; only player-made rooms wider than about 2R need props, fewer as depth
+  falls.
+
+*Why:* every collapse is one a player caused and could have prevented, and no authored or
+generated cave has to be built to the rule. The design's "depth takes your architecture away"
+is about the rooms players make.
+
+*Considered:* a fixed minimum width before support matters (loses R's scaling with depth, which
+is the progression); natural spaces joining the rule once disturbed (more drama, harder to read
+and to build); every open tile judged, with authored caves reshaped to fit (a burden on every
+future prefab and on M3's generation).
+
+---
+
+### D-165 — A timber prop is a fixture that costs 2 timber and blocks its tile
+**Decided** (by Derik, planning slice 010, 2026-11-08).
+
+- **A prop is a new fixture kind** placed on open floor, through the fixture gatekeeper, at a cost
+  of 2 timber
+  ([D-159](#d-159--the-cost-is-the-gatekeepers-the-hud-bar-sits-bottom-center-the-ladder-rule-checks-load)'s
+  rule). It counts as a support, with the R table's timber bonus of +0, and **blocks walking**
+  like a wall.
+- **Placed from build mode,** as its second item, **or with the reserved quick key**
+  ([ui-ux §2.5](./ui-ux-and-controls.md)) at the cursor in build mode, or at the faced tile
+  outside it.
+
+*Considered:* a walkable prop; 1 timber.
+
+---
+
+### D-166 — Rubble is a top kind, cleared like a dig, yielding nothing; what it covers is buried
+**Decided** (by Derik, planning slice 010, 2026-11-08).
+
+- **Rubble is a new top kind:** solid, not a support, cleared with the normal dig input in about
+  0.4 s (the tuning appendix's rubble time), yielding nothing.
+- **Fixtures and drops under it are buried, not destroyed** (digging-and-structure §3's firm
+  rule): kept, unusable and hidden until it's cleared. A brazier under rubble gives no light.
+- **The warning:** cracks spreading on the failing region's tiles in three stages, a notice
+  ("The ceiling is failing"), and red in the overlay. No sound yet.
+
+*Considered:* rubble yielding a stone (a collapse becomes stone to manage); a 30 s or 60 s
+countdown.
+

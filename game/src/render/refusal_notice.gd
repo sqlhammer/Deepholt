@@ -30,6 +30,7 @@ const PLACE_REASONS: Dictionary = {
 	World.FIXTURE_REFUSAL.NO_HOLE_ABOVE: "A ladder goes in a hole.",
 	World.FIXTURE_REFUSAL.TILE_OCCUPIED: "Something below is in the way.",
 	World.FIXTURE_REFUSAL.CANNOT_AFFORD: "You don't have enough to build that.",
+	World.FIXTURE_REFUSAL.ACTOR_ON_TILE: "Someone is standing there.",
 }
 
 var text: String:
@@ -68,11 +69,15 @@ func _on_shown_world_changed(world: World, _depth: int) -> void:
 		_world.breach_refused.disconnect(_on_breach_refused)
 		_world.request_refused.disconnect(_on_request_refused)
 		_world.climb_refused.disconnect(_on_climb_refused)
+		_world.ceiling_failing.disconnect(_on_ceiling_failing)
+		_world.actor_moved_clear.disconnect(_on_actor_moved_clear)
 	_world = world
 	if _world != null:
 		_world.breach_refused.connect(_on_breach_refused)
 		_world.request_refused.connect(_on_request_refused)
 		_world.climb_refused.connect(_on_climb_refused)
+		_world.ceiling_failing.connect(_on_ceiling_failing)
+		_world.actor_moved_clear.connect(_on_actor_moved_clear)
 
 
 # Build mode's own preview refusals (D-154): too dark, not a hole.
@@ -84,6 +89,18 @@ func _on_request_refused(actor: Actor, _verb: World.FIXTURE_VERB, _tile: WorldPo
 		reason: World.FIXTURE_REFUSAL) -> void:
 	if _view == null or actor != _view.actor: return
 	show_text(PLACE_REASONS.get(reason, "That can't go there."))
+
+
+# A region began to fail where the player is (D-166). The collapse
+# itself isn't announced: the cracks and this are the warning.
+func _on_ceiling_failing(depth: int, _tiles: Array[Vector2i]) -> void:
+	if _view == null or not is_instance_valid(_view.actor) or _view.actor.depth != depth: return
+	show_text("The ceiling is failing.")
+
+
+func _on_actor_moved_clear(actor: Actor, _from: WorldPos, _to: WorldPos) -> void:
+	if _view == null or actor != _view.actor: return
+	show_text("The ceiling came down on you.")
 
 
 func _on_climb_refused(actor: Actor, _tile: WorldPos) -> void:

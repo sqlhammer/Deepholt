@@ -44,8 +44,11 @@ static func target_for(level: Level, here: WorldPos, facing: Vector2i) -> WorldP
 static func _down(level: Level, here: WorldPos, facing: Vector2i) -> WorldPos:
 	var faced: Vector2i = Vector2i(here.x, here.y) + facing
 	if level.level_tiles.get_ground(faced.x, faced.y) != TileKind.GROUND.HOLE: return null
+	# Rubble over the hole, or over the landing, buries the way (D-166)
+	if level.level_tiles.get_top(faced.x, faced.y) != TileKind.TOP.OPEN: return null
 	var below: Level = level.world.level_at(here.depth + 1)
 	if below == null: return null
+	if below.level_tiles.get_top(faced.x, faced.y) != TileKind.TOP.OPEN: return null
 	if not below.level_fixtures.has_kind_at(faced, ObjectKind.OBJECT.LADDER): return null
 	return WorldPos.new(faced.x, faced.y, here.depth + 1)
 
@@ -55,6 +58,7 @@ static func _up(world: World, here: WorldPos, facing: Vector2i) -> WorldPos:
 	if above == null: return null
 	var tiles: LevelTiles = above.level_tiles
 	if tiles.get_ground(here.x, here.y) != TileKind.GROUND.HOLE: return null
+	if tiles.get_top(here.x, here.y) != TileKind.TOP.OPEN: return null
 
 	var sides: Array[Vector2i] = []
 	if facing != Vector2i.ZERO: sides.append(facing)
@@ -64,6 +68,6 @@ static func _up(world: World, here: WorldPos, facing: Vector2i) -> WorldPos:
 	for side: Vector2i in sides:
 		var tile: Vector2i = Vector2i(here.x, here.y) + side
 		var ground: int = tiles.get_ground(tile.x, tile.y)
-		if TileKind.is_passable(tiles.get_top(tile.x, tile.y), ground) and not TileKind.is_ramp(ground):
+		if TileKind.is_passable(tiles.get_top(tile.x, tile.y), ground) 				and not TileKind.is_ramp(ground) and not tiles.is_blocked(tile.x, tile.y):
 			return WorldPos.new(tile.x, tile.y, here.depth - 1)
 	return null
