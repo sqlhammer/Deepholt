@@ -39,7 +39,8 @@ def _fixture(path):
 	summary = {"length_seconds": 900, "frames": {"p50": 17, "p95": 20, "p99": 34,
 		"max_bucket": 120}, "saves": {"count": 3, "mean_msec": 4.0, "max_msec": 6.0},
 		"loads": {"count": 0}, "generations": {"count": 1, "mean_msec": 13.0, "max_msec": 13.0},
-		"errors": {"counts": {"warning": 2}, "first": []}}
+		"errors": {"counts": {"warning": 2},
+			"sites": {"warning at game.gd:612 _local_player": 2}}}
 	with zipfile.ZipFile(path, "w") as archive:
 		archive.writestr("session-20261110T100000Z.jsonl", _lines(crashed))
 		archive.writestr("crash-20261110T100000Z.jsonl", _lines([{"event": "breached"}]))
@@ -73,6 +74,7 @@ class ReportTest(unittest.TestCase):
 		# The second session's only trip was overloaded over 2 minutes
 		self.assertIn("5 nobody abandons", text)
 		self.assertIn("1 of 2 sessions", text)
+		self.assertIn("warning at game.gd:612 _local_player x2", text)
 
 	def test_a_folder_reads_like_a_zip(self):
 		unpacked = os.path.join(self.folder, "unpacked")

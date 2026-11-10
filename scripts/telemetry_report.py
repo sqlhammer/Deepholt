@@ -124,6 +124,10 @@ def session_lines(session):
 		errors = summary.get("errors", {}).get("counts", {})
 		if errors:
 			lines.append("  engine: %s" % ", ".join("%s %s" % (v, k) for k, v in errors.items()))
+		# Where they were raised, never what they said (D-209)
+		sites = summary.get("errors", {}).get("sites", {})
+		for site, count in sorted(sites.items(), key=lambda kv: -kv[1])[:3]:
+			lines.append("    %s x%d" % (site, count))
 	return lines
 
 
