@@ -22,11 +22,34 @@ var world: World
 func _ready() -> void:
 	$Timer.timeout.connect(_refresh_watched_actors)
 	Global.debug_event.connect(set_section)
+	if Log.enabled: set_section("Log", log_text())
 
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("toggle_debug"):
 		toggle_debug_overlay()
+	elif visible and event is InputEventKey and (event.pressed and not event.echo
+			and event.ctrl_pressed):
+		var index: int = event.keycode - KEY_1
+		if index >= 0 and index < Log.CHANNELS.size(): switch_channel(index)
+
+
+# The debug log's channels (D-196): Ctrl+1 to Ctrl+7 switch them while
+# F3 shows, in Log.CHANNELS's order.
+func switch_channel(index: int) -> void:
+	Log.toggle(Log.CHANNELS[index])
+	set_section("Log", log_text())
+
+
+func log_text() -> String:
+	var parts: PackedStringArray = []
+	for i in range(Log.CHANNELS.size()):
+		parts.append("%d %s %s" % [i + 1, Log.CHANNELS[i],
+			"on" if Log.is_on(Log.CHANNELS[i]) else "off"])
+	var text: String = "%s  (Ctrl+number switches; Ctrl+F9 captures)" % "  ".join(parts)
+	var file: String = Log.session_path()
+	if file != "": text += "\n" + ProjectSettings.globalize_path(file)
+	return text
 
 
 func toggle_debug_overlay() -> void:

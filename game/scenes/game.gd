@@ -14,6 +14,9 @@ var inventory: InventoryOverlay
 var hotbar_hud: HotbarHud
 # The support overlay (D-163)
 var support_overlay: SupportOverlay
+# Ctrl+F9 or the pad's combo writes a bug report (D-194, D-195);
+# null in a release build
+var bug_capture: BugCapture
 # The world being played, inside GameViewport at the origin (D-128).
 # Handed by reference to whatever needs it; nothing looks it up.
 var world: World
@@ -85,7 +88,7 @@ func set_user_control(actor: Actor) -> void:
 	# Attach input handling to the player
 	var input: InputHandler = InputHandler.new()
 	input.setup(actor, mouse_world_position)
-	input.quick_save_requested.connect(save_game)
+	input.quick_save_requested.connect(save_game.bind(&"quick_save"))
 	input.load_requested.connect(_on_load_requested)
 	input.save_and_quit_requested.connect(save_and_quit_to_desktop)
 	# Input waits while a level change fades (D-142)
@@ -127,8 +130,11 @@ func mouse_world_position() -> Vector2:
 	return _view.get_canvas_transform().affine_inverse() * view_px
 
 
-func save_game() -> bool:
-	if _saving_refused: return false
+# `reason` says what asked, for the debug log (D-193).
+func save_game(reason: StringName = &"unspecified") -> bool:
+	if _saving_refused:
+		Log.event(Log.SAVE, &"save_refused", {"reason": reason})
+		return false
 	if current_save_slot == "":
 		# Create a slot if none exist yet.
 		# This should not happen after we have a game menu because
@@ -138,10 +144,7 @@ func save_game() -> bool:
 		_set_current_save_slot()
 		if current_save_slot == "": return false
 	
-	# What isn't the world's (D-130)
-	var local_actor_id: int = active_actor.actor_id if active_actor else -1
-	var session: SaveSession = SaveSession.new(local_actor_id,
-		$ActivePlayTimer.seconds, $TotalPlayTimer.seconds)
+	var session: SaveSession = session_now()
 
 	# Save, timed: F3 shows whether it's short enough to go unfelt
 	# mid-play (D-110)
@@ -150,10 +153,19 @@ func save_game() -> bool:
 		saves_root)
 	last_save_msec = (Time.get_ticks_usec() - started) / 1000.0
 	$DebugOverlay.show_save_time(last_save_msec)
+	Log.event(Log.SAVE, &"saved", {"reason": reason, "slot": current_save_slot,
+		"msec": last_save_msec, "result": SaveGame.REFUSAL_REASON.find_key(result)})
 	if result != SaveGame.REFUSAL_REASON.NONE:
 		return false
 	
 	return true
+
+
+# What isn't the world's (D-130), as it stands now: the local
+# player and the two clocks. A save takes it; so does a bug capture.
+func session_now() -> SaveSession:
+	var local_actor_id: int = active_actor.actor_id if active_actor else -1
+	return SaveSession.new(local_actor_id, $ActivePlayTimer.seconds, $TotalPlayTimer.seconds)
 
 
 # The F6 key. It arrives from inside an input handler's _input, so the
@@ -200,6 +212,9 @@ func load_game(defer_swap: bool = false) -> REFUSAL_REASON:
 	load_source = slot.source
 	last_load_msec = (Time.get_ticks_usec() - started) / 1000.0
 	$DebugOverlay.show_load_time(last_load_msec)
+	Log.event(Log.SAVE, &"loaded", {"slot": current_save_slot, "msec": last_load_msec,
+		"source": SaveGame.SOURCE.find_key(slot.source), "problems": loaded.problems.size(),
+		"by": Log.caller(1)})
 	if slot.source == SaveGame.SOURCE.BACKUP: _report_backup_load(slot)
 	$DebugOverlay.show_load_source(load_source, loaded.header.format_version)
 	return REFUSAL_REASON.NONE
@@ -281,6 +296,20 @@ func _ready() -> void:
 	var fullscreen: FullscreenToggle = FullscreenToggle.new()
 	fullscreen.name = "FullscreenToggle"
 	add_child(fullscreen)
+	# The debug log (D-193): its session file and the engine's errors
+	# only for the game's own run, never a test's; input, slow frames
+	# and the bug capture (D-194, D-195) whenever there's a game
+	if Log.enabled:
+		if get_tree().current_scene == self:
+			Log.start_session()
+			Log.hook_engine()
+		var driver: LogDriver = LogDriver.new()
+		driver.name = "LogDriver"
+		add_child(driver)
+		bug_capture = BugCapture.new()
+		bug_capture.name = "BugCapture"
+		bug_capture.game = self
+		add_child(bug_capture)
 	$DebugOverlay.game = self
 	$DebugOverlay.connect_timers($ActivePlayTimer, $TotalPlayTimer)
 	# TODO: When we have a main menu, don't start until the game has
@@ -370,7 +399,7 @@ func _start_autosave() -> void:
 	_autosave_timer.name = "AutosaveTimer"
 	_autosave_timer.wait_time = world.tuning.autosave_interval_seconds
 	_autosave_timer.process_mode = Node.PROCESS_MODE_PAUSABLE
-	_autosave_timer.timeout.connect(save_game)
+	_autosave_timer.timeout.connect(save_game.bind(&"autosave"))
 	add_child(_autosave_timer)
 	_autosave_timer.start()
 
@@ -388,7 +417,10 @@ func _create_fade() -> void:
 
 
 func _prepare_then_quit() -> void:
-	save_game()
+	save_game(&"quit")
+	Log.event(Log.SAVE, &"quit")
+	Log.unhook_engine()
+	Log.stop_session()
 	get_tree().quit()
 
 
@@ -440,6 +472,10 @@ func _create_view() -> void:
 	add_child(refusals)
 	refusals.watch(view)
 	refusals.watch_cursor(build_cursor)
+	# Where a bug capture went (D-194)
+	if bug_capture != null:
+		bug_capture.captured.connect(func(folder: String) -> void:
+			refusals.show_text("Bug report saved: %s" % folder.get_file()))
 	# The followed actor's carry weight, always on screen (D-159)
 	var carry: CarryHud = CarryHud.new()
 	add_child(carry)
@@ -505,6 +541,9 @@ func _swap_in_loaded_world(new_world: World, local_actor_id: int) -> void:
 # the level.
 func _attach_world(new_world: World) -> void:
 	world = new_world
+	WorldLog.watch(world)
+	Log.event(Log.SAVE, &"world_swapped_in", {"seed": world.world_seed,
+		"tuning": world.tuning.id if world.tuning != null else ""})
 	game_viewport.add_child(world)
 	game_viewport.move_child(world, $GameViewport/FixtureRenderer.get_index() + 1)
 
@@ -581,7 +620,7 @@ func _take_actor(actor: Actor) -> Actor:
 func _on_actor_moved(_actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> void:
 	if old_pos == null or new_pos == null: return
 	if old_pos.depth == new_pos.depth: return
-	save_game()
+	save_game(&"level_change")
 
 
 # By the path a new player takes, avoiding the actors already placed
@@ -593,7 +632,7 @@ func _move_if_stuck(actor: Actor) -> void:
 		return
 	
 	var target: WorldPos = Spawning.spawn_tile_for(null, world.levels(), world.actors())
-	if target == null or not actor.move_to(target):
+	if target == null or not actor.move_to(target, &"stuck_on_load"):
 		push_error("%s is stuck on %s, which is impassable, with nowhere to go." % [
 			actor.actor_name, stuck])
 		return

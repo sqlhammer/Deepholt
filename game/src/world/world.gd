@@ -264,7 +264,7 @@ func _move_caught_clear(level: Level) -> void:
 		var others: Array[Actor] = actors()
 		others.erase(actor)
 		var target: WorldPos = Spawning.free_tile_near(from, level.level_tiles, others)
-		if target == null or not actor.move_to(target):
+		if target == null or not actor.move_to(target, &"collapse"):
 			push_error("%s is buried at %s with nowhere to go." % [actor.actor_name, from])
 			continue
 		actor_moved_clear.emit(actor, from, target)

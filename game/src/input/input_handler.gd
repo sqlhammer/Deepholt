@@ -75,6 +75,8 @@ func _input(event: InputEvent) -> void:
 # notch presses and releases within one frame, which polling can miss.
 func _hotbar_input(event: InputEvent) -> void:
 	if actor == null or paused: return
+	# Ctrl+1 to Ctrl+7 are F3's log switches (D-196), not slots
+	if event is InputEventKey and event.ctrl_pressed: return
 	for i in range(Hotbar.SLOTS):
 		if event.is_action_pressed("hotbar_%d" % (i + 1)):
 			select_slot(i)
@@ -152,7 +154,7 @@ func _inventory_mode(move: Vector2) -> void:
 	# clicks are the board's own.
 	if Input.is_action_just_pressed("inventory_pick"): inventory.pick_or_place()
 	if Input.is_action_just_pressed("inventory_cancel"): inventory.cancel()
-	if Input.is_action_just_pressed("drop_one"): inventory.drop_one()
+	if Input.is_action_just_pressed("drop_one") and not capture_combo_held(): inventory.drop_one()
 	if Input.is_action_just_pressed("drop_stack"): inventory.drop_stack()
 	if Input.is_action_just_pressed("inventory_sort"): inventory.sort()
 
@@ -176,7 +178,8 @@ func _physics_process(delta: float) -> void:
 	# The take key: everything in reach, whatever the load (D-160)
 	if Input.is_action_just_pressed("take"):
 		actor.current_level.world.take_requested.emit(actor)
-	if build != null and Input.is_action_just_pressed("build_mode"): build.toggle()
+	if build != null and Input.is_action_just_pressed("build_mode") and not capture_combo_held():
+		build.toggle()
 	if Input.is_action_just_pressed("quick_prop"): _quick_prop()
 	if build != null and build.active:
 		_build_mode(move, delta)
@@ -224,7 +227,14 @@ func _get_aim() -> Vector2:
 	return aim
 
 
+# The left trigger is held: Y is half of the bug capture's combo, so
+# its own actions wait (D-195).
+static func capture_combo_held() -> bool:
+	return Input.is_action_pressed(&"capture_trigger")
+
+
 func _update_device_scheme(event: InputEvent) -> void:
+	var was: DEVICE_SCHEME = current_device_scheme
 	if event is InputEventMouseMotion or event is InputEventMouseButton:
 		current_device_scheme = DEVICE_SCHEME.MOUSE_AND_KEYBOARD
 	elif event is InputEventJoypadButton:
@@ -233,6 +243,9 @@ func _update_device_scheme(event: InputEvent) -> void:
 	# keep stealing aim from the mouse.
 	elif event is InputEventJoypadMotion and absf(event.axis_value) > 0.5:
 		current_device_scheme = DEVICE_SCHEME.GAMEPAD
+	if current_device_scheme != was:
+		Log.event(Log.INPUT, &"device", {"actor": Log.actor_id(actor),
+			"scheme": DEVICE_SCHEME.find_key(current_device_scheme)})
 
 
 
