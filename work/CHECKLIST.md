@@ -1,10 +1,9 @@
-# Slice 013 checklist
+# Slice 014 checklist
 
-Working list for [NOW.md](./NOW.md). **Agent mode** (Derik, 2026-11-10), on a `slice-013`
-branch: Claude builds, the suite green before each commit; Derik merges the PR and verifies by
-hand. Numbers in brackets are the brief's outcomes.
+Working list for [NOW.md](./NOW.md). **Mode not chosen yet.** Numbers in brackets are the
+brief's outcomes.
 
-Slice 012's checklist is in git history (last at the 012 close).
+Slice 013's checklist is in git history (last at the 013 acceptance).
 
 ---
 
@@ -12,40 +11,42 @@ Slice 012's checklist is in git history (last at the 012 close).
 
 *Settled with Derik, 2026-11-10.*
 
-- [x] A static `Log`; never writes on the game's thread (D-193).
-- [x] Ctrl+F9 (D-194); left trigger + Y held 2 s (D-195).
-- [x] Every channel on by default (D-196).
-- [x] 10 minutes, 30 logs, 20 captures (D-197).
-- [x] The design doc, both levels: [logging-and-telemetry](../docs/tech/logging-and-telemetry.md).
+- [x] Next, before "Getting it home" (D-198).
+- [x] Local files, sent by hand (D-199); a tester agreement, no prompt (D-200).
+- [x] Playtest builds only, with presets and a `playtest` tag (D-201).
+- [x] Session, trips, friction, health (D-202).
+- [x] A crash's flag and last two minutes (D-203), through a rolling file (D-207).
+- [x] No identity (D-204); events and a summary (D-205); a zip and a report script (D-206).
+- [ ] What a trip is (proposed in NOW.md).
 
-## B. The log
+## B. Builds
 
-- [x] `Log`: events, channels, the ring buffer, the writer thread, the session file and its
-  pruning; release builds log nothing. [4, 5]
-- [x] Engine errors and warnings through a `Logger`. [5]
-- [x] Tests: cost per call, ordering, buffer window, channel switches, pruning, the thread
-  writes the file, release builds. [5]
+- [ ] The 4.7.2 export templates installed (trap 1).
+- [ ] Windows and Linux export presets with the `playtest` feature tag. [1, 4]
+- [ ] `Log.enabled` for playtest builds: the ring and the rolling file, no session file (trap 2).
 
-## C. What's logged
+## C. Recording
 
-- [x] moves: steps, level changes, `move_to` with cause and stack, unexplained jumps. [1, 5]
-- [x] world and support: from the world's signals. [1, 5]
-- [x] input: actions and device. [1, 5]
-- [x] save: saves, loads, swaps, moved-if-stuck. [5]
-- [x] perf: slow frames; generation times. [5]
+- [ ] A `Telemetry` recorder: the session file, events as they happen, recording only with the
+  tag or the test flag. [1, 4]
+- [ ] Session events; the open marker and the crash found at the next launch (trap 3). [3]
+- [ ] Trips per player, by the agreed definition; time overloaded; kilos home. [1, 2]
+- [ ] Friction: refusals by reason, climbs refused. [2]
+- [ ] Health: frame-time histograms and percentiles (trap 5); save, load and generation times;
+  error counts. [2]
+- [ ] The summary at session end; the zip at quit and after a crash (trap 4). [1, 3]
 
-## D. Capturing
+## D. Reading
 
-- [x] Ctrl+F9 and the pad combo; Y skipped while the trigger is held. [1, 2]
-- [x] The folder: log.jsonl, log.txt, world.save, screenshot.png, info.json; pruned to 20. [1]
-- [x] F3: the channels, switchable. [3]
-- [x] Tests for each. [5]
+- [ ] `scripts/telemetry_report.py`: per session and overall, and the pre-alpha criteria it can
+  speak to. [2]
+- [ ] A fixture zip for its test. [5]
 
 ## E. Done
 
-- [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
-- [x] `python scripts/coverage.py` run; uncovered lines looked at.
-- [ ] By hand: outcomes 1–4.
-- [x] Claude reviews the slice.
-- [x] Claude writes `log/013-what-just-happened.md`.
-- [x] Claude re-sketches [NEXT.md](./NEXT.md).
+- [ ] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
+- [ ] `python scripts/coverage.py` run; uncovered lines looked at.
+- [ ] By hand: outcomes 1–4, from an exported build.
+- [ ] Claude reviews the slice.
+- [ ] Claude writes `log/014-how-it-plays-for-other-people.md`.
+- [ ] Claude re-sketches [NEXT.md](./NEXT.md).
