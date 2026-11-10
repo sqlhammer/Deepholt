@@ -1,12 +1,12 @@
 # Next
 
 Sketches, not commitments. Slice 011, tools in hand, is done and merged
-([log](./log/011-tools-in-hand.md)); no item-by-item walk of 008 to 011 has been reported. Cheap
-to throw away; expect them to change.
+([log](./log/011-tools-in-hand.md)); slice 012, polish, is planned in [NOW.md](./NOW.md). No
+item-by-item walk of 008 to 011 has been reported. Cheap to throw away; expect them to change.
 
 ---
 
-## 012 — Getting it home
+## 013 — Getting it home
 
 *What 011 changes here:* a chute and a winch are buildables, so they take build slots (D-170),
 and the inventory's build section lists them. A crate is a pack item or a fixture; which one it
