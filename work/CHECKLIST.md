@@ -47,10 +47,10 @@ Slice 011's checklist is in git history (last at the 011 close).
 
 ## E. Ores and caves
 
-- [ ] Tin: ore id, item, icon. [4]
-- [ ] Cave prefabs (five shapes) and their placement: 2–3 per level, sealed, apart (trap 4). [4]
-- [ ] Veins by share into −2's minable rock; none on −1 (trap 4, D-187). [4]
-- [ ] Tests: −2's shares near the profile's, −1 still has no ore, caves sealed and apart, caves
+- [x] Tin: ore id, item, icon. [4]
+- [x] Cave prefabs (five shapes) and their placement: 2–3 per level, sealed, apart (trap 4). [4]
+- [x] Veins by share into −2's minable rock; none on −1 (trap 4, D-187). [4]
+- [x] Tests: −2's shares near the profile's, −1 still has no ore, caves sealed and apart, caves
   never judged. [4, 6]
 
 ## F. Done

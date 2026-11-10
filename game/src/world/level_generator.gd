@@ -130,6 +130,9 @@ static func generate_level(recipe: LevelRecipe, world_seed: int, fixture_ids: Id
 	if recipe.generator == &"surface": surface = SurfaceGeneration.before(level, rng, tuning)
 	apply_fixed_placements(level, recipe, fixture_ids)
 	if surface != null: SurfaceGeneration.after(level, surface, rng, tuning, fixture_ids)
+	# Caves before ore, so veins run in the rock around them (trap 4)
+	RockGeneration.place_caves(level, recipe, rng, tuning)
+	RockGeneration.place_veins(level, rng, tuning)
 	place_world_spawns(level, recipe, rng, fixture_ids)
 	return level
 

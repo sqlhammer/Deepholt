@@ -117,6 +117,19 @@ const DEFAULT_ID: String = "default"
 @export var surface_tree_share: float = 0.0
 @export var surface_tree_clearance: int = 0
 
+# Natural caves (D-184): how many a level with caves gets, and how
+# far, in tiles, each keeps from the fixed rooms and the others.
+@export var cave_count_min: int = 0
+@export var cave_count_max: int = 0
+@export var cave_spacing: int = 0
+
+# Ore in the rock (D-183, D-187): for each TileKind.ORE id, its share
+# of a level's minable rock, by depth (an entry per depth; a missing
+# one is none); and the size of a vein, in tiles.
+@export var ore_shares: Dictionary[int, Array] = {}
+@export var vein_size_min: int = 0
+@export var vein_size_max: int = 0
+
 # Felling a tree (D-181): the work an axe does, at its power per
 # second (48 at flint's 16 is 3 s), and the timber it gives.
 @export var tree_work: float = 0.0

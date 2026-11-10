@@ -51,6 +51,7 @@ static func breaches(tool: ToolData) -> bool:
 # an OreType resource (content-schema §3) when there's a second ore.
 const ORE_ITEMS: Dictionary = {
 	TileKind.ORE.COPPER: &"copper_ore",
+	TileKind.ORE.TIN: &"tin_ore",
 }
 
 

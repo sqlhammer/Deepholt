@@ -54,6 +54,15 @@ surface_road_width = 2
 surface_dirt_share = 0.1
 surface_tree_share = 0.04
 surface_tree_clearance = 2
+cave_count_min = 2
+cave_count_max = 3
+cave_spacing = 12
+ore_shares = Dictionary[int, Array]({
+2: [0.0, 0.0, 0.03],
+3: [0.0, 0.0, 0.02]
+})
+vein_size_min = 3
+vein_size_max = 8
 rock_wall_stone = 1
 ore_yield_min = 2
 ore_yield_max = 4
