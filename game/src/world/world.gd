@@ -161,6 +161,9 @@ var _npcs_node: Node2D
 func _init(p_tuning: TuningProfile = null) -> void:
 	tuning = p_tuning if p_tuning != null else TuningProfile.default_profile()
 	name = "World"
+	# Its actors are sorted with the fixtures beside it (D-214): every
+	# node down to an actor sorts, so the actors join one sort.
+	y_sort_enabled = true
 	_levels_node = Node2D.new()
 	_levels_node.name = "Levels"
 	add_child(_levels_node)
@@ -170,9 +173,11 @@ func _init(p_tuning: TuningProfile = null) -> void:
 	add_child(actors_node)
 	_players_node = Node2D.new()
 	_players_node.name = "Players"
+	_players_node.y_sort_enabled = true
 	actors_node.add_child(_players_node)
 	_npcs_node = Node2D.new()
 	_npcs_node.name = "NPCs"
+	_npcs_node.y_sort_enabled = true
 	actors_node.add_child(_npcs_node)
 
 	dig_requested.connect(_on_dig_requested)

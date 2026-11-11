@@ -482,9 +482,9 @@ func _create_view() -> void:
 	visibility.watch(view)
 	view.visibility = visibility
 	$GameViewport/LevelRenderer.watch(view)
-	$GameViewport/FixtureRenderer.watch(view)
+	$GameViewport/Standing/FixtureRenderer.watch(view)
 	$GameViewport/LevelRenderer.watch_visibility(visibility)
-	$GameViewport/FixtureRenderer.watch_visibility(visibility)
+	$GameViewport/Standing/FixtureRenderer.watch_visibility(visibility)
 
 	$DebugOverlay.watch_view(view)
 	$DebugOverlay.watch_visibility(visibility)
@@ -589,8 +589,10 @@ func _attach_world(new_world: World) -> void:
 	if telemetry != null: telemetry.watch_world(world)
 	Log.event(Log.SAVE, &"world_swapped_in", {"seed": world.world_seed,
 		"tuning": world.tuning.id if world.tuning != null else ""})
-	game_viewport.add_child(world)
-	game_viewport.move_child(world, $GameViewport/FixtureRenderer.get_index() + 1)
+	# Beside the fixtures, so an actor and a tree are drawn by which
+	# stands further south (D-214); after them, so a tie draws the actor.
+	$GameViewport/Standing.add_child(world)
+	$GameViewport/Standing.move_child(world, $GameViewport/Standing/FixtureRenderer.get_index() + 1)
 
 
 func _set_current_save_slot() -> void:

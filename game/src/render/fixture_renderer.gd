@@ -29,6 +29,13 @@ const INVISIBLE: Array[int] = [ObjectKind.OBJECT.WORLD_SPAWN]
 
 const LADDER_TOP: Texture2D = preload("res://src/render/ladder_top.png")
 
+# Sprites are sorted with the actors (D-214). An actor is on a tile
+# when its feet's center is, 4 px below its origin (Actor.feet_box);
+# so a sprite's origin sits 4 px above its tile's top edge, and an
+# actor on the tile north of it sorts behind, any on its own tile or
+# south in front. Drawn where it was by an equal and opposite offset.
+const SORT_ABOVE_TILE: float = 4.0
+
 var _fixtures: LevelFixtures
 # Fixture id -> its sprite, so removal finds the right one even when
 # two fixtures share a tile.
@@ -195,12 +202,23 @@ func _add_sprite(fixture: Fixture) -> void:
 	# Bottom-left of the sprite on the bottom-left of its tile (D-067).
 	var tile_corner: Vector2 = Vector2(fixture.tile.x, fixture.tile.y) * TileSpace.TILE_PIXELS
 	var rise: float = sprite.texture.get_height() - TileSpace.TILE_PIXELS
-	sprite.position = tile_corner - Vector2(0, rise)
+	_place(sprite, tile_corner - Vector2(0, rise), fixture.tile.y)
 	sprite.name = "Fixture%d" % fixture.id
 	sprite.set_meta("tile", Vector2i(fixture.tile.x, fixture.tile.y))
 	add_child(sprite)
 	_sprites[fixture.id] = sprite
 	_apply_state(sprite)
+
+
+# Drawn with its top-left at `top_left`, sorted by its tile's row.
+func _place(sprite: Sprite2D, top_left: Vector2, row: int) -> void:
+	sprite.position = Vector2(top_left.x, row * TileSpace.TILE_PIXELS - SORT_ABOVE_TILE)
+	sprite.offset = Vector2(0, top_left.y - sprite.position.y)
+
+
+# Where a sprite is drawn: its top-left corner, offset included.
+static func top_left_of(sprite: Sprite2D) -> Vector2:
+	return sprite.position + sprite.offset
 
 
 func _remove_sprite(id: int) -> void:
@@ -275,7 +293,7 @@ func _add_top(ladder: Fixture) -> void:
 	var sprite: Sprite2D = Sprite2D.new()
 	sprite.texture = LADDER_TOP
 	sprite.centered = false
-	sprite.position = Vector2(ladder.tile.x, ladder.tile.y) * TileSpace.TILE_PIXELS
+	_place(sprite, Vector2(ladder.tile.x, ladder.tile.y) * TileSpace.TILE_PIXELS, ladder.tile.y)
 	sprite.name = "LadderTop%d" % ladder.id
 	sprite.set_meta("tile", Vector2i(ladder.tile.x, ladder.tile.y))
 	add_child(sprite)
