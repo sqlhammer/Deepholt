@@ -4621,3 +4621,220 @@ choices, named here: time by levels of rope, and the refusal when the crate is e
 
 *Why:* without them, a winch already built closed the hole above it, and a crate on the
 floor stopped a shaft going deeper.
+
+---
+
+### D-237 — A station's recipes show while you stand within 2 tiles of it
+**Decided** (by Derik, slice 016's fork 1, 2026-11-11).
+
+- **Workbench, smelter and forge are buildables** (build mode, build slots, D-170). Each blocks
+  its tile, like a prop.
+- **The CRAFT tab shows a station's recipes while any station of that kind is within 2 tiles of
+  your feet,** facing it or not, in a section under the hand recipes (D-222). Two kinds in reach
+  show two sections; walking away hides them.
+- **Reach is each actor's own** (rule [D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer)):
+  two players at two benches each see their own.
+- The crafting doc's light rule for stations waits on fork 2.
+
+*Why:* forgiving with the inventory open; no lining up to face a fixture.
+
+---
+
+### D-238 — The smelter is loaded and left, and is the first rate machine
+**Decided** (by Derik, slice 016's fork 2, 2026-11-11, after asking why a ticking smelter
+would stop and what a rate machine is).
+
+- **Ore and fuel go in by dropping while facing the smelter;** ingots come out with the take key
+  while facing it, as with the winch's crate (D-224).
+- **It smelts about one ingot every 10 s** while it has ore and fuel, at half speed when its tile
+  is unlit (the crafting doc's light rule for stations).
+- **It is a rate machine** ([world-runtime §5](./tech/world-runtime-and-persistence.md)): nothing
+  ticks. It keeps its contents and the time it was last worked out; whenever it's looked at, a
+  player arrives on its level, its contents change, or the world saves, it works out what it made
+  since, in one step. So **it keeps smelting on a level nobody is on, and across a save.**
+- This brings the first rate machine forward from 017, without power. 017's hoist extends it.
+
+*Why:* a smelter at the seam that stopped while you hauled on −1 would teach the opposite of the
+smelting insight. Support countdowns still run only where a player is (010's choice): nothing
+that threatens a player runs unseen.
+
+---
+
+### D-239 — Coal is −2's fuel: veins like copper, one coal per ingot
+**Decided** (by Derik, slice 016's fork 3, 2026-11-11). Builds the
+[strata table](./world-and-generation.md#2-strata)'s coal on −2.
+
+- **Coal is a new ore,** in veins on −2 beside copper and tin, mined like them; the item weighs
+  4 kg ([tuning §3](./tuning-appendix.md)). −1 and the Surface stay without it.
+- **Coal is the only fuel a smelter burns: one coal per ingot.**
+
+*Why:* ore and fuel on the same level make the seam the natural place to smelt (pre-alpha
+criterion 4), with nothing to carry down.
+
+---
+
+### D-240 — A smelter has two costs: 8 stone + 12 copper ore, or 16 stone + 8 timber
+**Decided** (by Derik, slice 016's fork 4, 2026-11-11, his design). Replaces
+[tuning §10](./tuning-appendix.md)'s 8 stone + 4 copper ingots, which only a smelter could make.
+
+- **Either cost builds the same smelter.** The first (12 ore is §10's 4 ingots, paid raw) suits
+  the seam on −2; the second suits a player with no copper yet.
+- **A buildable may have more than one cost.** Claude's choices, named here: build mode pays the
+  first cost the pack covers, in the order listed, and its preview shows that one, or every cost
+  when the pack covers none.
+
+*Why:* breaks the loop without a recipe that exists only to start it, and gives a choice of
+what to haul.
+
+---
+
+### D-241 — The smelter's two costs are two build entries; the player picks which to pay
+**Decided** (by Derik, slice 016's fork 5, 2026-11-11). Reverses
+[D-240](#d-240--a-smelter-has-two-costs-8-stone--12-copper-ore-or-16-stone--8-timber)'s
+"build mode pays the first cost the pack covers", which was Claude's choice and not his.
+
+- **"Smelter (ore)" (8 stone + 12 copper ore) and "Smelter (timber)" (16 stone + 8 timber) are
+  separate entries** in the build column, each with its own build slot and preview. Both build the
+  same smelter.
+- Nothing is paid that the player didn't choose.
+
+*Why:* which material to spend is the player's call, not the game's.
+
+---
+
+### D-242 — Bronze is alloyed from ingots, in the smelter; iron is smelted there too
+**Decided** (by Derik, slice 016's fork 5, 2026-11-11).
+
+- **The smelter turns 3 ore and 1 coal into 1 ingot,** for copper, tin and iron.
+- **It alloys 3 copper ingots, 1 tin ingot and 1 coal into 4 bronze ingots.**
+- **Bronze tools are made at the workbench, iron tools at the forge.** The forge makes no
+  ingots.
+- Ingots weigh 4 kg, iron 5 kg ([tuning §3](./tuning-appendix.md)); a tin ingot is 4 kg
+  (Claude's number, beside copper's).
+
+*Why:* one machine and one rate rule for every metal; the forge stays T2's (tier spine).
+
+---
+
+### D-243 — A smelter alloys only the ingots dropped into it
+**Decided** (by Derik, slice 016's fork 5, 2026-11-11).
+
+- **Ingots a smelter makes go to its output and are never alloyed.** It alloys only copper and
+  tin ingots a player dropped in. Bronze from ore is: smelt, take the ingots, drop them back in.
+- Claude's choice, named here: **a smelter works its inputs in the order they were loaded,** one
+  batch at a time, so what a player drops first is made first.
+
+*Why:* a smelter must never turn copper a player meant to keep into bronze.
+
+---
+
+### D-244 — Pick, axe and shovel in flint, bronze and iron; flint by hand, and no starting kit
+**Decided** (by Derik, slice 016's fork 6, 2026-11-11; flint by hand is his design).
+
+- **Every tier has a pick, an axe and a shovel.** Power: flint 16, bronze 30, iron 55
+  ([tuning §4](./tuning-appendix.md)).
+- **Flint tools are made by hand:** 3 stone + 1 timber each.
+- **Bronze tools at the workbench, iron at the forge:** pick 4 ingots + 1 timber, axe 3 + 1,
+  shovel 2 + 1.
+- **A new game starts with no tools and 2 timber** in the first player's pack. Bare hands
+  (power 8) dig Surface rock for stone; the 2 timber make the axe and the pick, and the axe fells
+  trees for the rest. Saves that have the flint set keep it.
+
+*Why:* with crafting, the lowest tier is something you make. Only an axe fells a tree (D-181), so
+without starting timber a new game would have no way to make one.
+
+---
+
+### D-245 — Lamp oil is pressed from cave fungus, which grows in clumps in −1's caves
+**Decided** (by Derik, slice 016's fork 7, 2026-11-11). Builds the
+[strata table](./world-and-generation.md#2-strata)'s cave fungus on −1, the first of its
+resources.
+
+- **Fungus clumps are fixtures on open floor in −1's caves,** a few a cave, placed by the seed.
+- **Taking from one, while facing it, harvests 2 to 3 cave fungus** (0.4 kg each) and the clump
+  is gone. Wild clumps don't regrow; fungus beds (later) will be the renewable source.
+- **The workbench presses 3 fungus into 1 oil** (0.8 kg).
+
+*Why:* the lantern's fuel comes from home's level, so light for the deep is something carried
+down.
+
+---
+
+### D-246 — The oil lantern has a 10-oil tank that tops up from the pack
+**Decided** (by Derik, slice 016's fork 7, 2026-11-11). Builds
+[tuning §6](./tuning-appendix.md)'s lantern.
+
+- **Radius 7, 2 kg; it burns 1 oil every 90 s while lit,** from a tank of up to 10 (15 min).
+- **When it's lit with an empty tank, or runs dry, it fills from oil in the carrier's pack.**
+  With none, it goes dark and says so. It never burns out like a torch; its fuel is saved with it.
+- **The HUD shows its fuel as a bar on the lantern's icon.**
+- **Made at the workbench: 2 copper ingots + 1 timber.**
+- It takes the light slot and keys of D-221 and D-228.
+
+*Why:* the tank is the managed resource; topping up from the pack keeps it from being a chore.
+
+---
+
+### D-247 — The light slot is assigned in the PACK tab
+**Decided** (by Derik, slice 016's fork 7, 2026-11-11). Changes 015's display-only light slot
+(D-228's log note).
+
+- **The PACK tab's focus reaches the light slot,** and a torch or lantern is assigned to it the
+  way a tool goes to a hotbar slot (the assign key: Y on a pad). L lights what's assigned.
+- Claude's choice, named here: **an empty light slot takes the first light that enters the
+  pack,** as an empty tool slot takes a tool, so a torch made with nothing assigned still lights
+  on L. A torch that burns out is replaced by the next torch, as in 015.
+
+*Why:* which light to burn is the player's choice.
+
+---
+
+### D-248 — A bed is its player's own spawn point
+**Decided** (by Derik, slice 016's fork 8, 2026-11-11).
+
+- **A bed is a buildable, 6 timber,** that blocks its tile. Building one claims it for the
+  builder; using one (interact while facing) claims it for the user. A player has one bed: a new
+  claim frees the old one, and a bed has one owner at a time. The claim is saved.
+- **A player appears at their bed** (the nearest free tile beside it, D-105's rule) when they join
+  a world with no saved place for them, and, once death exists (M6), when they respawn. A load
+  still puts each player where they saved.
+- **No bed, or a buried one,** falls back to the world's spawn.
+
+*Why:* the home pre-alpha §5's first step asks for, without a way home (D-013).
+
+---
+
+### D-249 — A storage crate holds 200 kg and costs 6 timber
+**Decided** (by Derik, slice 016's fork 9, 2026-11-11).
+
+- **A storage crate is a buildable of its own** (not the winch's crate, D-224), 6 timber,
+  holding up to 200 kg by weight. It blocks its tile.
+- **Filled by dropping while facing it, emptied with the take key while facing it,** as the
+  winch's crate is. It stays where it's built; nothing carries it.
+- Buried by a collapse, it and its contents are buried, never destroyed.
+
+*Why:* a stockpile you can place at the seam and at home, under the same weight rule as
+everything else (D-013).
+
+---
+
+### D-250 — The workbench costs 6 timber and 4 stone; the forge 20 stone and 4 bronze ingots
+**Decided** (by Derik, slice 016's fork 9b, 2026-11-11). The docs gave no cost for either.
+
+- **Workbench: 6 timber + 4 stone,** the first station after the flint tools (tier spine T0).
+- **Forge: 20 stone + 4 bronze ingots,** so it follows a bronze economy and costs no iron.
+
+*Why:* each station lands at its tier, and the first iron goes into tools.
+
+---
+
+### D-251 — −3's floor can't be breached in the pre-alpha, and the refusal says why
+**Decided** (by Derik, slice 016's fork 10, 2026-11-11).
+
+- **A breach of −3's floor is refused with its own reason,** whatever the tool: the rock below is
+  too deep and packed to break. Never "nothing happens".
+- **The deepest breachable floor is a profile number,** so opening −4 later is a change of
+  number, not of rule.
+
+*Why:* an iron pick beats −3's floor by the formula, but −4 has no content, and pre-alpha stops
+at −3 ([pre-alpha-scope §2](./pre-alpha-scope.md)).
