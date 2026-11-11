@@ -10,20 +10,30 @@ extends RefCounted
 # from the table conflicts with nothing.
 const CONFLICTS: Dictionary = {
 	ObjectKind.OBJECT.LADDER: [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.WORLD_SPAWN,
-		ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.TREE],
+		ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.TREE,
+		ObjectKind.OBJECT.CRATE],
 	ObjectKind.OBJECT.WORLD_SPAWN: [ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.LADDER,
-		ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.TREE],
+		ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.TREE,
+		ObjectKind.OBJECT.CRATE],
 	# A brazier fills its tile: nothing else stands there (D-144)
 	ObjectKind.OBJECT.BRAZIER: [ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.LADDER,
-		ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.TREE],
+		ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.TREE,
+		ObjectKind.OBJECT.CRATE],
 	# A prop fills its tile too (D-165)
 	ObjectKind.OBJECT.TIMBER_PROP: [ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.LADDER,
-		ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TREE],
+		ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TREE,
+		ObjectKind.OBJECT.CRATE],
 	# And a tree (D-181)
 	ObjectKind.OBJECT.TREE: [ObjectKind.OBJECT.TREE, ObjectKind.OBJECT.LADDER,
-		ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TIMBER_PROP],
+		ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TIMBER_PROP,
+		ObjectKind.OBJECT.CRATE],
 	# One thing over a hole (D-219)
 	ObjectKind.OBJECT.CHUTE: ObjectKind.OVER_HOLE,
+	ObjectKind.OBJECT.WINCH: ObjectKind.OVER_HOLE,
+	# A crate fills its tile, at the foot of its hole (D-224)
+	ObjectKind.OBJECT.CRATE: [ObjectKind.OBJECT.CRATE, ObjectKind.OBJECT.LADDER,
+		ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TIMBER_PROP,
+		ObjectKind.OBJECT.TREE],
 }
 
 
@@ -47,6 +57,10 @@ static func problem(kind: int, tile: Vector2i, tiles: LevelTiles,
 		# Over an open hole, on the hole's own level (D-219)
 		if ground != TileKind.GROUND.HOLE or top != TileKind.TOP.OPEN:
 			return World.FIXTURE_REFUSAL.NEEDS_HOLE
+	elif kind == ObjectKind.OBJECT.CRATE and ground == TileKind.GROUND.HOLE:
+		# A crate hangs in a hole only under its winch (D-224)
+		if not _holds_any(fixtures, tile, [ObjectKind.OBJECT.WINCH]):
+			return World.FIXTURE_REFUSAL.TILE_NOT_PASSABLE
 	elif not TileKind.is_passable(top, ground):
 		return World.FIXTURE_REFUSAL.TILE_NOT_PASSABLE
 	# Nothing that blocks walking stands on a ramp: it would wall the

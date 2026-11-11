@@ -535,12 +535,15 @@ static func _serialize_level(level: Level) -> Dictionary:
 static func _serialize_fixtures(fixtures: LevelFixtures) -> Array:
 	var data: Array = []
 	for fixture: Fixture in fixtures.all():
-		data.append({
+		var entry: Dictionary = {
 			"kind": fixture.kind,
 			"x": fixture.tile.x,
 			"y": fixture.tile.y,
 			"id": fixture.id,
-		})
+		}
+		# What it holds (a crate, D-224), as a pack is saved
+		if fixture.contents != null: entry["contents"] = fixture.contents.to_save()
+		data.append(entry)
 	return data
 
 
@@ -787,7 +790,11 @@ static func _deserialize_fixtures(p_depth: int, p_fixtures: Array) -> LevelFixtu
 			push_warning("Saved fixture id %d is on depth %d twice; the second is skipped." % [
 				entry.id, p_depth])
 			continue
-		fixtures.add(Fixture.new(entry.kind, WorldPos.new(entry.x, entry.y, p_depth), entry.id))
+		var fixture: Fixture = Fixture.new(entry.kind, WorldPos.new(entry.x, entry.y, p_depth), entry.id)
+		# A crate holds what it was saved with; one saved without, nothing
+		if entry.has("contents") or entry.kind == ObjectKind.OBJECT.CRATE:
+			fixture.contents = Pack.from_save(entry.get("contents", {}))
+		fixtures.add(fixture)
 	return fixtures
 
 

@@ -94,3 +94,10 @@ prop_cost = Dictionary[StringName, int]({
 chute_cost = Dictionary[StringName, int]({
 &"timber": 2
 })
+winch_cost = Dictionary[StringName, int]({
+&"timber": 12,
+&"stone": 20
+})
+winch_lift_seconds = 15.0
+winch_lower_seconds = 5.0
+crate_capacity_kg = 120.0

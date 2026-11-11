@@ -25,7 +25,7 @@ const STARTING_BUILDS: Array[int] = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT
 # a slot: one a hotbar lacks takes its first empty build slot, so a
 # kind added later reaches a saved game's bar too.
 const BUILDABLE: Array[int] = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.TIMBER_PROP,
-	ObjectKind.OBJECT.CHUTE]
+	ObjectKind.OBJECT.CHUTE, ObjectKind.OBJECT.WINCH]
 
 var tools: Array[StringName] = []
 var builds: Array[int] = []

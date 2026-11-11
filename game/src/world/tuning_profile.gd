@@ -164,6 +164,15 @@ const DEFAULT_ID: String = "default"
 # is the cheap direction.
 @export var chute_cost: Dictionary[StringName, int] = {}
 
+# The hand winch (D-224, D-225): what it costs, item id -> count; how
+# many seconds one player's cranking takes to lift its crate a level
+# and to lower it; and how much the crate holds, in kg. Two players
+# cranking add their rates.
+@export var winch_cost: Dictionary[StringName, int] = {}
+@export var winch_lift_seconds: float = 0.0
+@export var winch_lower_seconds: float = 0.0
+@export var crate_capacity_kg: float = 0.0
+
 ## Presentation
 
 # How long a level change's fade through black lasts, out and back in

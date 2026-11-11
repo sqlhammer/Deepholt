@@ -157,9 +157,10 @@ func test_a_tool_the_pack_lacks_cant_be_assigned() -> void:
 
 func test_build_slots_are_rearranged_by_swapping() -> void:
 	var hotbar: Hotbar = _hotbar_with({})
-	assert_true(hotbar.assign_build(ObjectKind.OBJECT.LADDER, 3), "the ladder to 4")
-	assert_eq(hotbar.builds.slice(0, 4), [ObjectKind.OBJECT.NULL, ObjectKind.OBJECT.TIMBER_PROP,
-		ObjectKind.OBJECT.CHUTE, ObjectKind.OBJECT.LADDER], "1 empties")
+	var empty: int = Hotbar.BUILDABLE.size()
+	assert_true(hotbar.assign_build(ObjectKind.OBJECT.LADDER, empty), "the ladder to the empty slot")
+	assert_eq(hotbar.builds[empty], ObjectKind.OBJECT.LADDER, "it's there")
+	assert_eq(hotbar.builds[0], ObjectKind.OBJECT.NULL, "1 empties")
 	assert_eq(hotbar.build(), ObjectKind.OBJECT.NULL, "slot 1 selected, now empty")
 	assert_false(hotbar.assign_build(ObjectKind.OBJECT.BRAZIER, 0), "a brazier isn't buildable")
 

@@ -20,7 +20,14 @@ const TEXTURES: Dictionary = {
 	ObjectKind.OBJECT.TIMBER_PROP: preload("res://src/render/timber_prop.png"),
 	ObjectKind.OBJECT.TREE: preload("res://src/render/tree.png"),
 	ObjectKind.OBJECT.CHUTE: preload("res://src/render/chute.png"),
+	ObjectKind.OBJECT.WINCH: preload("res://src/render/winch.png"),
+	ObjectKind.OBJECT.CRATE: preload("res://src/render/crate.png"),
 }
+
+# The bar over a winch while its crate is on the way (D-225): how far,
+# in the colors of a cursor's valid placement.
+const CRANK_BAR_COLOR: Color = Color(0.45, 0.95, 0.5)
+const CRANK_BAR_BACK: Color = Color(0.0, 0.0, 0.0, 0.6)
 
 # Kinds deliberately not drawn (D-091: the world spawn is invisible to
 # players). Kept apart from "no texture", which is an error: a new
@@ -230,6 +237,34 @@ func _remove_sprite(id: int) -> void:
 
 func sprite_for(id: int) -> Sprite2D:
 	return _sprites.get(id)
+
+
+# --- the crank bar (D-225) ---
+
+# The winches on the shown level whose crate is on its way, each with
+# how far: what the bar draws.
+func cranking() -> Dictionary[Fixture, float]:
+	var found: Dictionary[Fixture, float] = {}
+	if _fixtures == null or not is_instance_valid(_world): return found
+	for winch: Fixture in _fixtures.of_kind(ObjectKind.OBJECT.WINCH):
+		var progress: float = _world.crank_progress(winch)
+		if progress > 0.0: found[winch] = progress
+	return found
+
+
+func _process(_delta: float) -> void:
+	queue_redraw()
+
+
+func _draw() -> void:
+	var bars: Dictionary[Fixture, float] = cranking()
+	for winch: Fixture in bars:
+		var corner: Vector2 = Vector2(winch.tile.x, winch.tile.y) * TileSpace.TILE_PIXELS
+		# Just above the winch's posts, which rise 8 px over the tile
+		var top: Vector2 = corner - Vector2(0, 12)
+		var filled: float = (TileSpace.TILE_PIXELS - 2) * bars[winch]
+		draw_rect(Rect2(top, Vector2(TileSpace.TILE_PIXELS, 3)), CRANK_BAR_BACK)
+		draw_rect(Rect2(top + Vector2(1, 1), Vector2(filled, 1)), CRANK_BAR_COLOR)
 
 
 # Draws a ladder top in each of `shown_tiles`' holes that has a ladder

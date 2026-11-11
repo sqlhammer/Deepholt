@@ -44,6 +44,13 @@ signal items_picked_up(actor: Actor, tile: WorldPos, id: StringName, count: int)
 # Items dropped down a chute (D-220): `top` is the chute's tile,
 # `landed` where they came to rest, levels below.
 signal items_chuted(actor: Actor, top: WorldPos, landed: WorldPos, id: StringName, count: int)
+# Items put into a winch's crate (D-224), and taken out of it.
+signal items_crated(actor: Actor, crate: Fixture, id: StringName, count: int)
+signal items_uncrated(actor: Actor, crate: Fixture, id: StringName, count: int)
+# A winch's crate reached the top of its hole, or the foot (D-225).
+# `actor` is whoever's cranking finished the move.
+signal crate_arrived(actor: Actor, winch: Fixture, crate: Fixture, at_top: bool)
+signal crank_refused(actor: Actor, reason: CRANK_REFUSAL)
 # Felling a tree (D-181): asked when the work is done, answered with
 # the tree gone and its timber given, or a refusal.
 signal chop_requested(actor: Actor, tile: WorldPos)
@@ -138,6 +145,22 @@ enum FIXTURE_REFUSAL {
 	# The hole already has a ladder under it or something over it: one
 	# hole, one use (D-219)
 	HOLE_IN_USE,
+	# A winch's crate has no floor to stand on at the foot of its hole
+	# (D-224)
+	LANDING_BLOCKED,
+}
+
+# Why cranking a winch, or filling its crate, did nothing (D-224,
+# D-225).
+enum CRANK_REFUSAL {
+	NONE,
+	# Facing the crate at the foot of its hole: the winch is worked
+	# from the top
+	FROM_BELOW,
+	# Lowering, and the foot of the hole has no room for the crate
+	LANDING_BLOCKED,
+	# Not all of a drop fitted in the crate
+	CRATE_FULL,
 }
 
 # How far, in rings of tiles, chuted items look for somewhere to lie
@@ -145,6 +168,10 @@ enum FIXTURE_REFUSAL {
 const LANDING_RINGS: int = 4
 
 var world_seed: int
+# How far each winch's crate is on its way, 0 to 1, by the winch's id
+# (D-225). Not saved: a crate is at one end or the other, and a load
+# finds it where it last arrived (015 trap 4).
+var _crank_progress: Dictionary[int, float] = {}
 # Draws what digging yields (D-158): seeded from the world seed the
 # first time it's used, so a world's yields repeat. Not saved; a load
 # starts a fresh sequence.
@@ -342,6 +369,10 @@ func _on_drop_requested(actor: Actor, id: StringName, count: int) -> void:
 	var n: int = mini(count, actor.pack.count_of(id))
 	if n <= 0: return
 	var here: WorldPos = actor.current_WorldPos
+	var crate: Fixture = crate_faced(actor)
+	if crate != null:
+		_fill_crate(actor, crate, id, n)
+		return
 	var chute: Fixture = chute_faced(actor)
 	if chute != null and level_at(here.depth + 1) != null:
 		actor.pack.remove(id, n)
@@ -409,6 +440,127 @@ func _holds_drops(level: Level, tile: Vector2i) -> bool:
 	return level.level_fixtures.at(tile).is_empty()
 
 
+# --- the winch and its crate (D-224, D-225) ---
+
+# The winch on the tile the actor faces, on the actor's own level: the
+# top of its hole, where it is cranked. Null when there is none.
+func winch_faced(actor: Actor) -> Fixture:
+	var faced: Vector2i = _faced_tile(actor)
+	if faced == NO_TILE: return null
+	return _fixture_of_kind(actor.current_level, faced, ObjectKind.OBJECT.WINCH)
+
+
+# The crate on the tile the actor faces, on the actor's own level: at
+# the foot of its hole, or hanging in it at the top. Null when there is
+# none, or it is buried.
+func crate_faced(actor: Actor) -> Fixture:
+	var faced: Vector2i = _faced_tile(actor)
+	if faced == NO_TILE: return null
+	var level: Level = actor.current_level
+	var crate: Fixture = _fixture_of_kind(level, faced, ObjectKind.OBJECT.CRATE)
+	if crate == null or level.level_tiles.get_top(faced.x, faced.y) != TileKind.TOP.OPEN: return null
+	return crate
+
+
+const NO_TILE: Vector2i = Vector2i(-99999, -99999)
+
+
+func _faced_tile(actor: Actor) -> Vector2i:
+	var here: WorldPos = actor.current_WorldPos
+	if actor.current_level == null or here == null: return NO_TILE
+	return Vector2i(here.x, here.y) + actor.facing
+
+
+# A winch's crate: hanging in its hole, or at the foot of it. Null if
+# it has none.
+func crate_of(winch: Fixture) -> Fixture:
+	var tile: Vector2i = Vector2i(winch.tile.x, winch.tile.y)
+	for depth: int in [winch.tile.depth, winch.tile.depth + 1]:
+		var level: Level = level_at(depth)
+		if level == null: continue
+		var crate: Fixture = _fixture_of_kind(level, tile, ObjectKind.OBJECT.CRATE)
+		if crate != null: return crate
+	return null
+
+
+# How far a winch's crate is on its way, 0 to 1 (D-225).
+func crank_progress(winch: Fixture) -> float:
+	return _crank_progress.get(winch.id, 0.0)
+
+
+# What fits of the drop goes into the crate; the rest stays in the
+# pack, and the refusal says the crate is full.
+func _fill_crate(actor: Actor, crate: Fixture, id: StringName, count: int) -> void:
+	var fits: int = Winch.room_for(tuning, crate, id, count)
+	if fits > 0:
+		actor.pack.remove(id, fits)
+		crate.contents.add(id, fits)
+		items_crated.emit(actor, crate, id, fits)
+	if fits < count: crank_refused.emit(actor, CRANK_REFUSAL.CRATE_FULL)
+
+
+# Everything in the crate into the actor's pack, whatever the load,
+# as the take key takes from the ground (D-160). Returns what moved.
+func _empty_crate(actor: Actor, crate: Fixture) -> Dictionary[StringName, int]:
+	var moved: Dictionary[StringName, int] = {}
+	for key: String in crate.contents.to_save():
+		var id: StringName = StringName(key)
+		var n: int = crate.contents.count_of(id)
+		crate.contents.remove(id, n)
+		actor.pack.add(id, n)
+		moved[id] = n
+		items_uncrated.emit(actor, crate, id, n)
+	return moved
+
+
+# Interact first held down (D-225): at the foot of a winch's hole,
+# facing its crate, it is refused with the reason. Cranking itself is
+# `crank`, every tick it stays held.
+func begin_crank(actor: Actor) -> void:
+	if winch_faced(actor) != null: return
+	var crate: Fixture = crate_faced(actor)
+	if crate == null: return
+	var above: Level = level_at(crate.tile.depth - 1)
+	if above != null and _fixture_of_kind(above, Vector2i(crate.tile.x, crate.tile.y),
+			ObjectKind.OBJECT.WINCH) != null:
+		crank_refused.emit(actor, CRANK_REFUSAL.FROM_BELOW)
+
+
+# One tick of `actor` cranking the winch it faces (D-225): the crate
+# moves on toward the other end of its hole at this player's rate, so
+# two cranking together move it twice as fast. On arrival it is moved
+# between levels whole, contents and all. Lowering waits, full, when
+# the foot has no room, and the refusal says so once.
+func crank(actor: Actor, delta: float) -> void:
+	var winch: Fixture = winch_faced(actor)
+	if winch == null: return
+	var crate: Fixture = crate_of(winch)
+	if crate == null: return
+	var lifting: bool = crate.tile.depth != winch.tile.depth
+	var was: float = crank_progress(winch)
+	var progress: float = minf(was + delta / Winch.seconds(tuning, lifting), 1.0)
+	_crank_progress[winch.id] = progress
+	if progress < 1.0: return
+	var top: WorldPos = winch.tile
+	if lifting:
+		_move_crate(actor, winch, crate, WorldPos.new(top.x, top.y, top.depth))
+		return
+	if winch_landing_problem(top) != FIXTURE_REFUSAL.NONE:
+		if was < 1.0: crank_refused.emit(actor, CRANK_REFUSAL.LANDING_BLOCKED)
+		return
+	_move_crate(actor, winch, crate, WorldPos.new(top.x, top.y, top.depth + 1))
+
+
+# The crate, contents and all, from one end of its hole to the other.
+func _move_crate(actor: Actor, winch: Fixture, crate: Fixture, to: WorldPos) -> void:
+	var from: WorldPos = crate.tile
+	level_at(from.depth).level_fixtures.remove(crate.id)
+	level_at(to.depth).level_fixtures.receive(crate, to)
+	_crank_progress.erase(winch.id)
+	fixture_moved.emit(actor, crate, from)
+	crate_arrived.emit(actor, winch, crate, to.depth == winch.tile.depth)
+
+
 # A player takes what lies within reach as it moves, up to the fill
 # limit. Never an NPC (D-160), and never what it put down itself
 # until it has been out of that tile's reach (D-212).
@@ -438,6 +590,11 @@ func _still_dropped(actor: Actor) -> Array[Vector2i]:
 # The take key: everything within reach, whatever the load (D-160).
 func _on_take_requested(actor: Actor) -> void:
 	if actor == null or actor.current_level == null or actor.current_level.world != self: return
+	# Facing a crate that holds something, the take empties it (D-224)
+	var crate: Fixture = crate_faced(actor)
+	if crate != null and not crate.contents.is_empty():
+		took.emit(actor, _empty_crate(actor, crate))
+		return
 	took.emit(actor, _pick_up(actor, INF, []))
 
 
@@ -749,6 +906,11 @@ func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
 	if blocks_actor(level, kind, tile):
 		request_refused.emit(actor, FIXTURE_VERB.PLACE, tile, FIXTURE_REFUSAL.ACTOR_ON_TILE)
 		return
+	if kind == ObjectKind.OBJECT.WINCH:
+		reason = winch_landing_problem(tile)
+		if reason != FIXTURE_REFUSAL.NONE:
+			request_refused.emit(actor, FIXTURE_VERB.PLACE, tile, reason)
+			return
 	# Paid from the requesting actor's own pack; free with no actor
 	# (D-159)
 	if not Building.can_afford(tuning, actor, kind):
@@ -759,6 +921,28 @@ func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
 	var fixture: Fixture = Fixture.new(kind, tile, fixture_ids.allocate())
 	level.level_fixtures.add(fixture)
 	fixture_placed.emit(actor, fixture)
+	if kind == ObjectKind.OBJECT.WINCH: _make_crate(actor, tile)
+
+
+# Why a winch over `tile`'s hole has no room for its crate at the foot
+# of the hole, or NONE: floor holding nothing, and nobody standing
+# there (D-224). Asked by the gatekeeper and build mode's preview.
+func winch_landing_problem(tile: WorldPos) -> FIXTURE_REFUSAL:
+	var below: Level = level_at(tile.depth + 1)
+	var reason: FIXTURE_REFUSAL = Winch.landing_problem(below, Vector2i(tile.x, tile.y))
+	if reason != FIXTURE_REFUSAL.NONE: return reason
+	if blocks_actor(below, ObjectKind.OBJECT.CRATE, WorldPos.new(tile.x, tile.y, tile.depth + 1)):
+		return FIXTURE_REFUSAL.LANDING_BLOCKED
+	return FIXTURE_REFUSAL.NONE
+
+
+# A new winch's crate, empty, at the foot of its hole (D-224).
+func _make_crate(actor: Actor, top: WorldPos) -> void:
+	var crate: Fixture = Fixture.new(ObjectKind.OBJECT.CRATE,
+		WorldPos.new(top.x, top.y, top.depth + 1), fixture_ids.allocate())
+	crate.contents = Pack.new()
+	level_at(top.depth + 1).level_fixtures.add(crate)
+	fixture_placed.emit(actor, crate)
 
 
 # The placement rules for `kind` on `tile` of `level`, with the levels

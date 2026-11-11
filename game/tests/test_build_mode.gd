@@ -269,14 +269,15 @@ func test_the_cursor_places_the_selected_build_slot() -> void:
 	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "slot 1: a ladder to begin with")
 	_actor.hotbar.select_build(1)
 	assert_eq(_cursor.item, ObjectKind.OBJECT.TIMBER_PROP, "slot 2: a prop")
-	_actor.hotbar.select_build(2)
-	assert_eq(_cursor.item, ObjectKind.OBJECT.CHUTE, "slot 3: a chute (D-219)")
-	_actor.hotbar.select_build(3)
-	assert_eq(_cursor.item, ObjectKind.OBJECT.NULL, "slot 4: nothing")
+	# Every buildable has a slot, in BUILDABLE's order; the first slot
+	# past them is empty
+	var empty: int = Hotbar.BUILDABLE.size()
+	_actor.hotbar.select_build(empty)
+	assert_eq(_cursor.item, ObjectKind.OBJECT.NULL, "the first slot past the buildables: nothing")
 	assert_eq(_cursor.problem(), BuildCursor.PROBLEM.NOTHING_SELECTED, "and the preview says so")
 	assert_false(_cursor.place(), "nothing asked")
-	_actor.hotbar.assign_build(ObjectKind.OBJECT.LADDER, 3)
-	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "the ladder moved to slot 4")
+	_actor.hotbar.assign_build(ObjectKind.OBJECT.LADDER, empty)
+	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "the ladder moved there")
 
 
 func test_a_prop_is_placed_on_open_floor_at_the_cursor_for_two_timber() -> void:
@@ -344,7 +345,7 @@ func test_the_cursor_names_what_it_places_and_its_cost() -> void:
 	assert_eq(_cursor.label_text(), "Ladder · 4 timber", "slot 1")
 	_actor.hotbar.select_build(1)
 	assert_eq(_cursor.label_text(), "Timber prop · 2 timber", "slot 2")
-	_actor.hotbar.select_build(3)
+	_actor.hotbar.select_build(Hotbar.BUILDABLE.size())
 	assert_eq(_cursor.label_text(), "", "an empty slot says nothing")
 
 

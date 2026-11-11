@@ -11,8 +11,8 @@ extends Node2D
 # A ladder is aimed at a hole on the player's own level, and placed on
 # the level below at the same (x, y) (D-154). A timber prop is placed
 # on open floor at the cursor, on the player's own level (D-165). A
-# chute is aimed at a hole and placed over it, on the player's own
-# level (D-219). Only
+# chute or a winch is aimed at a hole and placed over it, on the
+# player's own level (D-219, D-224). Only
 # on a tile the player can sense or see lit: nobody builds blind.
 
 # The preview refused a placement before asking the world: shown like
@@ -196,9 +196,10 @@ func _prop_problem(level: Level) -> PROBLEM:
 	return PROBLEM.NONE
 
 
-# The gatekeeper's own rules for a chute over the cursor's hole, on
-# the player's level (D-219): an open hole, nothing over it, no ladder
-# under it, and the cost.
+# The gatekeeper's own rules for a chute or winch over the cursor's
+# hole, on the player's level (D-219): an open hole, nothing over it,
+# no ladder under it, room below for a winch's crate (D-224), and the
+# cost.
 func _over_hole_problem(level: Level, kind: int) -> PROBLEM:
 	var below: Level = level.world.level_at(level.depth + 1)
 	if below == null: return PROBLEM.NO_LEVEL_BELOW
@@ -209,6 +210,9 @@ func _over_hole_problem(level: Level, kind: int) -> PROBLEM:
 		World.FIXTURE_REFUSAL.TILE_NOT_EXISTS: return PROBLEM.OUTSIDE_LEVEL
 		World.FIXTURE_REFUSAL.NEEDS_HOLE: return PROBLEM.NEEDS_HOLE
 		_: return PROBLEM.HOLE_IN_USE
+	if kind == ObjectKind.OBJECT.WINCH and level.world.winch_landing_problem(
+			WorldPos.new(tile.x, tile.y, level.depth)) != World.FIXTURE_REFUSAL.NONE:
+		return PROBLEM.LANDING_OCCUPIED
 	if not Building.can_afford(level.world.tuning, actor, kind):
 		return PROBLEM.CANNOT_AFFORD
 	return PROBLEM.NONE

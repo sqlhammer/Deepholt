@@ -52,6 +52,7 @@ func pause() -> void:
 	actor.move(Vector2.ZERO)
 	actor.primary_action(false)
 	actor.breach(false)
+	actor.crank(false)
 
 
 func resume() -> void:
@@ -145,6 +146,7 @@ func _inventory_mode(move: Vector2) -> void:
 	actor.aim(Vector2.ZERO, move)
 	actor.primary_action(false)
 	actor.breach(false)
+	actor.crank(false)
 	# The focus over the grid and the bars (D-175)
 	if Input.is_action_just_pressed("ui_up"): inventory.move(Vector2i.UP)
 	if Input.is_action_just_pressed("ui_down"): inventory.move(Vector2i.DOWN)
@@ -199,14 +201,23 @@ func _physics_process(delta: float) -> void:
 	# interact with, so A refuses the climb rather than taking (slice
 	# 011 trap 5).
 	if Input.is_action_just_pressed("interact_or_take"): interact_or_take()
+	# Interact held cranks a winch (D-225): E, or pad A, which is also
+	# interact. Build mode leaves the winch alone.
+	var held: bool = Input.is_action_pressed("interact") or Input.is_action_pressed("interact_or_take")
+	actor.crank(held and not (build != null and build.active))
 
 
-# Pad A (D-167): a ladder is used, even one too heavy to climb, which
+# Pad A (D-167): a crate faced that holds something is emptied, even
+# at the top of a winch's hole, where holding A on goes on to crank
+# (D-224, D-225); a ladder is used, even one too heavy to climb, which
 # refuses; with nothing to interact with, everything in reach is
 # taken, and the notice says what.
 func interact_or_take() -> void:
-	if actor.has_interaction(): actor.interact()
-	else: actor.current_level.world.take_requested.emit(actor)
+	var world: World = actor.current_level.world
+	var crate: Fixture = world.crate_faced(actor)
+	if crate != null and not crate.contents.is_empty(): world.take_requested.emit(actor)
+	elif actor.has_interaction(): actor.interact()
+	else: world.take_requested.emit(actor)
 
 
 func _get_aim() -> Vector2:

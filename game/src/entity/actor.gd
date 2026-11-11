@@ -19,6 +19,9 @@ var action_intent: bool = false
 # Held to breach the floor faced (D-153). Its own intent, so a press
 # held through a dig never turns into a breach of the floor it opened.
 var breach_intent: bool = false
+# Interact held, which cranks a winch faced from the top (D-225). Its
+# own intent, so cranking is a hold while a ladder is a press.
+var crank_intent: bool = false
 # What this actor carries (D-157). Every actor has one, NPCs too (P5).
 # A load replaces it, so the hotbar follows the new one.
 var pack: Pack:
@@ -169,6 +172,14 @@ func primary_action(p_action_intent: bool) -> void:
 		else: emit_signal("action_ended", tool().verb)
 
 
+# Interact held or let go (D-225). The first tick held asks the world
+# whether a crank is possible here, so a refusal is heard once.
+func crank(p_crank_intent: bool) -> void:
+	var began: bool = p_crank_intent and not crank_intent
+	crank_intent = p_crank_intent
+	if began and current_level != null: current_level.world.begin_crank(self)
+
+
 func breach(p_breach_intent: bool) -> void:
 	if breach_intent and not p_breach_intent:
 		var capability: CapabilityBreach = get_node_or_null("Capabilities/CapabilityBreach")
@@ -177,10 +188,12 @@ func breach(p_breach_intent: bool) -> void:
 
 
 # Whether the interact button would do something here: a ladder to
-# use, whether or not the load lets it be climbed. Pad A takes from
-# the ground only when this is false (D-167, slice 011 trap 5).
+# use, whether or not the load lets it be climbed, or a winch to crank
+# (D-225). Pad A takes from the ground only when this is false (D-167,
+# slice 011 trap 5).
 func has_interaction() -> bool:
 	if current_level == null or current_WorldPos == null: return false
+	if current_level.world.winch_faced(self) != null: return true
 	return Ladder.target_for(current_level, current_WorldPos, facing) != null
 
 
@@ -237,6 +250,7 @@ func _physics_process(delta: float) -> void:
 	_move(move_intent * speed * delta)
 	_primary_action(delta)
 	_breach(delta)
+	if crank_intent and current_level != null: current_level.world.crank(self, delta)
 
 
 # The actor is handed the level it starts on rather than finding it
