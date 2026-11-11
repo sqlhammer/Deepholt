@@ -99,18 +99,19 @@ func test_r_falls_with_depth_and_the_surface_has_no_ceiling() -> void:
 		assert_eq(_world.level_at(depth).support.radius, expected[depth], "depth %d" % depth)
 
 
-# D-186: halved, rounding up. Red starts at 11 wide on -1.
-func test_the_default_r_is_halved() -> void:
+# D-211: one less than D-186's at every depth. Red starts at 9 wide
+# on -1.
+func test_the_default_r_starts_red_at_nine_wide() -> void:
 	assert_eq(TuningProfile.default_profile().support_radius_by_depth,
-		[0, 4, 4, 3, 3, 2, 2, 2] as Array[int], "4, 4, 3, 3, 2, 2, 2")
+		[0, 3, 3, 2, 2, 1, 1, 1] as Array[int], "3, 3, 2, 2, 1, 1, 1")
 	var world: World = autofree(Worlds.with_levels([1]))
 	var level: Level = world.level_at(1)
-	_dig_room(level, Rect2i(-5, -5, 11, 11))
-	assert_eq(level.support.state_at(Vector2i.ZERO), LevelSupport.STATE.FAILING, "11 wide: red")
+	_dig_room(level, Rect2i(-4, -4, 9, 9))
+	assert_eq(level.support.state_at(Vector2i.ZERO), LevelSupport.STATE.FAILING, "9 wide: red")
 	var other: World = autofree(Worlds.with_levels([1]))
-	_dig_room(other.level_at(1), Rect2i(-4, -4, 9, 9))
+	_dig_room(other.level_at(1), Rect2i(-3, -3, 7, 7))
 	assert_eq(other.level_at(1).support.state_at(Vector2i.ZERO), LevelSupport.STATE.MARGINAL,
-		"9 wide: amber at most")
+		"7 wide: amber at most")
 
 
 func test_state_for_the_three_bands() -> void:
@@ -501,15 +502,15 @@ func _saved(player: Actor) -> void:
 
 
 # A load runs under the profile the save names, found by its id: the
-# default, so this world is built under it too (D-186's R = 4 at -1,
-# which fails the wide room's middle 11 x 11).
+# default, so this world is built under it too (D-211's R = 3 at -1,
+# which fails the wide room's middle 13 x 13).
 func test_a_countdown_resumes_after_a_save_not_restarts() -> void:
 	_world = autofree(Worlds.with_levels([0, 1, 2, 3, 4, 5, 6, 7]))
 	_level = _world.level_at(1)
 	var player: Actor = _player_on(1)
 	_dig_room(_level, WIDE)
 	var failing: int = _level.support.failing_tiles().size()
-	assert_eq(failing, 121, "the middle 11 x 11 fails at R = 4")
+	assert_eq(failing, 169, "the middle 13 x 13 fails at R = 3")
 	_world.advance_time(30.0)
 	_saved(player)
 	var loaded: SaveGame.LoadedGame = SaveGame.load_game(SLOT)
