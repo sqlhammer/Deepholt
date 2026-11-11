@@ -313,13 +313,32 @@ func _draw() -> void:
 	var size: float = TileSpace.TILE_PIXELS
 	var length: float = LANDING_CORNER
 	for tile: Vector2i in crate_landings():
+		var color: Color = landing_color(tile)
 		var a: Vector2 = Vector2(tile) * size + Vector2(1, 1)
 		var b: Vector2 = a + Vector2(size - 2, size - 2)
 		for corner: Vector2 in [a, Vector2(b.x, a.y), Vector2(a.x, b.y), b]:
 			var across: float = length if corner.x == a.x else -length
 			var down: float = length if corner.y == a.y else -length
-			draw_line(corner, corner + Vector2(across, 0), LANDING_COLOR, 1.0)
-			draw_line(corner, corner + Vector2(0, down), LANDING_COLOR, 1.0)
+			draw_line(corner, corner + Vector2(across, 0), color, 1.0)
+			draw_line(corner, corner + Vector2(0, down), color, 1.0)
+
+
+# The marks' color on `tile`: brown where it's lit, and grey at the
+# world's brightness where it's only sensed or remembered, as fixtures
+# and tiles are drawn in the dark (D-146, D-148).
+func landing_color(tile: Vector2i) -> Color:
+	if _visibility == null: return LANDING_COLOR
+	var state: Visibility.STATE = _visibility.state_at(tile.x, tile.y)
+	if state == Visibility.STATE.LIT: return LANDING_COLOR
+	var tuning: TuningProfile = _world.tuning if is_instance_valid(_world) else null
+	var brightness: float = 1.0
+	if tuning != null:
+		brightness = tuning.sensed_brightness if state == Visibility.STATE.SENSED \
+			else tuning.remembered_brightness
+	# The shader's own grey: the usual luminance weights
+	var luma: float = LANDING_COLOR.r * 0.299 + LANDING_COLOR.g * 0.587 + LANDING_COLOR.b * 0.114
+	var grey: float = luma * brightness
+	return Color(grey, grey, grey)
 
 
 # Draws a ladder top in each of `shown_tiles`' holes that has a ladder

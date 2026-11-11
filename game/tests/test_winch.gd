@@ -314,6 +314,23 @@ func test_the_foot_of_the_hole_is_marked_while_the_crate_is_up() -> void:
 	assert_eq(renderer.crate_landings(), [] as Array[Vector2i], "down again: gone")
 
 
+func test_the_marks_are_grey_in_the_dark_and_brown_in_light() -> void:
+	_build_winch()
+	_crank(_top, 15.0)
+	var view: View = add_child_autofree(View.new())
+	var vis: Visibility = add_child_autofree(Visibility.new())
+	vis.watch(view)
+	view.follow(_bottom)
+	var renderer: FixtureRenderer = add_child_autofree(FixtureRenderer.new())
+	renderer.watch(view)
+	renderer.watch_visibility(vis)
+	var sensed: Color = renderer.landing_color(HOLE)
+	assert_eq(sensed.r, sensed.b, "only sensed: grey, like everything else")
+	_bottom.pack.add(&"torch", 1)
+	_bottom.toggle_light()
+	assert_eq(renderer.landing_color(HOLE), FixtureRenderer.LANDING_COLOR, "lit: brown")
+
+
 func test_the_crank_bar_draws_over_the_actors() -> void:
 	var renderer: FixtureRenderer = _renderer_on(1)
 	var bars: Node2D = renderer.get_node("CrankBars")
