@@ -19,6 +19,15 @@ var action_intent: bool = false
 # Held to breach the floor faced (D-153). Its own intent, so a press
 # held through a dig never turns into a breach of the floor it opened.
 var breach_intent: bool = false
+# Interact held, which cranks a winch faced from the top (D-225). Its
+# own intent, so cranking is a hold while a ladder is a press.
+var crank_intent: bool = false
+# A climb under way (D-233): where it arrives, and the seconds left of
+# how many. Null when not climbing. Not saved: a save mid-climb keeps
+# the actor where it started.
+var climb_to: WorldPos = null
+var climb_left: float = 0.0
+var climb_seconds: float = 0.0
 # What this actor carries (D-157). Every actor has one, NPCs too (P5).
 # A load replaces it, so the hotbar follows the new one.
 var pack: Pack:
@@ -169,6 +178,21 @@ func primary_action(p_action_intent: bool) -> void:
 		else: emit_signal("action_ended", tool().verb)
 
 
+# L or D-pad up (D-228): lights the light slot's light, or puts it out.
+# Returns whether it's lit now.
+func toggle_light() -> bool:
+	if current_level == null: return false
+	return hotbar.toggle_light(current_level.world.tuning.torch_burn_seconds)
+
+
+# Interact held or let go (D-225). The first tick held asks the world
+# whether a crank is possible here, so a refusal is heard once.
+func crank(p_crank_intent: bool) -> void:
+	var began: bool = p_crank_intent and not crank_intent
+	crank_intent = p_crank_intent
+	if began and current_level != null: current_level.world.begin_crank(self)
+
+
 func breach(p_breach_intent: bool) -> void:
 	if breach_intent and not p_breach_intent:
 		var capability: CapabilityBreach = get_node_or_null("Capabilities/CapabilityBreach")
@@ -177,25 +201,56 @@ func breach(p_breach_intent: bool) -> void:
 
 
 # Whether the interact button would do something here: a ladder to
-# use, whether or not the load lets it be climbed. Pad A takes from
-# the ground only when this is false (D-167, slice 011 trap 5).
+# use, whether or not the load lets it be climbed, or a winch to crank
+# (D-225). Pad A takes from the ground only when this is false (D-167,
+# slice 011 trap 5).
 func has_interaction() -> bool:
 	if current_level == null or current_WorldPos == null: return false
+	if is_climbing(): return true
+	if current_level.world.winch_faced(self) != null: return true
 	return Ladder.target_for(current_level, current_WorldPos, facing) != null
 
 
 # The interact button (D-101). Today it only uses ladders: the Ladder
-# rule says where, and the actor moves itself (D-093). Returns whether
-# anything happened.
+# rule says where, and the climb begins; it takes the load's time and
+# the actor moves itself at its end (D-093, D-233). Returns whether a
+# climb began.
 func interact() -> bool:
+	if is_climbing(): return false
 	var target: WorldPos = Ladder.target_for(current_level, current_WorldPos, facing)
 	if target == null: return false
 	# Too heavy to climb (D-030, D-159): refused, and announced on this
 	# actor's world for whatever tells the player
-	if not Ladder.can_climb(current_level.world.tuning, load_ratio()):
+	var tuning: TuningProfile = current_level.world.tuning
+	if not Ladder.can_climb(tuning, load_ratio()):
 		current_level.world.climb_refused.emit(self, target)
 		return false
-	return move_to(target, &"ladder")
+	climb_to = target
+	climb_seconds = Ladder.climb_seconds(tuning, load_ratio())
+	climb_left = climb_seconds
+	current_level.world.climb_started.emit(self, target, climb_seconds)
+	return true
+
+
+func is_climbing() -> bool:
+	return climb_to != null
+
+
+# How far the climb under way is, 0 to 1; 0 when not climbing.
+func climb_progress() -> float:
+	if not is_climbing() or climb_seconds <= 0.0: return 0.0
+	return clampf(1.0 - climb_left / climb_seconds, 0.0, 1.0)
+
+
+# One tick of a climb: at its end the actor arrives, or, if the way
+# closed meanwhile, stays where it was.
+func _climb(delta: float) -> void:
+	climb_left -= delta
+	if climb_left > 0.0: return
+	var target: WorldPos = climb_to
+	climb_to = null
+	climb_left = 0.0
+	move_to(target, &"ladder")
 
 
 func _set_actor_kind(value: int) -> void:
@@ -234,9 +289,17 @@ func _breach(delta: float) -> void:
 
 func _physics_process(delta: float) -> void:
 	if Log.enabled: _watch_for_jumps()
+	# A lit light burns down, only while lit (D-221)
+	if hotbar.lit and current_level != null:
+		hotbar.burn(delta, current_level.world.tuning.torch_burn_seconds)
+	# On a ladder nothing else happens until the climb ends (D-233)
+	if is_climbing():
+		_climb(delta)
+		return
 	_move(move_intent * speed * delta)
 	_primary_action(delta)
 	_breach(delta)
+	if crank_intent and current_level != null: current_level.world.crank(self, delta)
 
 
 # The actor is handed the level it starts on rather than finding it

@@ -31,6 +31,7 @@ const TOP_CHARS: Dictionary = {
 	".": TileKind.TOP.OPEN,
 	"#": TileKind.TOP.MINABLE_ROCK,
 	"%": TileKind.TOP.MINABLE_DIRT,
+	"x": TileKind.TOP.CRUSHED,
 	"0": TileKind.TOP.OPEN,
 }
 
@@ -38,6 +39,7 @@ const ORE_CHARS: Dictionary = {
 	".": TileKind.ORE.NONE,
 	"c": TileKind.ORE.COPPER,
 	"t": TileKind.ORE.TIN,
+	"i": TileKind.ORE.IRON,
 	"0": TileKind.ORE.NONE,
 }
 

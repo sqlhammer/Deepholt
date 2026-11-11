@@ -20,12 +20,25 @@ var support_overlay: SupportOverlay
 # The hotbar on screen (D-170): a click on a slot selects it, and a
 # click there never also digs or places.
 var hotbar_hud: HotbarHud
+# The map (D-226, D-227): View or M opens it; while open, LB / RB, the
+# wheel and Page Up / Down change its level, not the hotbar's slot.
+var map: MapOverlay
 
 # The game-wide keys. The handler only asks; the game decides what a
 # save or a load is (R-P10).
 signal quick_save_requested
 signal load_requested
 signal save_and_quit_requested
+# The scheme in use changed (D-223): what's on screen names its keys
+# only.
+signal device_scheme_changed(scheme: DEVICE_SCHEME)
+
+# On the CRAFT tab, confirm held keeps making (D-222): after this long,
+# then once every REPEAT. Feel, not tuning.
+const MAKE_HOLD_SECONDS: float = 0.4
+const MAKE_REPEAT_SECONDS: float = 0.15
+
+var _make_held: float = 0.0
 
 # Inside this distance from the feet the mouse's direction is
 # mostly noise, so it counts as no aim and facing holds.
@@ -52,6 +65,7 @@ func pause() -> void:
 	actor.move(Vector2.ZERO)
 	actor.primary_action(false)
 	actor.breach(false)
+	actor.crank(false)
 
 
 func resume() -> void:
@@ -81,6 +95,21 @@ func _hotbar_input(event: InputEvent) -> void:
 		if event.is_action_pressed("hotbar_%d" % (i + 1)):
 			select_slot(i)
 			return
+	# With the map open, the bumpers and the wheel change its level
+	# (D-227)
+	if map != null and map.is_open:
+		if event.is_action_pressed("hotbar_prev"):
+			map.step_level(-1)
+			return
+		if event.is_action_pressed("hotbar_next"):
+			map.step_level(1)
+			return
+	# LB and RB switch the open inventory's tab (D-222); the wheel
+	# scrolls its grid instead, on the board itself
+	if inventory != null and inventory.is_open and event is InputEventJoypadButton \
+			and (event.is_action_pressed("hotbar_prev") or event.is_action_pressed("hotbar_next")):
+		inventory.switch_tab()
+		return
 	if event.is_action_pressed("hotbar_prev"): step_slot(-1)
 	elif event.is_action_pressed("hotbar_next"): step_slot(1)
 
@@ -145,18 +174,36 @@ func _inventory_mode(move: Vector2) -> void:
 	actor.aim(Vector2.ZERO, move)
 	actor.primary_action(false)
 	actor.breach(false)
+	actor.crank(false)
 	# The focus over the grid and the bars (D-175)
 	if Input.is_action_just_pressed("ui_up"): inventory.move(Vector2i.UP)
 	if Input.is_action_just_pressed("ui_down"): inventory.move(Vector2i.DOWN)
 	if Input.is_action_just_pressed("ui_left"): inventory.move(Vector2i.LEFT)
 	if Input.is_action_just_pressed("ui_right"): inventory.move(Vector2i.RIGHT)
+	if Input.is_action_just_pressed("inventory_tab"): inventory.switch_tab()
 	# Pick up, put down, cancel, drop, sort (D-177, D-178). The mouse's
-	# clicks are the board's own.
+	# clicks are the board's own. On the CRAFT tab, confirm makes, and
+	# held keeps making.
 	if Input.is_action_just_pressed("inventory_pick"): inventory.pick_or_place()
+	_hold_to_make(get_physics_process_delta_time())
 	if Input.is_action_just_pressed("inventory_cancel"): inventory.cancel()
 	if Input.is_action_just_pressed("drop_one") and not capture_combo_held(): inventory.drop_one()
 	if Input.is_action_just_pressed("drop_stack"): inventory.drop_stack()
 	if Input.is_action_just_pressed("inventory_sort"): inventory.sort()
+
+
+# Confirm held on the CRAFT tab makes again after a moment, then at a
+# steady pace, while the inputs last (D-222).
+func _hold_to_make(delta: float) -> void:
+	if inventory.tab != InventoryOverlay.TAB.CRAFT or not Input.is_action_pressed("inventory_pick"):
+		_make_held = 0.0
+		return
+	var before: float = _make_held
+	_make_held += delta
+	if _make_held < MAKE_HOLD_SECONDS: return
+	var steps_before: int = floori(maxf(before - MAKE_HOLD_SECONDS, -1.0) / MAKE_REPEAT_SECONDS)
+	var steps_now: int = floori((_make_held - MAKE_HOLD_SECONDS) / MAKE_REPEAT_SECONDS)
+	if steps_now > steps_before: inventory.make()
 
 
 func _physics_process(delta: float) -> void:
@@ -169,6 +216,11 @@ func _physics_process(delta: float) -> void:
 	actor.move(move)
 	if support_overlay != null and Input.is_action_just_pressed("support_overlay"):
 		support_overlay.toggle()
+	# The map, over everything; play goes on under it (D-226)
+	if map != null:
+		if Input.is_action_just_pressed("open_map"): map.toggle()
+		if map.is_open and Input.is_action_just_pressed("map_up"): map.step_level(-1)
+		if map.is_open and Input.is_action_just_pressed("map_down"): map.step_level(1)
 	if inventory != null and Input.is_action_just_pressed("inventory"):
 		inventory.toggle()
 		if inventory.is_open and build != null: build.set_active(false)
@@ -181,6 +233,8 @@ func _physics_process(delta: float) -> void:
 	if build != null and Input.is_action_just_pressed("build_mode") and not capture_combo_held():
 		build.toggle()
 	if Input.is_action_just_pressed("quick_prop"): _quick_prop()
+	# L or D-pad up: the light in its slot, lit or put out (D-228)
+	if Input.is_action_just_pressed("toggle_light"): actor.toggle_light()
 	if build != null and build.active:
 		_build_mode(move, delta)
 	else:
@@ -199,14 +253,23 @@ func _physics_process(delta: float) -> void:
 	# interact with, so A refuses the climb rather than taking (slice
 	# 011 trap 5).
 	if Input.is_action_just_pressed("interact_or_take"): interact_or_take()
+	# Interact held cranks a winch (D-225): E, or pad A, which is also
+	# interact. Build mode leaves the winch alone.
+	var held: bool = Input.is_action_pressed("interact") or Input.is_action_pressed("interact_or_take")
+	actor.crank(held and not (build != null and build.active))
 
 
-# Pad A (D-167): a ladder is used, even one too heavy to climb, which
+# Pad A (D-167): a crate faced that holds something is emptied, even
+# at the top of a winch's hole, where holding A on goes on to crank
+# (D-224, D-225); a ladder is used, even one too heavy to climb, which
 # refuses; with nothing to interact with, everything in reach is
 # taken, and the notice says what.
 func interact_or_take() -> void:
-	if actor.has_interaction(): actor.interact()
-	else: actor.current_level.world.take_requested.emit(actor)
+	var world: World = actor.current_level.world
+	var crate: Fixture = world.crate_faced(actor)
+	if crate != null and not crate.contents.is_empty(): world.take_requested.emit(actor)
+	elif actor.has_interaction(): actor.interact()
+	else: world.take_requested.emit(actor)
 
 
 func _get_aim() -> Vector2:
@@ -246,6 +309,7 @@ func _update_device_scheme(event: InputEvent) -> void:
 	if current_device_scheme != was:
 		Log.event(Log.INPUT, &"device", {"actor": Log.actor_id(actor),
 			"scheme": DEVICE_SCHEME.find_key(current_device_scheme)})
+		device_scheme_changed.emit(current_device_scheme)
 
 
 

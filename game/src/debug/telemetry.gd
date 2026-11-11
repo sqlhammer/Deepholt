@@ -17,6 +17,12 @@ extends Node
 # player's level changes. Trips are per player, every player (D-045):
 # from going below the depth it started the session on to coming back
 # up to it (D-208).
+#
+# The haul (015, D-198's chute events): chutes and winches built, with
+# how many trips their builder had started by then, so pre-alpha
+# criterion 1 (a chute before the 5th expedition) can be counted;
+# items sent down chutes; crates lifted and lowered; things made; and
+# map opens.
 
 const DIR: String = "user://telemetry"
 const ZIP_NAME: String = "deepholt-telemetry.zip"
@@ -51,6 +57,18 @@ var _saves: PackedFloat32Array = PackedFloat32Array()
 var _loads: PackedFloat32Array = PackedFloat32Array()
 var _generations: PackedFloat32Array = PackedFloat32Array()
 var _crashed: Dictionary = {}
+# The haul's counts, for the summary
+var _built: Dictionary[String, int] = {}
+var _chute_uses: int = 0
+var _chute_items: int = 0
+var _lifts: int = 0
+var _lowers: int = 0
+var _kilos_lifted: float = 0.0
+var _crafted: Dictionary[String, int] = {}
+var _map_opens: int = 0
+# The trips each player started before its first chute, or -1 before
+# one is built: criterion 1
+var _first_chute_after: int = -1
 
 
 # A build tagged `playtest` records; nothing else does (D-201).
@@ -133,6 +151,17 @@ func watch_world(world: World) -> void:
 			World.FIXTURE_REFUSAL.find_key(r)))
 	world.climb_refused.connect(func(a: Actor, _t: WorldPos) -> void:
 		_refused(a, "climb", "TOO_HEAVY"))
+	world.crank_refused.connect(func(a: Actor, r: int) -> void:
+		_refused(a, "crank", World.CRANK_REFUSAL.find_key(r)))
+	world.craft_refused.connect(func(a: Actor, _id: StringName, r: int) -> void:
+		_refused(a, "craft", World.CRAFT_REFUSAL.find_key(r)))
+	world.fixture_placed.connect(_on_fixture_placed)
+	world.items_chuted.connect(_on_items_chuted)
+	world.crate_arrived.connect(_on_crate_arrived)
+	world.crafted.connect(func(a: Actor, recipe: Recipe) -> void:
+		if not _is_player(a): return
+		_crafted[String(recipe.id)] = _crafted.get(String(recipe.id), 0) + 1
+		record(&"crafted", {"recipe": recipe.id}))
 	# Announced before the world records how long it took: read after
 	world.level_added.connect(func(level: Level) -> void:
 		var depth: int = level.depth
@@ -148,6 +177,51 @@ func watch_actor(actor: Actor) -> void:
 	if actor.actor_kind != ActorKind.ACTOR.PLAYER or _trips.has(actor.actor_id): return
 	_trips[actor.actor_id] = {"start_depth": actor.depth, "actor": weakref(actor)}
 	actor.actor_worldpos_changed.connect(_on_moved)
+
+
+# The map opened (D-226), on the level it shows.
+func record_map_opened(depth: int) -> void:
+	_map_opens += 1
+	record(&"map_opened", {"depth": depth})
+
+
+static func _is_player(actor: Actor) -> bool:
+	return is_instance_valid(actor) and actor.actor_kind == ActorKind.ACTOR.PLAYER
+
+
+# How many trips a player has started this session.
+func trips_started(actor: Actor) -> int:
+	return _trips.get(actor.actor_id, {}).get("count", 0) if _is_player(actor) else 0
+
+
+# A chute or winch a player built, with its trips so far (criterion 1).
+func _on_fixture_placed(actor: Actor, fixture: Fixture) -> void:
+	if not _is_player(actor): return
+	if fixture.kind != ObjectKind.OBJECT.CHUTE and fixture.kind != ObjectKind.OBJECT.WINCH: return
+	var kind: String = ObjectKind.OBJECT.find_key(fixture.kind)
+	_built[kind] = _built.get(kind, 0) + 1
+	var trips: int = trips_started(actor)
+	if fixture.kind == ObjectKind.OBJECT.CHUTE and _first_chute_after < 0: _first_chute_after = trips
+	record(&"built", {"kind": kind, "depth": fixture.tile.depth, "trips_started": trips})
+
+
+func _on_items_chuted(actor: Actor, top: WorldPos, landed: WorldPos, id: StringName,
+		count: int) -> void:
+	if not _is_player(actor): return
+	_chute_uses += 1
+	_chute_items += count
+	record(&"chuted", {"from_depth": top.depth, "to_depth": landed.depth, "item": id, "count": count})
+
+
+func _on_crate_arrived(actor: Actor, winch: Fixture, crate: Fixture, at_top: bool) -> void:
+	if not _is_player(actor): return
+	var kilos: float = crate.contents.total_weight if crate.contents != null else 0.0
+	if at_top:
+		_lifts += 1
+		_kilos_lifted += kilos
+	else:
+		_lowers += 1
+	record(&"winched", {"up": at_top, "depth": winch.tile.depth, "kilos": snappedf(kilos, 0.1)})
 
 
 func record_save(reason: StringName, msec: float, ok: bool) -> void:
@@ -172,11 +246,13 @@ func _on_moved(actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> void:
 	var trip: Dictionary = _trips.get(actor.actor_id, {})
 	if trip.is_empty(): return
 	if not trip.has("open") and new_pos.depth > trip.start_depth:
+		trip["count"] = trip.get("count", 0) + 1
 		trip["open"] = true
 		trip["started_msec"] = Time.get_ticks_msec()
 		trip["deepest"] = new_pos.depth
 		trip["overloaded_seconds"] = 0.0
-		record(&"trip_started", {"from_depth": old_pos.depth, "to_depth": new_pos.depth})
+		record(&"trip_started", {"from_depth": old_pos.depth, "to_depth": new_pos.depth,
+			"trip": trip.count})
 	elif trip.has("open"):
 		trip.deepest = maxi(trip.deepest, new_pos.depth)
 		if new_pos.depth <= trip.start_depth: _close_trip(actor.actor_id, actor, true)
@@ -307,6 +383,10 @@ func summary(length_seconds: float, facts: Dictionary = {}) -> Dictionary:
 		"loads": _timings(_loads),
 		"generations": _timings(_generations),
 		"errors": Log.error_counts(),
+		"haul": {"built": _built, "first_chute_after_trips": _first_chute_after,
+			"chute_uses": _chute_uses, "chute_items": _chute_items, "winch_lifts": _lifts,
+			"winch_lowers": _lowers, "kilos_lifted": snappedf(_kilos_lifted, 0.1),
+			"crafted": _crafted, "map_opens": _map_opens},
 	}, true)
 	return result
 

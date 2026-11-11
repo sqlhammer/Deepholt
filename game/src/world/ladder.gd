@@ -26,6 +26,15 @@ static func can_climb(tuning: TuningProfile, load_ratio: float) -> bool:
 	return load_ratio <= tuning.ladder_load_limit
 
 
+# How long a climb takes at a load (D-233): the profile's seconds,
+# times the multiplier of the highest step the load is past.
+static func climb_seconds(tuning: TuningProfile, load_ratio: float) -> float:
+	var multiplier: float = 1.0
+	for step: Vector2 in tuning.climb_load_steps:
+		if load_ratio > step.x: multiplier = step.y
+	return tuning.ladder_climb_seconds * multiplier
+
+
 # Where interact takes an actor standing on `here`, on `level`, and
 # facing `facing`, or null if it doesn't take a ladder. The levels
 # above and below come from the level's world (D-126).

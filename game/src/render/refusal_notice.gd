@@ -22,6 +22,14 @@ const BREACH_REASONS: Dictionary = {
 	World.BREACH_REFUSAL.LANDING_BLOCKED: "Something below is in the way.",
 	World.BREACH_REFUSAL.TOOL_TOO_WEAK: "This floor is too hard for your tool.",
 	World.BREACH_REFUSAL.NEEDS_PICK: "Breaching needs a pick.",
+	World.BREACH_REFUSAL.SHAFTS_CANT_JOIN: "That would join two shafts that can't share.",
+}
+
+# Said once per tile faced (D-217, D-218). Other dig refusals are no
+# attempt (open floor, the edge) and stay quiet.
+const DIG_REASONS: Dictionary = {
+	World.DIG_REFUSAL.CRUSHED: "Collapsed solid. Clearing this needs shoring and jacks.",
+	World.DIG_REFUSAL.TOOL_TOO_WEAK: "This ore is too hard for your pick.",
 }
 
 const PLACE_REASONS: Dictionary = {
@@ -32,6 +40,17 @@ const PLACE_REASONS: Dictionary = {
 	World.FIXTURE_REFUSAL.TILE_OCCUPIED: "Something below is in the way.",
 	World.FIXTURE_REFUSAL.CANNOT_AFFORD: "You don't have enough to build that.",
 	World.FIXTURE_REFUSAL.ACTOR_ON_TILE: "Someone is standing there.",
+	World.FIXTURE_REFUSAL.NEEDS_HOLE: "That goes over a hole.",
+	World.FIXTURE_REFUSAL.HOLE_IN_USE: "A hole holds one ladder, chute or winch.",
+	World.FIXTURE_REFUSAL.LANDING_BLOCKED: BuildCursor.CRATE_NEEDS_FLOOR_TEXT,
+	World.FIXTURE_REFUSAL.WINCH_SHAFT: BuildCursor.WINCH_SHAFT_TEXT,
+}
+
+const CRANK_REASONS: Dictionary = {
+	World.CRANK_REFUSAL.FROM_BELOW: "The winch is cranked from the top.",
+	World.CRANK_REFUSAL.LANDING_BLOCKED: "Something is in the crate's way.",
+	World.CRANK_REFUSAL.CRATE_FULL: "The crate is full.",
+	World.CRANK_REFUSAL.CRATE_ELSEWHERE: "The crate is at another winch in this shaft.",
 }
 
 var text: String:
@@ -76,6 +95,9 @@ func _on_shown_world_changed(world: World, _depth: int) -> void:
 		_world.actor_moved_clear.disconnect(_on_actor_moved_clear)
 		_world.took.disconnect(_on_took)
 		_world.chop_refused.disconnect(_on_chop_refused)
+		_world.dig_refused.disconnect(_on_dig_refused)
+		_world.crank_refused.disconnect(_on_crank_refused)
+		_world.items_crated.disconnect(_on_items_crated)
 	_world = world
 	if _world != null:
 		_world.breach_refused.connect(_on_breach_refused)
@@ -85,6 +107,9 @@ func _on_shown_world_changed(world: World, _depth: int) -> void:
 		_world.actor_moved_clear.connect(_on_actor_moved_clear)
 		_world.took.connect(_on_took)
 		_world.chop_refused.connect(_on_chop_refused)
+		_world.dig_refused.connect(_on_dig_refused)
+		_world.crank_refused.connect(_on_crank_refused)
+		_world.items_crated.connect(_on_items_crated)
 
 
 # Build mode's own preview refusals (D-154): too dark, not a hole.
@@ -129,6 +154,26 @@ static func took_text(items: Dictionary) -> String:
 		var item: Item = ItemRegistry.find(id)
 		parts.append("%d %s" % [items[id], item.display_key if item != null else String(id)])
 	return "Took %s." % ", ".join(parts)
+
+
+func _on_dig_refused(actor: Actor, _tile: WorldPos, reason: World.DIG_REFUSAL) -> void:
+	if _view == null or actor != _view.actor: return
+	if DIG_REASONS.has(reason): show_text(DIG_REASONS[reason])
+
+
+func _on_crank_refused(actor: Actor, reason: World.CRANK_REFUSAL) -> void:
+	if _view == null or actor != _view.actor: return
+	if CRANK_REASONS.has(reason): show_text(CRANK_REASONS[reason])
+
+
+# How full the crate is, each time something goes in (D-224).
+func _on_items_crated(actor: Actor, crate: Fixture, _id: StringName, _count: int) -> void:
+	if _view == null or actor != _view.actor: return
+	show_text(crate_text(crate.contents.total_weight, _world.tuning.crate_capacity_kg))
+
+
+static func crate_text(weight: float, capacity: float) -> String:
+	return "In the crate: %d / %d kg" % [roundi(weight), roundi(capacity)]
 
 
 func _on_climb_refused(actor: Actor, _tile: WorldPos) -> void:

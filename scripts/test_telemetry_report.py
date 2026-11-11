@@ -32,6 +32,12 @@ def _fixture(path):
 		{"t": 5, "event": "trip_started", "data": {"from_depth": 0, "to_depth": 1}},
 		{"t": 6, "event": "refused", "data": {"verb": "breach", "reason": "NEEDS_PICK"}},
 		{"t": 7, "event": "refused", "data": {"verb": "breach", "reason": "NEEDS_PICK"}},
+		{"t": 8, "event": "built", "data": {"kind": "CHUTE", "depth": 1, "trips_started": 1}},
+		{"t": 8, "event": "chuted", "data": {"from_depth": 1, "to_depth": 2, "item": "stone",
+			"count": 12}},
+		{"t": 8, "event": "winched", "data": {"up": True, "depth": 1, "kilos": 54.0}},
+		{"t": 8, "event": "winched", "data": {"up": False, "depth": 1, "kilos": 0.0}},
+		{"t": 8, "event": "map_opened", "data": {"depth": 2}},
 		{"t": 9, "event": "trip_ended", "data": {"seconds_below": 600, "deepest": 2,
 			"kilos_home": 31.5, "overloaded_seconds": 200, "finished": True}},
 		{"t": 10, "event": "session_ended", "data": {"length_seconds": 900}},
@@ -70,7 +76,11 @@ class ReportTest(unittest.TestCase):
 		self.assertIn("refused breach:NEEDS_PICK x2", text)
 		self.assertIn("frames p50 17 ms, p95 20 ms, p99 34 ms", text)
 		self.assertIn("2 sessions (1 ended, 1 crashed)", text)
-		self.assertIn("1 chute before the 5th expedition: not measurable yet", text)
+		self.assertIn("1 chute before the 5th expedition: 1 of 2 sessions (1 built one at all", text)
+		self.assertIn("built a chute on -1 after 1 trips", text)
+		self.assertIn("chute used 1 times, 12 items down", text)
+		self.assertIn("winch lifted 1 crates (54.0 kg), lowered 1", text)
+		self.assertIn("map opened 1 times", text)
 		# The second session's only trip was overloaded over 2 minutes
 		self.assertIn("5 nobody abandons", text)
 		self.assertIn("1 of 2 sessions", text)

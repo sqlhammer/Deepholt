@@ -30,6 +30,9 @@ uniform float remembered_brightness = 1.0;
 uniform int unknown_ore_cell = 0;
 // The cell that draws nothing: a tile with no ore draws it
 uniform int empty_cell = 0;
+// The shown depth's look (D-216): multiplies the art. Greys are taken
+// after it, so a tinted level's dark reads the same as any other's.
+uniform vec4 tint : source_color = vec4(1.0);
 
 const int UNKNOWN = 0;
 const int REMEMBERED = 1;
@@ -98,6 +101,7 @@ void fragment() {
 		bool has_ore = ore_cell != empty_cell;
 		if (state == SENSED && has_ore) ore_cell = unknown_ore_cell;
 		if (state != REMEMBERED) colour = paint_over(colour, atlas_texel(ore_cell, within_tile));
+		colour.rgb *= tint.rgb;
 
 		if (state == SENSED) colour = grey(colour, sensed_brightness);
 		if (state == REMEMBERED) colour = grey(colour, remembered_brightness);

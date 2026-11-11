@@ -51,8 +51,8 @@ func test_tin_and_grass_have_art() -> void:
 
 # --- caves (D-184) ---
 
-func test_minus_one_and_minus_two_have_two_or_three_sealed_caves() -> void:
-	for depth: int in [1, 2]:
+func test_minus_one_to_minus_three_have_two_or_three_sealed_caves() -> void:
+	for depth: int in [1, 2, 3]:
 		for world_seed: int in [0, 1, 2]:
 			var level: Level = _level(depth, world_seed)
 			var caves: Array[Rect2i] = _caves(depth, world_seed)
@@ -77,8 +77,9 @@ func test_caves_keep_clear_of_the_fixed_rooms_and_each_other() -> void:
 					"depth %d: caves %d and %d apart" % [depth, i, j])
 
 
-func test_deeper_levels_have_no_caves_yet() -> void:
-	assert_eq(LevelRecipes.TABLE.get_recipe(3).cave_prefabs.size(), 0, "-3: none")
+func test_minus_three_has_caves_and_deeper_levels_none_yet() -> void:
+	assert_gt(LevelRecipes.TABLE.get_recipe(3).cave_prefabs.size(), 0, "-3 has caves (D-216)")
+	assert_eq(LevelRecipes.TABLE.get_recipe(4).cave_prefabs.size(), 0, "-4: none")
 	assert_eq(LevelRecipes.TABLE.get_recipe(0).cave_prefabs.size(), 0, "the Surface: none")
 
 
@@ -96,6 +97,13 @@ func _caves(depth: int, world_seed: int) -> Array[Rect2i]:
 	level.setup(depth, world_seed, recipe.bound)
 	var rng: RandomNumberGenerator = LevelGenerator.rng_for(level)
 	LevelGenerator.apply_fixed_placements(level, recipe, IdAllocator.new())
+	# The steps before caves, in generate_level's order, so the caves
+	# are the ones a generated level holds (D-229, D-218)
+	var landings: Array[Vector2i] = []
+	if not recipe.fixed_placements.is_empty(): landings.append(DescentGeneration.landing_of(recipe))
+	var chamber: Rect2i = DescentGeneration.place_descent(level, recipe, rng, _tuning)
+	if chamber.has_area(): landings.append(chamber.get_center())
+	RegionGeneration.place_crushed(level, recipe, rng, _tuning, landings)
 	return RockGeneration.place_caves(level, recipe, rng, _tuning)
 
 

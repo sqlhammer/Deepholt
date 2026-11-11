@@ -44,6 +44,11 @@ const DEFAULT_ID: String = "default"
 # fast as its power alone would.
 @export var tool_multipliers: Dictionary[int, Dictionary] = {}
 
+# The least tool power that digs each ore at all, keyed by its
+# TileKind.ORE id (D-217): iron needs more than flint has. An ore it
+# doesn't list needs nothing.
+@export var ore_tool_power_needed: Dictionary[int, float] = {}
+
 # What digging yields (D-156): stone per rock wall, and the range of
 # ore an ore vein gives.
 @export var rock_wall_stone: int = 0
@@ -81,6 +86,13 @@ const DEFAULT_ID: String = "default"
 
 # Past this load, no ladder can be climbed (D-030, D-159).
 @export var ladder_load_limit: float = 0.0
+
+# How long a climb takes, up or down (D-233, tuning appendix §2): the
+# seconds unloaded, and the multiplier on them past each load, as
+# (load, multiplier) points: past the first load the first multiplier,
+# and so on. A load under every point climbs at x1.
+@export var ladder_climb_seconds: float = 0.0
+@export var climb_load_steps: Array[Vector2] = []
 
 # What placing a ladder costs, item id -> count (D-156): four timber.
 @export var ladder_cost: Dictionary[StringName, int] = {}
@@ -130,6 +142,22 @@ const DEFAULT_ID: String = "default"
 @export var vein_size_min: int = 0
 @export var vein_size_max: int = 0
 
+# The way down from a level that has one (D-215, D-229): how far its
+# ramp's chamber lies from the level's landing, in tiles, and the
+# width range of the tunnel carved between them.
+@export var descent_distance_min: int = 0
+@export var descent_distance_max: int = 0
+@export var tunnel_width_min: int = 0
+@export var tunnel_width_max: int = 0
+
+# A CRUSHED region (D-218): the radius range of the circles its blob
+# is built from, how many circles, and how far its center keeps from
+# the level's landing, in tiles.
+@export var crushed_radius_min: int = 0
+@export var crushed_radius_max: int = 0
+@export var crushed_lobes: int = 0
+@export var crushed_distance_min: int = 0
+
 # Felling a tree (D-181): the work an axe does, at its power per
 # second (48 at flint's 16 is 3 s), and the timber it gives.
 @export var tree_work: float = 0.0
@@ -138,6 +166,25 @@ const DEFAULT_ID: String = "default"
 # What placing a timber prop costs, item id -> count (D-165): two
 # timber.
 @export var prop_cost: Dictionary[StringName, int] = {}
+
+# What a chute costs, item id -> count (D-220): two timber, since down
+# is the cheap direction.
+@export var chute_cost: Dictionary[StringName, int] = {}
+
+# The hand winch (D-224, D-225): what it costs, item id -> count; how
+# many seconds one player's cranking takes to lift its crate a level
+# and to lower it; and how much the crate holds, in kg. Two players
+# cranking add their rates.
+@export var winch_cost: Dictionary[StringName, int] = {}
+@export var winch_lift_seconds: float = 0.0
+@export var winch_lower_seconds: float = 0.0
+@export var crate_capacity_kg: float = 0.0
+
+# The torch (D-221): how long one burns while lit, in seconds, and how
+# far its light reaches, in steps through open space, carried or
+# dropped.
+@export var torch_burn_seconds: float = 0.0
+@export var torch_light_radius: int = 0
 
 ## Presentation
 

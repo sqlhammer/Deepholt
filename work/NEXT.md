@@ -1,8 +1,7 @@
 # Next
 
-Sketches, not commitments. Slices 012 to 014 and 014a are closed and merged. Derik walked
-012 to 014 with the UAT docs (`work/lesson/uat-*.md`); his fixes are 014b (D-211 to D-214,
-[log](./log/014b-uat-fixes.md)). **015, the long haul, is planned in [NOW.md](./NOW.md).**
+Sketches, not commitments. Slices 012 to 014b are closed and merged. **015, the long haul, is
+closed and merged** (2026-11-11, [log](./log/015-the-long-haul.md)). 016 is next.
 
 **015 to 017 were accepted together** (Derik, 2026-11-10, D-210), larger than earlier slices,
 **all in Agent mode.** Together they take the game to the first session in
@@ -22,8 +21,12 @@ playtest of hauling would measure nothing. This makes the pack a choice (ore or 
 here or at home), and criterion 4, a smelter sited near the mine without being told, can't
 happen until a smelter exists. Tool tiers make going deeper progress, not just distance.
 
-*From 015:* how −3 is reached (its fork 1) decides whether bronze opens a new way down or only
-a faster one. The crate is built in 015; storage reuses it.
+*From 015:* −3 is reached by a ramp (D-215), so breaching −2's floor with bronze is a way to
+put your own shaft where you want it, not the only way down. **Bronze must dig iron** (D-217:
+flint is refused), so outcome 2 of 015, "iron is worth the climb", is walked here. The bench
+recipes go in the CRAFT tab's "at a workbench" section (D-222), shown when standing at one. The
+winch's crate belongs to its winch (D-224), so storage is a fixture of its own, though it can
+reuse `Fixture.contents`. The lantern's fuel is still unsourced; it needs a resource.
 
 ## 017 — Ore comes up without you
 
@@ -110,3 +113,15 @@ Found during 005, not recorded anywhere else. None of it is decided.
 - **Not built from digging-and-structure §4:** coverage rings around supports, ghosted column
   suggestions, and the header showing the depth's R. Cut stone columns (+1 at −2) are the next
   support kind; they would be a new object kind beside the prop.
+- **From 015:** Page Up / Page Down change the map's level, but Derik's laptop may not deliver
+  them (the wheel does work). If so, the map needs another keyboard key.
+- **From 015:** `test_rock_generation`'s cave helper repeats `generate_level`'s early steps,
+  and breaks whenever a step is added before caves. A hook that reports where caves went would
+  end that.
+- **From 015:** another player's torch moving doesn't redraw your screen on its own; it shows
+  at your next step. Fine for one player at a keyboard; local co-op would want a signal.
+- **From 015:** the map rebuilds a level's picture at most every 0.25 s while memory grows.
+  It's unmeasured on −7 (radius 207).
+- **From 015:** the chute, winch, crate and torch art are placeholders drawn by script.
+- **Coverage at the end of slice 015: 91.4%** (012 closed at 95.0%). The gap is the CRAFT tab's
+  and the map's drawing, which only a windowed run reaches.

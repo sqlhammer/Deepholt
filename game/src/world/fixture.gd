@@ -17,6 +17,13 @@ var tile: WorldPos:
 	get: return WorldPos.new(_tile.x, _tile.y, _tile.depth)
 	set(_value): push_error("Fixture #%d's tile is read-only; move it through its world (D-138)." % id)
 var id: int
+# What a fixture that holds items holds (a crate, D-224), or null for
+# one that holds nothing. It travels with the fixture when it moves
+# between levels, and is saved with it.
+var contents: Pack = null
+# Seconds left before a fixture that burns down is gone (a dropped
+# torch, D-221); below zero for one that doesn't. Saved with it.
+var time_left: float = -1.0
 
 var _tile: WorldPos
 

@@ -12,6 +12,8 @@ var build_cursor: BuildCursor
 var inventory: InventoryOverlay
 # The followed actor's hotbar on screen (D-170)
 var hotbar_hud: HotbarHud
+# The local player's map (D-226)
+var map: MapOverlay
 # The support overlay (D-163)
 var support_overlay: SupportOverlay
 # Ctrl+F9 or the pad's combo writes a bug report (D-194, D-195);
@@ -105,6 +107,14 @@ func set_user_control(actor: Actor) -> void:
 	input.support_overlay = support_overlay
 	input.hotbar_hud = hotbar_hud
 	hotbar_hud.slot_clicked.connect(input.select_slot)
+	# Keys on screen are the scheme in use's only (D-223)
+	input.map = map
+	var on_pad: bool = input.current_device_scheme == InputHandler.DEVICE_SCHEME.GAMEPAD
+	inventory.set_gamepad(on_pad)
+	map.set_gamepad(on_pad)
+	input.device_scheme_changed.connect(func(scheme: InputHandler.DEVICE_SCHEME) -> void:
+		inventory.set_gamepad(scheme == InputHandler.DEVICE_SCHEME.GAMEPAD)
+		map.set_gamepad(scheme == InputHandler.DEVICE_SCHEME.GAMEPAD))
 	add_child(input)
 	_input_handlers.append(input)
 	
@@ -537,6 +547,16 @@ func _create_view() -> void:
 	# frame, shows its own (D-190)
 	carry.watch_inventory(inventory)
 	refusals.watch_inventory(inventory)
+	# The map (D-226, D-227) and the depth strip (ui-ux §6)
+	map = MapOverlay.new()
+	add_child(map)
+	map.watch(view)
+	var strip: DepthStrip = DepthStrip.new()
+	add_child(strip)
+	strip.watch(view)
+	strip.watch_inventory(inventory)
+	map.open_changed.connect(func(open: bool) -> void:
+		if open and telemetry != null: telemetry.record_map_opened(map.shown_depth))
 
 
 # The one way a world comes in, at launch, for a new game and on a

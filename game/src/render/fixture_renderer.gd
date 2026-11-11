@@ -19,7 +19,29 @@ const TEXTURES: Dictionary = {
 	ObjectKind.OBJECT.BRAZIER: preload("res://src/render/brazier.png"),
 	ObjectKind.OBJECT.TIMBER_PROP: preload("res://src/render/timber_prop.png"),
 	ObjectKind.OBJECT.TREE: preload("res://src/render/tree.png"),
+	ObjectKind.OBJECT.CHUTE: preload("res://src/render/chute.png"),
+	ObjectKind.OBJECT.WINCH: preload("res://src/render/winch.png"),
+	ObjectKind.OBJECT.CRATE: preload("res://src/render/crate.png"),
+	ObjectKind.OBJECT.TORCH: preload("res://src/render/torch_lit.png"),
 }
+
+# The bar over a winch while its crate is on the way (D-225): how far,
+# in the colors of a cursor's valid placement.
+const CRANK_BAR_COLOR: Color = Color(0.45, 0.95, 0.5)
+const CRANK_BAR_BACK: Color = Color(0.0, 0.0, 0.0, 0.6)
+# Drawn over the actors: under them, the cranking player's own head
+# hid it (Derik, walking 015)
+const CRANK_BAR_Z: int = 20
+# The foot of a winch's hole while its crate is up (D-232): brown
+# corners, each this many pixels long
+const LANDING_COLOR: Color = Color(0.55, 0.36, 0.18)
+const LANDING_CORNER: float = 4.0
+
+# Where a climb's bar sits from the climber's origin: over the head
+# of a 24 px actor, centered
+const CLIMB_BAR_OFFSET: Vector2 = Vector2(-8, -30)
+
+var _bars: Node2D
 
 # Kinds deliberately not drawn (D-091: the world spawn is invisible to
 # players). Kept apart from "no texture", which is an error: a new
@@ -59,6 +81,14 @@ const GREY: Shader = preload("res://src/render/grey.gdshader")
 var _visibility: Visibility
 var _sensed_material: ShaderMaterial
 var _remembered_material: ShaderMaterial
+
+
+func _ready() -> void:
+	_bars = Node2D.new()
+	_bars.name = "CrankBars"
+	_bars.z_index = CRANK_BAR_Z
+	_bars.draw.connect(_draw_bars)
+	add_child(_bars)
 
 
 # Follows the view's depth and world (D-094, D-129).
@@ -229,6 +259,109 @@ func _remove_sprite(id: int) -> void:
 
 func sprite_for(id: int) -> Sprite2D:
 	return _sprites.get(id)
+
+
+# --- the crank bar (D-225) ---
+
+# The winches on the shown level whose crate is on its way, each with
+# how far: what the bar draws.
+func cranking() -> Dictionary[Fixture, float]:
+	var found: Dictionary[Fixture, float] = {}
+	if _fixtures == null or not is_instance_valid(_world): return found
+	for winch: Fixture in _fixtures.of_kind(ObjectKind.OBJECT.WINCH):
+		var progress: float = _world.crank_progress(winch)
+		if progress > 0.0: found[winch] = progress
+	return found
+
+
+func _process(_delta: float) -> void:
+	queue_redraw()
+	if _bars != null: _bars.queue_redraw()
+
+
+# The bars, on their own node over the actors.
+func _draw_bars() -> void:
+	var bars: Dictionary[Fixture, float] = cranking()
+	for winch: Fixture in bars:
+		var corner: Vector2 = Vector2(winch.tile.x, winch.tile.y) * TileSpace.TILE_PIXELS
+		# Just above the winch's posts, which rise 8 px over the tile
+		var top: Vector2 = corner - Vector2(0, 12)
+		var filled: float = (TileSpace.TILE_PIXELS - 2) * bars[winch]
+		_bars.draw_rect(Rect2(top, Vector2(TileSpace.TILE_PIXELS, 3)), CRANK_BAR_BACK)
+		_bars.draw_rect(Rect2(top + Vector2(1, 1), Vector2(filled, 1)), CRANK_BAR_COLOR)
+	# A climb's bar over the climber's head (D-233)
+	for climber: Actor in climbing():
+		var top: Vector2 = climber.position + CLIMB_BAR_OFFSET
+		var filled: float = (TileSpace.TILE_PIXELS - 2) * climber.climb_progress()
+		_bars.draw_rect(Rect2(top, Vector2(TileSpace.TILE_PIXELS, 3)), CRANK_BAR_BACK)
+		_bars.draw_rect(Rect2(top + Vector2(1, 1), Vector2(filled, 1)), CRANK_BAR_COLOR)
+
+
+# The actors on the shown level part way up or down a ladder.
+func climbing() -> Array[Actor]:
+	var found: Array[Actor] = []
+	if not is_instance_valid(_world): return found
+	for actor: Actor in _world.actors():
+		if actor.depth == _shown_depth and actor.is_climbing(): found.append(actor)
+	return found
+
+
+# --- where a lifted crate comes back down (D-232) ---
+
+# The tiles of the shown level at the foot of a winch's shaft whose
+# crate is up: where it will come down (D-232, D-235). Only those the
+# player can see or remembers.
+func crate_landings() -> Array[Vector2i]:
+	var found: Array[Vector2i] = []
+	if not is_instance_valid(_world): return found
+	for level: Level in _world.levels():
+		if level.depth >= _shown_depth: continue
+		for winch: Fixture in level.level_fixtures.of_kind(ObjectKind.OBJECT.WINCH):
+			var tile: Vector2i = Vector2i(winch.tile.x, winch.tile.y)
+			if found.has(tile) or _world.rope_end(winch.tile) != _shown_depth: continue
+			# The foot, not a winch's hole: that winch is drawn there
+			var shown: Level = _world.level_at(_shown_depth)
+			if shown.level_tiles.get_ground(tile.x, tile.y) == TileKind.GROUND.HOLE: continue
+			var crate: Fixture = _world.shaft_crate(tile, winch.tile.depth)
+			if crate == null or crate.tile.depth == _shown_depth: continue
+			if _visibility != null and _visibility.state_at(tile.x, tile.y) == Visibility.STATE.UNKNOWN:
+				continue
+			found.append(tile)
+	return found
+
+
+# On the floor, under the actors: this node's own drawing is behind its
+# sprites and everything sorted with them.
+func _draw() -> void:
+	var size: float = TileSpace.TILE_PIXELS
+	var length: float = LANDING_CORNER
+	for tile: Vector2i in crate_landings():
+		var color: Color = landing_color(tile)
+		var a: Vector2 = Vector2(tile) * size + Vector2(1, 1)
+		var b: Vector2 = a + Vector2(size - 2, size - 2)
+		for corner: Vector2 in [a, Vector2(b.x, a.y), Vector2(a.x, b.y), b]:
+			var across: float = length if corner.x == a.x else -length
+			var down: float = length if corner.y == a.y else -length
+			draw_line(corner, corner + Vector2(across, 0), color, 1.0)
+			draw_line(corner, corner + Vector2(0, down), color, 1.0)
+
+
+# The marks' color on `tile`: brown where it's lit, and grey at the
+# world's brightness where it's only sensed or remembered, as fixtures
+# and tiles are drawn in the dark (D-146, D-148).
+func landing_color(tile: Vector2i) -> Color:
+	if _visibility == null: return LANDING_COLOR
+	var state: Visibility.STATE = _visibility.state_at(tile.x, tile.y)
+	if state == Visibility.STATE.LIT: return LANDING_COLOR
+	var tuning: TuningProfile = _world.tuning if is_instance_valid(_world) else null
+	var brightness: float = 1.0
+	if tuning != null:
+		brightness = tuning.sensed_brightness if state == Visibility.STATE.SENSED \
+			else tuning.remembered_brightness
+	# The shader's own grey: the usual luminance weights
+	var luma: float = LANDING_COLOR.r * 0.299 + LANDING_COLOR.g * 0.587 + LANDING_COLOR.b * 0.114
+	var grey: float = luma * brightness
+	return Color(grey, grey, grey)
 
 
 # Draws a ladder top in each of `shown_tiles`' holes that has a ladder

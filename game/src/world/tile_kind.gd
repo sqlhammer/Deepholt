@@ -59,6 +59,10 @@ const TOP: Dictionary = {
 	# What a collapse leaves (D-166): solid, cleared like a dig, and
 	# no support. Never reused.
 	"RUBBLE": 5,
+	# A CRUSHED region's fill (D-218): collapsed to solid, refused by
+	# every tool with its own message until deep shoring and jacks
+	# exist. Solid, so it holds a ceiling up. Never reused.
+	"CRUSHED": 6,
 }
 
 const ORE: Dictionary = {
@@ -67,6 +71,8 @@ const ORE: Dictionary = {
 	"COPPER": 2,
 	# Tin (D-183), on -2 beside copper. Never reused.
 	"TIN": 3,
+	# Iron (D-216), on -3; a bronze pick digs it (D-217). Never reused.
+	"IRON": 4,
 }
 
 # The top kinds that can be dug: the one owner of "diggable". How hard
@@ -78,7 +84,8 @@ const DIGGABLE: Array[int] = [TOP.MINABLE_ROCK, TOP.MINABLE_DIRT, TOP.RUBBLE]
 # The solid tops that hold a ceiling up (D-163): rock, dirt and
 # impenetrable walls. Rubble never does. The one owner of "support",
 # beside the props, which are fixtures.
-const SUPPORTING: Array[int] = [TOP.MINABLE_ROCK, TOP.MINABLE_DIRT, TOP.IMPENETRABLE_ROCK]
+const SUPPORTING: Array[int] = [TOP.MINABLE_ROCK, TOP.MINABLE_DIRT, TOP.IMPENETRABLE_ROCK,
+	TOP.CRUSHED]
 
 
 static func is_diggable(kind: int) -> bool:

@@ -21,13 +21,25 @@ const BARE_HANDS: ToolData = preload("res://src/entity/tools/bare_hands.tres")
 # The build slots a new hotbar starts with (D-174): ladder, then prop.
 const STARTING_BUILDS: Array[int] = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.TIMBER_PROP]
 
-# What build mode can place: the kinds a build slot may hold.
-const BUILDABLE: Array[int] = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.TIMBER_PROP]
+# What build mode can place: the kinds a build slot may hold. Each has
+# a slot: one a hotbar lacks takes its first empty build slot, so a
+# kind added later reaches a saved game's bar too.
+const BUILDABLE: Array[int] = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.TIMBER_PROP,
+	ObjectKind.OBJECT.CHUTE, ObjectKind.OBJECT.WINCH]
 
 var tools: Array[StringName] = []
 var builds: Array[int] = []
 var selected_tool: int = 0
 var selected_build: int = 0
+# The light slot (D-221, D-228), beside the tool slots so the pick
+# stays in hand: a light item the pack holds (an item tagged "light"),
+# taken by the slot as the pack gains one. `lit` is whether it burns,
+# and `light_left` the seconds the one burning has left.
+var light: StringName = &""
+var lit: bool = false
+var light_left: float = 0.0
+
+const LIGHT_TAG: StringName = &"light"
 
 var _pack: Pack
 # What the pack held at the last look, tool id -> count: a rise is a
@@ -44,6 +56,17 @@ func _init() -> void:
 	builds.fill(ObjectKind.OBJECT.NULL)
 	for i in range(STARTING_BUILDS.size()):
 		builds[i] = STARTING_BUILDS[i]
+	_offer_buildables()
+
+
+# Every buildable kind missing from the build slots takes the first
+# empty one, in BUILDABLE's order.
+func _offer_buildables() -> void:
+	for kind: int in BUILDABLE:
+		if builds.has(kind): continue
+		var empty: int = builds.find(ObjectKind.OBJECT.NULL)
+		if empty == -1: return
+		builds[empty] = kind
 
 
 # Follows a pack: its tools fill the slots, now and as it changes.
@@ -204,7 +227,71 @@ func reconcile(announce: bool = true) -> void:
 			gained -= 1
 	_seen = now
 	_fresh = false
-	if announce and tools != before: changed.emit(self)
+	var light_changed: bool = _reconcile_light()
+	if announce and (tools != before or light_changed): changed.emit(self)
+
+
+# The light slot follows the pack: emptied, and put out, when the pack
+# has none of its light left; filled with the first light the pack
+# holds when it's empty. Returns whether it changed.
+func _reconcile_light() -> bool:
+	var was: StringName = light
+	var was_lit: bool = lit
+	if light != &"" and _held(light) <= 0:
+		light = &""
+		lit = false
+		light_left = 0.0
+	if light == &"" and _pack != null:
+		for key: String in _pack.to_save():
+			var item: Item = ItemRegistry.find(StringName(key))
+			if item != null and LIGHT_TAG in item.tags:
+				light = StringName(key)
+				break
+	return light != was or lit != was_lit
+
+
+# --- the light (D-221) ---
+
+# Lights the slot's light, or puts it out. Lighting a fresh one starts
+# its full burn; one put out and lit again goes on where it stopped.
+# Returns whether it's lit now. Nothing to light, nothing changes.
+func toggle_light(burn_seconds: float) -> bool:
+	if lit:
+		lit = false
+	elif light != &"" and _held(light) > 0:
+		lit = true
+		if light_left <= 0.0: light_left = burn_seconds
+	changed.emit(self)
+	return lit
+
+
+# Burns the lit light for `delta` seconds. When one burns out it is
+# used up, and the next lights from the pack with a full burn, or the
+# slot goes dark. Returns whether one burned out.
+func burn(delta: float, burn_seconds: float) -> bool:
+	if not lit: return false
+	light_left -= delta
+	if light_left > 0.0: return false
+	var used: StringName = light
+	var carried_over: float = light_left
+	light_left = 0.0
+	_pack.remove(used, 1)
+	if lit and light == used: light_left = maxf(burn_seconds + carried_over, 0.0)
+	changed.emit(self)
+	return true
+
+
+# One light out of the pack, still burning: what dropping it lit takes
+# (D-221). The slot lights the next with a full burn, or goes dark.
+# Returns the seconds the one taken had left.
+func hand_over_light(burn_seconds: float) -> float:
+	var left: float = light_left
+	var used: StringName = light
+	light_left = 0.0
+	_pack.remove(used, 1)
+	if lit and light == used: light_left = burn_seconds
+	changed.emit(self)
+	return left
 
 
 # The pack's tools, id -> count, in the pack's order.
@@ -240,6 +327,9 @@ func to_save() -> Dictionary:
 		"builds": builds.duplicate(),
 		"selected_tool": selected_tool,
 		"selected_build": selected_build,
+		"light": String(light),
+		"lit": lit,
+		"light_left": light_left,
 	}
 
 
@@ -266,8 +356,15 @@ static func from_save(data: Variant) -> Hotbar:
 			hotbar.builds[i] = int(kind) if valid else ObjectKind.OBJECT.NULL
 	elif saved_builds != null:
 		push_warning("A hotbar's build slots aren't %d kinds; the starting layout is used." % SLOTS)
+	hotbar._offer_buildables()
 	hotbar.selected_tool = _slot_or_zero(data.get("selected_tool"))
 	hotbar.selected_build = _slot_or_zero(data.get("selected_build"))
+	# The light slot, from a save that has one; the pack's watch puts it
+	# right if the pack no longer holds that light
+	if data.get("light") is String: hotbar.light = StringName(data.light)
+	if data.get("lit") is bool: hotbar.lit = data.lit
+	var left: Variant = data.get("light_left")
+	if left is float or left is int: hotbar.light_left = maxf(float(left), 0.0)
 	return hotbar
 
 

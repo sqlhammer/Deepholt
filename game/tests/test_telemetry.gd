@@ -79,7 +79,9 @@ func test_both_presets_carry_the_playtest_tag() -> void:
 	assert_eq(presets.load("res://export_presets.cfg"), OK, "the presets exist")
 	var names: Array = []
 	for section: String in presets.get_sections():
-		if section.ends_with(".options"): continue
+		# Only the presets themselves: not their options, nor the
+		# editor's own sections (it writes `runnable_presets` on export)
+		if not section.begins_with("preset.") or section.ends_with(".options"): continue
 		names.append(presets.get_value(section, "platform"))
 		assert_string_contains(presets.get_value(section, "custom_features"), "playtest",
 			"%s is a playtest build" % presets.get_value(section, "name"))

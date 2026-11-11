@@ -108,7 +108,8 @@ func test_the_world_spawn_has_no_sprite() -> void:
 	renderer.show_fixtures(_levels[1].level_fixtures)
 	_levels[1].level_fixtures.add(Fixture.new(ObjectKind.OBJECT.WORLD_SPAWN, WorldPos.new(0, 0, 1), 4))
 	assert_null(renderer.sprite_for(4), "invisible on purpose (D-091)")
-	assert_eq(renderer.get_child_count(), 0, "no node made for it")
+	assert_eq(renderer.get_children().filter(func(child: Node) -> bool: return child is Sprite2D).size(), 0,
+		"no sprite made for it")
 
 
 func test_a_kind_with_no_art_is_an_error() -> void:

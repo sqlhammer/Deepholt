@@ -20,6 +20,7 @@ static func is_daylit(level: Level) -> bool:
 static func radius_of(kind: int, tuning: TuningProfile) -> int:
 	match kind:
 		ObjectKind.OBJECT.BRAZIER: return tuning.brazier_light_radius
+		ObjectKind.OBJECT.TORCH: return tuning.torch_light_radius
 	return -1
 
 
@@ -34,6 +35,25 @@ static func lit_tiles(level: Level, tuning: TuningProfile) -> Array[Vector2i]:
 		# Buried under rubble, a light gives none (D-166)
 		if level.level_tiles.get_top(from.x, from.y) != TileKind.TOP.OPEN: continue
 		for tile: Vector2i in Senses.flood(level.level_tiles, from, radius):
+			lit[tile] = true
+	var found: Array[Vector2i] = []
+	found.assign(lit.keys())
+	return found
+
+
+# Every tile lit by a light someone on the level carries (D-221): the
+# same flood, from where each stands, out to their light's radius.
+# Only the light's own radius is flooded, so a step costs one small
+# flood per carried light, not the level (015 trap 5).
+static func carried_lit_tiles(level: Level, actors: Array[Actor],
+		tuning: TuningProfile) -> Array[Vector2i]:
+	var lit: Dictionary[Vector2i, bool] = {}
+	for actor: Actor in actors:
+		if actor.current_level != level or not actor.hotbar.lit: continue
+		var here: WorldPos = actor.current_WorldPos
+		if here == null: continue
+		for tile: Vector2i in Senses.flood(level.level_tiles, Vector2i(here.x, here.y),
+				tuning.torch_light_radius):
 			lit[tile] = true
 	var found: Array[Vector2i] = []
 	found.assign(lit.keys())

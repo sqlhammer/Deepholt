@@ -112,6 +112,7 @@ def session_lines(session):
 	refusals = Counter("%s:%s" % (r.get("verb"), r.get("reason")) for r in _of(events, "refused"))
 	for key, count in refusals.most_common():
 		lines.append("  refused %s x%d" % (key, count))
+	lines.extend(haul_lines(events))
 	if summary:
 		frames = summary.get("frames", {})
 		lines.append("  frames p50 %s ms, p95 %s ms, p99 %s ms (slowest bucket %s ms)" % (
@@ -129,6 +130,35 @@ def session_lines(session):
 		for site, count in sorted(sites.items(), key=lambda kv: -kv[1])[:3]:
 			lines.append("    %s x%d" % (site, count))
 	return lines
+
+
+def haul_lines(events):
+	"""What was built for the haul, and how much it was used (015)."""
+	lines = []
+	for built in _of(events, "built"):
+		lines.append("  built a %s on -%s after %s trips" % (str(built.get("kind", "?")).lower(),
+			built.get("depth", "?"), built.get("trips_started", "?")))
+	chuted = _of(events, "chuted")
+	if chuted:
+		lines.append("  chute used %d times, %d items down" % (len(chuted),
+			sum(c.get("count", 0) for c in chuted)))
+	winched = _of(events, "winched")
+	if winched:
+		up = [w for w in winched if w.get("up")]
+		lines.append("  winch lifted %d crates (%.1f kg), lowered %d" % (len(up),
+			sum(w.get("kilos", 0) for w in up), len(winched) - len(up)))
+	maps = _of(events, "map_opened")
+	if maps:
+		lines.append("  map opened %d times" % len(maps))
+	return lines
+
+
+def first_chute_trips(events):
+	"""The trips started before the session's first chute, or None."""
+	for built in _of(events, "built"):
+		if built.get("kind") == "CHUTE":
+			return built.get("trips_started", 0)
+	return None
 
 
 def overall_lines(sessions):
@@ -155,7 +185,12 @@ def overall_lines(sessions):
 def criteria_lines(sessions):
 	"""What the data can say about pre-alpha-scope section 6."""
 	lines = ["Pre-alpha criteria (pre-alpha-scope section 6):"]
-	lines.append("  1 chute before the 5th expedition: not measurable yet (the chute comes in 015)")
+	# A chute built with fewer than five trips started: before the 5th
+	firsts = [first_chute_trips(s["events"]) for s in sessions]
+	built = [n for n in firsts if n is not None]
+	early = [n for n in built if n < 5]
+	lines.append("  1 chute before the 5th expedition: %d of %d sessions (%d built one at all; "
+		"unprompted is the tester's word)" % (len(early), len(sessions), len(built)))
 	for n in (2, 3, 6):
 		lines.append("  %d: judged in testers' own words, not from telemetry" % n)
 	lines.append("  4 smelter sited near the mine: not measurable yet (no smelter)")

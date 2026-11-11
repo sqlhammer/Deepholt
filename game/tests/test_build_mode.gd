@@ -153,8 +153,11 @@ func test_a_placed_ladder_climbs_both_ways() -> void:
 	_actor.move_to(WorldPos.new(HOLE.x - 1, 0, 1))
 	_actor.facing = Vector2i(1, 0)
 	assert_true(_actor.interact(), "down")
+	# Each climb takes its time (D-233)
+	_actor._physics_process(20.0)
 	assert_eq(_actor.depth, 2, "on -2")
 	assert_true(_actor.interact(), "and back up")
+	_actor._physics_process(20.0)
 	assert_eq(_actor.depth, 1, "on -1")
 
 
@@ -269,12 +272,15 @@ func test_the_cursor_places_the_selected_build_slot() -> void:
 	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "slot 1: a ladder to begin with")
 	_actor.hotbar.select_build(1)
 	assert_eq(_cursor.item, ObjectKind.OBJECT.TIMBER_PROP, "slot 2: a prop")
-	_actor.hotbar.select_build(2)
-	assert_eq(_cursor.item, ObjectKind.OBJECT.NULL, "slot 3: nothing")
+	# Every buildable has a slot, in BUILDABLE's order; the first slot
+	# past them is empty
+	var empty: int = Hotbar.BUILDABLE.size()
+	_actor.hotbar.select_build(empty)
+	assert_eq(_cursor.item, ObjectKind.OBJECT.NULL, "the first slot past the buildables: nothing")
 	assert_eq(_cursor.problem(), BuildCursor.PROBLEM.NOTHING_SELECTED, "and the preview says so")
 	assert_false(_cursor.place(), "nothing asked")
-	_actor.hotbar.assign_build(ObjectKind.OBJECT.LADDER, 2)
-	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "the ladder moved to slot 3")
+	_actor.hotbar.assign_build(ObjectKind.OBJECT.LADDER, empty)
+	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "the ladder moved there")
 
 
 func test_a_prop_is_placed_on_open_floor_at_the_cursor_for_two_timber() -> void:
@@ -342,7 +348,7 @@ func test_the_cursor_names_what_it_places_and_its_cost() -> void:
 	assert_eq(_cursor.label_text(), "Ladder · 4 timber", "slot 1")
 	_actor.hotbar.select_build(1)
 	assert_eq(_cursor.label_text(), "Timber prop · 2 timber", "slot 2")
-	_actor.hotbar.select_build(2)
+	_actor.hotbar.select_build(Hotbar.BUILDABLE.size())
 	assert_eq(_cursor.label_text(), "", "an empty slot says nothing")
 
 

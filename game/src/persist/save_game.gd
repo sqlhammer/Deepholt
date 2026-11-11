@@ -518,6 +518,9 @@ static func _serialize_level(level: Level) -> Dictionary:
 	level_data["fixtures"] = _serialize_fixtures(level.level_fixtures)
 	# What lies on the ground (D-160)
 	level_data["drops"] = level.level_drops.to_save()
+	# Its tagged regions (D-218); not written when there are none
+	if level.level_regions.count() > 0:
+		level_data["regions"] = level.level_regions.to_save()
 	# The countdowns running here (D-163); not written when there are none
 	if level.support != null:
 		var countdowns: Array = level.support.to_save()
@@ -532,12 +535,17 @@ static func _serialize_level(level: Level) -> Dictionary:
 static func _serialize_fixtures(fixtures: LevelFixtures) -> Array:
 	var data: Array = []
 	for fixture: Fixture in fixtures.all():
-		data.append({
+		var entry: Dictionary = {
 			"kind": fixture.kind,
 			"x": fixture.tile.x,
 			"y": fixture.tile.y,
 			"id": fixture.id,
-		})
+		}
+		# What it holds (a crate, D-224), as a pack is saved
+		if fixture.contents != null: entry["contents"] = fixture.contents.to_save()
+		# How long it has left to burn (a dropped torch, D-221)
+		if fixture.time_left >= 0.0: entry["time_left"] = fixture.time_left
+		data.append(entry)
 	return data
 
 
@@ -704,6 +712,10 @@ static func _deserialize_level(p_depth: int, p_level: Dictionary, world: World) 
 		# Its own generation too: the Surface's spawn is the road's (D-180)
 		shaped.generator = recipe.generator
 		shaped.cave_prefabs = recipe.cave_prefabs
+		shaped.descent_prefab = recipe.descent_prefab
+		shaped.crushed_regions = recipe.crushed_regions
+		# No arrival: the level above may not be built yet, and a save
+		# missing a layer is one from before arrivals existed
 		level = LevelGenerator.generate_level(shaped, world.world_seed, world.fixture_ids,
 			world.tuning)
 	# The save is the source of truth: its seed, never one recomputed
@@ -722,6 +734,10 @@ static func _deserialize_level(p_depth: int, p_level: Dictionary, world: World) 
 		level.level_fixtures = _deserialize_fixtures(p_depth, p_level.fixtures)
 	# A save from before drops has none
 	_deserialize_drops(p_level.get("drops", []), level)
+	# The saved regions replace generated ones; a save without them keeps
+	# what was generated, as a missing tile layer does (D-218)
+	if p_level.has("regions"):
+		level.level_regions = LevelRegions.from_save(p_level.regions, p_depth)
 
 	return level
 
@@ -776,7 +792,13 @@ static func _deserialize_fixtures(p_depth: int, p_fixtures: Array) -> LevelFixtu
 			push_warning("Saved fixture id %d is on depth %d twice; the second is skipped." % [
 				entry.id, p_depth])
 			continue
-		fixtures.add(Fixture.new(entry.kind, WorldPos.new(entry.x, entry.y, p_depth), entry.id))
+		var fixture: Fixture = Fixture.new(entry.kind, WorldPos.new(entry.x, entry.y, p_depth), entry.id)
+		# A crate holds what it was saved with; one saved without, nothing
+		if entry.has("contents") or entry.kind == ObjectKind.OBJECT.CRATE:
+			fixture.contents = Pack.from_save(entry.get("contents", {}))
+		var time_left: Variant = entry.get("time_left")
+		if time_left is float or time_left is int: fixture.time_left = float(time_left)
+		fixtures.add(fixture)
 	return fixtures
 
 

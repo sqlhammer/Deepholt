@@ -4274,3 +4274,350 @@ tree").
 
 *Why:* the world was added after the fixture renderer, so every actor was drawn over every
 fixture, and a player behind a tree stood in front of its canopy.
+
+---
+
+### D-215 — −3 is reached by a ramp the seed places on −2
+**Decided** (by Derik, slice 015's fork 1, 2026-11-10).
+
+- **Generation places a ramp down on −2,** in an `OPEN` region, as the Surface has into −1 and
+  as generation guarantee 2 expects of every level's descent point
+  ([world-and-generation §3](./world-and-generation.md)). It sits far enough from where a player
+  arrives on −2 that the walk between them is part of the haul.
+- **−2's floor stays at hardness 18,** so the flint pick (power 16) still can't breach it;
+  breaching it is bronze's, in 016.
+- **A test walks a fresh world's player from the Surface to −3** with the starting kit plus
+  what can be gathered (015's trap 1).
+
+*Why:* it keeps the depth curve and gives bronze a door to open, and it uses the same descent
+shape the Surface already has, so no new way of changing level is built.
+
+---
+
+### D-216 — −3 in 015: caves, iron veins, one `CRUSHED` region, a landing
+**Decided** (by Derik, slice 015's fork 2a, 2026-11-10).
+
+- **−3 is generated as −2 is:** caves from the same prefab pool, and iron ore in veins, the
+  [strata table](./world-and-generation.md#2-strata)'s ore for the Old Terraces.
+- **A landing** where −2's ramp (D-215) arrives, and **one `CRUSHED` region.**
+- **Its own look** is a palette of the existing tiles, not new art.
+- **Not in 015:** cut stone, salvage and the authored ruins; the ruins are 017's.
+
+*Why:* enough to make −3 worth the climb and to put the haul under test, without taking 017's
+work.
+
+---
+
+### D-217 — Iron ore needs a bronze pick; flint is refused with a reason
+**Decided** (by Derik, slice 015's fork 2b, 2026-11-10).
+
+- **A flint pick on iron ore is refused,** and the refusal says why (too hard for flint), never
+  "nothing happens".
+- **Bronze, in 016, digs it.** Tool tiers gate ore from the first metal on
+  ([crafting-and-progression](./systems/crafting-and-progression.md): flint → bronze → iron).
+
+*Why:* tool tiers should mean something from the first tier up, and iron seen and refused is a
+reason to make bronze.
+
+*Cost, named at the fork:* 015's criterion 2 ("iron is worth the climb") can't be walked until
+016 makes bronze. In 015 the haul is copper and tin up from −2 and spoil down, over the longer
+climb from −3.
+
+---
+
+### D-218 — A `CRUSHED` region is a region tag, filled with rubble that refuses every tool
+**Decided** (by Derik, slice 015's fork 3, 2026-11-10). The first piece of the region system
+that [D-012](#d-012--descent-is-gated-by-supply-capability-and-recovered-tech-at-region-level)
+describes ("levels are open, regions are earned").
+
+- **Generation tags a region `CRUSHED`** on −3 (D-216), and the tag is kept with the level.
+- **Its tiles are rubble,** a new solid tile drawn differently from rock, so you can see where
+  the region is before you reach it.
+- **Every tool refuses rubble with its own message,** saying it is collapsed and needs shoring
+  and jacks, so the gate reads as something to come back for (pre-alpha criterion 6).
+- `UNSTABLE` and `SEALED` regions build on the same tag later.
+
+*Why:* 017 and later need regions anyway, and a refusal of its own reads as intent, where rock
+too hard to dig reads like any other rock.
+
+---
+
+### D-219 — A chute is a fixture on its hole's level; a hole holds a ladder or a chute, not both
+**Decided** (by Derik, slice 015's fork 4a, 2026-11-10). Answers 015's trap 2 (shared holes).
+
+- **A chute is a fixture on the same level as its hole,** placed on the hole tile (a ladder is on
+  the level below, [D-089](#d-089--a-ladder-is-an-object-on-the-lower-level-a-hole-is-a-ground-kind-a-ramp-is-a-tile-kind)).
+- **One hole, one use.** Building a chute over a hole with a ladder under it is refused, and so
+  is building a ladder under a hole with a chute in it; each refusal says why. Tests cover both.
+- **Chutes stack:** items that land on a tile holding another chute keep falling, through every
+  chute below, to the first level with no chute at that (x, y).
+- Climbing, falling and cranking never have to know about each other.
+
+*Why:* keeps every vertical rule separate, at the cost of a second hole per shaft.
+
+---
+
+### D-220 — A chute costs 2 timber; a drop made facing one goes down it
+**Decided** (by Derik, slice 015's fork 4b, 2026-11-10). Completes D-219.
+
+- **Cost: 2 timber** (a ladder is 4): down is the cheap direction
+  ([vertical-logistics §1–2](./systems/vertical-logistics-and-power.md)).
+- **Items go in by dropping while facing a chute** next to you: drop one and drop stack send
+  the items down it instead of onto your own tile. No new key.
+- A hole isn't passable, so nobody stands on a chute's tile, and drops that land beside a chute
+  (from digging) stay where they are.
+- **Where they land:** as drops on the same (x, y) one level down, falling on through any chute
+  there (D-219). A tile there that can't hold them (a fixture, or solid) spills them to the
+  nearest open neighbor (015's trap 3).
+
+*Why:* reuses the drop controls every player already knows, and works for any item, not only
+spoil.
+
+---
+
+### D-221 — The torch is 015's portable light, carried in a light slot of its own
+**Decided** (by Derik, slice 015's fork 5, 2026-11-10).
+
+- **A torch** is an item, made from timber (how it's made: D-222). It burns about 4 minutes,
+  only while lit, and is used up when it burns out.
+- **It's held in a light slot of its own,** beside the hotbar, so the pick stays in hand. A key
+  (and a pad button) lights or stows it.
+- **Lit, it is one more source in the light flood** (D-149) that moves with its carrier: ore
+  around it shows its kind; stowed, the ore goes grey again. The flood stays local to the
+  torch's radius (015's trap 5).
+- **Dropped lit, it stays lit on the ground** until it burns out: a breadcrumb.
+- **The oil lantern and its fuel are 016's.**
+
+*Why:* cheap, with a cost that runs out, and digging and lighting at once is the point of
+carrying light.
+
+---
+
+### D-222 — Making by hand is a CRAFT tab in the inventory, laid out as a list and a detail pane
+**Decided** (by Derik, slice 015's fork 5b, 2026-11-10, choosing mock-up A of three). How the
+torch (D-221) is made; there was no crafting anywhere before it.
+
+- **The inventory has two tabs, PACK and CRAFT.** Tab opens it on the last tab used; **LB / RB**
+  on a pad and **Q** on the keyboard switch tabs, and a click on a tab does too. While the
+  inventory is open the bumpers switch tabs and no longer step the hotbar.
+- **The CRAFT tab:** a list of recipes on the left (icon, name, cost in short); the focused
+  recipe on the right, with its description, each input as *have / need*, what it makes, and a
+  Make control. Confirm makes one; holding it keeps making while the inputs last.
+- **015's one recipe is by hand: 1 timber makes 2 torches.** A section for recipes made at a
+  workbench sits under the hand recipes, empty until 016.
+
+*Why:* the detail pane has room for *have / need* on every input, which 016's bench recipes
+need with two or three inputs each.
+
+---
+
+### D-223 — On-screen controls show only the scheme in use
+**Decided** (by Derik, reviewing 015's craft-tab mock-ups, 2026-11-10). For every UI, now and
+later.
+
+- **A control prompt names only the most recently used scheme's control:** "Enter" with a
+  keyboard and mouse, "A" with a pad, never "A / Enter". It changes when the scheme does.
+- **The scheme is each player's own,** read from their input handler's
+  `current_device_scheme`, not from a global (rule
+  [D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer)).
+
+*Why:* both at once is noise, and wrong for whichever device you aren't holding.
+
+---
+
+### D-224 — The crate belongs to its winch and holds 120 kg
+**Decided** (by Derik, slice 015's fork 6a, 2026-11-10).
+
+- **Building a winch makes its crate,** at the foot of the winch's hole on the level below. A
+  winch takes a hole of its own: a hole holds one of ladder, chute or winch (extends D-219).
+- **It holds 120 kg,** about two packs.
+- **Items go in by dropping while facing the crate** (as with the chute, D-220), and come out
+  with the take key while facing it.
+- **Cranked up, it hangs in the hole at the top,** emptied and filled the same way from beside
+  the hole; cranked down, it rests at the foot again. It is on one level or the other, never
+  between, including across a save (015's trap 4).
+- **It is never in a pack,** so it can't become the bigger pack that
+  [D-013](#d-013--inventory-is-weight-limited-there-is-no-teleport) rules out. Buried by a collapse,
+  it and its contents are buried, never destroyed.
+
+*Why:* one crate per winch keeps the lift's rules to one fixture and one hole.
+
+---
+
+### D-225 — The winch costs 12 timber and 20 stone; held at the top, it lifts in 15 s and lowers in 5 s
+**Decided** (by Derik, slice 015's fork 6b, 2026-11-10). The first of
+[D-029](#d-029--15-minutes-of-cumulative-hauling-before-infrastructure)'s levers.
+
+- **Cost: 12 timber and 20 stone.** Root fibre (rope) joins the cost in a later slice, when
+  −1's resources are built.
+- **Cranked from the top only:** hold interact while facing the winch. Let go and the crate
+  stops, but it has arrived only at either end (D-224).
+- **A lift takes 15 s, a lowering 5 s,** whatever the load, as tuning numbers.
+- **Any player cranks it** (rule [D-045](#d-045--no-player-singleton-carves-out-the-presentation-layer));
+  two cranking together add their rates.
+
+*Why:* expensive enough to be earned after a few climbs, and slow enough at the top that you
+feel it.
+
+---
+
+### D-226 — The map shows every player as a dot and doesn't pause; placed markers come later
+**Decided** (by Derik, slice 015's fork 7, 2026-11-10). Adds to
+[ui-ux §6](./ui-ux-and-controls.md)'s layer view, ghosted neighbors, anchors and depth strip.
+
+- **Every player is a dot** on the level they're on; the viewing player's own is highlighted.
+- **The map doesn't pause the game,** solo or in co-op.
+- **Player-placed markers** (ui-ux §6) are left to a later slice.
+
+*Why:* "where am I" is the question the map gets opened for; one behavior for solo and co-op
+is one thing to build and test.
+
+---
+
+### D-227 — The map is on View and M; its level changes on LB / RB, the wheel and Page Up / Down
+**Decided** (by Derik, slice 015's fork 8, 2026-11-10). Follows
+[ui-ux §3](./ui-ux-and-controls.md), which puts the map on View.
+
+- **View (pad) and M (keyboard) open and close the map.**
+- **It changes level with LB / RB on a pad, and the mouse wheel or Page Up / Down on a
+  keyboard.** While the map is open these don't step the hotbar; the number keys still pick
+  slots.
+- **Quick save leaves the pad** until a pause menu exists, and keeps F5.
+
+*Why:* the map doesn't pause (D-226), so its keys must be ones play doesn't use while it's open.
+
+---
+
+### D-228 — L and D-pad up light or stow the torch; its slot ends the hotbar
+**Decided** (by Derik, slice 015, 2026-11-10). Completes D-221.
+
+- **L (keyboard) and D-pad up (pad)** light the torch in the light slot, or stow it.
+- **The light slot is drawn at the end of the hotbar,** on the HUD and on the inventory's PACK
+  tab.
+
+---
+
+### D-229 — The seed carves a winding tunnel from −2's landing to its ramp down
+**Decided** (by Derik, slice 015, 2026-11-10). Completes D-215: a ramp left sealed in rock
+would be found only by digging blind, since senses reach 7 tiles.
+
+- **Generation picks a spot 40 to 60 tiles from −2's landing,** in a direction the seed picks,
+  stamps a small chamber with the ramp down there, and **carves a meandering tunnel, 1 to 2
+  tiles wide,** from the landing room to it.
+- **The tunnel and chamber are natural:** never marked excavated, so never judged for support
+  (as caves, D-184).
+- −3's landing is stamped where the ramp arrives, at the same (x, y).
+- The carver is general (from, to, width, meander), so 017's ruins can reuse it.
+
+*Why:* the way down is found by walking, and the walk is part of the haul.
+
+---
+
+### D-230 — A pack cell's count is the bright number at its bottom-right; its weight is dim, top-right, with a unit
+**Decided** (by Derik, walking 015, 2026-11-11: "I am constantly confused by the weight and count
+of my items"). Reverses the cell layout of
+[D-190](#d-190--inventory-cells-are-32-px-with-six-rows-shown-a-cells-weight-is-a-bare-number).
+
+- **The count** is drawn at the cell's bottom-right, in the bright text color: where most games
+  put it, and what a player looks for.
+- **The weight** is drawn at the top-right, dim, with a `k` after it ("16k"). Every cell still
+  shows both ([ui-ux §5](./ui-ux-and-controls.md)).
+- One font size (D-189), so the difference is place and brightness, not size.
+
+*Why:* the big bare weight at the bottom-right read as the count.
+
+---
+
+### D-231 — Letting go of the winch resets its crate's progress
+**Decided** (by Derik, walking 015, 2026-11-11). Reverses
+[D-225](#d-225--the-winch-costs-12-timber-and-20-stone-held-at-the-top-it-lifts-in-15-s-and-lowers-in-5-s)'s
+"let go and the crate stops" where it is.
+
+- **When nobody is cranking a winch any more, its progress goes back to zero.** A second player
+  still cranking keeps it going.
+- The crate is still at one end or the other, never between.
+
+*Why:* a half-full bar that waits for you reads as broken. A lift is one held effort.
+
+---
+
+### D-232 — The foot of a winch's hole is marked while its crate is up
+**Decided** (by Derik, walking 015, 2026-11-11, his design).
+
+- **While a winch's crate hangs at the top, the tile at the foot of its hole, on the level below,
+  shows brown lines on each corner:** where the crate will come down. The marks go when it's
+  lowered.
+- Only on a tile the player can see or remembers, as fixtures are.
+
+*Why:* nothing on the lower level said the tile is the crate's, or that the crate is coming back
+there.
+
+---
+
+### D-233 — Climbing a ladder takes the tuning appendix's time: 5 s, longer with a load
+**Decided** (by Derik, 2026-11-11, after 015's winch tuning question). Builds
+[tuning appendix §2](./tuning-appendix.md)'s climb times, which were never built: a ladder
+moved an actor at once.
+
+- **A climb takes 5 s,** ×1.6 above 80% load (8 s) and ×2.0 above 100% (10 s), up or down. Above
+  150% you still can't climb ([D-159](#d-159--the-cost-is-the-gatekeepers-the-hud-bar-sits-bottom-center-the-ladder-rule-checks-load)).
+  The numbers are the tuning profile's.
+- **Interact starts the climb, and it can't be stopped:** you stay on your tile, not moving or
+  digging, until it ends and you arrive. A bar over you shows how far you've got.
+- A save during a climb keeps you where you started.
+
+*Why:* with free climbs, carrying beat the winch by every measure, and a chute saved no time
+down. Claude's choices, named here: one time each way, no cancel, and a bar.
+
+---
+
+### D-234 — Winches stack: a crate lifted into the hole of a winch above is that winch's to lift
+**Decided** (by Derik, 2026-11-11, after 015's winch tuning question). Extends
+[D-224](#d-224--the-crate-belongs-to-its-winch-and-holds-120-kg).
+
+- **A winch may stand over a hole whose foot is another winch's hole:** a shaft. That winch makes
+  no crate of its own; the shaft's crate serves both.
+- **A crate hanging at the top of one winch is at the foot of the winch above,** so the upper
+  winch lifts it on without unloading. Lowered, it hangs again in the lower winch's hole.
+- A hole holds one crate. A crate can't be lifted or lowered into a hole where one already
+  hangs, and the refusal says why.
+
+*Why:* a haul from −3 to −1 would otherwise mean emptying and refilling the crate at every level.
+
+---
+
+### D-235 — A winch's rope reaches the next winch down or the shaft's foot; a shaft has one crate
+**Decided** (by Derik, 2026-11-11, after he found two winches couldn't be built in a line).
+Reverses [D-234](#d-234--winches-stack-a-crate-lifted-into-the-hole-of-a-winch-above-is-that-winchs-to-lift)'s
+"a winch's foot is the next level down" and its "a shaft built top-down has two crates".
+
+- **A shaft** is the holes at one x, y on levels one under the next, and the floor under the
+  lowest of them: its foot.
+- **A winch's rope reaches down to the hole of the next winch in the shaft, or to the foot,**
+  through any empty holes between. So a winch may stand over a hole whose foot is another hole.
+- **Each level of rope takes the winch's time:** two levels lift in 30 s and lower in 10 s.
+- **A shaft has one crate.** A new winch makes one, at the end of its rope, only when the shaft
+  has none. Cranking a winch whose crate is at another winch is refused with that reason.
+- **A winch's shaft takes no ladder or chute,** and a shaft with either takes no winch.
+- While the crate is up, the foot is marked however deep it is (D-232).
+- The refusal for a winch with nowhere for its crate says the crate needs clear floor at the
+  bottom of the shaft.
+
+*Why:* Derik ruled that a player must be able to breach and add winches in any order. Claude's
+choices, named here: time by levels of rope, and the refusal when the crate is elsewhere.
+
+---
+
+### D-236 — A breach can open over a winch's hole or an empty hole, and through a crate's floor
+**Decided** (by Derik, 2026-11-11, with D-235). Extends
+[D-152](#d-152--a-breach-opens-a-hole-and-clears-its-landing-only-plain-floor-with-both-ends-clear).
+
+- **A floor can be breached over a hole** that holds nothing, or only a winch and its crate.
+  The shaft below grows up.
+- **A floor a crate stands on can be breached:** the crate falls to where its rope now ends,
+  contents and all. It won't fall on someone; that breach is refused.
+- **A breach that would join a winch's shaft to one with a ladder or chute, or two shafts that
+  each have a crate,** is refused with that reason.
+
+*Why:* without them, a winch already built closed the hole above it, and a crate on the
+floor stopped a shaft going deeper.

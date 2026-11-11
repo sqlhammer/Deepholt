@@ -17,6 +17,13 @@ extends ScaledHud
 # asked of the actor's grid, hotbar or world; this only shows and asks.
 # An overlay: the game keeps running. Presentation, for the local
 # player (D-045).
+#
+# Two tabs (D-222): PACK, all of the above, and CRAFT, the things the
+# player can make by hand, a list on the left and the focused one's
+# detail on the right: what it needs against what's carried, what it
+# makes, and the key to make it. Q, or LB and RB, switch tabs; it opens
+# on the last one used. Every key named on screen is the current
+# scheme's only (D-223).
 
 # Opened or closed: the hotbar on screen hides while this shows its
 # own bars.
@@ -28,12 +35,19 @@ enum REGION {
 	TOOLS,
 }
 
+enum TAB {
+	PACK,
+	CRAFT,
+}
+
 # Cells big enough for the pixel font's count over the icon and the
 # weight under it; six grid rows show, the rest scroll (D-190)
 const CELL: int = 32
 const PITCH: int = 34
 const BAR_GAP: int = 6
-const HEADER: int = 16
+# The tab strip on top, then the load's header under it
+const TABS: int = 14
+const HEADER: int = TABS + 16
 const VISIBLE_ROWS: int = 6
 const GRID_ORIGIN: Vector2 = Vector2(0, HEADER)
 const BUILD_X: float = PackGrid.COLUMNS * PITCH + BAR_GAP
@@ -57,9 +71,23 @@ const HELD_COLOR: Color = Color(0.45, 0.85, 1.0)
 const SELECTED_COLOR: Color = Color(0.85, 0.85, 0.8)
 const TEXT_COLOR: Color = Color(0.9, 0.9, 0.85)
 const DIM_TEXT: Color = Color(0.7, 0.7, 0.65)
+const HAVE_COLOR: Color = Color(0.6, 0.89, 0.48)
+const LACK_COLOR: Color = Color(1.0, 0.5, 0.42)
+# The CRAFT tab's two panes: the list, and the detail beside it
+const LIST_WIDTH: float = 200.0
+const DETAIL_X: float = LIST_WIDTH + 12.0
+const ROW: float = 22.0
+const LIST_TOP: float = TABS + 6.0
 
 var is_open: bool = false
 var actor: Actor
+# Which tab shows; kept when closed, so it opens on the last one used
+var tab: TAB = TAB.PACK
+# The focused recipe on the CRAFT tab, an index into recipes()
+var craft_index: int = 0
+# Whether the keys named on screen are a pad's (D-223). Set from the
+# local player's input handler as its scheme changes.
+var gamepad: bool = true
 # The focus: a region, and a cell (the grid, absolute) or a slot
 var focus_region: REGION = REGION.GRID
 var focus_index: int = 0
@@ -104,6 +132,7 @@ func set_open(value: bool) -> void:
 	_panel.visible = is_open
 	holding = false
 	if is_open:
+		craft_index = clampi(craft_index, 0, maxi(recipes().size() - 1, 0))
 		for source: Variant in [actor.pack, actor.hotbar, actor.grid]:
 			if not source.changed.is_connected(_on_contents_changed):
 				source.changed.connect(_on_contents_changed)
@@ -113,6 +142,92 @@ func set_open(value: bool) -> void:
 		message = ""
 	if is_open != was: open_changed.emit(is_open)
 	_refresh()
+
+
+# Q, LB or RB: the other tab. What's held is put back.
+func switch_tab() -> void:
+	if not is_open: return
+	holding = false
+	message = ""
+	tab = TAB.CRAFT if tab == TAB.PACK else TAB.PACK
+	_refresh()
+
+
+# The scheme whose keys are named on screen (D-223).
+func set_gamepad(value: bool) -> void:
+	gamepad = value
+	_refresh()
+
+
+# --- the CRAFT tab (D-222) ---
+
+# What can be made by hand, in a stable order.
+func recipes() -> Array[Recipe]:
+	return RecipeRegistry.at_station(Recipe.HAND)
+
+
+func focused_recipe() -> Recipe:
+	var list: Array[Recipe] = recipes()
+	if list.is_empty(): return null
+	return list[clampi(craft_index, 0, list.size() - 1)]
+
+
+# Confirm, or a click on Make: asks the world to make the focused
+# recipe once. The world answers with what was made, or why not.
+func make() -> void:
+	if not is_open or tab != TAB.CRAFT: return
+	var recipe: Recipe = focused_recipe()
+	if recipe == null: return
+	var world: World = actor.current_level.world
+	var reason: World.CRAFT_REFUSAL = world.craft_problem(actor, recipe.id)
+	if reason == World.CRAFT_REFUSAL.CANNOT_AFFORD:
+		message = "You don't have enough to make that."
+		_refresh()
+		return
+	message = ""
+	world.craft_requested.emit(actor, recipe.id)
+	_refresh()
+
+
+# "1 timber -> 2": a recipe in short, for its row in the list.
+static func recipe_short(recipe: Recipe) -> String:
+	var parts: PackedStringArray = []
+	for id: StringName in recipe.inputs:
+		parts.append("%d %s" % [recipe.inputs[id], _item_name(id).to_lower()])
+	var made: int = 0
+	for id: StringName in recipe.outputs: made += recipe.outputs[id]
+	return "%s -> %d" % [", ".join(parts), made]
+
+
+# Each input as "Timber  have 3 / need 1", with whether there's enough.
+func needs_lines(recipe: Recipe) -> Array[Dictionary]:
+	var lines: Array[Dictionary] = []
+	for id: StringName in recipe.inputs:
+		var have: int = actor.pack.count_of(id)
+		lines.append({"text": "%s  have %d / need %d" % [_item_name(id), have, recipe.inputs[id]],
+			"enough": have >= recipe.inputs[id]})
+	return lines
+
+
+# "2 x Torch, 0.4 kg": what one making gives.
+static func makes_text(recipe: Recipe) -> String:
+	var parts: PackedStringArray = []
+	var kg: float = 0.0
+	for id: StringName in recipe.outputs:
+		parts.append("%d x %s" % [recipe.outputs[id], _item_name(id)])
+		var item: Item = ItemRegistry.find(id)
+		kg += (item.weight_kg if item != null else 0.0) * recipe.outputs[id]
+	return "%s, %s kg" % [", ".join(parts), CarryHud._kg(kg)]
+
+
+static func _item_name(id: StringName) -> String:
+	var item: Item = ItemRegistry.find(id)
+	return item.display_key if item != null else String(id)
+
+
+# The Make prompt, in the current scheme's keys only (D-223).
+func make_text() -> String:
+	return "%s Make" % ("[A]" if gamepad else "[Enter]")
 
 
 # --- what's where ---
@@ -151,6 +266,10 @@ func _is_empty(region: REGION, index: int) -> bool:
 # bottom to the tool row; the two bars meet at their last slots.
 func move(direction: Vector2i) -> void:
 	if not is_open or direction == Vector2i.ZERO: return
+	if tab == TAB.CRAFT:
+		craft_index = clampi(craft_index + direction.y, 0, maxi(recipes().size() - 1, 0))
+		_refresh()
+		return
 	var rows_total: int = actor.grid.cells.size() / PackGrid.COLUMNS
 	match focus_region:
 		REGION.GRID:
@@ -199,6 +318,9 @@ func _focus(region: REGION, index: int) -> void:
 # A or a click: picks up the focused thing, or puts down what's held.
 func pick_or_place() -> void:
 	if not is_open: return
+	if tab == TAB.CRAFT:
+		make()
+		return
 	if holding: _place()
 	elif not _is_empty(focus_region, focus_index):
 		holding = true
@@ -262,7 +384,7 @@ func assign_to(slot: int) -> bool:
 
 
 func sort() -> void:
-	if not is_open: return
+	if not is_open or tab != TAB.PACK: return
 	holding = false
 	actor.grid.sort_by_value()
 	_focus(REGION.GRID, 0)
@@ -284,7 +406,7 @@ func drop_stack() -> void:
 
 
 func _drop(whole_stack: bool) -> void:
-	if not is_open or focus_region == REGION.BUILD: return
+	if not is_open or tab != TAB.PACK or focus_region == REGION.BUILD: return
 	var id: StringName = id_at(focus_region, focus_index)
 	if id == &"": return
 	holding = false
@@ -311,6 +433,15 @@ func place_at(point: Vector2) -> Array[int]:
 
 func _on_board_input(event: InputEvent) -> void:
 	if not is_open: return
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		var tab_hit: int = tab_at(event.position)
+		if tab_hit != -1:
+			if tab_hit != tab: switch_tab()
+			return
+		if tab == TAB.CRAFT:
+			_click_craft(event.position)
+			return
+	if tab == TAB.CRAFT: return
 	if event is InputEventMouseMotion:
 		var at: Array[int] = place_at(event.position)
 		if at[0] != -1 and (at[0] != focus_region or at[1] != focus_index): _focus(at[0], at[1])
@@ -324,6 +455,37 @@ func _on_board_input(event: InputEvent) -> void:
 				if at[0] == -1: return
 				_focus(at[0], at[1])
 				pick_or_place()
+
+
+# The tab under a point on the board, or -1.
+func tab_at(point: Vector2) -> int:
+	for t: int in [TAB.PACK, TAB.CRAFT]:
+		if _tab_rect(t).has_point(point): return t
+	return -1
+
+
+func _tab_rect(t: int) -> Rect2:
+	return Rect2(Vector2(28 + t * 60, 0), Vector2(56, TABS - 2))
+
+
+# A click on the CRAFT tab: a row focuses its recipe, Make makes it.
+func _click_craft(point: Vector2) -> void:
+	if make_rect().has_point(point):
+		make()
+		return
+	for i in range(recipes().size()):
+		if _row_rect(i).has_point(point):
+			craft_index = i
+			_refresh()
+			return
+
+
+func _row_rect(index: int) -> Rect2:
+	return Rect2(Vector2(0, LIST_TOP + 12 + index * ROW), Vector2(LIST_WIDTH, ROW - 2))
+
+
+func make_rect() -> Rect2:
+	return Rect2(Vector2(DETAIL_X, TEXT_TOP - 26), Vector2(110, 16))
 
 
 # --- words: the preview, the focused thing, the keys ---
@@ -365,15 +527,23 @@ func details_text() -> String:
 	return "%s: %s" % [where, text] if where != "" else text
 
 
+# The keys, in the current scheme only (D-223).
 func help_text() -> String:
-	if holding: return "A/click: put down  B/right-click: cancel"
 	if message != "": return message
-	return "A/click: pick up  Y/X: drop 1  X/Z: drop all  R3/O: sort"
+	# The tab keys are on the tab strip, so these fit the board's width
+	if tab == TAB.CRAFT:
+		return "A: make  hold A: keep making" if gamepad \
+			else "Enter/click: make  hold: keep making"
+	if holding:
+		return "A: put down  B: cancel" if gamepad else "Enter/click: put down  right-click: cancel"
+	if gamepad: return "A: pick up  Y: drop 1  X: drop all  R3: sort"
+	return "Enter/click: pick up  X: drop 1  Z: drop all  O: sort"
 
 
 # Everything shown, as text: for tests.
 func text() -> String:
 	if not is_open: return ""
+	if tab == TAB.CRAFT: return craft_text()
 	var lines: PackedStringArray = [_header_text()]
 	for id: StringName in actor.grid.cells:
 		if id == &"": continue
@@ -383,6 +553,21 @@ func text() -> String:
 			CarryHud._kg((item.weight_kg if item != null else 0.0) * count)])
 	lines.append(details_text())
 	lines.append(preview_text())
+	return "\n".join(lines)
+
+
+# The CRAFT tab, as text: for tests.
+func craft_text() -> String:
+	var lines: PackedStringArray = ["BY HAND"]
+	for recipe: Recipe in recipes():
+		lines.append("%s  %s" % [recipe.display_key, recipe_short(recipe)])
+	var recipe: Recipe = focused_recipe()
+	if recipe != null:
+		lines.append(recipe.display_key)
+		for need: Dictionary in needs_lines(recipe): lines.append(need.text)
+		lines.append(makes_text(recipe))
+		lines.append(make_text())
+	lines.append(help_text())
 	return "\n".join(lines)
 
 
@@ -426,12 +611,16 @@ func _draw_board() -> void:
 	var font: Font = ScaledHud.FONT
 	var font_size: int = ScaledHud.FONT_SIZE
 	_board.draw_rect(Rect2(Vector2(-4, -4), BOARD_SIZE + Vector2(8, 8)), BACK)
+	_draw_tabs()
+	if tab == TAB.CRAFT:
+		_draw_craft()
+		return
 	# The header: the load, and its bar (D-159's colors)
 	var header: String = _header_text()
-	_board.draw_string(font, Vector2(0, font_size), header, HORIZONTAL_ALIGNMENT_LEFT, -1,
+	_board.draw_string(font, Vector2(0, TABS + font_size), header, HORIZONTAL_ALIGNMENT_LEFT, -1,
 		font_size, TEXT_COLOR)
 	var bar_x: float = font.get_string_size(header, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + 8
-	var bar: Rect2 = Rect2(Vector2(bar_x, 1), Vector2(BUILD_X + CELL - bar_x, 5))
+	var bar: Rect2 = Rect2(Vector2(bar_x, TABS + 1), Vector2(BUILD_X + CELL - bar_x, 5))
 	var ratio: float = actor.load_ratio()
 	_board.draw_rect(bar, Color(0, 0, 0, 0.6))
 	_board.draw_rect(Rect2(bar.position, Vector2(clampf(ratio / CarryHud.BAR_SPAN, 0.0, 1.0)
@@ -449,6 +638,7 @@ func _draw_board() -> void:
 	for slot in range(Hotbar.SLOTS):
 		_draw_item_cell(REGION.TOOLS, slot, actor.hotbar.tools[slot], 1)
 		_draw_build_cell(slot)
+	_draw_light_cell()
 	_draw_scroll_marks()
 	# Below: the focused thing, the preview (over two lines if it must),
 	# the keys
@@ -462,6 +652,113 @@ func _draw_board() -> void:
 				DIM_TEXT if i == 2 else TEXT_COLOR)
 			y += LINE
 		if lines.is_empty(): y += LINE
+
+
+# The tab strip: the shown tab underlined, the switch key either side
+# in the current scheme (D-223).
+func _draw_tabs() -> void:
+	var font: Font = ScaledHud.FONT
+	var font_size: int = ScaledHud.FONT_SIZE
+	var left: String = "LB" if gamepad else "Q"
+	_board.draw_string(font, Vector2(0, font_size), left, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+		DIM_TEXT)
+	for t: int in [TAB.PACK, TAB.CRAFT]:
+		var rect: Rect2 = _tab_rect(t)
+		var shown: bool = t == tab
+		_board.draw_string(font, rect.position + Vector2(4, font_size), "PACK" if t == TAB.PACK else "CRAFT",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, FOCUS_COLOR if shown else DIM_TEXT)
+		if shown:
+			_board.draw_line(Vector2(rect.position.x, rect.end.y), rect.end, FOCUS_COLOR, 2.0)
+	if gamepad:
+		_board.draw_string(font, Vector2(28 + 2 * 60, font_size), "RB", HORIZONTAL_ALIGNMENT_LEFT, -1,
+			font_size, DIM_TEXT)
+
+
+# The CRAFT tab (D-222): the hand recipes, the focused one's detail,
+# Make, and the load at the foot.
+func _draw_craft() -> void:
+	var font: Font = ScaledHud.FONT
+	var font_size: int = ScaledHud.FONT_SIZE
+	_board.draw_string(font, Vector2(0, LIST_TOP + font_size), "BY HAND", HORIZONTAL_ALIGNMENT_LEFT,
+		-1, font_size, DIM_TEXT)
+	var list: Array[Recipe] = recipes()
+	for i in range(list.size()):
+		var rect: Rect2 = _row_rect(i)
+		_board.draw_rect(rect, CELL_COLOR)
+		var icon: Texture2D = _output_icon(list[i])
+		if icon != null: _board.draw_texture(icon, rect.position + Vector2(2, 2))
+		_board.draw_string(font, rect.position + Vector2(22, font_size + 1), list[i].display_key,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
+		_board.draw_string(font, rect.position + Vector2(22, 2 * font_size + 3), recipe_short(list[i]),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+		_board.draw_rect(rect, FOCUS_COLOR if i == craft_index else BORDER, false,
+			2.0 if i == craft_index else 1.0)
+	var bench_top: float = LIST_TOP + 12 + maxi(list.size(), 1) * ROW + 10
+	_board.draw_string(font, Vector2(0, bench_top + font_size), "AT A WORKBENCH",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+	_board.draw_string(font, Vector2(0, bench_top + 2 * font_size + 4), "Made at a bench.",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+	var recipe: Recipe = focused_recipe()
+	if recipe != null: _draw_detail(recipe)
+	# The load, and the keys or the last word, at the foot
+	_board.draw_string(font, Vector2(0, TEXT_TOP + LINE + font_size), _header_text(),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
+	_board.draw_string(font, Vector2(0, TEXT_TOP + 2 * LINE + font_size), help_text(),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+
+
+func _draw_detail(recipe: Recipe) -> void:
+	var font: Font = ScaledHud.FONT
+	var font_size: int = ScaledHud.FONT_SIZE
+	var x: float = DETAIL_X
+	var y: float = LIST_TOP + font_size
+	var icon: Texture2D = _output_icon(recipe)
+	if icon != null: _board.draw_texture_rect(icon, Rect2(Vector2(x, y - font_size), Vector2(32, 32)), false)
+	_board.draw_string(font, Vector2(x + 38, y + 4), recipe.display_key, HORIZONTAL_ALIGNMENT_LEFT,
+		-1, font_size, TEXT_COLOR)
+	y += 36
+	for line: String in wrap_to(recipe.description, BOARD_SIZE.x - x):
+		_board.draw_string(font, Vector2(x, y), line, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+		y += LINE
+	y += 6
+	_board.draw_string(font, Vector2(x, y), "NEEDS", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+	y += LINE
+	for need: Dictionary in needs_lines(recipe):
+		_board.draw_string(font, Vector2(x, y), need.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+			HAVE_COLOR if need.enough else LACK_COLOR)
+		y += LINE
+	y += 6
+	_board.draw_string(font, Vector2(x, y), "MAKES", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+	y += LINE
+	_board.draw_string(font, Vector2(x, y), makes_text(recipe), HORIZONTAL_ALIGNMENT_LEFT, -1,
+		font_size, TEXT_COLOR)
+	var button: Rect2 = make_rect()
+	var can: bool = actor.current_level.world.craft_problem(actor, recipe.id) == World.CRAFT_REFUSAL.NONE
+	_board.draw_rect(button, FOCUS_COLOR if can else BORDER)
+	_board.draw_string(font, button.position + Vector2(4, font_size + 3), make_text(),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, BACK)
+
+
+static func _output_icon(recipe: Recipe) -> Texture2D:
+	for id: StringName in recipe.outputs:
+		var item: Item = ItemRegistry.find(id)
+		if item != null and item.icon != null: return item.icon
+	return null
+
+
+# As wrap_text, to a given width.
+static func wrap_to(text: String, width: float) -> PackedStringArray:
+	var lines: PackedStringArray = []
+	var line: String = ""
+	for word: String in text.split(" "):
+		var longer: String = word if line == "" else line + " " + word
+		if line != "" and _width(longer) > width:
+			lines.append(line)
+			line = word
+		else:
+			line = longer
+	if line != "": lines.append(line)
+	return lines
 
 
 # A text broken between words into lines no wider than the board's
@@ -510,14 +807,15 @@ func _draw_item_cell(region: REGION, index: int, id: StringName, count: int) -> 
 		if item != null and item.icon != null:
 			_board.draw_texture(item.icon, rect.position + Vector2((CELL - 16) / 2, 8))
 		if region == REGION.GRID:
-			# Every cell shows its count and weight (ui-ux §5), the
-			# weight in kilos without the unit (D-190)
+			# Every cell shows its count and weight (ui-ux §5): the count
+			# bright at the bottom-right, where a player looks for it, the
+			# weight dim at the top-right with its unit (D-230)
 			var font: Font = ScaledHud.FONT
 			var font_size: int = ScaledHud.FONT_SIZE
-			_board.draw_string(font, rect.position + Vector2(1, 1 + font_size), str(count),
-				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
 			var kg: float = (item.weight_kg if item != null else 0.0) * count
-			_board.draw_string(font, rect.position + Vector2(0, CELL), cell_weight(kg),
+			_board.draw_string(font, rect.position + Vector2(0, 1 + font_size), cell_weight(kg),
+				HORIZONTAL_ALIGNMENT_RIGHT, CELL - 1, font_size, DIM_TEXT)
+			_board.draw_string(font, rect.position + Vector2(0, CELL), str(count),
 				HORIZONTAL_ALIGNMENT_RIGHT, CELL - 1, font_size, TEXT_COLOR)
 	if region == REGION.TOOLS:
 		_draw_slot_number(rect, index)
@@ -542,15 +840,37 @@ func _draw_build_cell(slot: int) -> void:
 	_draw_marks(rect, REGION.BUILD, slot)
 
 
+# The light slot (D-228), past the build column at the tool row's
+# height: the light's icon and how many, ringed in flame while lit.
+func _draw_light_cell() -> void:
+	var rect: Rect2 = light_rect()
+	_board.draw_rect(rect, SLOT_COLOR)
+	var id: StringName = actor.hotbar.light
+	var item: Item = ItemRegistry.find(id)
+	if item != null and item.icon != null:
+		_board.draw_texture(item.icon, rect.position + Vector2((CELL - 16) / 2, 8))
+		_board.draw_string(ScaledHud.FONT, rect.position + Vector2(0, CELL), str(actor.pack.count_of(id)),
+			HORIZONTAL_ALIGNMENT_RIGHT, CELL - 1, ScaledHud.FONT_SIZE, TEXT_COLOR)
+	_board.draw_string(ScaledHud.FONT, rect.position + Vector2(1, 1 + ScaledHud.FONT_SIZE),
+		"L" if not gamepad else "^", HORIZONTAL_ALIGNMENT_LEFT, -1, ScaledHud.FONT_SIZE, BORDER)
+	_board.draw_rect(rect, HotbarHud.LIT if actor.hotbar.lit else BORDER, false,
+		2.0 if actor.hotbar.lit else 1.0)
+
+
+func light_rect() -> Rect2:
+	return Rect2(Vector2(BUILD_X + PITCH + BAR_GAP, TOOLS_Y), Vector2(CELL, CELL))
+
+
 func _draw_slot_number(rect: Rect2, index: int) -> void:
 	_board.draw_string(ScaledHud.FONT, rect.position + Vector2(1, 1 + ScaledHud.FONT_SIZE),
 		str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, ScaledHud.FONT_SIZE, BORDER)
 
 
-# A cell's weight: as the pack says it, but whole kilos from ten up,
-# so four characters always fit the cell's width.
+# A cell's weight, with its unit (D-230): as the pack says it, but
+# whole kilos from ten up, so four characters always fit the cell's
+# width.
 static func cell_weight(kg: float) -> String:
-	return str(roundi(kg)) if kg >= 10.0 else CarryHud._kg(kg)
+	return (str(roundi(kg)) if kg >= 10.0 else CarryHud._kg(kg)) + "k"
 
 
 # The border, the focus, and what's held, by shape as well as color:

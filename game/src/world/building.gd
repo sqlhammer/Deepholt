@@ -13,6 +13,8 @@ static func cost_of(tuning: TuningProfile, kind: int) -> Dictionary[StringName, 
 	match kind:
 		ObjectKind.OBJECT.LADDER: return tuning.ladder_cost
 		ObjectKind.OBJECT.TIMBER_PROP: return tuning.prop_cost
+		ObjectKind.OBJECT.CHUTE: return tuning.chute_cost
+		ObjectKind.OBJECT.WINCH: return tuning.winch_cost
 	var free: Dictionary[StringName, int] = {}
 	return free
 

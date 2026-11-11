@@ -195,13 +195,15 @@ func test_the_focused_thing_is_described() -> void:
 
 func test_the_mouse_finds_cells_and_slots() -> void:
 	_inventory.set_open(true)
-	assert_eq(_inventory.place_at(Vector2(40, 24)), [InventoryOverlay.REGION.GRID, 1] as Array[int],
+	# A row into the grid, under the tab strip and the header (D-222)
+	var y: float = InventoryOverlay.HEADER + 8
+	assert_eq(_inventory.place_at(Vector2(40, y)), [InventoryOverlay.REGION.GRID, 1] as Array[int],
 		"the grid's second cell")
-	assert_eq(_inventory.place_at(Vector2(InventoryOverlay.BUILD_X + 2, 24)),
+	assert_eq(_inventory.place_at(Vector2(InventoryOverlay.BUILD_X + 2, y)),
 		[InventoryOverlay.REGION.BUILD, 0] as Array[int], "the first build slot")
 	assert_eq(_inventory.place_at(Vector2(2, InventoryOverlay.TOOLS_Y + 2)),
 		[InventoryOverlay.REGION.TOOLS, 0] as Array[int], "the first tool slot")
-	assert_eq(_inventory.place_at(Vector2(33, 24)), [-1, -1] as Array[int], "a gap")
+	assert_eq(_inventory.place_at(Vector2(33, y)), [-1, -1] as Array[int], "a gap")
 	assert_eq(_inventory.place_at(Vector2(2, InventoryOverlay.HEADER + 6 * InventoryOverlay.PITCH
 		- 2)), [-1, -1] as Array[int], "a seventh row isn't shown, so isn't hit")
 
@@ -226,9 +228,9 @@ func test_long_words_wrap_between_words_keeping_double_spaces() -> void:
 
 
 func test_a_cells_weight_fits_in_four_characters() -> void:
-	assert_eq(InventoryOverlay.cell_weight(2.5), "2.5", "under ten: as the pack says")
-	assert_eq(InventoryOverlay.cell_weight(12.5), "13", "ten and up: whole kilos")
-	assert_eq(InventoryOverlay.cell_weight(30.0), "30", "whole")
+	assert_eq(InventoryOverlay.cell_weight(2.5), "2.5k", "under ten: as the pack says, with its unit (D-230)")
+	assert_eq(InventoryOverlay.cell_weight(12.5), "13k", "ten and up: whole kilos")
+	assert_eq(InventoryOverlay.cell_weight(30.0), "30k", "whole")
 
 
 func test_the_build_columns_last_slots_lead_left_to_the_tool_row() -> void:

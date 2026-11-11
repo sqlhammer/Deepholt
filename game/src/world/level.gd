@@ -21,6 +21,8 @@ var level_fixtures: LevelFixtures:
 	set(value): _set_level_fixtures(value)
 # The items lying on this level (D-160)
 var level_drops: LevelDrops = LevelDrops.new()
+# Its tagged regions (D-218): where it is CRUSHED, for now
+var level_regions: LevelRegions = LevelRegions.new()
 # Whether this level's excavations are held up (D-163): derived from
 # the tiles and fixtures, with the countdowns it saves. Built when the
 # world takes the level in, since its numbers are the world's.
