@@ -1,39 +1,55 @@
 # Next
 
-Sketches, not commitments. Slice 013, what just happened, the debug log, is accepted
-([log](./log/013-what-just-happened.md)); PR #10 waits on #9. Slice 014, telemetry, is closed
-([log](./log/014-how-it-plays-for-other-people.md)); PRs #9, #10 and #11 wait to be merged, in that
-order. Slice 012, a world worth digging, is closed and merged
-([log](./log/012-a-world-worth-digging.md)); its by-hand walk, like 008 to 011's, was not reported.
-Cheap to throw away; expect them to change.
+Sketches, not commitments. Slices 012 to 014 and 014a are closed and merged. Derik walked
+012 to 014 with the UAT docs (`work/lesson/uat-*.md`); his fixes are 014b (D-211 to D-214,
+[log](./log/014b-uat-fixes.md)). **015, the long haul, is planned in [NOW.md](./NOW.md).**
+
+**015 to 017 were accepted together** (Derik, 2026-11-10, D-210), larger than earlier slices,
+**all in Agent mode.** Together they take the game to the first session in
+[pre-alpha-scope §5](../docs/pre-alpha-scope.md), ending at step 10: watching ore come up
+without you. Cheap to throw away; expect them to change.
 
 ---
 
-## 015 — Getting it home
+## 016 — Something worth carrying
 
-*Moved from 013 (2026-11-10): the debug log (D-193), then telemetry (D-198), went first. It adds
-the chute's telemetry events: pre-alpha criterion 1 is a chute before the 5th expedition.*
+A workbench, a smelter and a forge, and recipes that use copper, tin and iron; tools in tiers,
+flint to bronze to iron, each faster and opening harder strata (bronze breaches −2's floor);
+the oil lantern and its fuel; a bed and a home on −1 to respawn at; crates as storage.
 
-*What 012 changes here:* ore is on −2 now, and home is −1, so the haul is real: copper and tin
-come up a level. A new game starts with no timber, so a chute or winch costs chopping first.
+*Why:* today ore has no use. Hauling it can be measured, but there's nothing at stake, so a
+playtest of hauling would measure nothing. This makes the pack a choice (ore or stone, smelt
+here or at home), and criterion 4, a smelter sited near the mine without being told, can't
+happen until a smelter exists. Tool tiers make going deeper progress, not just distance.
 
-*What 011 changes here:* a chute and a winch are buildables, so they take build slots (D-170),
-and the inventory's build section lists them. A crate is a pack item or a fixture; which one it
-is decides whether it can be hotbarred.
+*From 015:* how −3 is reached (its fork 1) decides whether bronze opens a new way down or only
+a faster one. The crate is built in 015; storage reuses it.
 
-The first vertical logistics past the ladder ([vertical-logistics §2](../docs/systems/vertical-logistics-and-power.md)):
-a chute for items going down, and the hand winch for one crate going up. It's the answer
-D-013 promises to tedium, "cheaper logistics, never a bigger pack". Drops are the natural
-input and output: a chute moves a tile's drops to the level below.
+## 017 — Ore comes up without you
+
+A windmill on the Surface, a driveshaft down the levels, one level of line shaft, the powered
+hoist, proportional brownout (a second hoist slows both); the rate machine, so a hoist hauls
+while you're on another level and across save and load; −3's three authored ruins, one holding
+the hoist's blueprint; and a first-session pass so an unguided tester's first hour roughly
+follows pre-alpha-scope §5's ten steps, at least an elder who points down.
+
+*Why:* step 10 is the moment the experiment tests; criterion 3 asks whether testers name it a
+highlight. The rate machine is an M0 and M5 exit, and support countdowns already pause on
+levels you've left waiting for it. At the end, playtest builds go to 5–8 testers and every
+criterion but 6 can be judged.
+
+## Left out of 015 to 017, on purpose
+
+The sun, exposure and shade (M4): the Surface stays a timber run. Hunger, comfort, creatures and
+combat (M6, M7): pressure, not the thesis. They follow the first playtest's answer.
 
 ## Not placed yet
 
-- **The rate machine** that lets a hoist haul while you are three levels away.
 - **Procgen beyond the recipe's fixed placements** (D-084's rules and tags).
 - **A title screen and a save-slot menu.** Today launch continues the first slot, and
   `--new-game` is the only way to start fresh (D-111).
 
-None of them are next.
+None of them are next. (The rate machine, once here, is 017's.)
 
 ---
 
@@ -83,9 +99,11 @@ Found during 005, not recorded anywhere else. None of it is decided.
   The gap is drawing code: the grid inventory (70%), the overlays and cracks.
 - **The suite takes ~41 s** (21 s before 012): a new world generates a ~55 ms Surface and ~700
   trees, and many tests build one. A smaller Surface recipe for tests would bring it back.
-- **The Surface's start room still has four copper tiles** in its walls (012's log); the strata
-  table gives the Surface no metal ore.
 - **−1's own resources** (clay, flint, root fibre, cave fungus) and **coal on −2** aren't built.
+- **Not walked by hand yet** (Derik's UAT, 2026-11-10): 013's pad controls, all of 014, and
+  013's case E (the jump on −1), which wasn't caught or reproduced.
+- **`digging-and-structure §4`'s R table is the original design** (8 to 3); the numbers in play
+  are D-211's (3, 3, 2, 2, 1, 1, 1). The doc hasn't been brought in line since D-186.
 - **Not built from digging-and-structure §4:** coverage rings around supports, ghosted column
   suggestions, and the header showing the depth's R. Cut stone columns (+1 at −2) are the next
   support kind; they would be a new object kind beside the prop.
