@@ -241,3 +241,15 @@ func test_the_world_time_is_saved() -> void:
 	var world: World = autofree(Worlds.with_levels([1]))
 	SaveGame._restore_counters(world, data)
 	assert_almost_eq(world.world_time, 42.0, 0.001, "and read back")
+
+
+func test_the_notice_says_what_it_holds_and_why_it_waits() -> void:
+	assert_eq(RefusalNotice.smelter_text(_smelter), "The smelter is empty.")
+	_drop(&"copper_ore", 2)
+	assert_eq(RefusalNotice.smelter_text(_smelter),
+		"In the smelter: 2 copper ore. Needs coal and 3 of an ore.")
+	_drop(&"coal", 1)
+	assert_eq(RefusalNotice.smelter_text(_smelter),
+		"In the smelter: 2 copper ore, 1 coal. Not enough of anything for a batch.")
+	_drop(&"copper_ore", 1)
+	assert_eq(RefusalNotice.smelter_text(_smelter), "In the smelter: 3 copper ore, 1 coal.")

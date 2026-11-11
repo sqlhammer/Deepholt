@@ -7,8 +7,9 @@
 > You light a lantern and the grey turns to iron for longer than a torch would last.
 
 *Proposed by Claude, 2026-11-11. Accepted with 015 and 017 (D-210). **Agent mode** (D-210).
-**Started 2026-11-11:** forks decided (D-237 to D-251). Built on `slice-016` from `main`, one
-commit per section; Derik merges.*
+**Started 2026-11-11:** forks decided (D-237 to D-251). **Built** on `slice-016`, 2026-11-11
+([log](./log/016-something-worth-carrying.md)), with D-252 from the build. Not walked by hand;
+Derik merges.*
 
 ## Where we are
 
@@ -68,6 +69,8 @@ Decided 2026-11-11, one at a time, before the build
 9. **Storage:** a 200 kg crate for 6 timber (D-249); the workbench 6 timber + 4 stone, the forge
    20 stone + 4 bronze ingots (D-250).
 10. **−3's floor:** refused with a reason (D-251).
+
+**Found while building:** ten buildables, eight build slots. A BUILD tab lists them all (D-252).
 
 ## Already settled
 
