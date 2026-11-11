@@ -67,24 +67,3 @@ static func carried_radius(actor: Actor, tuning: TuningProfile) -> int:
 	return tuning.torch_light_radius
 
 
-# Whether one tile of `level` is lit, by its lights or one an actor
-# carries: what a station's speed asks (D-238). Only the lights near
-# enough to reach it are flooded.
-static func is_lit_at(level: Level, tile: Vector2i, actors: Array[Actor],
-		tuning: TuningProfile) -> bool:
-	if is_daylit(level): return true
-	for fixture: Fixture in level.level_fixtures.all():
-		var radius: int = radius_of(fixture.kind, tuning)
-		if radius < 0: continue
-		var from: Vector2i = Vector2i(fixture.tile.x, fixture.tile.y)
-		if maxi(absi(from.x - tile.x), absi(from.y - tile.y)) > radius: continue
-		if level.level_tiles.get_top(from.x, from.y) != TileKind.TOP.OPEN: continue
-		if tile in Senses.flood(level.level_tiles, from, radius): return true
-	for actor: Actor in actors:
-		if actor.current_level != level or not actor.hotbar.lit: continue
-		var here: WorldPos = actor.current_WorldPos
-		if here == null: continue
-		var radius: int = carried_radius(actor, tuning)
-		if maxi(absi(here.x - tile.x), absi(here.y - tile.y)) > radius: continue
-		if tile in Senses.flood(level.level_tiles, Vector2i(here.x, here.y), radius): return true
-	return false

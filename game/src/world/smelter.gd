@@ -104,7 +104,7 @@ func is_working() -> bool:
 
 
 # Works out everything made between the last time and `now`, at
-# `speed` (1 lit, less unlit), and puts it in `output`. A batch takes
+# `speed` (1 working, 0 buried: D-253), and puts it in `output`. A batch takes
 # `batch_seconds` of work; between batches, with nothing whole to work,
 # it waits and its progress is lost. Returns what was made, id -> count.
 func advance_to(now: float, speed: float, batch_seconds: float,

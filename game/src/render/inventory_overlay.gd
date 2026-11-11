@@ -566,7 +566,7 @@ func _on_board_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var tab_hit: int = tab_at(event.position)
 		if tab_hit != -1:
-			if tab_hit != tab: switch_tab()
+			show_tab(tab_hit as TAB)
 			return
 		if tab == TAB.CRAFT:
 			_click_craft(event.position)
@@ -677,8 +677,13 @@ func _scroll_to_focus() -> void:
 	while list_scroll < at and _row_rect(focused) == Rect2(): list_scroll += 1
 
 
+# The button under the detail: CRAFT's make, BUILD's put in a slot.
+# As wide as its words, so none run past it (016's walk).
 func make_rect() -> Rect2:
-	return Rect2(Vector2(DETAIL_X, TEXT_TOP - 26), Vector2(140, 16))
+	var words: String = assign_text() if tab == TAB.BUILD else make_text()
+	var width: float = ScaledHud.FONT.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		ScaledHud.FONT_SIZE).x + 8.0
+	return Rect2(Vector2(DETAIL_X, TEXT_TOP - 26), Vector2(width, 16))
 
 
 # --- words: the preview, the focused thing, the keys ---
@@ -738,6 +743,14 @@ func help_text() -> String:
 		return "A: put down  B: cancel" if gamepad else "Enter/click: put down  right-click: cancel"
 	if gamepad: return "A: pick up  Y: drop 1  X: drop all  R3: sort"
 	return "Enter/click: pick up  X: drop 1  Z: drop all  O: sort"
+
+
+# A line from the world while the board is open, where the notice
+# would be hidden under it: a refusal, what went in (016's walk). It
+# stands in for the keys until the next thing done here.
+func show_message(text: String) -> void:
+	message = text
+	_refresh()
 
 
 # Everything shown, as text: for tests.
@@ -997,8 +1010,11 @@ func _draw_foot() -> void:
 	var font_size: int = ScaledHud.FONT_SIZE
 	_board.draw_string(font, Vector2(0, TEXT_TOP + LINE + font_size), _header_text(),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
-	_board.draw_string(font, Vector2(0, TEXT_TOP + 2 * LINE + font_size), help_text(),
-		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+	# The keys, or a message, wrapped to the board: two lines at most
+	var lines: PackedStringArray = wrap_to(help_text(), BOARD_SIZE.x)
+	for i in range(mini(lines.size(), 2)):
+		_board.draw_string(font, Vector2(0, TEXT_TOP + (2 + i) * LINE + font_size), lines[i],
+			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
 
 
 func _draw_detail(recipe: Recipe) -> void:

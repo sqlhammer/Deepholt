@@ -172,6 +172,22 @@ func test_diagonals_are_not_faster() -> void:
 	assert_gt(_actor.move_intent.y, 0.0, "and down")
 
 
+# The inventory open, its player stands still: the stick that walks
+# also moves the menu's focus (D-254). Closed, walking comes back.
+func test_the_inventory_open_its_player_stands_still() -> void:
+	var inventory: InventoryOverlay = add_child_autofree(InventoryOverlay.new())
+	inventory.actor = _actor
+	_handler.inventory = inventory
+	inventory.set_open(true)
+	Input.action_press(&"move_right")
+	_handler._physics_process(0.0)
+	assert_eq(_actor.move_intent, Vector2.ZERO, "open: no walking")
+	inventory.set_open(false)
+	_handler._physics_process(0.0)
+	assert_almost_eq(_actor.move_intent, Vector2.RIGHT, Vector2(0.001, 0.001),
+		"closed: walking again")
+
+
 func test_opposite_keys_cancel() -> void:
 	Input.action_press(&"move_left")
 	Input.action_press(&"move_right")

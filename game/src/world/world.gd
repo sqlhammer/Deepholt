@@ -647,17 +647,15 @@ func work_smelters(level: Level) -> void:
 		work_smelter(smelter)
 
 
-# Works out one smelter up to now, at full speed when its tile is lit
-# and the profile's slower speed when not; what it made joins its
-# contents. A buried smelter does no work, and loses none.
+# Works out one smelter up to now, at its one rate, lit or not
+# (D-253); what it made joins its contents. A buried smelter does no
+# work, and loses none.
 func work_smelter(smelter: Fixture) -> void:
 	if smelter.machine == null: return
 	var level: Level = level_at(smelter.tile.depth)
 	if level == null: return
-	var at: Vector2i = Vector2i(smelter.tile.x, smelter.tile.y)
 	var speed: float = 1.0
-	if level.level_tiles.get_top(at.x, at.y) != TileKind.TOP.OPEN: speed = 0.0
-	elif not Light.is_lit_at(level, at, actors(), tuning): speed = tuning.smelt_unlit_speed
+	if level.level_tiles.get_top(smelter.tile.x, smelter.tile.y) != TileKind.TOP.OPEN: speed = 0.0
 	var made: Dictionary[StringName, int] = smelter.machine.advance_to(world_time, speed,
 		tuning.smelt_seconds, smelter.contents)
 	if not made.is_empty(): smelted.emit(smelter, made)

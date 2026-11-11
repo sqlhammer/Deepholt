@@ -67,6 +67,9 @@ var _world: World
 var _label: Label
 var _remaining: float = 0.0
 var _watched_hotbar: Hotbar = null
+# The inventory: while it's open this notice is hidden under it, so a
+# line goes to the board's own message instead (016's walk).
+var _inventory: InventoryOverlay = null
 
 
 func _init() -> void:
@@ -252,7 +255,15 @@ func _on_breach_refused(actor: Actor, _tile: WorldPos, reason: World.BREACH_REFU
 	show_text(BREACH_REASONS.get(reason, "That can't be breached."))
 
 
+func watch_inventory(inventory: InventoryOverlay) -> void:
+	super(inventory)
+	_inventory = inventory
+
+
 func show_text(p_text: String) -> void:
+	if _inventory != null and _inventory.is_open:
+		_inventory.show_message(p_text)
+		return
 	_label.text = p_text
 	_label.modulate.a = 1.0
 	_remaining = SHOW_SECONDS

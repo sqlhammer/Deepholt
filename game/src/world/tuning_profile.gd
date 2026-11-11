@@ -201,11 +201,8 @@ const DEFAULT_ID: String = "default"
 @export var smelter_ore_cost: Dictionary[StringName, int] = {}
 @export var smelter_timber_cost: Dictionary[StringName, int] = {}
 
-# The smelter (D-238): seconds a batch takes on a lit tile, and the
-# multiplier on its speed when its tile is unlit (the crafting doc's
-# light rule).
+# The smelter (D-238): seconds a batch takes, lit or not (D-253).
 @export var smelt_seconds: float = 0.0
-@export var smelt_unlit_speed: float = 0.0
 # How much a smelter holds waiting, inputs and coal, in kg: a crate's
 # worth (Claude's number, 016).
 @export var smelter_capacity_kg: float = 0.0

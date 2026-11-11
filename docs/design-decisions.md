@@ -4856,3 +4856,32 @@ tabs.
   cycle PACK, CRAFT, BUILD.
 
 *Why:* a catalogue apart from the quick bar, ready for the radial build menu later.
+
+---
+
+### D-253 — The smelter works at one fixed rate; light doesn't change it
+**Decided** (by Derik, 2026-11-11, walking slice 016). **Supersedes the light clause of
+[D-238](#d-238--the-smelter-is-loaded-and-left-and-is-the-first-rate-machine).**
+
+- **A smelter makes one batch every 10 s** while it has inputs and coal, lit or not, on any level,
+  whether or not anyone is there.
+- A buried smelter still does no work (D-238 stands otherwise).
+- The light clause came from [crafting §3](./systems/crafting-and-progression.md) ("all stations
+  require a minimum tile light level for full speed"); that line no longer holds for the smelter.
+
+*Why:* Derik never meant light to set the smelter's speed. In the walk nothing showed which speed
+it ran at, so the rule was invisible as well as unwanted.
+
+---
+
+### D-254 — While a menu that uses the movement keys is open, its player doesn't walk
+**Decided** (by Derik, 2026-11-11, walking slice 016). **Supersedes
+[D-162](#d-162--the-inventory-is-an-overlay-nothing-pauses)'s "walking still works".**
+
+- **While a player's inventory (any tab) is open, that player's character stands still,** on
+  keyboard and pad alike. The stick and arrows move the menu's focus only. The map uses no
+  movement keys, so walking with it open stays as it was.
+- **Nothing pauses:** the world, other players and machines carry on (D-162 stands otherwise).
+
+*Why:* on a pad the left stick moved both the BUILD list's focus and the character. Input that
+does two things at once is a conflict, and walking with a menu open serves nothing.

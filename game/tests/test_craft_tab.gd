@@ -74,6 +74,21 @@ func test_the_tab_switches_and_opens_on_the_last_one_used() -> void:
 func test_a_click_on_a_tab_switches_to_it() -> void:
 	assert_eq(_inventory.tab_at(_inventory._tab_rect(InventoryOverlay.TAB.CRAFT).get_center()),
 		InventoryOverlay.TAB.CRAFT, "the CRAFT tab is where it's drawn")
+	# Straight to the one clicked, not one step along (016's walk)
+	_click_tab(InventoryOverlay.TAB.BUILD)
+	assert_eq(_inventory.tab, InventoryOverlay.TAB.BUILD, "PACK to BUILD in one click")
+	_click_tab(InventoryOverlay.TAB.PACK)
+	assert_eq(_inventory.tab, InventoryOverlay.TAB.PACK, "and BUILD to PACK")
+	_click_tab(InventoryOverlay.TAB.PACK)
+	assert_eq(_inventory.tab, InventoryOverlay.TAB.PACK, "the open tab clicked stays")
+
+
+func _click_tab(which: InventoryOverlay.TAB) -> void:
+	var click: InputEventMouseButton = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = _inventory._tab_rect(which).get_center()
+	_inventory._on_board_input(click)
 
 
 # --- the CRAFT tab ---

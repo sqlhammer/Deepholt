@@ -290,6 +290,6 @@ func test_while_open_nothing_digs_or_breaches() -> void:
 	handler.inventory = _overlay(actor)
 	actor.primary_action(true)
 	actor.breach(true)
-	handler._inventory_mode(Vector2.ZERO)
+	handler._inventory_mode()
 	assert_false(actor.action_intent, "no digging")
 	assert_false(actor.breach_intent, "no breaching")

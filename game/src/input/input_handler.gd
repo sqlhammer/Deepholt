@@ -10,9 +10,10 @@ var paused: bool = false
 # Build mode's cursor (D-154). While it's active, the mouse or the
 # right stick moves the cursor instead of aiming, and primary places.
 var build: BuildCursor
-# The inventory overlay (D-162). While it's open, walking still works,
-# and drop one / drop the stack act on it; nothing digs, breaches,
-# builds or interacts (slice 009 trap 6).
+# The inventory overlay (D-162). While it's open its player stands
+# still (D-254): the stick and arrows move its focus, and drop one /
+# drop the stack act on it; nothing digs, breaches, builds or
+# interacts (slice 009 trap 6). The game itself doesn't pause.
 var inventory: InventoryOverlay
 # The support overlay (D-163): toggled with its key, whatever else is
 # open.
@@ -170,8 +171,8 @@ func _quick_prop() -> void:
 	actor.current_level.world.place_requested.emit(actor, ObjectKind.OBJECT.TIMBER_PROP, faced)
 
 
-func _inventory_mode(move: Vector2) -> void:
-	actor.aim(Vector2.ZERO, move)
+func _inventory_mode() -> void:
+	actor.aim(Vector2.ZERO, Vector2.ZERO)
 	actor.primary_action(false)
 	actor.breach(false)
 	actor.crank(false)
@@ -213,7 +214,6 @@ func _physics_process(delta: float) -> void:
 	
 	var move: Vector2 = Input.get_vector(
 		"move_left", "move_right", "move_up", "move_down")
-	actor.move(move)
 	if support_overlay != null and Input.is_action_just_pressed("support_overlay"):
 		support_overlay.toggle()
 	# The map, over everything; play goes on under it (D-226)
@@ -224,9 +224,13 @@ func _physics_process(delta: float) -> void:
 	if inventory != null and Input.is_action_just_pressed("inventory"):
 		inventory.toggle()
 		if inventory.is_open and build != null: build.set_active(false)
+	# With the inventory open its player stands still: the stick that
+	# walks also moves the menu's focus, and must do only one (D-254)
 	if inventory != null and inventory.is_open:
-		_inventory_mode(move)
+		actor.move(Vector2.ZERO)
+		_inventory_mode()
 		return
+	actor.move(move)
 	# The take key: everything in reach, whatever the load (D-160)
 	if Input.is_action_just_pressed("take"):
 		actor.current_level.world.take_requested.emit(actor)

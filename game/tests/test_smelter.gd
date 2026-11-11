@@ -4,7 +4,7 @@ extends GutTest
 # facing it, emptied of what it made with the take key. 3 ore and 1
 # coal make 1 ingot; 3 copper ingots, 1 tin ingot and 1 coal make 4
 # bronze; it alloys only ingots dropped in, and works its inputs in the
-# order they went in. A batch takes 10 s lit, twice that unlit. It's a
+# order they went in. A batch takes 10 s, lit or not (D-253). It's a
 # rate machine: it keeps working on a level nobody is on, and across a
 # save, exactly as if it had run.
 
@@ -18,7 +18,8 @@ var _output: Pack
 
 
 # -1 and -2, open floor at the origin and east of it on -1; a smelter
-# east of a player facing it. -1 is unlit.
+# east of a player facing it. -1 is dark, which changes nothing
+# (D-253).
 func before_each() -> void:
 	_world = add_child_autofree(Worlds.with_levels([1, 2]))
 	for x in range(0, 3):
@@ -107,14 +108,6 @@ func test_ingots_it_makes_are_never_alloyed() -> void:
 	assert_eq(_output.count_of(&"bronze_ingot"), 0, "no bronze (D-243)")
 
 
-func test_unlit_it_works_at_half_speed() -> void:
-	var smelter: Smelter = Smelter.new()
-	smelter.load_items(&"copper_ore", 3)
-	smelter.load_items(&"coal", 1)
-	assert_true(smelter.advance_to(19.0, 0.5, 10.0, _output).is_empty(), "19 s unlit")
-	assert_eq(smelter.advance_to(20.0, 0.5, 10.0, _output).size(), 1, "20 s")
-
-
 func test_it_takes_only_what_it_smelts() -> void:
 	for id: StringName in [&"copper_ore", &"tin_ore", &"iron_ore", &"copper_ingot", &"tin_ingot", &"coal"]:
 		assert_true(Smelter.takes(id), "%s" % id)
@@ -173,22 +166,24 @@ func test_it_holds_a_crates_worth() -> void:
 func test_the_take_key_takes_what_it_made_and_leaves_the_rest() -> void:
 	_drop(&"copper_ore", 4)
 	_drop(&"coal", 1)
-	# -1 is unlit: 20 s a batch
-	_world.advance_time(20.0)
+	_world.advance_time(10.0)
 	_world.take_requested.emit(_actor)
 	assert_eq(_actor.pack.count_of(&"copper_ingot"), 1, "the ingot")
 	assert_eq(_actor.pack.count_of(&"copper_ore"), 0, "not the ore left in it")
 	assert_eq(_smelter.machine.count_of(&"copper_ore"), 1, "one waits")
 
 
-func test_a_brazier_in_reach_makes_it_full_speed() -> void:
-	_world.level_at(1).level_fixtures.add(Fixture.new(ObjectKind.OBJECT.BRAZIER,
-		WorldPos.new(2, 0, 1), _world.fixture_ids.allocate()))
+# Light doesn't set its speed (D-253): in the dark, as by a brazier,
+# a batch takes 10 s.
+func test_light_doesnt_change_its_speed() -> void:
 	_drop(&"copper_ore", 3)
 	_drop(&"coal", 1)
-	_world.advance_time(10.0)
+	_world.advance_time(9.5)
 	_world.take_requested.emit(_actor)
-	assert_eq(_actor.pack.count_of(&"copper_ingot"), 1, "made in 10 s, lit")
+	assert_eq(_actor.pack.count_of(&"copper_ingot"), 0, "9.5 s in the dark: not yet")
+	_world.advance_time(0.5)
+	_world.take_requested.emit(_actor)
+	assert_eq(_actor.pack.count_of(&"copper_ingot"), 1, "10 s in the dark: made")
 
 
 func test_it_keeps_smelting_while_nobody_is_on_its_level() -> void:
@@ -198,14 +193,14 @@ func test_it_keeps_smelting_while_nobody_is_on_its_level() -> void:
 	for i in range(60): _world.advance_time(1.0)
 	assert_eq(_smelter.contents.count_of(&"iron_ingot"), 0, "not worked out while away")
 	_actor.move_to(WorldPos.new(0, 0, 1))
-	assert_eq(_smelter.contents.count_of(&"iron_ingot"), 3, "arriving, it caught up: 60 s unlit")
+	assert_eq(_smelter.contents.count_of(&"iron_ingot"), 3, "arriving, it caught up: all three")
 
 
 func test_its_progress_shows_while_working() -> void:
 	_drop(&"copper_ore", 3)
 	_drop(&"coal", 1)
 	_world.advance_time(5.0)
-	assert_almost_eq(_world.smelt_progress(_smelter), 0.25, 0.01, "5 s of an unlit 20")
+	assert_almost_eq(_world.smelt_progress(_smelter), 0.5, 0.01, "5 s of 10")
 
 
 func test_a_buried_smelter_does_no_work_and_loses_none() -> void:
@@ -229,9 +224,13 @@ func test_across_a_save_it_works_out_the_time_as_if_it_had_run() -> void:
 	world.world_time = time
 	var back: Fixture = world.level_at(1).level_fixtures.of_kind(ObjectKind.OBJECT.SMELTER)[0]
 	assert_almost_eq(back.machine.progress, _smelter.machine.progress, 0.001, "mid-batch")
-	world.advance_time(25.0)
+	assert_eq(back.contents.count_of(&"copper_ingot"), 1, "the first, made before the save")
+	world.advance_time(4.0)
 	world.work_smelter(back)
-	assert_eq(back.contents.count_of(&"copper_ingot"), 2, "40 s unlit: both batches")
+	assert_eq(back.contents.count_of(&"copper_ingot"), 1, "19 s: the second not yet")
+	world.advance_time(1.0)
+	world.work_smelter(back)
+	assert_eq(back.contents.count_of(&"copper_ingot"), 2, "20 s: both batches")
 
 
 func test_the_world_time_is_saved() -> void:
@@ -253,3 +252,24 @@ func test_the_notice_says_what_it_holds_and_why_it_waits() -> void:
 		"In the smelter: 2 copper ore, 1 coal. Not enough of anything for a batch.")
 	_drop(&"copper_ore", 1)
 	assert_eq(RefusalNotice.smelter_text(_smelter), "In the smelter: 3 copper ore, 1 coal.")
+
+
+# Dropping into it happens with the inventory open, which hides the
+# notice: the refusal shows on the board instead (016's walk). Closed,
+# the notice shows it as before.
+func test_with_the_inventory_open_a_refusal_shows_on_it() -> void:
+	var view: View = add_child_autofree(View.new())
+	var notice: RefusalNotice = add_child_autofree(RefusalNotice.new())
+	var inventory: InventoryOverlay = add_child_autofree(InventoryOverlay.new())
+	inventory.actor = _actor
+	notice.watch(view)
+	notice.watch_inventory(inventory)
+	view.follow(_actor)
+	inventory.set_open(true)
+	_drop(&"stone", 1)
+	var reason: String = RefusalNotice.LOAD_REASONS[World.LOAD_REFUSAL.NOT_SMELTABLE]
+	assert_eq(inventory.help_text(), reason, "on the board")
+	assert_eq(notice.text, "", "not under it")
+	inventory.set_open(false)
+	_drop(&"stone", 1)
+	assert_eq(notice.text, reason, "closed: the notice")
