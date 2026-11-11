@@ -52,7 +52,22 @@ static func breaches(tool: ToolData) -> bool:
 const ORE_ITEMS: Dictionary = {
 	TileKind.ORE.COPPER: &"copper_ore",
 	TileKind.ORE.TIN: &"tin_ore",
+	TileKind.ORE.IRON: &"iron_ore",
 }
+
+
+# The least tool power that digs an ore at all (D-217): the profile's
+# number for the kind, 0 for an ore it doesn't list.
+static func ore_power_needed(tuning: TuningProfile, ore_kind: int) -> float:
+	return float(tuning.ore_tool_power_needed.get(ore_kind, 0.0))
+
+
+# Whether `tool` is strong enough for the ore in a tile (D-217). A
+# tile with no ore needs nothing; no tool digs nothing that needs one.
+static func digs_ore(tuning: TuningProfile, tool: ToolData, ore_kind: int) -> bool:
+	var needed: float = ore_power_needed(tuning, ore_kind)
+	if needed <= 0.0: return true
+	return tool != null and tool.power >= needed
 
 
 # What mining a wall yields, item id -> count (D-156, D-158): an ore

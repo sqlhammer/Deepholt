@@ -51,6 +51,7 @@ script = ExtResource("2_recipe")
 bound = SubResource("Bound_2")
 fixed_placements = Array[ExtResource("4_placement")]([SubResource("Placement_greyseam_landing")])
 cave_prefabs = Array[StringName]([&"cave_hollow", &"cave_long", &"cave_twin", &"cave_pocket", &"cave_gallery"])
+descent_prefab = &"greyseam_descent"
 
 [sub_resource type="Resource" id="Bound_3"]
 script = ExtResource("1_bound")
@@ -61,6 +62,9 @@ radius = 102
 [sub_resource type="Resource" id="Recipe_3"]
 script = ExtResource("2_recipe")
 bound = SubResource("Bound_3")
+cave_prefabs = Array[StringName]([&"cave_hollow", &"cave_long", &"cave_twin", &"cave_pocket", &"cave_gallery"])
+arrival_prefab = &"terraces_landing"
+crushed_regions = 1
 
 [sub_resource type="Resource" id="Bound_4"]
 script = ExtResource("1_bound")

@@ -29,6 +29,15 @@ enum AtlasCell {
 	RUBBLE,
 	GRASS_FLOOR,
 	TIN,
+	CRUSHED,
+	IRON,
+}
+
+# Each depth's own look (D-216): a tint over the shared art, so a
+# level reads as its stratum without art of its own yet. A depth not
+# listed draws the art as it is.
+const DEPTH_TINTS: Dictionary[int, Color] = {
+	3: Color(1.0, 0.9, 0.78),
 }
 
 
@@ -189,6 +198,7 @@ func _top_cells() -> PackedInt32Array:
 	cells[TileKind.TOP.MINABLE_ROCK] = AtlasCell.MINABLE_ROCK
 	cells[TileKind.TOP.MINABLE_DIRT] = AtlasCell.MINABLE_DIRT
 	cells[TileKind.TOP.RUBBLE] = AtlasCell.RUBBLE
+	cells[TileKind.TOP.CRUSHED] = AtlasCell.CRUSHED
 	cells[TileKind.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.EMPTY
 	return cells
 
@@ -200,6 +210,7 @@ func _ore_cells() -> PackedInt32Array:
 	cells[TileKind.ORE.NONE] = AtlasCell.EMPTY
 	cells[TileKind.ORE.COPPER] = AtlasCell.COPPER
 	cells[TileKind.ORE.TIN] = AtlasCell.TIN
+	cells[TileKind.ORE.IRON] = AtlasCell.IRON
 	cells[TileKind.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.EMPTY
 	return cells
 
@@ -328,4 +339,5 @@ func _show_depth(depth: int) -> void:
 	if level == null:
 		push_error("No level at depth %d to show." % depth)
 		return
+	material.set_shader_parameter("tint", DEPTH_TINTS.get(depth, Color.WHITE))
 	show_level(level.level_tiles)

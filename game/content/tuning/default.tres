@@ -59,10 +59,22 @@ cave_count_max = 3
 cave_spacing = 12
 ore_shares = Dictionary[int, Array]({
 2: [0.0, 0.0, 0.03],
-3: [0.0, 0.0, 0.02]
+3: [0.0, 0.0, 0.02],
+4: [0.0, 0.0, 0.0, 0.03]
 })
 vein_size_min = 3
 vein_size_max = 8
+ore_tool_power_needed = Dictionary[int, float]({
+4: 20.0
+})
+descent_distance_min = 40
+descent_distance_max = 60
+tunnel_width_min = 1
+tunnel_width_max = 2
+crushed_radius_min = 6
+crushed_radius_max = 10
+crushed_lobes = 4
+crushed_distance_min = 30
 rock_wall_stone = 1
 ore_yield_min = 2
 ore_yield_max = 4

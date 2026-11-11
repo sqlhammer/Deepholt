@@ -518,6 +518,9 @@ static func _serialize_level(level: Level) -> Dictionary:
 	level_data["fixtures"] = _serialize_fixtures(level.level_fixtures)
 	# What lies on the ground (D-160)
 	level_data["drops"] = level.level_drops.to_save()
+	# Its tagged regions (D-218); not written when there are none
+	if level.level_regions.count() > 0:
+		level_data["regions"] = level.level_regions.to_save()
 	# The countdowns running here (D-163); not written when there are none
 	if level.support != null:
 		var countdowns: Array = level.support.to_save()
@@ -704,6 +707,10 @@ static func _deserialize_level(p_depth: int, p_level: Dictionary, world: World) 
 		# Its own generation too: the Surface's spawn is the road's (D-180)
 		shaped.generator = recipe.generator
 		shaped.cave_prefabs = recipe.cave_prefabs
+		shaped.descent_prefab = recipe.descent_prefab
+		shaped.crushed_regions = recipe.crushed_regions
+		# No arrival: the level above may not be built yet, and a save
+		# missing a layer is one from before arrivals existed
 		level = LevelGenerator.generate_level(shaped, world.world_seed, world.fixture_ids,
 			world.tuning)
 	# The save is the source of truth: its seed, never one recomputed
@@ -722,6 +729,10 @@ static func _deserialize_level(p_depth: int, p_level: Dictionary, world: World) 
 		level.level_fixtures = _deserialize_fixtures(p_depth, p_level.fixtures)
 	# A save from before drops has none
 	_deserialize_drops(p_level.get("drops", []), level)
+	# The saved regions replace generated ones; a save without them keeps
+	# what was generated, as a missing tile layer does (D-218)
+	if p_level.has("regions"):
+		level.level_regions = LevelRegions.from_save(p_level.regions, p_depth)
 
 	return level
 

@@ -24,6 +24,13 @@ const BREACH_REASONS: Dictionary = {
 	World.BREACH_REFUSAL.NEEDS_PICK: "Breaching needs a pick.",
 }
 
+# Said once per tile faced (D-217, D-218). Other dig refusals are no
+# attempt (open floor, the edge) and stay quiet.
+const DIG_REASONS: Dictionary = {
+	World.DIG_REFUSAL.CRUSHED: "Collapsed solid. Clearing this needs shoring and jacks.",
+	World.DIG_REFUSAL.TOOL_TOO_WEAK: "This ore is too hard for your pick.",
+}
+
 const PLACE_REASONS: Dictionary = {
 	World.FIXTURE_REFUSAL.LEVEL_NOT_EXISTS: "There's nothing below this level.",
 	World.FIXTURE_REFUSAL.TILE_NOT_EXISTS: "That's past the edge of the level.",
@@ -76,6 +83,7 @@ func _on_shown_world_changed(world: World, _depth: int) -> void:
 		_world.actor_moved_clear.disconnect(_on_actor_moved_clear)
 		_world.took.disconnect(_on_took)
 		_world.chop_refused.disconnect(_on_chop_refused)
+		_world.dig_refused.disconnect(_on_dig_refused)
 	_world = world
 	if _world != null:
 		_world.breach_refused.connect(_on_breach_refused)
@@ -85,6 +93,7 @@ func _on_shown_world_changed(world: World, _depth: int) -> void:
 		_world.actor_moved_clear.connect(_on_actor_moved_clear)
 		_world.took.connect(_on_took)
 		_world.chop_refused.connect(_on_chop_refused)
+		_world.dig_refused.connect(_on_dig_refused)
 
 
 # Build mode's own preview refusals (D-154): too dark, not a hole.
@@ -129,6 +138,11 @@ static func took_text(items: Dictionary) -> String:
 		var item: Item = ItemRegistry.find(id)
 		parts.append("%d %s" % [items[id], item.display_key if item != null else String(id)])
 	return "Took %s." % ", ".join(parts)
+
+
+func _on_dig_refused(actor: Actor, _tile: WorldPos, reason: World.DIG_REFUSAL) -> void:
+	if _view == null or actor != _view.actor: return
+	if DIG_REASONS.has(reason): show_text(DIG_REASONS[reason])
 
 
 func _on_climb_refused(actor: Actor, _tile: WorldPos) -> void:

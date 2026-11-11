@@ -35,7 +35,7 @@ static func place_caves(level: Level, recipe: LevelRecipe, rng: RandomNumberGene
 		for attempt in range(200):
 			var anchor: Vector2i = Vector2i(rng.randi_range(-radius, radius), rng.randi_range(-radius, radius))
 			var rect: Rect2i = footprint(prefab, anchor)
-			if not _fits(level.level_tiles, rect, taken, tuning.cave_spacing): continue
+			if not fits(level.level_tiles, rect, taken, tuning.cave_spacing): continue
 			LevelGridLoader.stamp(level.level_tiles, prefab, anchor)
 			taken.append(rect)
 			placed.append(rect)
@@ -56,8 +56,9 @@ static func footprint(prefab: TilePrefab, anchor: Vector2i) -> Rect2i:
 
 
 # Inside the level's disc, solid rock throughout (so sealed), and the
-# spacing clear of everything taken.
-static func _fits(tiles: LevelTiles, rect: Rect2i, taken: Array[Rect2i], spacing: int) -> bool:
+# spacing clear of everything taken. The way down's chamber is placed
+# by the same test (D-229).
+static func fits(tiles: LevelTiles, rect: Rect2i, taken: Array[Rect2i], spacing: int) -> bool:
 	var radius: int = tiles.level_bound.radius
 	for corner: Vector2i in [rect.position, rect.end - Vector2i.ONE,
 			Vector2i(rect.position.x, rect.end.y - 1), Vector2i(rect.end.x - 1, rect.position.y)]:

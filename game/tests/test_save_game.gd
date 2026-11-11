@@ -433,12 +433,14 @@ func _fixtures_of(level: Level) -> Array:
 	return found
 
 
-# Every level, as generation builds it. Freed after the test.
+# Every level, as generation builds it: each with the one above it, so
+# a ramp's arrival is stamped (D-216). Freed after the test.
 func _generated_world() -> Array[Level]:
 	var levels: Array[Level] = []
 	var fixture_ids: IdAllocator = IdAllocator.new()
 	for recipe: LevelRecipe in LevelRecipes.TABLE.rows:
-		levels.append(autofree(LevelGenerator.generate_level(recipe, 0, fixture_ids)))
+		var above: Level = levels.back() if not levels.is_empty() else null
+		levels.append(autofree(LevelGenerator.generate_level(recipe, 0, fixture_ids, null, above)))
 	return levels
 
 

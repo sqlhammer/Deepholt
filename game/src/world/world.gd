@@ -78,6 +78,10 @@ enum DIG_REFUSAL {
 	LEVEL_NOT_EXISTS,
 	TILE_NOT_EXISTS,
 	TILE_NOT_DIGGABLE,
+	# Crushed rubble (D-218): no tool clears it yet
+	CRUSHED,
+	# The ore needs a stronger tool than the one in hand (D-217)
+	TOOL_TOO_WEAK,
 }
 
 # Why a breach was refused (D-152). Each names the end that failed:
@@ -490,22 +494,30 @@ func is_in_bounds(pos: WorldPos) -> bool:
 
 func _on_dig_requested(actor: Actor, tile: WorldPos) -> void:
 	# The request is a claim from the past: check the tile as it is now
-	var reason: DIG_REFUSAL = _dig_problem(tile)
+	var reason: DIG_REFUSAL = dig_problem(tile, actor)
 	if reason != DIG_REFUSAL.NONE:
 		dig_refused.emit(actor, tile, reason)
 		return
 	_dig_tile(actor, tile)
 
 
-func _dig_problem(tile: WorldPos) -> DIG_REFUSAL:
+# Why digging `tile` would be refused, or NONE. A read, so the dig
+# capability asks before the work and a refusal is heard at once. The
+# tool is the actor's in hand; with no actor, no tool is asked about.
+func dig_problem(tile: WorldPos, actor: Actor = null) -> DIG_REFUSAL:
 	var level: Level = level_at(tile.depth)
 	if level == null:
 		return DIG_REFUSAL.LEVEL_NOT_EXISTS
 	var kind: int = level.level_tiles.get_top(tile.x, tile.y)
 	if TileKind.is_sentinel(kind):
 		return DIG_REFUSAL.TILE_NOT_EXISTS
+	if kind == TileKind.TOP.CRUSHED:
+		return DIG_REFUSAL.CRUSHED
 	if not TileKind.is_diggable(kind):
 		return DIG_REFUSAL.TILE_NOT_DIGGABLE
+	if actor != null and not Digging.digs_ore(tuning, actor.tool(),
+			level.level_tiles.get_ore(tile.x, tile.y)):
+		return DIG_REFUSAL.TOOL_TOO_WEAK
 	return DIG_REFUSAL.NONE
 
 

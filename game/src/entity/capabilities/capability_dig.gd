@@ -10,6 +10,14 @@ var actor: Actor
 # The tree a refusal was already asked about, so the wrong tool hears
 # "needs an axe" once, not every tick (D-181).
 var _refused_tree: WorldPos
+# The same for a tile whose dig is refused with a reason (D-217,
+# D-218). Kept apart from the progress, which a refusal resets.
+var _refused_dig: WorldPos
+
+# The dig refusals a player is told about. Facing open floor or the
+# level's edge is no attempt, so it stays quiet.
+const SAID_REFUSALS: Array[World.DIG_REFUSAL] = [
+	World.DIG_REFUSAL.CRUSHED, World.DIG_REFUSAL.TOOL_TOO_WEAK]
 
 # The gatekeeper is the actor's world, reached through its level
 # (D-126). An actor never changes world, so it is listened to once.
@@ -34,6 +42,16 @@ func dig(delta: float, tool: ToolData, target_tile: WorldPos, level: Level) -> v
 		_chop(delta, tool, target_tile, level)
 		return
 	_refused_tree = null
+	# Crushed rubble and ore too hard for the tool are refused with a
+	# reason, once per tile (D-217, D-218), never silently
+	var refusal: World.DIG_REFUSAL = level.world.dig_problem(target_tile, actor)
+	if refusal in SAID_REFUSALS:
+		_reset_progress()
+		if _refused_dig == null or not _refused_dig.equals(target_tile):
+			_refused_dig = target_tile
+			level.world.dig_requested.emit(actor, target_tile)
+		return
+	_refused_dig = null
 	var kind: int = _get_tile_kind(level, target_tile)
 	var ore: int = level.level_tiles.get_ore(target_tile.x, target_tile.y)
 	
@@ -91,6 +109,7 @@ func _reset_progress() -> void:
 func action_ended(p_verb: String) -> void:
 	if p_verb != verb: return # Event not for this capability
 	_reset_progress()
+	_refused_dig = null
 
 
 func _on_tile_dug(p_actor: Actor, _tile: WorldPos = null) -> void:

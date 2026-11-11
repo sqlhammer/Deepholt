@@ -44,6 +44,11 @@ const DEFAULT_ID: String = "default"
 # fast as its power alone would.
 @export var tool_multipliers: Dictionary[int, Dictionary] = {}
 
+# The least tool power that digs each ore at all, keyed by its
+# TileKind.ORE id (D-217): iron needs more than flint has. An ore it
+# doesn't list needs nothing.
+@export var ore_tool_power_needed: Dictionary[int, float] = {}
+
 # What digging yields (D-156): stone per rock wall, and the range of
 # ore an ore vein gives.
 @export var rock_wall_stone: int = 0
@@ -129,6 +134,22 @@ const DEFAULT_ID: String = "default"
 @export var ore_shares: Dictionary[int, Array] = {}
 @export var vein_size_min: int = 0
 @export var vein_size_max: int = 0
+
+# The way down from a level that has one (D-215, D-229): how far its
+# ramp's chamber lies from the level's landing, in tiles, and the
+# width range of the tunnel carved between them.
+@export var descent_distance_min: int = 0
+@export var descent_distance_max: int = 0
+@export var tunnel_width_min: int = 0
+@export var tunnel_width_max: int = 0
+
+# A CRUSHED region (D-218): the radius range of the circles its blob
+# is built from, how many circles, and how far its center keeps from
+# the level's landing, in tiles.
+@export var crushed_radius_min: int = 0
+@export var crushed_radius_max: int = 0
+@export var crushed_lobes: int = 0
+@export var crushed_distance_min: int = 0
 
 # Felling a tree (D-181): the work an axe does, at its power per
 # second (48 at flint's 16 is 3 s), and the timber it gives.

@@ -80,7 +80,7 @@ static func ramp_problems(levels: Array[Level]) -> Array[String]:
 	var problems: Array[String] = []
 	for level: Level in levels:
 		for kind: int in TileKind.RAMPS:
-			for tile: Vector2i in _tiles_with_ground(level.level_tiles, kind):
+			for tile: Vector2i in tiles_with_ground(level.level_tiles, kind):
 				var problem: String = _ramp_problem(by_depth, level.depth, tile, kind)
 				if problem != "": problems.append(problem)
 	return problems
@@ -101,9 +101,42 @@ static func _ramp_problem(by_depth: Dictionary[int, Level], depth: int, tile: Ve
 	return ""
 
 
+# Generation guarantee 2 (world-and-generation §3, D-229): every ramp
+# down on a level can be walked to from its landing. A ramp counts as
+# reached when the tile on its open side is. One problem per ramp that
+# can't be.
+static func descent_problems(level: Level, landing: Vector2i) -> Array[String]:
+	var problems: Array[String] = []
+	var reached: Dictionary[Vector2i, bool] = walkable_from(level.level_tiles, landing)
+	for kind: int in TileKind.RAMPS:
+		if not TileKind.RAMPS[kind].down: continue
+		for tile: Vector2i in tiles_with_ground(level.level_tiles, kind):
+			if not reached.has(tile + TileKind.ramp_open_side(kind)):
+				problems.append("The ramp down at (%d, %d) depth %d can't be walked to from %s." % [
+					tile.x, tile.y, level.depth, landing])
+	return problems
+
+
+# Every tile reached on foot from `start`, edge to edge, through
+# passable tiles.
+static func walkable_from(tiles: LevelTiles, start: Vector2i) -> Dictionary[Vector2i, bool]:
+	var reached: Dictionary[Vector2i, bool] = {start: true}
+	var frontier: Array[Vector2i] = [start]
+	while not frontier.is_empty():
+		var at: Vector2i = frontier.pop_back()
+		for step: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var next: Vector2i = at + step
+			if reached.has(next): continue
+			if not TileKind.is_passable(tiles.get_top(next.x, next.y), tiles.get_ground(next.x, next.y)):
+				continue
+			reached[next] = true
+			frontier.append(next)
+	return reached
+
+
 # Tiles whose ground is `kind`, found with the array's own find so
 # scanning every level stays fast.
-static func _tiles_with_ground(tiles: LevelTiles, kind: int) -> Array[Vector2i]:
+static func tiles_with_ground(tiles: LevelTiles, kind: int) -> Array[Vector2i]:
 	var found: Array[Vector2i] = []
 	var radius: int = tiles.level_bound.radius
 	var width: int = 2 * radius + 1
@@ -119,9 +152,11 @@ static func _tiles_with_ground(tiles: LevelTiles, kind: int) -> Array[Vector2i]:
 # rng_for() would get the same sequence and correlated results.
 # `fixture_ids` is the counter of the world the level is built for.
 # `tuning` is the profile of the world it's for; the default without
-# one.
+# one. `above` is the level one depth up, where there is one: a level
+# reached by a ramp stamps its arrival under the ramp's down end
+# (D-216).
 static func generate_level(recipe: LevelRecipe, world_seed: int, fixture_ids: IdAllocator,
-		tuning: TuningProfile = null) -> Level:
+		tuning: TuningProfile = null, above: Level = null) -> Level:
 	if tuning == null: tuning = TuningProfile.default_profile()
 	var level: Level = Global.level_packed_scene.instantiate()
 	level.setup(recipe.bound.depth, world_seed, recipe.bound)
@@ -130,6 +165,16 @@ static func generate_level(recipe: LevelRecipe, world_seed: int, fixture_ids: Id
 	if recipe.generator == &"surface": surface = SurfaceGeneration.before(level, rng, tuning)
 	apply_fixed_placements(level, recipe, fixture_ids)
 	if surface != null: SurfaceGeneration.after(level, surface, rng, tuning, fixture_ids)
+	# The ways in and down before anything natural, so caves, regions
+	# and ore keep to the rock around them
+	var landings: Array[Vector2i] = DescentGeneration.place_arrivals(level, recipe, above, fixture_ids)
+	if not recipe.fixed_placements.is_empty(): landings.append(DescentGeneration.landing_of(recipe))
+	var chamber: Rect2i = DescentGeneration.place_descent(level, recipe, rng, tuning)
+	if chamber.has_area():
+		landings.append(chamber.get_center())
+		for problem: String in descent_problems(level, DescentGeneration.landing_of(recipe)):
+			push_error(problem)
+	RegionGeneration.place_crushed(level, recipe, rng, tuning, landings)
 	# Caves before ore, so veins run in the rock around them (trap 4)
 	RockGeneration.place_caves(level, recipe, rng, tuning)
 	RockGeneration.place_veins(level, rng, tuning)
@@ -146,7 +191,8 @@ static func generate_into(world: World, depth: int) -> Level:
 	var recipe: LevelRecipe = LevelRecipes.TABLE.get_recipe(depth)
 	if not recipe: return null
 	
-	var level: Level = generate_level(recipe, world.world_seed, world.fixture_ids, world.tuning)
+	var level: Level = generate_level(recipe, world.world_seed, world.fixture_ids, world.tuning,
+		world.level_at(depth - 1))
 	world.add_level(level)
 	
 	return level

@@ -18,6 +18,16 @@ class_name LevelRecipe
 # none for a level without caves. How many, and how far apart, are the
 # profile's.
 @export var cave_prefabs: Array[StringName] = []
+# The chamber holding this level's ramp down (D-215, D-229), placed by
+# the seed away from the first fixed placement (the landing) and
+# joined to it by a carved tunnel; none for a level with no way down
+# of its own.
+@export var descent_prefab: StringName = &""
+# The room stamped where the level above's ramp arrives (D-216), its
+# up end on the down end's (x, y); none for a level reached otherwise.
+@export var arrival_prefab: StringName = &""
+# How many CRUSHED regions the seed places (D-218).
+@export var crushed_regions: int = 0
 
 
 func _init(p_bound: LevelBound = null) -> void:
