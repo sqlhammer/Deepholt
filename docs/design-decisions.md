@@ -4494,3 +4494,19 @@ is one thing to build and test.
 - **L (keyboard) and D-pad up (pad)** light the torch in the light slot, or stow it.
 - **The light slot is drawn at the end of the hotbar,** on the HUD and on the inventory's PACK
   tab.
+
+---
+
+### D-229 — The seed carves a winding tunnel from −2's landing to its ramp down
+**Decided** (by Derik, slice 015, 2026-11-10). Completes D-215: a ramp left sealed in rock
+would be found only by digging blind, since senses reach 7 tiles.
+
+- **Generation picks a spot 40 to 60 tiles from −2's landing,** in a direction the seed picks,
+  stamps a small chamber with the ramp down there, and **carves a meandering tunnel, 1 to 2
+  tiles wide,** from the landing room to it.
+- **The tunnel and chamber are natural:** never marked excavated, so never judged for support
+  (as caves, D-184).
+- −3's landing is stamped where the ramp arrives, at the same (x, y).
+- The carver is general (from, to, width, meander), so 017's ruins can reuse it.
+
+*Why:* the way down is found by walking, and the walk is part of the haul.
