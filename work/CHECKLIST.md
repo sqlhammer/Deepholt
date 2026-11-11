@@ -37,4 +37,4 @@ Slice 014's checklist is in git history.
 - [x] `python scripts/coverage.py` run.
 - [x] Seen in a window: −3, the torch, the CRAFT and PACK tabs, the map (Claude, by
   screenshot).
-- [ ] By hand: outcomes 1, 3–8 (Derik).
+- [ ] By hand: outcomes 1, 3–8 (Derik). Walked in part; the fixes it found are D-230 to D-236. Not reported item by item, so left unticked. Closed 2026-11-11.

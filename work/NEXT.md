@@ -1,7 +1,7 @@
 # Next
 
 Sketches, not commitments. Slices 012 to 014b are closed and merged. **015, the long haul, is
-built on `slice-015`** ([log](./log/015-the-long-haul.md)), waiting on Derik's walk and merge.
+closed and merged** (2026-11-11, [log](./log/015-the-long-haul.md)). 016 is next.
 
 **015 to 017 were accepted together** (Derik, 2026-11-10, D-210), larger than earlier slices,
 **all in Agent mode.** Together they take the game to the first session in

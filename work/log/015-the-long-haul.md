@@ -196,3 +196,9 @@ He ruled that breaches and winches go in any order:
 
 `test_winch_shaft` runs every order of the four steps (two breaches, two winches) through the
 build cursor and lifts the crate to −1 each time. 1261 tests. Not yet seen in a window.
+
+## Closed (2026-11-11)
+
+Derik closed 015 and asked for the merge. The by-hand outcomes were walked in part, not item by
+item; what the walk found is D-230 to D-236. Not seen in a window: the climb bar and the shafts
+built in any order. Outcome 2, iron worth the climb, is 016's (D-217).
