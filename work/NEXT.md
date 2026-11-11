@@ -100,8 +100,11 @@ Found during 005, not recorded anywhere else. None of it is decided.
 - **The suite takes ~41 s** (21 s before 012): a new world generates a ~55 ms Surface and ~700
   trees, and many tests build one. A smaller Surface recipe for tests would bring it back.
 - **−1's own resources** (clay, flint, root fibre, cave fungus) and **coal on −2** aren't built.
-- **Not walked by hand yet** (Derik's UAT, 2026-11-10): 013's pad controls, all of 014, and
-  013's case E (the jump on −1), which wasn't caught or reproduced.
+- **From Derik's UAT walks (2026-11-10):** 012 to 014a pass. Not done: 013's case E (the jump
+  on −1, not caught or reproduced) and 014's A4 (the Linux build on the Deck).
+- **Telemetry drops the `loaded` event on a load at launch:** `load_game` records it before
+  `begin()`, deferred a frame, opens the session file. The summary's load times still count it.
+- **The UAT for 014 D2 assumed 60 Hz** ("p50 about 17 ms"); on a 240 Hz screen p50 is 5 ms.
 - **`digging-and-structure §4`'s R table is the original design** (8 to 3); the numbers in play
   are D-211's (3, 3, 2, 2, 1, 1, 1). The doc hasn't been brought in line since D-186.
 - **Not built from digging-and-structure §4:** coverage rings around supports, ghosted column

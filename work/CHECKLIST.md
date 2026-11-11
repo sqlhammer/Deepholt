@@ -46,7 +46,8 @@ Slice 013's checklist is in git history (last at the 013 acceptance).
 
 - [x] `scripts/test.ps1` passes, with no "Ignoring script" warnings and no leak warning.
 - [x] `python scripts/coverage.py` run; uncovered lines looked at.
-- [ ] By hand: outcomes 1–4, from an exported build.
+- [x] By hand: outcomes 1–4, from an exported build (Derik, 2026-11-10; A4, the Linux build on
+  the Deck, not run).
 - [x] Claude reviews the slice.
 - [x] Claude writes `log/014-how-it-plays-for-other-people.md`.
 - [x] Claude re-sketches [NEXT.md](./NEXT.md).

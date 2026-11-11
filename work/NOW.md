@@ -169,5 +169,5 @@ catches it, fix it in this slice.
 
 ## Carried into this slice
 
-- **Not walked yet:** 013's pad controls, all of 014, and 013's case E (the jump on −1, not
-  caught or reproduced).
+- **013's case E, the jump on −1,** wasn't caught or reproduced in Derik's walk (2026-11-10).
+  Everything else in 012 to 014a passed; 014's A4 (the Linux build on the Deck) wasn't run.
