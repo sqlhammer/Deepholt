@@ -16,6 +16,9 @@ const OBJECT: Dictionary = {
 	"TIMBER_PROP": 4,
 	# A tree on the Surface (D-181): felled with an axe for timber.
 	"TREE": 5,
+	# A chute (D-219, D-220): over a hole, on the hole's own level;
+	# items dropped into it land on the level below.
+	"CHUTE": 6,
 }
 
 
@@ -27,7 +30,12 @@ const NAMES: Dictionary = {
 	OBJECT.BRAZIER: "Brazier",
 	OBJECT.TIMBER_PROP: "Timber prop",
 	OBJECT.TREE: "Tree",
+	OBJECT.CHUTE: "Chute",
 }
+
+# The kinds that stand over a hole, on the hole's own level (D-219). A
+# hole holds one of these, or a ladder under it, never both.
+const OVER_HOLE: Array[int] = [OBJECT.CHUTE]
 
 # The kinds that keep anyone from walking onto their tile (D-165).
 const BLOCKS_WALKING: Array[int] = [OBJECT.TIMBER_PROP, OBJECT.TREE]
@@ -48,3 +56,7 @@ static func blocks_walking(kind: int) -> bool:
 
 static func holds_ceiling(kind: int) -> bool:
 	return kind in HOLDS_CEILING
+
+
+static func is_over_hole(kind: int) -> bool:
+	return kind in OVER_HOLE

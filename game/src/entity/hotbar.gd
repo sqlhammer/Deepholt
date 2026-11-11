@@ -21,8 +21,11 @@ const BARE_HANDS: ToolData = preload("res://src/entity/tools/bare_hands.tres")
 # The build slots a new hotbar starts with (D-174): ladder, then prop.
 const STARTING_BUILDS: Array[int] = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.TIMBER_PROP]
 
-# What build mode can place: the kinds a build slot may hold.
-const BUILDABLE: Array[int] = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.TIMBER_PROP]
+# What build mode can place: the kinds a build slot may hold. Each has
+# a slot: one a hotbar lacks takes its first empty build slot, so a
+# kind added later reaches a saved game's bar too.
+const BUILDABLE: Array[int] = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.TIMBER_PROP,
+	ObjectKind.OBJECT.CHUTE]
 
 var tools: Array[StringName] = []
 var builds: Array[int] = []
@@ -44,6 +47,17 @@ func _init() -> void:
 	builds.fill(ObjectKind.OBJECT.NULL)
 	for i in range(STARTING_BUILDS.size()):
 		builds[i] = STARTING_BUILDS[i]
+	_offer_buildables()
+
+
+# Every buildable kind missing from the build slots takes the first
+# empty one, in BUILDABLE's order.
+func _offer_buildables() -> void:
+	for kind: int in BUILDABLE:
+		if builds.has(kind): continue
+		var empty: int = builds.find(ObjectKind.OBJECT.NULL)
+		if empty == -1: return
+		builds[empty] = kind
 
 
 # Follows a pack: its tools fill the slots, now and as it changes.
@@ -266,6 +280,7 @@ static func from_save(data: Variant) -> Hotbar:
 			hotbar.builds[i] = int(kind) if valid else ObjectKind.OBJECT.NULL
 	elif saved_builds != null:
 		push_warning("A hotbar's build slots aren't %d kinds; the starting layout is used." % SLOTS)
+	hotbar._offer_buildables()
 	hotbar.selected_tool = _slot_or_zero(data.get("selected_tool"))
 	hotbar.selected_build = _slot_or_zero(data.get("selected_build"))
 	return hotbar

@@ -39,6 +39,8 @@ const PLACE_REASONS: Dictionary = {
 	World.FIXTURE_REFUSAL.TILE_OCCUPIED: "Something below is in the way.",
 	World.FIXTURE_REFUSAL.CANNOT_AFFORD: "You don't have enough to build that.",
 	World.FIXTURE_REFUSAL.ACTOR_ON_TILE: "Someone is standing there.",
+	World.FIXTURE_REFUSAL.NEEDS_HOLE: "That goes over a hole.",
+	World.FIXTURE_REFUSAL.HOLE_IN_USE: "A hole holds one ladder, chute or winch.",
 }
 
 var text: String:

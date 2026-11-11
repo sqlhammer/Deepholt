@@ -160,6 +160,10 @@ const DEFAULT_ID: String = "default"
 # timber.
 @export var prop_cost: Dictionary[StringName, int] = {}
 
+# What a chute costs, item id -> count (D-220): two timber, since down
+# is the cheap direction.
+@export var chute_cost: Dictionary[StringName, int] = {}
+
 ## Presentation
 
 # How long a level change's fade through black lasts, out and back in

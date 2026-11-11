@@ -10,7 +10,9 @@ extends Node2D
 #
 # A ladder is aimed at a hole on the player's own level, and placed on
 # the level below at the same (x, y) (D-154). A timber prop is placed
-# on open floor at the cursor, on the player's own level (D-165). Only
+# on open floor at the cursor, on the player's own level (D-165). A
+# chute is aimed at a hole and placed over it, on the player's own
+# level (D-219). Only
 # on a tile the player can sense or see lit: nobody builds blind.
 
 # The preview refused a placement before asking the world: shown like
@@ -34,6 +36,8 @@ enum PROBLEM {
 	TILE_OCCUPIED,
 	ACTOR_IN_WAY,
 	NOTHING_SELECTED,
+	NEEDS_HOLE,
+	HOLE_IN_USE,
 }
 
 const REASONS: Dictionary = {
@@ -48,6 +52,8 @@ const REASONS: Dictionary = {
 	PROBLEM.TILE_OCCUPIED: "Something is already there.",
 	PROBLEM.ACTOR_IN_WAY: "Someone is standing there.",
 	PROBLEM.NOTHING_SELECTED: "Nothing to build in that slot.",
+	PROBLEM.NEEDS_HOLE: "That goes over a hole.",
+	PROBLEM.HOLE_IN_USE: "A hole holds one ladder, chute or winch.",
 }
 
 # How long the stick holds a direction before the cursor steps again,
@@ -152,11 +158,12 @@ func problem(kind: int = -1) -> PROBLEM:
 	if visibility != null and visibility.state_at(tile.x, tile.y) < Visibility.STATE.SENSED:
 		return PROBLEM.TOO_DARK
 	if kind == ObjectKind.OBJECT.TIMBER_PROP: return _prop_problem(level)
+	if ObjectKind.is_over_hole(kind): return _over_hole_problem(level, kind)
 	var below: Level = level.world.level_at(level.depth + 1)
 	if below == null: return PROBLEM.NO_LEVEL_BELOW
 	# The fixture gatekeeper's own rule, for a ladder below this tile
 	var rule: World.FIXTURE_REFUSAL = FixturePlacement.problem(ObjectKind.OBJECT.LADDER, tile,
-		below.level_tiles, below.level_fixtures, tiles)
+		below.level_tiles, below.level_fixtures, tiles, null, level.level_fixtures)
 	match rule:
 		World.FIXTURE_REFUSAL.NONE:
 			# The gatekeeper's own cost rule (D-159)
@@ -164,6 +171,7 @@ func problem(kind: int = -1) -> PROBLEM:
 				return PROBLEM.CANNOT_AFFORD
 			return PROBLEM.NONE
 		World.FIXTURE_REFUSAL.NO_HOLE_ABOVE: return PROBLEM.NOT_A_HOLE
+		World.FIXTURE_REFUSAL.HOLE_IN_USE: return PROBLEM.HOLE_IN_USE
 		World.FIXTURE_REFUSAL.TILE_OCCUPIED: return PROBLEM.LANDING_OCCUPIED
 		World.FIXTURE_REFUSAL.TILE_NOT_EXISTS: return PROBLEM.OUTSIDE_LEVEL
 	return PROBLEM.LANDING_NOT_PASSABLE
@@ -184,6 +192,24 @@ func _prop_problem(level: Level) -> PROBLEM:
 			WorldPos.new(tile.x, tile.y, level.depth)):
 		return PROBLEM.ACTOR_IN_WAY
 	if not Building.can_afford(level.world.tuning, actor, ObjectKind.OBJECT.TIMBER_PROP):
+		return PROBLEM.CANNOT_AFFORD
+	return PROBLEM.NONE
+
+
+# The gatekeeper's own rules for a chute over the cursor's hole, on
+# the player's level (D-219): an open hole, nothing over it, no ladder
+# under it, and the cost.
+func _over_hole_problem(level: Level, kind: int) -> PROBLEM:
+	var below: Level = level.world.level_at(level.depth + 1)
+	if below == null: return PROBLEM.NO_LEVEL_BELOW
+	var rule: World.FIXTURE_REFUSAL = FixturePlacement.problem(kind, tile, level.level_tiles,
+		level.level_fixtures, null, null, null, below.level_fixtures)
+	match rule:
+		World.FIXTURE_REFUSAL.NONE: pass
+		World.FIXTURE_REFUSAL.TILE_NOT_EXISTS: return PROBLEM.OUTSIDE_LEVEL
+		World.FIXTURE_REFUSAL.NEEDS_HOLE: return PROBLEM.NEEDS_HOLE
+		_: return PROBLEM.HOLE_IN_USE
+	if not Building.can_afford(level.world.tuning, actor, kind):
 		return PROBLEM.CANNOT_AFFORD
 	return PROBLEM.NONE
 

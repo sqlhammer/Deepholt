@@ -41,6 +41,9 @@ signal drop_requested(actor: Actor, id: StringName, count: int)
 signal take_requested(actor: Actor)
 signal items_dropped(actor: Actor, tile: WorldPos, id: StringName, count: int)
 signal items_picked_up(actor: Actor, tile: WorldPos, id: StringName, count: int)
+# Items dropped down a chute (D-220): `top` is the chute's tile,
+# `landed` where they came to rest, levels below.
+signal items_chuted(actor: Actor, top: WorldPos, landed: WorldPos, id: StringName, count: int)
 # Felling a tree (D-181): asked when the work is done, answered with
 # the tree gone and its timber given, or a refusal.
 signal chop_requested(actor: Actor, tile: WorldPos)
@@ -130,7 +133,16 @@ enum FIXTURE_REFUSAL {
 	# A fixture that blocks its tile (D-165) can't go where an actor
 	# stands: it would wall the actor in
 	ACTOR_ON_TILE,
+	# A chute or winch goes over an open hole (D-219)
+	NEEDS_HOLE,
+	# The hole already has a ladder under it or something over it: one
+	# hole, one use (D-219)
+	HOLE_IN_USE,
 }
+
+# How far, in rings of tiles, chuted items look for somewhere to lie
+# before they are left buried on their landing (trap 3).
+const LANDING_RINGS: int = 4
 
 var world_seed: int
 # Draws what digging yields (D-158): seeded from the world seed the
@@ -323,18 +335,78 @@ func _on_actor_moved(actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> void
 
 # --- drops (D-160, D-161) ---
 
-# Moves up to `count` of an item from the actor's pack onto its tile.
+# Moves up to `count` of an item from the actor's pack onto its tile,
+# or, facing a chute, down the chute (D-220).
 func _on_drop_requested(actor: Actor, id: StringName, count: int) -> void:
 	if actor == null or actor.current_level == null or actor.current_level.world != self: return
 	var n: int = mini(count, actor.pack.count_of(id))
 	if n <= 0: return
 	var here: WorldPos = actor.current_WorldPos
+	var chute: Fixture = chute_faced(actor)
+	if chute != null and level_at(here.depth + 1) != null:
+		actor.pack.remove(id, n)
+		_send_down(actor, chute.tile, id, n)
+		return
 	actor.pack.remove(id, n)
 	actor.current_level.level_drops.add(Vector2i(here.x, here.y), id, n)
 	var dropped: Array = _dropped_at.get_or_add(actor.get_instance_id(), [])
 	if not dropped.any(func(at: WorldPos) -> bool: return at.equals(here)):
 		dropped.append(here)
 	items_dropped.emit(actor, here, id, n)
+
+
+# --- chutes (D-219, D-220) ---
+
+# The chute on the tile the actor faces, or null: a drop made facing
+# one goes down it.
+func chute_faced(actor: Actor) -> Fixture:
+	var level: Level = actor.current_level
+	var here: WorldPos = actor.current_WorldPos
+	if level == null or here == null: return null
+	var faced: Vector2i = Vector2i(here.x, here.y) + actor.facing
+	return _fixture_of_kind(level, faced, ObjectKind.OBJECT.CHUTE)
+
+
+func _fixture_of_kind(level: Level, tile: Vector2i, kind: int) -> Fixture:
+	for fixture: Fixture in level.level_fixtures.at(tile):
+		if fixture.kind == kind: return fixture
+	return null
+
+
+# Items into the chute at `top`: they fall to the level below at the
+# same (x, y), on through every chute they land in (D-219), and lie
+# where they stop, spilled to the nearest open tile when that one
+# can't hold them (trap 3).
+func _send_down(actor: Actor, top: WorldPos, id: StringName, count: int) -> void:
+	var level: Level = level_at(top.depth + 1)
+	var tile: Vector2i = Vector2i(top.x, top.y)
+	while level_at(level.depth + 1) != null \
+			and _fixture_of_kind(level, tile, ObjectKind.OBJECT.CHUTE) != null:
+		level = level_at(level.depth + 1)
+	var landing: Vector2i = landing_near(level, tile)
+	level.level_drops.add(landing, id, count)
+	items_chuted.emit(actor, top, WorldPos.new(landing.x, landing.y, level.depth), id, count)
+
+
+# Where something falling onto `tile` of `level` comes to rest: the
+# tile itself when it's open floor with no fixture on it, else the
+# nearest such tile, ring by ring. With none near, the tile itself:
+# buried, never lost.
+func landing_near(level: Level, tile: Vector2i) -> Vector2i:
+	for ring in range(0, LANDING_RINGS + 1):
+		for dy in range(-ring, ring + 1):
+			for dx in range(-ring, ring + 1):
+				if maxi(absi(dx), absi(dy)) != ring: continue
+				var at: Vector2i = tile + Vector2i(dx, dy)
+				if _holds_drops(level, at): return at
+	return tile
+
+
+func _holds_drops(level: Level, tile: Vector2i) -> bool:
+	var tiles: LevelTiles = level.level_tiles
+	if not TileKind.is_passable(tiles.get_top(tile.x, tile.y), tiles.get_ground(tile.x, tile.y)):
+		return false
+	return level.level_fixtures.at(tile).is_empty()
 
 
 # A player takes what lies within reach as it moves, up to the fill
@@ -670,10 +742,7 @@ func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
 		request_refused.emit(actor, FIXTURE_VERB.PLACE, tile, FIXTURE_REFUSAL.LEVEL_NOT_EXISTS)
 		return
 
-	var above: Level = level_at(tile.depth - 1)
-	var tiles_above: LevelTiles = above.level_tiles if above != null else null
-	var reason: FIXTURE_REFUSAL = FixturePlacement.problem(
-		kind, Vector2i(tile.x, tile.y), level.level_tiles, level.level_fixtures, tiles_above)
+	var reason: FIXTURE_REFUSAL = _placement_problem(kind, tile, level)
 	if reason != FIXTURE_REFUSAL.NONE:
 		request_refused.emit(actor, FIXTURE_VERB.PLACE, tile, reason)
 		return
@@ -690,6 +759,19 @@ func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
 	var fixture: Fixture = Fixture.new(kind, tile, fixture_ids.allocate())
 	level.level_fixtures.add(fixture)
 	fixture_placed.emit(actor, fixture)
+
+
+# The placement rules for `kind` on `tile` of `level`, with the levels
+# above and below it as this world holds them, so the one-use-per-hole
+# rule (D-219) is checked both ways.
+func _placement_problem(kind: int, tile: WorldPos, level: Level,
+		ignoring: Fixture = null) -> FIXTURE_REFUSAL:
+	var above: Level = level_at(tile.depth - 1)
+	var below: Level = level_at(tile.depth + 1)
+	return FixturePlacement.problem(kind, Vector2i(tile.x, tile.y), level.level_tiles,
+		level.level_fixtures, above.level_tiles if above != null else null, ignoring,
+		above.level_fixtures if above != null else null,
+		below.level_fixtures if below != null else null)
 
 
 # Whether a fixture of `kind` on `tile` would wall in an actor standing
@@ -729,10 +811,7 @@ func _on_move_requested(actor: Actor, fixture_id: int, to: WorldPos) -> void:
 		return
 
 	var fixture: Fixture = source.level_fixtures.find(fixture_id)
-	var above: Level = level_at(to.depth - 1)
-	var tiles_above: LevelTiles = above.level_tiles if above != null else null
-	var reason: FIXTURE_REFUSAL = FixturePlacement.problem(fixture.kind,
-		Vector2i(to.x, to.y), target.level_tiles, target.level_fixtures, tiles_above, fixture)
+	var reason: FIXTURE_REFUSAL = _placement_problem(fixture.kind, to, target, fixture)
 	if reason != FIXTURE_REFUSAL.NONE:
 		request_refused.emit(actor, FIXTURE_VERB.MOVE, to, reason)
 		return

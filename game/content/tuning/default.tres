@@ -91,3 +91,6 @@ collapse_countdown_seconds = 45.0
 prop_cost = Dictionary[StringName, int]({
 &"timber": 2
 })
+chute_cost = Dictionary[StringName, int]({
+&"timber": 2
+})
