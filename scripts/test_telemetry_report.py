@@ -38,6 +38,10 @@ def _fixture(path):
 		{"t": 8, "event": "winched", "data": {"up": True, "depth": 1, "kilos": 54.0}},
 		{"t": 8, "event": "winched", "data": {"up": False, "depth": 1, "kilos": 0.0}},
 		{"t": 8, "event": "map_opened", "data": {"depth": 2}},
+		{"t": 8, "event": "built", "data": {"kind": "SMELTER", "depth": 2, "trips_started": 1,
+			"home_depth": 1}},
+		{"t": 8, "event": "smelted", "data": {"item": "copper_ingot", "count": 1, "depth": 2}},
+		{"t": 8, "event": "smelted", "data": {"item": "copper_ingot", "count": 1, "depth": 2}},
 		{"t": 9, "event": "trip_ended", "data": {"seconds_below": 600, "deepest": 2,
 			"kilos_home": 31.5, "overloaded_seconds": 200, "finished": True}},
 		{"t": 10, "event": "session_ended", "data": {"length_seconds": 900}},
@@ -81,10 +85,19 @@ class ReportTest(unittest.TestCase):
 		self.assertIn("chute used 1 times, 12 items down", text)
 		self.assertIn("winch lifted 1 crates (54.0 kg), lowered 1", text)
 		self.assertIn("map opened 1 times", text)
+		self.assertIn("smelted 2 copper_ingot on -2", text)
+		self.assertIn("4 smelter sited near the mine, below home: 1 of 2 sessions (1 built one", text)
 		# The second session's only trip was overloaded over 2 minutes
 		self.assertIn("5 nobody abandons", text)
 		self.assertIn("1 of 2 sessions", text)
 		self.assertIn("warning at game.gd:612 _local_player x2", text)
+
+	def test_a_smelter_at_home_is_not_near_the_mine(self):
+		at_home = [{"event": "built", "data": {"kind": "SMELTER", "depth": 1, "home_depth": 1}}]
+		self.assertFalse(telemetry_report.smelter_sited_away(at_home))
+		no_bed = [{"event": "built", "data": {"kind": "SMELTER", "depth": 2, "home_depth": -1}}]
+		self.assertTrue(telemetry_report.smelter_sited_away(no_bed), "no bed: home is -1")
+		self.assertIsNone(telemetry_report.smelter_sited_away([]))
 
 	def test_a_folder_reads_like_a_zip(self):
 		unpacked = os.path.join(self.folder, "unpacked")

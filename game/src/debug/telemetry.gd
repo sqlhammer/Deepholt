@@ -161,7 +161,12 @@ func watch_world(world: World) -> void:
 	world.crafted.connect(func(a: Actor, recipe: Recipe) -> void:
 		if not _is_player(a): return
 		_crafted[String(recipe.id)] = _crafted.get(String(recipe.id), 0) + 1
-		record(&"crafted", {"recipe": recipe.id}))
+		record(&"crafted", {"recipe": recipe.id, "station": recipe.station, "depth": a.depth}))
+	# What smelters made, and where (criterion 4: is it smelted at the
+	# mine?). Worked out, so no actor: it's counted wherever it is.
+	world.smelted.connect(func(smelter: Fixture, made: Dictionary) -> void:
+		for id: StringName in made:
+			record(&"smelted", {"item": id, "count": made[id], "depth": smelter.tile.depth}))
 	# Announced before the world records how long it took: read after
 	world.level_added.connect(func(level: Level) -> void:
 		var depth: int = level.depth
@@ -194,15 +199,27 @@ func trips_started(actor: Actor) -> int:
 	return _trips.get(actor.actor_id, {}).get("count", 0) if _is_player(actor) else 0
 
 
-# A chute or winch a player built, with its trips so far (criterion 1).
+# The kinds whose building is counted: the haul's (criterion 1) and
+# the stations, bed and storage (016; criterion 4 is the smelter's).
+const COUNTED_BUILDS: Array[int] = [ObjectKind.OBJECT.CHUTE, ObjectKind.OBJECT.WINCH,
+	ObjectKind.OBJECT.WORKBENCH, ObjectKind.OBJECT.SMELTER, ObjectKind.OBJECT.FORGE,
+	ObjectKind.OBJECT.BED, ObjectKind.OBJECT.STORAGE_CRATE]
+
+
+# Something a player built, with its trips so far (criterion 1). A
+# smelter says where its builder's home is: their bed's depth, or -1
+# with none (criterion 4: near the mine, or at home?).
 func _on_fixture_placed(actor: Actor, fixture: Fixture) -> void:
-	if not _is_player(actor): return
-	if fixture.kind != ObjectKind.OBJECT.CHUTE and fixture.kind != ObjectKind.OBJECT.WINCH: return
+	if not _is_player(actor) or fixture.kind not in COUNTED_BUILDS: return
 	var kind: String = ObjectKind.OBJECT.find_key(fixture.kind)
 	_built[kind] = _built.get(kind, 0) + 1
 	var trips: int = trips_started(actor)
 	if fixture.kind == ObjectKind.OBJECT.CHUTE and _first_chute_after < 0: _first_chute_after = trips
-	record(&"built", {"kind": kind, "depth": fixture.tile.depth, "trips_started": trips})
+	var facts: Dictionary = {"kind": kind, "depth": fixture.tile.depth, "trips_started": trips}
+	if fixture.kind == ObjectKind.OBJECT.SMELTER and actor.current_level != null:
+		var bed: Fixture = actor.current_level.world.bed_of(actor.actor_id)
+		facts["home_depth"] = bed.tile.depth if bed != null else -1
+	record(&"built", facts)
 
 
 func _on_items_chuted(actor: Actor, top: WorldPos, landed: WorldPos, id: StringName,

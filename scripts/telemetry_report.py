@@ -150,7 +150,28 @@ def haul_lines(events):
 	maps = _of(events, "map_opened")
 	if maps:
 		lines.append("  map opened %d times" % len(maps))
+	smelted = Counter()
+	for s in _of(events, "smelted"):
+		smelted[(s.get("depth", "?"), s.get("item", "?"))] += s.get("count", 0)
+	for (depth, item), count in sorted(smelted.items(), key=lambda kv: str(kv[0])):
+		lines.append("  smelted %d %s on -%s" % (count, item, depth))
 	return lines
+
+
+def smelter_sited_away(events):
+	"""Whether a smelter was built below its builder's home (criterion
+	4), or None with no smelter. Home is the bed's level, or -1 with no
+	bed."""
+	smelters = [b for b in _of(events, "built") if b.get("kind") == "SMELTER"]
+	if not smelters:
+		return None
+	for built in smelters:
+		home = built.get("home_depth", -1)
+		if home is None or home < 0:
+			home = 1
+		if built.get("depth", 0) > home:
+			return True
+	return False
 
 
 def first_chute_trips(events):
@@ -193,7 +214,11 @@ def criteria_lines(sessions):
 		"unprompted is the tester's word)" % (len(early), len(sessions), len(built)))
 	for n in (2, 3, 6):
 		lines.append("  %d: judged in testers' own words, not from telemetry" % n)
-	lines.append("  4 smelter sited near the mine: not measurable yet (no smelter)")
+	sited = [smelter_sited_away(s["events"]) for s in sessions]
+	built_smelter = [x for x in sited if x is not None]
+	lines.append("  4 smelter sited near the mine, below home: %d of %d sessions (%d built one; "
+		"'without being told' is the tester's word)" % (sum(1 for x in built_smelter if x),
+		len(sessions), len(built_smelter)))
 	# Criterion 5, the kill switch: sessions that ended mid-trip or
 	# straight after a long overloaded one are the ones to ask about
 	flagged = []

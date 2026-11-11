@@ -128,3 +128,45 @@ func test_an_npcs_building_isnt_a_players() -> void:
 	_world.place_requested.emit(null, ObjectKind.OBJECT.CHUTE,
 		WorldPos.new(CHUTE_HOLE.x, CHUTE_HOLE.y, 0))
 	assert_eq(_events(&"built").size(), 0, "generation or no actor: not counted")
+
+
+# --- 016: stations and smelting (criterion 4) ---
+
+func test_a_smelter_built_says_where_its_builders_home_is() -> void:
+	_actor.pack.add(&"timber", 6)
+	_world.place_requested.emit(_actor, ObjectKind.OBJECT.BED, WorldPos.new(-3, 0, 0))
+	_actor.pack.add(&"stone", 16)
+	_actor.pack.add(&"timber", 8)
+	_world.place_requested.emit(_actor, Building.SMELTER_FROM_TIMBER, WorldPos.new(3, 0, 0))
+	var built: Array = _events(&"built")
+	assert_eq(built.map(func(e: Dictionary) -> String: return e.data.kind), ["BED", "SMELTER"],
+		"the bed and the smelter")
+	assert_eq(int(built[1].data.home_depth), 0, "home is the bed's level")
+
+
+func test_a_smelter_with_no_bed_says_so() -> void:
+	_actor.pack.add(&"stone", 16)
+	_actor.pack.add(&"timber", 8)
+	_world.place_requested.emit(_actor, Building.SMELTER_FROM_TIMBER, WorldPos.new(3, 0, 0))
+	assert_eq(int(_events(&"built")[0].data.home_depth), -1, "no bed")
+
+
+func test_what_a_smelter_makes_is_recorded_with_its_level() -> void:
+	_world.place_requested.emit(null, ObjectKind.OBJECT.SMELTER, WorldPos.new(1, 0, 0))
+	var smelter: Fixture = _world.level_at(0).level_fixtures.of_kind(ObjectKind.OBJECT.SMELTER)[0]
+	smelter.machine.load_items(&"copper_ore", 3)
+	smelter.machine.load_items(&"coal", 1)
+	_world.advance_time(10.0)
+	var smelted: Array = _events(&"smelted")
+	assert_eq(smelted.size(), 1, "one batch")
+	assert_eq(smelted[0].data.item, "copper_ingot", "an ingot")
+	assert_eq(int(smelted[0].data.depth), 0, "on the Surface")
+
+
+func test_making_says_where_and_at_what() -> void:
+	_actor.pack.add(&"stone", 3)
+	_actor.pack.add(&"timber", 1)
+	_world.craft_requested.emit(_actor, &"flint_pickaxe")
+	var crafted: Dictionary = _events(&"crafted")[0].data
+	assert_eq(crafted.station, "hand", "by hand")
+	assert_eq(int(crafted.depth), 0, "on the Surface")
