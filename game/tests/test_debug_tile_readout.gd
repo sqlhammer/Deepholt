@@ -27,11 +27,18 @@ func test_window_prints_back_the_authored_grid_around_the_anchor() -> void:
 	var readout: String = _overlay._tile_readout(WorldPos.new(0, 0, 0))
 	
 	assert_string_contains(readout, "###########", "five rows should contain this")
-	assert_string_contains(readout, "####c%%%%%%", "three rows north of the anchor")
+	assert_string_contains(readout, "#####%%%%%%", "three rows north of the anchor")
 	assert_string_contains(readout, "####%......", "one and two rows north of the anchor")
-	assert_string_contains(readout, "####c@.....", "anchor row")
-	assert_string_contains(readout, "####c......", "one row south of anchor")
-	assert_string_contains(readout, "####%.c%%%%", "two rows south of anchor")
+	assert_string_contains(readout, "#####@.....", "anchor row")
+	assert_string_contains(readout, "#####......", "one row south of anchor")
+	assert_string_contains(readout, "####%.#%%%%", "two rows south of anchor")
+
+
+# The start room has no ore (D-213), so the test puts some in.
+func test_ore_prints_over_its_rock() -> void:
+	_world.level_at(0).level_tiles.set_ore(-1, 0, TileKind.ORE.COPPER)
+	var readout: String = _overlay._tile_readout(WorldPos.new(0, 0, 0))
+	assert_string_contains(readout, "####c@.....", "copper beside the anchor")
 
 
 # A hole is open on top, like floor, but can't be walked over; it
