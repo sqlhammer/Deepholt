@@ -24,6 +24,12 @@ var contents: Pack = null
 # Seconds left before a fixture that burns down is gone (a dropped
 # torch, D-221); below zero for one that doesn't. Saved with it.
 var time_left: float = -1.0
+# A smelter's work (D-238): its inputs, coal and progress; what it
+# makes is `contents`. Null for every other kind. Saved with it.
+var machine: Smelter = null
+# Whose bed this is (D-248): the owning player's actor id, or -1 for
+# none. Saved with it.
+var owner_id: int = -1
 
 var _tile: WorldPos
 

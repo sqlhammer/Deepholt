@@ -108,7 +108,7 @@ func _hotbar_input(event: InputEvent) -> void:
 	# scrolls its grid instead, on the board itself
 	if inventory != null and inventory.is_open and event is InputEventJoypadButton \
 			and (event.is_action_pressed("hotbar_prev") or event.is_action_pressed("hotbar_next")):
-		inventory.switch_tab()
+		inventory.switch_tab(-1 if event.is_action_pressed("hotbar_prev") else 1)
 		return
 	if event.is_action_pressed("hotbar_prev"): step_slot(-1)
 	elif event.is_action_pressed("hotbar_next"): step_slot(1)
@@ -266,8 +266,10 @@ func _physics_process(delta: float) -> void:
 # taken, and the notice says what.
 func interact_or_take() -> void:
 	var world: World = actor.current_level.world
-	var crate: Fixture = world.crate_faced(actor)
-	if crate != null and not crate.contents.is_empty(): world.take_requested.emit(actor)
+	# A crate, storage or smelter with something in it, or fungus
+	var container: Fixture = world.container_faced(actor)
+	if container != null and not container.contents.is_empty(): world.take_requested.emit(actor)
+	elif world.fungus_faced(actor) != null: world.take_requested.emit(actor)
 	elif actor.has_interaction(): actor.interact()
 	else: world.take_requested.emit(actor)
 

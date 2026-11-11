@@ -50,6 +50,14 @@ signal items_uncrated(actor: Actor, crate: Fixture, id: StringName, count: int)
 # A winch's crate reached the top of its hole, or the foot (D-225).
 # `actor` is whoever's cranking finished the move.
 signal crate_arrived(actor: Actor, winch: Fixture, crate: Fixture, at_top: bool)
+# A smelter took something dropped into it (D-238), or made something
+# (`actor` is null: nobody made it, it was worked out).
+signal smelter_loaded(actor: Actor, smelter: Fixture, id: StringName, count: int)
+signal smelted(smelter: Fixture, made: Dictionary)
+# Something dropped into a smelter or storage crate didn't go in.
+signal load_refused(actor: Actor, container: Fixture, reason: LOAD_REFUSAL)
+# A player claimed a bed (D-248).
+signal bed_claimed(actor: Actor, bed: Fixture)
 signal crank_refused(actor: Actor, reason: CRANK_REFUSAL)
 # Making something (D-222): asked by recipe id, answered with what was
 # made or why not.
@@ -174,6 +182,15 @@ enum CRAFT_REFUSAL {
 	NEEDS_STATION,
 }
 
+# Why a drop into a smelter or a storage crate didn't all go in.
+enum LOAD_REFUSAL {
+	NONE,
+	# A smelter takes ore, copper and tin ingots, and coal (D-242)
+	NOT_SMELTABLE,
+	# Not all of it fitted
+	FULL,
+}
+
 # Why cranking a winch, or filling its crate, did nothing (D-224,
 # D-225).
 enum CRANK_REFUSAL {
@@ -194,8 +211,18 @@ enum CRANK_REFUSAL {
 # How far, in rings of tiles, chuted items look for somewhere to lie
 # before they are left buried on their landing (trap 3).
 const LANDING_RINGS: int = 4
+# How often the smelters where a player is are worked out, in seconds.
+# Between times the answer would be the same; this is only how soon it
+# shows (D-238).
+const SMELTER_LOOK_SECONDS: float = 0.5
 
 var world_seed: int
+# Seconds this world has run, saved with it: the clock its rate
+# machines are worked out against (D-238). Advances with advance_time.
+var world_time: float = 0.0
+# Seconds since the smelters on players' levels were last worked out:
+# every SMELTER_LOOK_SECONDS, so their progress shows as it goes.
+var _since_smelters: float = 0.0
 # How far each winch's crate is on its way, 0 to 1, by the winch's id
 # (D-225). Not saved: a crate is at one end or the other, and a load
 # finds it where it last arrived (015 trap 4).
@@ -316,9 +343,14 @@ func settle_cranks() -> void:
 # sight; the rate machine that lets a place run while you are away
 # comes later. A test drives time by calling this.
 func advance_time(delta: float) -> void:
+	world_time += delta
 	for level: Level in _levels_with_players():
 		if level.support != null: level.support.advance(delta)
 		_burn_torches(level, delta)
+	_since_smelters += delta
+	if _since_smelters >= SMELTER_LOOK_SECONDS:
+		_since_smelters = 0.0
+		for level: Level in _levels_with_players(): work_smelters(level)
 
 
 func _levels_with_players() -> Array[Level]:
@@ -401,6 +433,8 @@ func _on_actor_moved(actor: Actor, old_pos: WorldPos, new_pos: WorldPos) -> void
 	_auto_pickup(actor)
 	if old_pos != null and old_pos.depth == new_pos.depth: return
 	generate_below(new_pos.depth)
+	# Arriving, the smelters here catch up on the time away (D-238)
+	if actor.current_level != null: work_smelters(actor.current_level)
 
 
 # --- drops (D-160, D-161) ---
@@ -412,9 +446,12 @@ func _on_drop_requested(actor: Actor, id: StringName, count: int) -> void:
 	var n: int = mini(count, actor.pack.count_of(id))
 	if n <= 0: return
 	var here: WorldPos = actor.current_WorldPos
-	var crate: Fixture = crate_faced(actor)
-	if crate != null:
-		_fill_crate(actor, crate, id, n)
+	var container: Fixture = container_faced(actor)
+	if container != null:
+		match container.kind:
+			ObjectKind.OBJECT.CRATE: _fill_crate(actor, container, id, n)
+			ObjectKind.OBJECT.STORAGE_CRATE: _fill_storage(actor, container, id, n)
+			ObjectKind.OBJECT.SMELTER: _load_smelter(actor, container, id, n)
 		return
 	var chute: Fixture = chute_faced(actor)
 	if chute != null and level_at(here.depth + 1) != null:
@@ -423,7 +460,7 @@ func _on_drop_requested(actor: Actor, id: StringName, count: int) -> void:
 		return
 	# The light in hand, dropped while it burns, stays lit on the
 	# ground: a breadcrumb (D-221). The rest of a stack drops unlit.
-	if actor.hotbar.lit and id == actor.hotbar.light:
+	if actor.hotbar.lit and id == actor.hotbar.light and id != Hotbar.LANTERN:
 		_drop_lit(actor, here)
 		n -= 1
 		if n <= 0: return
@@ -515,7 +552,8 @@ func _holds_drops(level: Level, tile: Vector2i) -> bool:
 func craft_problem(actor: Actor, recipe_id: StringName) -> CRAFT_REFUSAL:
 	var recipe: Recipe = RecipeRegistry.find(recipe_id)
 	if recipe == null: return CRAFT_REFUSAL.UNKNOWN_RECIPE
-	if recipe.station != Recipe.HAND: return CRAFT_REFUSAL.NEEDS_STATION
+	if recipe.station != Recipe.HAND and recipe.station not in stations_near(actor):
+		return CRAFT_REFUSAL.NEEDS_STATION
 	for id: StringName in recipe.inputs:
 		if not actor.pack.has(id, recipe.inputs[id]): return CRAFT_REFUSAL.CANNOT_AFFORD
 	return CRAFT_REFUSAL.NONE
@@ -535,6 +573,165 @@ func _on_craft_requested(actor: Actor, recipe_id: StringName) -> void:
 	for id: StringName in recipe.outputs:
 		actor.pack.add(id, recipe.outputs[id])
 	crafted.emit(actor, recipe)
+
+
+# --- stations (D-237) ---
+
+# The stations within reach of `actor`, by the name their recipes give
+# (&"workbench", &"forge"), each once: any of that kind within the
+# profile's reach, in tiles (Chebyshev), on the actor's own level, and
+# not buried. Each actor's own (D-045).
+func stations_near(actor: Actor) -> Array[StringName]:
+	var found: Array[StringName] = []
+	var level: Level = actor.current_level if actor != null else null
+	var here: WorldPos = actor.current_WorldPos if actor != null else null
+	if level == null or here == null: return found
+	var reach: int = tuning.station_reach
+	for dy in range(-reach, reach + 1):
+		for dx in range(-reach, reach + 1):
+			var tile: Vector2i = Vector2i(here.x + dx, here.y + dy)
+			if level.level_tiles.get_top(tile.x, tile.y) != TileKind.TOP.OPEN: continue
+			for fixture: Fixture in level.level_fixtures.at(tile):
+				var station: StringName = ObjectKind.station_of(fixture.kind)
+				if station != &"" and station not in found: found.append(station)
+	return found
+
+
+# --- what holds items: the winch's crate, storage, the smelter ---
+
+# The fixture that holds items on the tile `actor` faces, on its own
+# level, or null: a winch's crate (D-224), a storage crate (D-249) or a
+# smelter (D-238). Never one buried.
+func container_faced(actor: Actor) -> Fixture:
+	var faced: Vector2i = _faced_tile(actor)
+	if faced == NO_TILE: return null
+	var level: Level = actor.current_level
+	if level.level_tiles.get_top(faced.x, faced.y) != TileKind.TOP.OPEN: return null
+	for fixture: Fixture in level.level_fixtures.at(faced):
+		if ObjectKind.holds_items(fixture.kind) and fixture.contents != null: return fixture
+	return null
+
+
+# What fits of the drop goes into the storage crate; the rest stays in
+# the pack, and the refusal says it's full (D-249).
+func _fill_storage(actor: Actor, crate: Fixture, id: StringName, count: int) -> void:
+	var limit: float = tuning.storage_capacity_kg / tuning.carry_capacity_kg
+	var fits: int = Carrying.fits(tuning, crate.contents, id, count, limit)
+	if fits > 0:
+		actor.pack.remove(id, fits)
+		crate.contents.add(id, fits)
+		items_crated.emit(actor, crate, id, fits)
+	if fits < count: load_refused.emit(actor, crate, LOAD_REFUSAL.FULL)
+
+
+# Into the smelter, once what it held is worked out: only what it
+# smelts, alloys or burns (D-242), and only what fits.
+func _load_smelter(actor: Actor, smelter: Fixture, id: StringName, count: int) -> void:
+	if not Smelter.takes(id):
+		load_refused.emit(actor, smelter, LOAD_REFUSAL.NOT_SMELTABLE)
+		return
+	work_smelter(smelter)
+	var weight: float = Smelter._weight_of(id)
+	var room: float = tuning.smelter_capacity_kg - smelter.machine.loaded_weight()
+	var fits: int = count if weight <= 0.0 else mini(count, floori(room / weight + 0.0001))
+	if fits > 0:
+		actor.pack.remove(id, fits)
+		smelter.machine.load_items(id, fits)
+		smelter_loaded.emit(actor, smelter, id, fits)
+	if fits < count: load_refused.emit(actor, smelter, LOAD_REFUSAL.FULL)
+
+
+# Works out every smelter on `level` up to now (D-238).
+func work_smelters(level: Level) -> void:
+	for smelter: Fixture in level.level_fixtures.of_kind(ObjectKind.OBJECT.SMELTER):
+		work_smelter(smelter)
+
+
+# Works out one smelter up to now, at full speed when its tile is lit
+# and the profile's slower speed when not; what it made joins its
+# contents. A buried smelter does no work, and loses none.
+func work_smelter(smelter: Fixture) -> void:
+	if smelter.machine == null: return
+	var level: Level = level_at(smelter.tile.depth)
+	if level == null: return
+	var at: Vector2i = Vector2i(smelter.tile.x, smelter.tile.y)
+	var speed: float = 1.0
+	if level.level_tiles.get_top(at.x, at.y) != TileKind.TOP.OPEN: speed = 0.0
+	elif not Light.is_lit_at(level, at, actors(), tuning): speed = tuning.smelt_unlit_speed
+	var made: Dictionary[StringName, int] = smelter.machine.advance_to(world_time, speed,
+		tuning.smelt_seconds, smelter.contents)
+	if not made.is_empty(): smelted.emit(smelter, made)
+
+
+# How far the smelter is into its batch, 0 to 1.
+func smelt_progress(smelter: Fixture) -> float:
+	if smelter.machine == null or tuning.smelt_seconds <= 0.0: return 0.0
+	return clampf(smelter.machine.progress / tuning.smelt_seconds, 0.0, 1.0)
+
+
+# --- cave fungus (D-245) ---
+
+# The clump of fungus on the tile `actor` faces, or null.
+func fungus_faced(actor: Actor) -> Fixture:
+	var faced: Vector2i = _faced_tile(actor)
+	if faced == NO_TILE: return null
+	var level: Level = actor.current_level
+	if level.level_tiles.get_top(faced.x, faced.y) != TileKind.TOP.OPEN: return null
+	return _fixture_of_kind(level, faced, ObjectKind.OBJECT.FUNGUS)
+
+
+# The clump is gone, and its fungus in the actor's pack, whatever the
+# load, as a take is. Its count is drawn from the world's yields, so a
+# seed's harvest repeats.
+func _harvest(actor: Actor, fungus: Fixture) -> Dictionary[StringName, int]:
+	var level: Level = level_at(fungus.tile.depth)
+	level.level_fixtures.remove(fungus.id)
+	fixture_removed.emit(actor, fungus)
+	var count: int = _yields().randi_range(tuning.fungus_yield_min, tuning.fungus_yield_max)
+	actor.pack.add(&"cave_fungus", count)
+	var found: Dictionary[StringName, int] = {&"cave_fungus": count}
+	return found
+
+
+# --- beds (D-248) ---
+
+# `actor` claims `bed`: it's theirs, and any bed that was theirs is
+# nobody's. A bed has one owner; claiming one that was someone else's
+# takes it.
+func claim_bed(actor: Actor, bed: Fixture) -> void:
+	if actor == null or bed == null or bed.kind != ObjectKind.OBJECT.BED: return
+	for level: Level in levels():
+		for other: Fixture in level.level_fixtures.of_kind(ObjectKind.OBJECT.BED):
+			if other != bed and other.owner_id == actor.actor_id: other.owner_id = -1
+	bed.owner_id = actor.actor_id
+	bed_claimed.emit(actor, bed)
+
+
+# The bed the actor with this id owns, or null.
+func bed_of(actor_id: int) -> Fixture:
+	for level: Level in levels():
+		for bed: Fixture in level.level_fixtures.of_kind(ObjectKind.OBJECT.BED):
+			if bed.owner_id == actor_id: return bed
+	return null
+
+
+# Where the actor with this id comes back to (D-248): its bed's tile,
+# beside which a spawn finds the nearest free tile. Null with no bed,
+# or one buried: then the world's spawn is used.
+func home_of(actor_id: int) -> WorldPos:
+	var bed: Fixture = bed_of(actor_id)
+	if bed == null: return null
+	var level: Level = level_at(bed.tile.depth)
+	if level == null or level.level_tiles.get_top(bed.tile.x, bed.tile.y) != TileKind.TOP.OPEN:
+		return null
+	return bed.tile
+
+
+# The bed on the tile `actor` faces, or null.
+func bed_faced(actor: Actor) -> Fixture:
+	var faced: Vector2i = _faced_tile(actor)
+	if faced == NO_TILE: return null
+	return _fixture_of_kind(actor.current_level, faced, ObjectKind.OBJECT.BED)
 
 
 # --- the winch and its crate (D-224, D-225) ---
@@ -772,10 +969,19 @@ func _still_dropped(actor: Actor) -> Array[Vector2i]:
 # The take key: everything within reach, whatever the load (D-160).
 func _on_take_requested(actor: Actor) -> void:
 	if actor == null or actor.current_level == null or actor.current_level.world != self: return
-	# Facing a crate that holds something, the take empties it (D-224)
-	var crate: Fixture = crate_faced(actor)
-	if crate != null and not crate.contents.is_empty():
-		took.emit(actor, _empty_crate(actor, crate))
+	# Facing a crate, storage or a smelter that holds something, the
+	# take empties it (D-224, D-249); a smelter gives what it has made
+	# (D-238)
+	var container: Fixture = container_faced(actor)
+	if container != null and container.kind == ObjectKind.OBJECT.SMELTER:
+		work_smelter(container)
+	if container != null and not container.contents.is_empty():
+		took.emit(actor, _empty_crate(actor, container))
+		return
+	# Facing a clump of cave fungus, the take harvests it whole (D-245)
+	var fungus: Fixture = fungus_faced(actor)
+	if fungus != null:
+		took.emit(actor, _harvest(actor, fungus))
 		return
 	took.emit(actor, _pick_up(actor, INF, []))
 
@@ -1148,7 +1354,10 @@ func _actor_on(tile: WorldPos) -> bool:
 
 # --- fixtures (D-090, D-100, D-103) ---
 
-func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
+# `entry` is a build entry (Building): a fixture kind, or a kind with
+# another cost (D-241). The cost is the entry's; the rules, the kind's.
+func _on_place_requested(actor: Actor, entry: int, tile: WorldPos) -> void:
+	var kind: int = Building.kind_of(entry)
 	var level: Level = level_at(tile.depth)
 	if level == null:
 		request_refused.emit(actor, FIXTURE_VERB.PLACE, tile, FIXTURE_REFUSAL.LEVEL_NOT_EXISTS)
@@ -1172,15 +1381,18 @@ func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
 			return
 	# Paid from the requesting actor's own pack; free with no actor
 	# (D-159)
-	if not Building.can_afford(tuning, actor, kind):
+	if not Building.can_afford(tuning, actor, entry):
 		request_refused.emit(actor, FIXTURE_VERB.PLACE, tile, FIXTURE_REFUSAL.CANNOT_AFFORD)
 		return
 
-	Building.pay(tuning, actor, kind)
+	Building.pay(tuning, actor, entry)
 	var fixture: Fixture = Fixture.new(kind, tile, fixture_ids.allocate())
+	if ObjectKind.holds_items(kind): fixture.contents = Pack.new()
+	if kind == ObjectKind.OBJECT.SMELTER: fixture.machine = Smelter.new(world_time)
 	level.level_fixtures.add(fixture)
 	fixture_placed.emit(actor, fixture)
 	if kind == ObjectKind.OBJECT.WINCH: _make_crate(actor, tile)
+	if kind == ObjectKind.OBJECT.BED and actor != null: claim_bed(actor, fixture)
 
 
 # Why a winch over `tile`'s hole has nowhere for its crate, or NONE

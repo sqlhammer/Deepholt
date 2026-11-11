@@ -206,6 +206,9 @@ const DEFAULT_ID: String = "default"
 # light rule).
 @export var smelt_seconds: float = 0.0
 @export var smelt_unlit_speed: float = 0.0
+# How much a smelter holds waiting, inputs and coal, in kg: a crate's
+# worth (Claude's number, 016).
+@export var smelter_capacity_kg: float = 0.0
 
 # The bed (D-248) and the storage crate (D-249): their costs, and
 # what a storage crate holds, in kg.

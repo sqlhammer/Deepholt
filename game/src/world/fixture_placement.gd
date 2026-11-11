@@ -6,35 +6,23 @@ extends RefCounted
 # stores it checks rather than finding them, so generation and a load
 # can ask about levels that aren't in the tree, or in a world, yet.
 
+# The kinds that fill their tile: nothing else that fills one stands
+# there with them (D-103, D-144, D-165, D-181, D-224). Stations, beds,
+# storage and fungus fill theirs too (016).
+const FILLS_TILE: Array[int] = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.WORLD_SPAWN,
+	ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.TREE,
+	ObjectKind.OBJECT.CRATE, ObjectKind.OBJECT.WORKBENCH, ObjectKind.OBJECT.SMELTER,
+	ObjectKind.OBJECT.FORGE, ObjectKind.OBJECT.BED, ObjectKind.OBJECT.STORAGE_CRATE,
+	ObjectKind.OBJECT.FUNGUS]
+
 # Which kinds can't share a tile with which (D-103). A kind missing
-# from the table conflicts with nothing.
-const CONFLICTS: Dictionary = {
-	ObjectKind.OBJECT.LADDER: [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.WORLD_SPAWN,
-		ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.TREE,
-		ObjectKind.OBJECT.CRATE],
-	ObjectKind.OBJECT.WORLD_SPAWN: [ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.LADDER,
-		ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.TREE,
-		ObjectKind.OBJECT.CRATE],
-	# A brazier fills its tile: nothing else stands there (D-144)
-	ObjectKind.OBJECT.BRAZIER: [ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.LADDER,
-		ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.TREE,
-		ObjectKind.OBJECT.CRATE],
-	# A prop fills its tile too (D-165)
-	ObjectKind.OBJECT.TIMBER_PROP: [ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.LADDER,
-		ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TREE,
-		ObjectKind.OBJECT.CRATE],
-	# And a tree (D-181)
-	ObjectKind.OBJECT.TREE: [ObjectKind.OBJECT.TREE, ObjectKind.OBJECT.LADDER,
-		ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TIMBER_PROP,
-		ObjectKind.OBJECT.CRATE],
-	# One thing over a hole (D-219)
-	ObjectKind.OBJECT.CHUTE: ObjectKind.OVER_HOLE,
-	ObjectKind.OBJECT.WINCH: ObjectKind.OVER_HOLE,
-	# A crate fills its tile, at the foot of its hole (D-224)
-	ObjectKind.OBJECT.CRATE: [ObjectKind.OBJECT.CRATE, ObjectKind.OBJECT.LADDER,
-		ObjectKind.OBJECT.WORLD_SPAWN, ObjectKind.OBJECT.BRAZIER, ObjectKind.OBJECT.TIMBER_PROP,
-		ObjectKind.OBJECT.TREE],
-}
+# from the table conflicts with nothing. Every tile filler conflicts
+# with every other; the two kinds over a hole with each other (D-219).
+static func conflicts_of(kind: int) -> Array[int]:
+	if kind in FILLS_TILE: return FILLS_TILE
+	if ObjectKind.is_over_hole(kind): return ObjectKind.OVER_HOLE
+	var none: Array[int] = []
+	return none
 
 
 # Why a fixture of `kind` can't go on `tile` of a level, or NONE.
@@ -69,7 +57,7 @@ static func problem(kind: int, tile: Vector2i, tiles: LevelTiles,
 		return World.FIXTURE_REFUSAL.TILE_NOT_PASSABLE
 	for existing: Fixture in fixtures.at(tile):
 		if existing == ignoring: continue
-		if existing.kind in CONFLICTS.get(kind, []):
+		if existing.kind in conflicts_of(kind):
 			return World.FIXTURE_REFUSAL.TILE_OCCUPIED
 	if ObjectKind.is_over_hole(kind) and _holds_any(fixtures_below, tile, [ObjectKind.OBJECT.LADDER]):
 		return World.FIXTURE_REFUSAL.HOLE_IN_USE

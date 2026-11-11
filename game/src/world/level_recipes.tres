@@ -35,6 +35,7 @@ script = ExtResource("2_recipe")
 bound = SubResource("Bound_1")
 fixed_placements = Array[ExtResource("4_placement")]([SubResource("Placement_rootshelf_home")])
 cave_prefabs = Array[StringName]([&"cave_hollow", &"cave_long", &"cave_twin", &"cave_pocket", &"cave_gallery"])
+cave_fungus = true
 
 [sub_resource type="Resource" id="Bound_2"]
 script = ExtResource("1_bound")

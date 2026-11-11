@@ -65,8 +65,10 @@ func test_the_tab_switches_and_opens_on_the_last_one_used() -> void:
 	_inventory.set_open(false)
 	_inventory.set_open(true)
 	assert_eq(_inventory.tab, InventoryOverlay.TAB.CRAFT, "reopened on CRAFT")
-	_inventory.switch_tab()
+	_inventory.switch_tab(-1)
 	assert_eq(_inventory.tab, InventoryOverlay.TAB.PACK, "and back")
+	_inventory.switch_tab(-1)
+	assert_eq(_inventory.tab, InventoryOverlay.TAB.BUILD, "and round to BUILD (D-252)")
 
 
 func test_a_click_on_a_tab_switches_to_it() -> void:

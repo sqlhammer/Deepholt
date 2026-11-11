@@ -4838,3 +4838,21 @@ everything else (D-013).
 
 *Why:* an iron pick beats −3's floor by the formula, but −4 has no content, and pre-alpha stops
 at −3 ([pre-alpha-scope §2](./pre-alpha-scope.md)).
+
+---
+
+### D-252 — A BUILD tab lists every buildable; the eight build slots stay the quick bar
+**Decided** (by Derik, 2026-11-11, building slice 016: ten buildables and eight build slots,
+D-170). Extends [D-222](#d-222--making-by-hand-is-a-craft-tab-in-the-inventory-laid-out-as-a-list-and-a-detail-pane)'s
+tabs.
+
+- **The inventory has a third tab, BUILD,** laid out as CRAFT is: every buildable on the left
+  (icon, name, cost), and the focused one's detail on the right, each cost as *have / need*.
+- **The assign key (Y on a pad) puts the focused buildable into the selected build slot,**
+  swapping with any slot that held it. The eight slots stay what build mode places from.
+- Claude's choices, named here: a hotbar with empty build slots takes buildables in the order
+  ladder, prop, chute, winch, workbench, smelter (ore), storage crate, bed, smelter (timber), forge,
+  so a new game's bar holds the first eight and the BUILD tab reaches the rest; and Q, LB and RB
+  cycle PACK, CRAFT, BUILD.
+
+*Why:* a catalogue apart from the quick bar, ready for the radial build menu later.

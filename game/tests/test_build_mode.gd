@@ -272,9 +272,10 @@ func test_the_cursor_places_the_selected_build_slot() -> void:
 	assert_eq(_cursor.item, ObjectKind.OBJECT.LADDER, "slot 1: a ladder to begin with")
 	_actor.hotbar.select_build(1)
 	assert_eq(_cursor.item, ObjectKind.OBJECT.TIMBER_PROP, "slot 2: a prop")
-	# Every buildable has a slot, in BUILDABLE's order; the first slot
-	# past them is empty
-	var empty: int = Hotbar.BUILDABLE.size()
+	# There are more buildables than slots (D-252): the last slot,
+	# emptied, places nothing
+	var empty: int = Hotbar.SLOTS - 1
+	_actor.hotbar.builds[empty] = ObjectKind.OBJECT.NULL
 	_actor.hotbar.select_build(empty)
 	assert_eq(_cursor.item, ObjectKind.OBJECT.NULL, "the first slot past the buildables: nothing")
 	assert_eq(_cursor.problem(), BuildCursor.PROBLEM.NOTHING_SELECTED, "and the preview says so")
@@ -348,7 +349,8 @@ func test_the_cursor_names_what_it_places_and_its_cost() -> void:
 	assert_eq(_cursor.label_text(), "Ladder · 4 timber", "slot 1")
 	_actor.hotbar.select_build(1)
 	assert_eq(_cursor.label_text(), "Timber prop · 2 timber", "slot 2")
-	_actor.hotbar.select_build(Hotbar.BUILDABLE.size())
+	_actor.hotbar.builds[Hotbar.SLOTS - 1] = ObjectKind.OBJECT.NULL
+	_actor.hotbar.select_build(Hotbar.SLOTS - 1)
 	assert_eq(_cursor.label_text(), "", "an empty slot says nothing")
 
 
@@ -358,5 +360,6 @@ func test_the_ghost_is_the_fixtures_own_art() -> void:
 	assert_eq(BuildCursor.ghost_texture(ObjectKind.OBJECT.LADDER), FixtureRenderer.LADDER_TOP,
 		"a ladder seen down the hole")
 	assert_null(BuildCursor.ghost_texture(ObjectKind.OBJECT.NULL), "nothing for nothing")
-	for kind: int in Hotbar.BUILDABLE:
-		assert_ne(ObjectKind.display_name(kind), "", "every buildable has a name: %d" % kind)
+	for entry: int in Hotbar.BUILDABLE:
+		assert_ne(Building.entry_name(entry), "", "every buildable has a name: %d" % entry)
+		assert_not_null(BuildCursor.ghost_texture(entry), "and art: %d" % entry)

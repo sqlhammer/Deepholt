@@ -46,6 +46,29 @@ static func place_caves(level: Level, recipe: LevelRecipe, rng: RandomNumberGene
 	return placed
 
 
+# --- cave fungus (D-245) ---
+
+# Between the profile's minimum and maximum clumps in each cave, each
+# on open plain floor of the cave with nothing on it, by the seed.
+static func place_fungus(level: Level, caves: Array[Rect2i], rng: RandomNumberGenerator,
+		tuning: TuningProfile, fixture_ids: IdAllocator) -> void:
+	var tiles: LevelTiles = level.level_tiles
+	for cave: Rect2i in caves:
+		var floor_tiles: Array[Vector2i] = []
+		for y in range(cave.position.y, cave.end.y):
+			for x in range(cave.position.x, cave.end.x):
+				if tiles.get_top(x, y) != TileKind.TOP.OPEN: continue
+				if tiles.get_ground(x, y) != TileKind.GROUND.ROCK: continue
+				if not level.level_fixtures.at(Vector2i(x, y)).is_empty(): continue
+				floor_tiles.append(Vector2i(x, y))
+		var count: int = mini(rng.randi_range(tuning.fungus_per_cave_min, tuning.fungus_per_cave_max),
+			floor_tiles.size())
+		for i in range(count):
+			var tile: Vector2i = floor_tiles.pop_at(rng.randi_range(0, floor_tiles.size() - 1))
+			level.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.FUNGUS,
+				WorldPos.new(tile.x, tile.y, level.depth), fixture_ids.allocate()))
+
+
 # The tiles a prefab covers when stamped at `anchor`.
 static func footprint(prefab: TilePrefab, anchor: Vector2i) -> Rect2i:
 	var tiles: Dictionary = LevelGridLoader._to_anchored_tiles(prefab.top)

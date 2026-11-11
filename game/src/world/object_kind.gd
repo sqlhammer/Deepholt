@@ -29,6 +29,17 @@ const OBJECT: Dictionary = {
 	# A torch dropped lit (D-221): it burns on the ground, a light and a
 	# breadcrumb, until it burns out and is gone.
 	"TORCH": 9,
+	# Stations (D-237): recipes are made within reach of one. The smelter
+	# is loaded and left, a rate machine (D-238).
+	"WORKBENCH": 10,
+	"SMELTER": 11,
+	"FORGE": 12,
+	# A bed (D-248): its owner's spawn point.
+	"BED": 13,
+	# A storage crate (D-249): a stockpile, not the winch's crate.
+	"STORAGE_CRATE": 14,
+	# A clump of cave fungus (D-245) on -1's cave floors, taken whole.
+	"FUNGUS": 15,
 }
 
 
@@ -44,14 +55,32 @@ const NAMES: Dictionary = {
 	OBJECT.WINCH: "Winch",
 	OBJECT.CRATE: "Crate",
 	OBJECT.TORCH: "Torch",
+	OBJECT.WORKBENCH: "Workbench",
+	OBJECT.SMELTER: "Smelter",
+	OBJECT.FORGE: "Forge",
+	OBJECT.BED: "Bed",
+	OBJECT.STORAGE_CRATE: "Storage crate",
+	OBJECT.FUNGUS: "Cave fungus",
 }
+
+# The station each kind is, by the name its recipes give
+# (Recipe.station, D-237). The smelter makes no recipes: it's loaded.
+const STATIONS: Dictionary = {
+	OBJECT.WORKBENCH: &"workbench",
+	OBJECT.FORGE: &"forge",
+}
+
+# The kinds that hold items, filled by dropping while facing them and
+# emptied with the take key (D-224, D-238, D-249).
+const HOLDS_ITEMS: Array[int] = [OBJECT.CRATE, OBJECT.SMELTER, OBJECT.STORAGE_CRATE]
 
 # The kinds that stand over a hole, on the hole's own level (D-219). A
 # hole holds one of these, or a ladder under it, never both.
 const OVER_HOLE: Array[int] = [OBJECT.CHUTE, OBJECT.WINCH]
 
 # The kinds that keep anyone from walking onto their tile (D-165).
-const BLOCKS_WALKING: Array[int] = [OBJECT.TIMBER_PROP, OBJECT.TREE, OBJECT.CRATE]
+const BLOCKS_WALKING: Array[int] = [OBJECT.TIMBER_PROP, OBJECT.TREE, OBJECT.CRATE,
+	OBJECT.WORKBENCH, OBJECT.SMELTER, OBJECT.FORGE, OBJECT.BED, OBJECT.STORAGE_CRATE]
 
 # The kinds that hold a ceiling up (D-163): their tile counts as a
 # support for the support rule. A timber prop's R bonus is +0; the
@@ -73,3 +102,12 @@ static func holds_ceiling(kind: int) -> bool:
 
 static func is_over_hole(kind: int) -> bool:
 	return kind in OVER_HOLE
+
+
+# The station a kind is (&"workbench", &"forge"), or &"" for none.
+static func station_of(kind: int) -> StringName:
+	return STATIONS.get(kind, &"")
+
+
+static func holds_items(kind: int) -> bool:
+	return kind in HOLDS_ITEMS

@@ -699,12 +699,14 @@ func _move_if_stuck(actor: Actor) -> void:
 	if TileKind.is_passable(tiles.get_top(stuck.x, stuck.y), tiles.get_ground(stuck.x, stuck.y)):
 		return
 	
-	var target: WorldPos = Spawning.spawn_tile_for(null, world.levels(), world.actors())
+	# Home first: beside its bed, when it has one (D-248)
+	var target: WorldPos = Spawning.spawn_tile_for(world.home_of(actor.actor_id), world.levels(),
+		world.actors())
 	if target == null or not actor.move_to(target, &"stuck_on_load"):
 		push_error("%s is stuck on %s, which is impassable, with nowhere to go." % [
 			actor.actor_name, stuck])
 		return
-	push_warning("%s was on %s, which is impassable; moved to the world spawn at %s." % [
+	push_warning("%s was on %s, which is impassable; moved to %s." % [
 		actor.actor_name, stuck, target])
 
 
