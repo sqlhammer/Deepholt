@@ -129,14 +129,14 @@ func test_it_opens_on_the_viewers_level_and_steps_between_levels() -> void:
 	assert_false(_map.is_open, "closed")
 
 
-func test_the_header_names_the_scheme_in_use_only() -> void:
+func test_the_keys_named_are_the_scheme_in_uses_only() -> void:
 	_map.set_open(true)
 	_map.set_gamepad(true)
-	assert_string_contains(_map.header_text(), "LB/RB")
-	assert_false(_map.header_text().contains("PgUp"), "no keyboard keys on a pad (D-223)")
+	assert_string_contains(_map.keys_text(), "LB/RB")
+	assert_false(_map.keys_text().contains("PgUp"), "no keyboard keys on a pad (D-223)")
 	_map.set_gamepad(false)
-	assert_string_contains(_map.header_text(), "M: close")
-	assert_false(_map.header_text().contains("LB"), "no pad buttons on a keyboard")
+	assert_string_contains(_map.keys_text(), "M: close")
+	assert_false(_map.keys_text().contains("LB"), "no pad buttons on a keyboard")
 
 
 func test_with_the_map_open_the_bumpers_change_its_level_not_the_hotbar() -> void:

@@ -530,13 +530,14 @@ func details_text() -> String:
 # The keys, in the current scheme only (D-223).
 func help_text() -> String:
 	if message != "": return message
+	# The tab keys are on the tab strip, so these fit the board's width
 	if tab == TAB.CRAFT:
-		if gamepad: return "A: make  hold A: keep making  RB: pack"
-		return "Enter/click: make  hold Enter: keep making  Q: pack"
+		return "A: make  hold A: keep making" if gamepad \
+			else "Enter/click: make  hold: keep making"
 	if holding:
 		return "A: put down  B: cancel" if gamepad else "Enter/click: put down  right-click: cancel"
-	if gamepad: return "A: pick up  Y: drop 1  X: drop all  R3: sort  RB: craft"
-	return "Enter/click: pick up  X: drop 1  Z: drop all  O: sort  Q: craft"
+	if gamepad: return "A: pick up  Y: drop 1  X: drop all  R3: sort"
+	return "Enter/click: pick up  X: drop 1  Z: drop all  O: sort"
 
 
 # Everything shown, as text: for tests.

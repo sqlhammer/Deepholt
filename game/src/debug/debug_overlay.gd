@@ -272,6 +272,8 @@ func _tile_char(tiles: LevelTiles, x: int, y: int, actor_pos: WorldPos) -> Strin
 		return _ground_char(tiles.get_ground(x, y))
 	if top == TileKind.TOP.MINABLE_ROCK: return "#"
 	if top == TileKind.TOP.MINABLE_DIRT: return "%"
+	# Crushed rubble prints as it's authored (D-218)
+	if top == TileKind.TOP.CRUSHED: return "x"
 	return "?"
 
 

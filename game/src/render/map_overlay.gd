@@ -16,11 +16,13 @@ extends ScaledHud
 
 signal open_changed(open: bool)
 
-# One HUD pixel per tile; the deepest level drawn so far, -4, is 259
-# tiles across, which fits the frame
-const TILE: int = 1
-const BOARD_SIZE: Vector2 = Vector2(300, 300)
-const HEADER: int = 14
+# Two HUD pixels per tile, centered on the viewer and clipped to the
+# board: one pixel a tile, seen in play, was too small to read a
+# tunnel by
+const TILE: int = 2
+const BOARD_SIZE: Vector2 = Vector2(320, 300)
+# Two lines: the level, then the keys
+const HEADER: int = 24
 
 const BACK: Color = Color(0.05, 0.05, 0.06, 0.92)
 const FLOOR: Color = Color(0.62, 0.58, 0.52)
@@ -75,6 +77,7 @@ func _init() -> void:
 	_board = Control.new()
 	_board.custom_minimum_size = BOARD_SIZE
 	_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_board.clip_contents = true
 	_board.draw.connect(_draw_board)
 	_panel.add_child(_board)
 
@@ -223,15 +226,17 @@ static func _rgba(color: Color) -> PackedByteArray:
 	return PackedByteArray([color.r8, color.g8, color.b8, 255])
 
 
-# The header: the shown level and the keys, the current scheme's only
-# (D-223).
+# The header: the shown level, then the keys, the current scheme's
+# only (D-223).
 func header_text() -> String:
 	var world: World = _world()
 	var level: Level = world.level_at(shown_depth) if world != null else null
 	var name: String = level.level_tiles.level_bound.name if level != null else ""
-	var keys: String = "LB/RB: level  View: close" if gamepad \
-		else "Wheel/PgUp/PgDn: level  M: close"
-	return "%s %s   %s" % [DepthName.of(shown_depth), name, keys]
+	return "%s %s" % [DepthName.of(shown_depth), name]
+
+
+func keys_text() -> String:
+	return "LB/RB: level  View: close" if gamepad else "Wheel/PgUp/PgDn: level  M: close"
 
 
 # --- drawing ---
@@ -266,10 +271,13 @@ func _draw_board() -> void:
 	var font: Font = ScaledHud.FONT
 	var font_size: int = ScaledHud.FONT_SIZE
 	_board.draw_rect(Rect2(Vector2(-4, -4), BOARD_SIZE + Vector2(8, 8)), BACK)
-	_board.draw_string(font, Vector2(0, font_size), header_text(), HORIZONTAL_ALIGNMENT_LEFT,
-		BOARD_SIZE.x, font_size, TEXT_COLOR)
-	# Every level shares the origin: the board's middle under the header
-	var origin: Vector2 = Vector2(BOARD_SIZE.x / 2.0, HEADER + (BOARD_SIZE.y - HEADER) / 2.0)
+	# Every level shares the origin; the viewer's tile, when it's on the
+	# shown level, is the middle of the board under the header
+	var middle: Vector2 = Vector2(BOARD_SIZE.x / 2.0, HEADER + (BOARD_SIZE.y - HEADER) / 2.0)
+	var origin: Vector2 = middle
+	var viewer: Actor = _viewer()
+	if viewer != null and viewer.depth == shown_depth and viewer.current_WorldPos != null:
+		origin -= Vector2(viewer.current_WorldPos.x, viewer.current_WorldPos.y) * TILE
 	for ghost_depth: int in [shown_depth - 1, shown_depth + 1]:
 		var ghost: Level = world.level_at(ghost_depth)
 		if ghost != null: _draw_level(ghost, origin, GHOST)
@@ -278,11 +286,17 @@ func _draw_board() -> void:
 	_draw_level(level, origin, Color.WHITE)
 	for anchor: Dictionary in anchors(world, shown_depth):
 		var at: Vector2 = origin + Vector2(anchor.tile) * TILE
-		_board.draw_rect(Rect2(at - Vector2(1, 1), Vector2(3, 3)), ANCHOR_COLORS[anchor.kind])
+		_board.draw_rect(Rect2(at - Vector2(1, 1), Vector2(TILE + 2, TILE + 2)), ANCHOR_COLORS[anchor.kind])
 	for dot: Dictionary in dots(world, shown_depth, _viewer()):
 		var size: float = 5.0 if dot.viewer else 3.0
-		var at: Vector2 = origin + Vector2(dot.tile) * TILE - Vector2(size, size) / 2.0
+		var at: Vector2 = origin + (Vector2(dot.tile) + Vector2(0.5, 0.5)) * TILE - Vector2(size, size) / 2.0
 		_board.draw_rect(Rect2(at, Vector2(size, size)), VIEWER if dot.viewer else PLAYER)
+	# The header over the map, on its own backing
+	_board.draw_rect(Rect2(Vector2(-4, -4), Vector2(BOARD_SIZE.x + 8, HEADER + 2)), BACK)
+	_board.draw_string(font, Vector2(0, font_size), header_text(), HORIZONTAL_ALIGNMENT_LEFT,
+		BOARD_SIZE.x, font_size, TEXT_COLOR)
+	_board.draw_string(font, Vector2(0, 2 * font_size + 4), keys_text(), HORIZONTAL_ALIGNMENT_LEFT,
+		BOARD_SIZE.x, font_size, DIM_TEXT)
 
 
 func _draw_level(level: Level, origin: Vector2, tint: Color) -> void:
