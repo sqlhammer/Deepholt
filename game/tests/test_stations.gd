@@ -146,7 +146,7 @@ func test_the_craft_tab_shows_a_stations_recipes_only_in_reach() -> void:
 	assert_false(inventory.text().contains("AT A WORKBENCH"), "no bench, no section")
 	_place(ObjectKind.OBJECT.WORKBENCH, Vector2i(1, 0))
 	assert_string_contains(inventory.text(), "AT A WORKBENCH", "a bench in reach")
-	assert_string_contains(inventory.text(), "Bronze Pickaxe  4 bronze ingot, 1 timber -> 1")
+	assert_string_contains(inventory.text(), "Bronze Pickaxe  4 bronze, 1 timber -> 1")
 	assert_string_contains(inventory.text(), "Lamp oil", "oil is pressed there")
 	assert_false(inventory.text().contains("AT A FORGE"), "no forge")
 

@@ -235,7 +235,7 @@ func make() -> void:
 static func recipe_short(recipe: Recipe) -> String:
 	var parts: PackedStringArray = []
 	for id: StringName in recipe.inputs:
-		parts.append("%d %s" % [recipe.inputs[id], _item_name(id).to_lower()])
+		parts.append("%d %s" % [recipe.inputs[id], short_name(id)])
 	var made: int = 0
 	for id: StringName in recipe.outputs: made += recipe.outputs[id]
 	return "%s -> %d" % [", ".join(parts), made]
@@ -260,6 +260,22 @@ static func makes_text(recipe: Recipe) -> String:
 		var item: Item = ItemRegistry.find(id)
 		kg += (item.weight_kg if item != null else 0.0) * recipe.outputs[id]
 	return "%s, %s kg" % [", ".join(parts), CarryHud._kg(kg)]
+
+
+# An item's name for a list row, where room is short: lower case, and
+# "ingot" left off, since a row's costs are what they're made of. The
+# detail pane names it in full.
+static func short_name(id: StringName) -> String:
+	return _item_name(id).to_lower().trim_suffix(" ingot")
+
+
+# A buildable's cost for its list row, in short names.
+static func cost_short(tuning: TuningProfile, entry: int) -> String:
+	var cost: Dictionary[StringName, int] = Building.cost_of(tuning, entry)
+	var parts: PackedStringArray = []
+	for id: StringName in cost:
+		parts.append("%d %s" % [cost[id], short_name(id)])
+	return ", ".join(parts)
 
 
 static func _item_name(id: StringName) -> String:
@@ -662,7 +678,7 @@ func _scroll_to_focus() -> void:
 
 
 func make_rect() -> Rect2:
-	return Rect2(Vector2(DETAIL_X, TEXT_TOP - 26), Vector2(110, 16))
+	return Rect2(Vector2(DETAIL_X, TEXT_TOP - 26), Vector2(140, 16))
 
 
 # --- words: the preview, the focused thing, the keys ---
@@ -907,7 +923,7 @@ func _draw_build() -> void:
 		var slot: int = actor.hotbar.slot_of_build(entry)
 		var name: String = Building.entry_name(entry)
 		if slot != -1: name = "%s  [%d]" % [name, slot + 1]
-		_draw_row(rect, BuildCursor.ghost_texture(entry), name, Building.cost_text(tuning, entry),
+		_draw_row(rect, BuildCursor.ghost_texture(entry), name, cost_short(tuning, entry),
 			i == build_index))
 	var font: Font = ScaledHud.FONT
 	var font_size: int = ScaledHud.FONT_SIZE
