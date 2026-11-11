@@ -4510,3 +4510,44 @@ would be found only by digging blind, since senses reach 7 tiles.
 - The carver is general (from, to, width, meander), so 017's ruins can reuse it.
 
 *Why:* the way down is found by walking, and the walk is part of the haul.
+
+---
+
+### D-230 — A pack cell's count is the bright number at its bottom-right; its weight is dim, top-right, with a unit
+**Decided** (by Derik, walking 015, 2026-11-11: "I am constantly confused by the weight and count
+of my items"). Reverses the cell layout of
+[D-190](#d-190--inventory-cells-are-32-px-with-six-rows-shown-a-cells-weight-is-a-bare-number).
+
+- **The count** is drawn at the cell's bottom-right, in the bright text color: where most games
+  put it, and what a player looks for.
+- **The weight** is drawn at the top-right, dim, with a `k` after it ("16k"). Every cell still
+  shows both ([ui-ux §5](./ui-ux-and-controls.md)).
+- One font size (D-189), so the difference is place and brightness, not size.
+
+*Why:* the big bare weight at the bottom-right read as the count.
+
+---
+
+### D-231 — Letting go of the winch resets its crate's progress
+**Decided** (by Derik, walking 015, 2026-11-11). Reverses
+[D-225](#d-225--the-winch-costs-12-timber-and-20-stone-held-at-the-top-it-lifts-in-15-s-and-lowers-in-5-s)'s
+"let go and the crate stops" where it is.
+
+- **When nobody is cranking a winch any more, its progress goes back to zero.** A second player
+  still cranking keeps it going.
+- The crate is still at one end or the other, never between.
+
+*Why:* a half-full bar that waits for you reads as broken. A lift is one held effort.
+
+---
+
+### D-232 — The foot of a winch's hole is marked while its crate is up
+**Decided** (by Derik, walking 015, 2026-11-11, his design).
+
+- **While a winch's crate hangs at the top, the tile at the foot of its hole, on the level below,
+  shows brown lines on each corner:** where the crate will come down. The marks go when it's
+  lowered.
+- Only on a tile the player can see or remembers, as fixtures are.
+
+*Why:* nothing on the lower level said the tile is the crate's, or that the crate is coming back
+there.

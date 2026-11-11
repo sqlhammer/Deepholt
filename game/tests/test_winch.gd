@@ -4,8 +4,10 @@ extends GutTest
 # timber and 20 stone, it makes its crate at the foot of the hole. The
 # crate holds 120 kg, filled by dropping while facing it and emptied by
 # the take key. Held interact at the top lifts it in 15 s and lowers it
-# in 5 s; two cranking add their rates. It is on one level or the
-# other, never between, and is never in a pack.
+# in 5 s; two cranking add their rates, and letting go starts it over
+# (D-231). It is on one level or the other, never between, and is
+# never in a pack. While it's up, the foot of its hole is marked
+# (D-232).
 
 const Worlds = preload("res://tests/worlds.gd")
 const HOLE: Vector2i = Vector2i(2, 0)
@@ -166,11 +168,24 @@ func test_two_players_cranking_lift_it_in_half_the_time() -> void:
 	assert_eq(_crate().tile.depth, 1, "up in 7.5 s")
 
 
-func test_letting_go_stops_the_crate_short_of_the_top() -> void:
+func test_letting_go_starts_the_lift_over() -> void:
 	var winch: Fixture = _build_winch()
 	_crank(_top, 10.0)
+	_world.settle_cranks()
+	assert_gt(_world.crank_progress(winch), 0.6, "still cranking: kept")
+	_world.settle_cranks()
 	assert_eq(_crate().tile.depth, 2, "not arrived")
-	assert_gt(_world.crank_progress(winch), 0.6, "and where it stopped is kept")
+	assert_eq(_world.crank_progress(winch), 0.0, "let go: back to the start (D-231)")
+
+
+func test_a_second_player_still_cranking_keeps_it_going() -> void:
+	var winch: Fixture = _build_winch()
+	var second: Actor = _player("Second", 1, HOLE + Vector2i.DOWN, Vector2i.UP)
+	_crank(_top, 5.0)
+	_world.settle_cranks()
+	_world.crank(second, 0.1)
+	_world.settle_cranks()
+	assert_gt(_world.crank_progress(winch), 0.3, "the other player's cranking carries it")
 
 
 func test_lowering_takes_five_seconds() -> void:
@@ -206,9 +221,11 @@ func test_held_interact_cranks_on_the_physics_tick() -> void:
 	_top.crank(true)
 	_top._physics_process(0.5)
 	assert_almost_eq(_world.crank_progress(winch), 0.5 / 15.0, 0.001, "half a second's work")
+	_world.settle_cranks()
 	_top.crank(false)
 	_top._physics_process(0.5)
-	assert_almost_eq(_world.crank_progress(winch), 0.5 / 15.0, 0.001, "let go, it stops")
+	_world.settle_cranks()
+	assert_eq(_world.crank_progress(winch), 0.0, "let go, it starts over")
 
 
 func test_at_the_top_the_crate_is_filled_and_emptied_in_the_hole() -> void:
@@ -275,6 +292,32 @@ func test_the_winch_and_crate_have_art_and_a_build_slot() -> void:
 	assert_true(FixtureRenderer.TEXTURES.has(ObjectKind.OBJECT.CRATE), "a crate")
 	assert_true(Hotbar.new().builds.has(ObjectKind.OBJECT.WINCH), "buildable")
 	assert_false(ObjectKind.OBJECT.CRATE in Hotbar.BUILDABLE, "the crate comes with its winch")
+
+
+# --- the foot of the hole while the crate is up (D-232) ---
+
+func _renderer_on(depth: int) -> FixtureRenderer:
+	var view: View = add_child_autofree(View.new())
+	view.follow(_bottom if depth == 2 else _top)
+	var renderer: FixtureRenderer = add_child_autofree(FixtureRenderer.new())
+	renderer.watch(view)
+	return renderer
+
+
+func test_the_foot_of_the_hole_is_marked_while_the_crate_is_up() -> void:
+	_build_winch()
+	var renderer: FixtureRenderer = _renderer_on(2)
+	assert_eq(renderer.crate_landings(), [] as Array[Vector2i], "the crate is there: no mark")
+	_crank(_top, 15.0)
+	assert_eq(renderer.crate_landings(), [HOLE] as Array[Vector2i], "up: its landing marked")
+	_crank(_top, 5.0)
+	assert_eq(renderer.crate_landings(), [] as Array[Vector2i], "down again: gone")
+
+
+func test_the_crank_bar_draws_over_the_actors() -> void:
+	var renderer: FixtureRenderer = _renderer_on(1)
+	var bars: Node2D = renderer.get_node("CrankBars")
+	assert_gt(bars.z_index, 0, "above the sorted sprites and actors, not behind the player's head")
 
 
 func test_the_notice_says_how_full_the_crate_is() -> void:

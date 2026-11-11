@@ -29,6 +29,15 @@ const TEXTURES: Dictionary = {
 # in the colors of a cursor's valid placement.
 const CRANK_BAR_COLOR: Color = Color(0.45, 0.95, 0.5)
 const CRANK_BAR_BACK: Color = Color(0.0, 0.0, 0.0, 0.6)
+# Drawn over the actors: under them, the cranking player's own head
+# hid it (Derik, walking 015)
+const CRANK_BAR_Z: int = 20
+# The foot of a winch's hole while its crate is up (D-232): brown
+# corners, each this many pixels long
+const LANDING_COLOR: Color = Color(0.55, 0.36, 0.18)
+const LANDING_CORNER: float = 4.0
+
+var _bars: Node2D
 
 # Kinds deliberately not drawn (D-091: the world spawn is invisible to
 # players). Kept apart from "no texture", which is an error: a new
@@ -68,6 +77,14 @@ const GREY: Shader = preload("res://src/render/grey.gdshader")
 var _visibility: Visibility
 var _sensed_material: ShaderMaterial
 var _remembered_material: ShaderMaterial
+
+
+func _ready() -> void:
+	_bars = Node2D.new()
+	_bars.name = "CrankBars"
+	_bars.z_index = CRANK_BAR_Z
+	_bars.draw.connect(_draw_bars)
+	add_child(_bars)
 
 
 # Follows the view's depth and world (D-094, D-129).
@@ -255,17 +272,54 @@ func cranking() -> Dictionary[Fixture, float]:
 
 func _process(_delta: float) -> void:
 	queue_redraw()
+	if _bars != null: _bars.queue_redraw()
 
 
-func _draw() -> void:
+# The bars, on their own node over the actors.
+func _draw_bars() -> void:
 	var bars: Dictionary[Fixture, float] = cranking()
 	for winch: Fixture in bars:
 		var corner: Vector2 = Vector2(winch.tile.x, winch.tile.y) * TileSpace.TILE_PIXELS
 		# Just above the winch's posts, which rise 8 px over the tile
 		var top: Vector2 = corner - Vector2(0, 12)
 		var filled: float = (TileSpace.TILE_PIXELS - 2) * bars[winch]
-		draw_rect(Rect2(top, Vector2(TileSpace.TILE_PIXELS, 3)), CRANK_BAR_BACK)
-		draw_rect(Rect2(top + Vector2(1, 1), Vector2(filled, 1)), CRANK_BAR_COLOR)
+		_bars.draw_rect(Rect2(top, Vector2(TileSpace.TILE_PIXELS, 3)), CRANK_BAR_BACK)
+		_bars.draw_rect(Rect2(top + Vector2(1, 1), Vector2(filled, 1)), CRANK_BAR_COLOR)
+
+
+# --- where a lifted crate comes back down (D-232) ---
+
+# The tiles of the shown level under a winch whose crate is up: where
+# each crate will come down. Only those the player can see or
+# remembers.
+func crate_landings() -> Array[Vector2i]:
+	var found: Array[Vector2i] = []
+	if not is_instance_valid(_world): return found
+	var above: Level = _world.level_at(_shown_depth - 1)
+	if above == null: return found
+	for winch: Fixture in above.level_fixtures.of_kind(ObjectKind.OBJECT.WINCH):
+		var crate: Fixture = _world.crate_of(winch)
+		if crate == null or crate.tile.depth != winch.tile.depth: continue
+		var tile: Vector2i = Vector2i(winch.tile.x, winch.tile.y)
+		if _visibility != null and _visibility.state_at(tile.x, tile.y) == Visibility.STATE.UNKNOWN:
+			continue
+		found.append(tile)
+	return found
+
+
+# On the floor, under the actors: this node's own drawing is behind its
+# sprites and everything sorted with them.
+func _draw() -> void:
+	var size: float = TileSpace.TILE_PIXELS
+	var length: float = LANDING_CORNER
+	for tile: Vector2i in crate_landings():
+		var a: Vector2 = Vector2(tile) * size + Vector2(1, 1)
+		var b: Vector2 = a + Vector2(size - 2, size - 2)
+		for corner: Vector2 in [a, Vector2(b.x, a.y), Vector2(a.x, b.y), b]:
+			var across: float = length if corner.x == a.x else -length
+			var down: float = length if corner.y == a.y else -length
+			draw_line(corner, corner + Vector2(across, 0), LANDING_COLOR, 1.0)
+			draw_line(corner, corner + Vector2(0, down), LANDING_COLOR, 1.0)
 
 
 # Draws a ladder top in each of `shown_tiles`' holes that has a ladder

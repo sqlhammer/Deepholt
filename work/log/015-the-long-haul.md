@@ -133,3 +133,22 @@ All of NOW.md's outcomes 1 and 3 to 8 (outcome 2 is 016's). In particular:
 - the chute and winch art over a real hole;
 - the depth strip;
 - Page Up / Page Down on the laptop.
+
+## After Derik's first walk (2026-11-11)
+
+He reported four things, and all are fixed in one commit:
+
+- **Counts and weights confused him in the pack cells.** D-230 (his choice of three): the count
+  is now bright at the cell's bottom-right, and the weight dim at the top-right with a unit
+  ("16k"). This reverses D-190's layout.
+- **The crank bar was hidden behind the cranking player's head.** It was drawn on the fixture
+  renderer itself, under every sprite and actor sorted with it. It now has its own node, drawn
+  above them. That was a mistake of mine in section C: the bar was only ever checked by a test
+  of its numbers.
+- **Nothing on the lower level showed where a lifted crate comes back down.** D-232, his
+  design: brown corners mark the foot of the hole while the crate is up.
+- **A released crank kept its progress.** D-231 reverses that part of D-225: progress resets
+  once nobody is cranking. The world checks each tick which winches were cranked on the tick
+  before.
+
+All four were seen in a window afterward.

@@ -228,9 +228,9 @@ func test_long_words_wrap_between_words_keeping_double_spaces() -> void:
 
 
 func test_a_cells_weight_fits_in_four_characters() -> void:
-	assert_eq(InventoryOverlay.cell_weight(2.5), "2.5", "under ten: as the pack says")
-	assert_eq(InventoryOverlay.cell_weight(12.5), "13", "ten and up: whole kilos")
-	assert_eq(InventoryOverlay.cell_weight(30.0), "30", "whole")
+	assert_eq(InventoryOverlay.cell_weight(2.5), "2.5k", "under ten: as the pack says, with its unit (D-230)")
+	assert_eq(InventoryOverlay.cell_weight(12.5), "13k", "ten and up: whole kilos")
+	assert_eq(InventoryOverlay.cell_weight(30.0), "30k", "whole")
 
 
 func test_the_build_columns_last_slots_lead_left_to_the_tool_row() -> void:

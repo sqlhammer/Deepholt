@@ -186,6 +186,9 @@ var world_seed: int
 # (D-225). Not saved: a crate is at one end or the other, and a load
 # finds it where it last arrived (015 trap 4).
 var _crank_progress: Dictionary[int, float] = {}
+# The winches someone cranked since the last physics tick: one nobody
+# is cranking any more goes back to the start (D-231)
+var _cranked: Dictionary[int, bool] = {}
 # Draws what digging yields (D-158): seeded from the world seed the
 # first time it's used, so a world's yields repeat. Not saved; a load
 # starts a fresh sequence.
@@ -281,7 +284,17 @@ func _hold_up(level: Level) -> void:
 # load, is still until it is swapped in, so nothing can fall while it
 # is built (slice 010 trap 5).
 func _physics_process(delta: float) -> void:
+	settle_cranks()
 	advance_time(delta)
+
+
+# Every winch nobody cranked since the last call loses its progress
+# (D-231). The world's tick runs before its actors', so it sees the
+# cranking of the tick before. A test calls this directly.
+func settle_cranks() -> void:
+	for id: int in _crank_progress.keys():
+		if not _cranked.has(id): _crank_progress.erase(id)
+	_cranked.clear()
 
 
 # Runs the countdowns on every level a player is on by `delta`
@@ -607,6 +620,7 @@ func crank(actor: Actor, delta: float) -> void:
 	var crate: Fixture = crate_of(winch)
 	if crate == null: return
 	var lifting: bool = crate.tile.depth != winch.tile.depth
+	_cranked[winch.id] = true
 	var was: float = crank_progress(winch)
 	var progress: float = minf(was + delta / Winch.seconds(tuning, lifting), 1.0)
 	_crank_progress[winch.id] = progress

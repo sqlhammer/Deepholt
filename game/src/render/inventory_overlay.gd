@@ -807,14 +807,15 @@ func _draw_item_cell(region: REGION, index: int, id: StringName, count: int) -> 
 		if item != null and item.icon != null:
 			_board.draw_texture(item.icon, rect.position + Vector2((CELL - 16) / 2, 8))
 		if region == REGION.GRID:
-			# Every cell shows its count and weight (ui-ux §5), the
-			# weight in kilos without the unit (D-190)
+			# Every cell shows its count and weight (ui-ux §5): the count
+			# bright at the bottom-right, where a player looks for it, the
+			# weight dim at the top-right with its unit (D-230)
 			var font: Font = ScaledHud.FONT
 			var font_size: int = ScaledHud.FONT_SIZE
-			_board.draw_string(font, rect.position + Vector2(1, 1 + font_size), str(count),
-				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
 			var kg: float = (item.weight_kg if item != null else 0.0) * count
-			_board.draw_string(font, rect.position + Vector2(0, CELL), cell_weight(kg),
+			_board.draw_string(font, rect.position + Vector2(0, 1 + font_size), cell_weight(kg),
+				HORIZONTAL_ALIGNMENT_RIGHT, CELL - 1, font_size, DIM_TEXT)
+			_board.draw_string(font, rect.position + Vector2(0, CELL), str(count),
 				HORIZONTAL_ALIGNMENT_RIGHT, CELL - 1, font_size, TEXT_COLOR)
 	if region == REGION.TOOLS:
 		_draw_slot_number(rect, index)
@@ -865,10 +866,11 @@ func _draw_slot_number(rect: Rect2, index: int) -> void:
 		str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, ScaledHud.FONT_SIZE, BORDER)
 
 
-# A cell's weight: as the pack says it, but whole kilos from ten up,
-# so four characters always fit the cell's width.
+# A cell's weight, with its unit (D-230): as the pack says it, but
+# whole kilos from ten up, so four characters always fit the cell's
+# width.
 static func cell_weight(kg: float) -> String:
-	return str(roundi(kg)) if kg >= 10.0 else CarryHud._kg(kg)
+	return (str(roundi(kg)) if kg >= 10.0 else CarryHud._kg(kg)) + "k"
 
 
 # The border, the focus, and what's held, by shape as well as color:
