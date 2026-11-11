@@ -20,6 +20,9 @@ var support_overlay: SupportOverlay
 # The hotbar on screen (D-170): a click on a slot selects it, and a
 # click there never also digs or places.
 var hotbar_hud: HotbarHud
+# The map (D-226, D-227): View or M opens it; while open, LB / RB, the
+# wheel and Page Up / Down change its level, not the hotbar's slot.
+var map: MapOverlay
 
 # The game-wide keys. The handler only asks; the game decides what a
 # save or a load is (R-P10).
@@ -91,6 +94,15 @@ func _hotbar_input(event: InputEvent) -> void:
 	for i in range(Hotbar.SLOTS):
 		if event.is_action_pressed("hotbar_%d" % (i + 1)):
 			select_slot(i)
+			return
+	# With the map open, the bumpers and the wheel change its level
+	# (D-227)
+	if map != null and map.is_open:
+		if event.is_action_pressed("hotbar_prev"):
+			map.step_level(-1)
+			return
+		if event.is_action_pressed("hotbar_next"):
+			map.step_level(1)
 			return
 	# LB and RB switch the open inventory's tab (D-222); the wheel
 	# scrolls its grid instead, on the board itself
@@ -204,6 +216,11 @@ func _physics_process(delta: float) -> void:
 	actor.move(move)
 	if support_overlay != null and Input.is_action_just_pressed("support_overlay"):
 		support_overlay.toggle()
+	# The map, over everything; play goes on under it (D-226)
+	if map != null:
+		if Input.is_action_just_pressed("open_map"): map.toggle()
+		if map.is_open and Input.is_action_just_pressed("map_up"): map.step_level(-1)
+		if map.is_open and Input.is_action_just_pressed("map_down"): map.step_level(1)
 	if inventory != null and Input.is_action_just_pressed("inventory"):
 		inventory.toggle()
 		if inventory.is_open and build != null: build.set_active(false)
