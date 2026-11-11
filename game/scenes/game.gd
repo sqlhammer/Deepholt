@@ -555,6 +555,8 @@ func _create_view() -> void:
 	add_child(strip)
 	strip.watch(view)
 	strip.watch_inventory(inventory)
+	map.open_changed.connect(func(open: bool) -> void:
+		if open and telemetry != null: telemetry.record_map_opened(map.shown_depth))
 
 
 # The one way a world comes in, at launch, for a new game and on a
