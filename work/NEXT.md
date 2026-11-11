@@ -123,3 +123,5 @@ Found during 005, not recorded anywhere else. None of it is decided.
 - **From 015:** the map rebuilds a level's picture at most every 0.25 s while memory grows.
   It's unmeasured on −7 (radius 207).
 - **From 015:** the chute, winch, crate and torch art are placeholders drawn by script.
+- **Coverage at the end of slice 015: 91.4%** (012 closed at 95.0%). The gap is the CRAFT tab's
+  and the map's drawing, which only a windowed run reaches.

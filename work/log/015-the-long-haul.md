@@ -97,6 +97,13 @@ Two commits came first: a0eab00 (the decisions and NOW) and 2d7e51c, below.
 - **Several tests pinned "build slot 3 is empty"** and broke twice, once for the chute and once
   for the winch. They now find the first empty slot from `Hotbar.BUILDABLE`.
 
+## Coverage
+
+**91.4%** (5246 of 5737 lines). 012 closed at 95.0%. The gap is drawing code headless Godot
+never runs: the inventory overlay is at 57.5% (the CRAFT tab's drawing is new), the map at 66.2%,
+the hotbar HUD at 81.4%. The rules (tunnel 95%, winch 91%, telemetry 98%, depth strip 100%) are
+covered.
+
 ## What surprised
 
 - **The cave test's helper copied generation's early steps,** so the descent step changed which
