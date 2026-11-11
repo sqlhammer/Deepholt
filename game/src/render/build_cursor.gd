@@ -38,6 +38,8 @@ enum PROBLEM {
 	NOTHING_SELECTED,
 	NEEDS_HOLE,
 	HOLE_IN_USE,
+	CRATE_NEEDS_FLOOR,
+	WINCH_SHAFT,
 }
 
 const REASONS: Dictionary = {
@@ -54,7 +56,13 @@ const REASONS: Dictionary = {
 	PROBLEM.NOTHING_SELECTED: "Nothing to build in that slot.",
 	PROBLEM.NEEDS_HOLE: "That goes over a hole.",
 	PROBLEM.HOLE_IN_USE: "A hole holds one ladder, chute or winch.",
+	PROBLEM.CRATE_NEEDS_FLOOR: CRATE_NEEDS_FLOOR_TEXT,
+	PROBLEM.WINCH_SHAFT: WINCH_SHAFT_TEXT,
 }
+# Shared with the world's refusals (RefusalNotice), so both say it the
+# same way
+const CRATE_NEEDS_FLOOR_TEXT: String = "The crate needs clear floor at the bottom of the shaft."
+const WINCH_SHAFT_TEXT: String = "A winch's shaft can't also have a ladder or chute."
 
 # How long the stick holds a direction before the cursor steps again,
 # in seconds. Feel, not tuning.
@@ -164,6 +172,9 @@ func problem(kind: int = -1) -> PROBLEM:
 	# The fixture gatekeeper's own rule, for a ladder below this tile
 	var rule: World.FIXTURE_REFUSAL = FixturePlacement.problem(ObjectKind.OBJECT.LADDER, tile,
 		below.level_tiles, below.level_fixtures, tiles, null, level.level_fixtures)
+	if rule == World.FIXTURE_REFUSAL.NONE and level.world.shaft_problem(ObjectKind.OBJECT.LADDER,
+			WorldPos.new(tile.x, tile.y, below.depth)) != World.FIXTURE_REFUSAL.NONE:
+		return PROBLEM.WINCH_SHAFT
 	match rule:
 		World.FIXTURE_REFUSAL.NONE:
 			# The gatekeeper's own cost rule (D-159)
@@ -210,9 +221,12 @@ func _over_hole_problem(level: Level, kind: int) -> PROBLEM:
 		World.FIXTURE_REFUSAL.TILE_NOT_EXISTS: return PROBLEM.OUTSIDE_LEVEL
 		World.FIXTURE_REFUSAL.NEEDS_HOLE: return PROBLEM.NEEDS_HOLE
 		_: return PROBLEM.HOLE_IN_USE
-	if kind == ObjectKind.OBJECT.WINCH and level.world.winch_landing_problem(
-			WorldPos.new(tile.x, tile.y, level.depth)) != World.FIXTURE_REFUSAL.NONE:
-		return PROBLEM.LANDING_OCCUPIED
+	var here: WorldPos = WorldPos.new(tile.x, tile.y, level.depth)
+	if level.world.shaft_problem(kind, here) != World.FIXTURE_REFUSAL.NONE:
+		return PROBLEM.WINCH_SHAFT
+	if kind == ObjectKind.OBJECT.WINCH and level.world.winch_landing_problem(here) \
+			!= World.FIXTURE_REFUSAL.NONE:
+		return PROBLEM.CRATE_NEEDS_FLOOR
 	if not Building.can_afford(level.world.tuning, actor, kind):
 		return PROBLEM.CANNOT_AFFORD
 	return PROBLEM.NONE

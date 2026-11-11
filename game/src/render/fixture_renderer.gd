@@ -308,21 +308,25 @@ func climbing() -> Array[Actor]:
 
 # --- where a lifted crate comes back down (D-232) ---
 
-# The tiles of the shown level under a winch whose crate is up: where
-# each crate will come down. Only those the player can see or
-# remembers.
+# The tiles of the shown level at the foot of a winch's shaft whose
+# crate is up: where it will come down (D-232, D-235). Only those the
+# player can see or remembers.
 func crate_landings() -> Array[Vector2i]:
 	var found: Array[Vector2i] = []
 	if not is_instance_valid(_world): return found
-	var above: Level = _world.level_at(_shown_depth - 1)
-	if above == null: return found
-	for winch: Fixture in above.level_fixtures.of_kind(ObjectKind.OBJECT.WINCH):
-		var crate: Fixture = _world.crate_of(winch)
-		if crate == null or crate.tile.depth != winch.tile.depth: continue
-		var tile: Vector2i = Vector2i(winch.tile.x, winch.tile.y)
-		if _visibility != null and _visibility.state_at(tile.x, tile.y) == Visibility.STATE.UNKNOWN:
-			continue
-		found.append(tile)
+	for level: Level in _world.levels():
+		if level.depth >= _shown_depth: continue
+		for winch: Fixture in level.level_fixtures.of_kind(ObjectKind.OBJECT.WINCH):
+			var tile: Vector2i = Vector2i(winch.tile.x, winch.tile.y)
+			if found.has(tile) or _world.rope_end(winch.tile) != _shown_depth: continue
+			# The foot, not a winch's hole: that winch is drawn there
+			var shown: Level = _world.level_at(_shown_depth)
+			if shown.level_tiles.get_ground(tile.x, tile.y) == TileKind.GROUND.HOLE: continue
+			var crate: Fixture = _world.shaft_crate(tile, winch.tile.depth)
+			if crate == null or crate.tile.depth == _shown_depth: continue
+			if _visibility != null and _visibility.state_at(tile.x, tile.y) == Visibility.STATE.UNKNOWN:
+				continue
+			found.append(tile)
 	return found
 
 

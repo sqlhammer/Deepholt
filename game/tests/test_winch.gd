@@ -284,7 +284,7 @@ func test_build_mode_aims_a_winch_at_a_hole_with_room_below() -> void:
 		"named with its cost")
 	_world.level_at(2).level_tiles.set_top(HOLE.x, HOLE.y, TileKind.TOP.MINABLE_ROCK)
 	assert_eq(_cursor_on(HOLE).problem(ObjectKind.OBJECT.WINCH),
-		BuildCursor.PROBLEM.LANDING_OCCUPIED, "no floor for the crate")
+		BuildCursor.PROBLEM.CRATE_NEEDS_FLOOR, "no floor for the crate")
 
 
 func test_the_winch_and_crate_have_art_and_a_build_slot() -> void:
@@ -334,20 +334,18 @@ func test_a_crate_rides_the_shaft_up_without_unloading() -> void:
 	assert_eq(_crates()[0].tile.depth, 2, "lowered, it hangs in the lower hole again")
 
 
-func test_a_shaft_built_top_down_has_two_crates_and_a_hole_holds_one() -> void:
-	# The upper winch first, its crate on -2's floor, lifted out of the way
+func test_a_shaft_built_top_down_still_has_one_crate() -> void:
+	# The upper winch first, its crate on -2's floor, lifted out of the
+	# way; the lower winch shares it (D-235)
 	var upper: Fixture = _build_winch()
 	_crank(_top, 15.0)
 	_world.breach_requested.emit(null, WorldPos.new(HOLE.x, HOLE.y, 2), 999.0)
 	_world.place_requested.emit(null, ObjectKind.OBJECT.WINCH, WorldPos.new(HOLE.x, HOLE.y, 2))
-	assert_eq(_crates().size(), 2, "the lower winch made its own crate, at -3")
+	assert_eq(_crates().size(), 1, "the lower winch made none")
 	_crank(_top, 5.0)
-	assert_eq(_world.crate_of(upper).tile.depth, 2, "the upper crate hangs in the lower hole")
-	_crank(_bottom, 20.0)
-	assert_eq(get_signal_parameters(_world, "crank_refused")[1], World.CRANK_REFUSAL.LANDING_BLOCKED,
-		"lowering it onto the other crate is refused")
-	assert_eq(_crates().filter(func(c: Fixture) -> bool: return c.tile.depth == 3).size(), 1,
-		"one crate a tile")
+	assert_eq(_world.crate_of(upper).tile.depth, 2, "lowered, it hangs in the lower winch's hole")
+	_crank(_bottom, 5.0)
+	assert_eq(_crates()[0].tile.depth, 3, "and on down to the foot")
 
 
 func test_the_shaft_loads_clean() -> void:

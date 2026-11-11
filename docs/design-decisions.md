@@ -4583,3 +4583,41 @@ down. Claude's choices, named here: one time each way, no cancel, and a bar.
   hangs, and the refusal says why.
 
 *Why:* a haul from −3 to −1 would otherwise mean emptying and refilling the crate at every level.
+
+---
+
+### D-235 — A winch's rope reaches the next winch down or the shaft's foot; a shaft has one crate
+**Decided** (by Derik, 2026-11-11, after he found two winches couldn't be built in a line).
+Reverses [D-234](#d-234--winches-stack-a-crate-lifted-into-the-hole-of-a-winch-above-is-that-winchs-to-lift)'s
+"a winch's foot is the next level down" and its "a shaft built top-down has two crates".
+
+- **A shaft** is the holes at one x, y on levels one under the next, and the floor under the
+  lowest of them: its foot.
+- **A winch's rope reaches down to the hole of the next winch in the shaft, or to the foot,**
+  through any empty holes between. So a winch may stand over a hole whose foot is another hole.
+- **Each level of rope takes the winch's time:** two levels lift in 30 s and lower in 10 s.
+- **A shaft has one crate.** A new winch makes one, at the end of its rope, only when the shaft
+  has none. Cranking a winch whose crate is at another winch is refused with that reason.
+- **A winch's shaft takes no ladder or chute,** and a shaft with either takes no winch.
+- While the crate is up, the foot is marked however deep it is (D-232).
+- The refusal for a winch with nowhere for its crate says the crate needs clear floor at the
+  bottom of the shaft.
+
+*Why:* Derik ruled that a player must be able to breach and add winches in any order. Claude's
+choices, named here: time by levels of rope, and the refusal when the crate is elsewhere.
+
+---
+
+### D-236 — A breach can open over a winch's hole or an empty hole, and through a crate's floor
+**Decided** (by Derik, 2026-11-11, with D-235). Extends
+[D-152](#d-152--a-breach-opens-a-hole-and-clears-its-landing-only-plain-floor-with-both-ends-clear).
+
+- **A floor can be breached over a hole** that holds nothing, or only a winch and its crate.
+  The shaft below grows up.
+- **A floor a crate stands on can be breached:** the crate falls to where its rope now ends,
+  contents and all. It won't fall on someone; that breach is refused.
+- **A breach that would join a winch's shaft to one with a ladder or chute, or two shafts that
+  each have a crate,** is refused with that reason.
+
+*Why:* without them, a winch already built closed the hole above it, and a crate on the
+floor stopped a shaft going deeper.

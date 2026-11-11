@@ -22,6 +22,7 @@ const BREACH_REASONS: Dictionary = {
 	World.BREACH_REFUSAL.LANDING_BLOCKED: "Something below is in the way.",
 	World.BREACH_REFUSAL.TOOL_TOO_WEAK: "This floor is too hard for your tool.",
 	World.BREACH_REFUSAL.NEEDS_PICK: "Breaching needs a pick.",
+	World.BREACH_REFUSAL.SHAFTS_CANT_JOIN: "That would join two shafts that can't share.",
 }
 
 # Said once per tile faced (D-217, D-218). Other dig refusals are no
@@ -41,13 +42,15 @@ const PLACE_REASONS: Dictionary = {
 	World.FIXTURE_REFUSAL.ACTOR_ON_TILE: "Someone is standing there.",
 	World.FIXTURE_REFUSAL.NEEDS_HOLE: "That goes over a hole.",
 	World.FIXTURE_REFUSAL.HOLE_IN_USE: "A hole holds one ladder, chute or winch.",
-	World.FIXTURE_REFUSAL.LANDING_BLOCKED: "The crate needs open floor below.",
+	World.FIXTURE_REFUSAL.LANDING_BLOCKED: BuildCursor.CRATE_NEEDS_FLOOR_TEXT,
+	World.FIXTURE_REFUSAL.WINCH_SHAFT: BuildCursor.WINCH_SHAFT_TEXT,
 }
 
 const CRANK_REASONS: Dictionary = {
 	World.CRANK_REFUSAL.FROM_BELOW: "The winch is cranked from the top.",
 	World.CRANK_REFUSAL.LANDING_BLOCKED: "Something is in the crate's way.",
 	World.CRANK_REFUSAL.CRATE_FULL: "The crate is full.",
+	World.CRANK_REFUSAL.CRATE_ELSEWHERE: "The crate is at another winch in this shaft.",
 }
 
 var text: String:

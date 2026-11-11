@@ -170,3 +170,29 @@ appendix's climb times had never been built. He chose two of my three levers:
 
 Lever 2, a bigger crate or a faster lift, was left for tuning against telemetry. The climb bar
 hasn't been seen in a window. 1251 tests.
+
+## Shafts in any order (2026-11-11)
+
+Derik found that two winches couldn't be built in a line. Breaching above a built winch was
+refused because the winch stood on the landing. A winch over a hole whose foot was another
+hole was refused because the crate had no floor, and the cursor's message didn't say so. My
+D-234 tests had built the shaft by writing tiles and placing with no actor, never by a
+player's route.
+
+A headless replay of the order I gave him (both breaches, the lower winch, then the upper)
+through the build cursor worked. So I didn't find what stopped it in his run. My guess is
+the way down: a ladder in that hole stands on the floor that needs breaching, and nothing
+removes a ladder.
+
+He ruled that breaches and winches go in any order:
+
+- **D-235:** a winch's rope reaches the next winch down or the shaft's foot. Each level of rope
+  takes the winch's time. A shaft has one crate, and it takes no ladder or chute.
+- **D-236:** a breach can open over an empty hole or a winch's hole. A crate on a breached
+  floor falls to the new end of its rope. A breach that would join a winch's shaft to a ladder
+  or chute, or join two crates, is refused.
+- **The message:** a winch with nowhere for its crate now says "The crate needs clear floor at
+  the bottom of the shaft." It's the same text from the cursor and from the world.
+
+`test_winch_shaft` runs every order of the four steps (two breaches, two winches) through the
+build cursor and lifts the crate to −1 each time. 1261 tests. Not yet seen in a window.

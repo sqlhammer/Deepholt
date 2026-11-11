@@ -117,6 +117,9 @@ enum BREACH_REFUSAL {
 	# The actor isn't holding a pick (D-174). Asked first: the tool in
 	# hand is the answer whatever floor is faced.
 	NEEDS_PICK,
+	# The hole would join a winch's shaft to one with a ladder or chute,
+	# or two shafts that each have a crate (D-236)
+	SHAFTS_CANT_JOIN,
 }
 
 # Why a tree wasn't felled (D-181).
@@ -155,6 +158,9 @@ enum FIXTURE_REFUSAL {
 	# A winch's crate has no floor to stand on at the foot of its hole
 	# (D-224)
 	LANDING_BLOCKED,
+	# A winch's shaft takes no ladder or chute, and a shaft with either
+	# takes no winch (D-235)
+	WINCH_SHAFT,
 }
 
 # Why making something was refused (D-222).
@@ -178,6 +184,9 @@ enum CRANK_REFUSAL {
 	LANDING_BLOCKED,
 	# Not all of a drop fitted in the crate
 	CRATE_FULL,
+	# The shaft's crate is at another winch, out of this one's reach
+	# (D-235)
+	CRATE_ELSEWHERE,
 }
 
 # How far, in rings of tiles, chuted items look for somewhere to lie
@@ -557,16 +566,86 @@ func _faced_tile(actor: Actor) -> Vector2i:
 	return Vector2i(here.x, here.y) + actor.facing
 
 
-# A winch's crate: hanging in its hole, or at the foot of it. Null if
-# it has none.
+# A winch's crate: hanging in its hole, or at the end of its rope
+# (D-235). Null when the shaft's crate is at neither.
 func crate_of(winch: Fixture) -> Fixture:
 	var tile: Vector2i = Vector2i(winch.tile.x, winch.tile.y)
-	for depth: int in [winch.tile.depth, winch.tile.depth + 1]:
+	for depth: int in [winch.tile.depth, rope_end(winch.tile)]:
 		var level: Level = level_at(depth)
 		if level == null: continue
 		var crate: Fixture = _fixture_of_kind(level, tile, ObjectKind.OBJECT.CRATE)
 		if crate != null: return crate
 	return null
+
+
+# --- shafts (D-235) ---
+# A shaft is the holes at one x, y on levels one under the next, and
+# the floor under the lowest of them: its foot.
+
+# The depths of the shaft through `depth` at `at`, top to foot. A floor
+# with no hole over it is a shaft of one.
+func shaft_depths(at: Vector2i, depth: int) -> Array[int]:
+	var top: int = depth
+	while _is_hole(at, top - 1): top -= 1
+	var foot: int = depth
+	while _is_hole(at, foot) and level_at(foot + 1) != null: foot += 1
+	var depths: Array[int] = []
+	for d: int in range(top, foot + 1):
+		depths.append(d)
+	return depths
+
+
+func _is_hole(at: Vector2i, depth: int) -> bool:
+	var level: Level = level_at(depth)
+	return level != null and level.level_tiles.get_ground(at.x, at.y) == TileKind.GROUND.HOLE
+
+
+# Where a crate let go at `depth` comes to rest: hanging in the first
+# winch's hole it meets, or on the shaft's foot. -1 past the last level.
+func drop_point(at: Vector2i, depth: int) -> int:
+	var d: int = depth
+	while true:
+		var level: Level = level_at(d)
+		if level == null: return -1
+		if _fixture_of_kind(level, at, ObjectKind.OBJECT.WINCH) != null: return d
+		if level.level_tiles.get_ground(at.x, at.y) != TileKind.GROUND.HOLE: return d
+		d += 1
+	return -1
+
+
+# How far down the winch at the top of `top`'s hole reaches: the hole
+# of the next winch down the shaft, or the foot.
+func rope_end(top: WorldPos) -> int:
+	return drop_point(Vector2i(top.x, top.y), top.depth + 1)
+
+
+# The fixtures of `kinds` anywhere in the shaft through `depth`.
+func shaft_fixtures(at: Vector2i, depth: int, kinds: Array[int]) -> Array[Fixture]:
+	var found: Array[Fixture] = []
+	for d: int in shaft_depths(at, depth):
+		for fixture: Fixture in level_at(d).level_fixtures.at(at):
+			if fixture.kind in kinds: found.append(fixture)
+	return found
+
+
+# The shaft's one crate, or null.
+func shaft_crate(at: Vector2i, depth: int) -> Fixture:
+	var crates: Array[Fixture] = shaft_fixtures(at, depth, [ObjectKind.OBJECT.CRATE])
+	return crates[0] if not crates.is_empty() else null
+
+
+# Why a ladder, chute or winch can't go in the shaft through `tile`,
+# or NONE: a shaft is a winch's, or a ladder's and chutes', never both.
+func shaft_problem(kind: int, tile: WorldPos) -> FIXTURE_REFUSAL:
+	var at: Vector2i = Vector2i(tile.x, tile.y)
+	var against: Array[int] = []
+	match kind:
+		ObjectKind.OBJECT.WINCH: against = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.CHUTE]
+		ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.CHUTE: against = [ObjectKind.OBJECT.WINCH]
+		_: return FIXTURE_REFUSAL.NONE
+	if level_at(tile.depth) == null: return FIXTURE_REFUSAL.NONE
+	if not shaft_fixtures(at, tile.depth, against).is_empty(): return FIXTURE_REFUSAL.WINCH_SHAFT
+	return FIXTURE_REFUSAL.NONE
 
 
 # How far a winch's crate is on its way, 0 to 1 (D-225).
@@ -603,12 +682,17 @@ func _empty_crate(actor: Actor, crate: Fixture) -> Dictionary[StringName, int]:
 # facing its crate, it is refused with the reason. Cranking itself is
 # `crank`, every tick it stays held.
 func begin_crank(actor: Actor) -> void:
-	if winch_faced(actor) != null: return
+	var winch: Fixture = winch_faced(actor)
+	if winch != null:
+		# The shaft's crate is at another winch (D-235)
+		var at: Vector2i = Vector2i(winch.tile.x, winch.tile.y)
+		if crate_of(winch) == null and shaft_crate(at, winch.tile.depth) != null:
+			crank_refused.emit(actor, CRANK_REFUSAL.CRATE_ELSEWHERE)
+		return
 	var crate: Fixture = crate_faced(actor)
 	if crate == null: return
-	var above: Level = level_at(crate.tile.depth - 1)
-	if above != null and _fixture_of_kind(above, Vector2i(crate.tile.x, crate.tile.y),
-			ObjectKind.OBJECT.WINCH) != null:
+	var tile: Vector2i = Vector2i(crate.tile.x, crate.tile.y)
+	if not shaft_fixtures(tile, crate.tile.depth, [ObjectKind.OBJECT.WINCH]).is_empty():
 		crank_refused.emit(actor, CRANK_REFUSAL.FROM_BELOW)
 
 
@@ -625,7 +709,9 @@ func crank(actor: Actor, delta: float) -> void:
 	var lifting: bool = crate.tile.depth != winch.tile.depth
 	_cranked[winch.id] = true
 	var was: float = crank_progress(winch)
-	var progress: float = minf(was + delta / Winch.seconds(tuning, lifting), 1.0)
+	# Each level of rope takes the winch's time (D-235)
+	var levels: int = maxi(rope_end(winch.tile) - winch.tile.depth, 1)
+	var progress: float = minf(was + delta / (Winch.seconds(tuning, lifting) * levels), 1.0)
 	_crank_progress[winch.id] = progress
 	if progress < 1.0: return
 	var top: WorldPos = winch.tile
@@ -638,10 +724,11 @@ func crank(actor: Actor, delta: float) -> void:
 			return
 		_move_crate(actor, winch, crate, WorldPos.new(top.x, top.y, top.depth))
 		return
-	if winch_landing_problem(top) != FIXTURE_REFUSAL.NONE:
+	var end: int = rope_end(top)
+	if _crate_landing_problem(Vector2i(top.x, top.y), end, crate) != FIXTURE_REFUSAL.NONE:
 		if was < 1.0: crank_refused.emit(actor, CRANK_REFUSAL.LANDING_BLOCKED)
 		return
-	_move_crate(actor, winch, crate, WorldPos.new(top.x, top.y, top.depth + 1))
+	_move_crate(actor, winch, crate, WorldPos.new(top.x, top.y, end))
 
 
 # The crate, contents and all, from one end of its hole to the other.
@@ -937,6 +1024,56 @@ func _on_breach_requested(actor: Actor, tile: WorldPos, tool_power: float) -> vo
 	lower.set_top(tile.x, tile.y, TileKind.TOP.OPEN)
 	lower.set_ore(tile.x, tile.y, TileKind.ORE.NONE)
 	tile_breached.emit(actor, tile)
+	# A crate that stood there falls down the shaft (D-236)
+	var at: Vector2i = Vector2i(tile.x, tile.y)
+	var level: Level = level_at(tile.depth)
+	var crate: Fixture = _fixture_of_kind(level, at, ObjectKind.OBJECT.CRATE)
+	if crate == null: return
+	var to: WorldPos = WorldPos.new(tile.x, tile.y, drop_point(at, tile.depth + 1))
+	level.level_fixtures.remove(crate.id)
+	level_at(to.depth).level_fixtures.receive(crate, to)
+	fixture_moved.emit(actor, crate, tile)
+
+
+# Why the shaft above `depth`'s floor at `at` and the one below it
+# can't become one, or NONE (D-236): a winch's shaft takes no ladder or
+# chute, and a shaft holds one crate.
+func _join_problem(at: Vector2i, depth: int) -> BREACH_REFUSAL:
+	var kinds: Array[int] = [ObjectKind.OBJECT.WINCH, ObjectKind.OBJECT.CHUTE,
+		ObjectKind.OBJECT.CRATE, ObjectKind.OBJECT.LADDER]
+	var up: Array[Fixture] = shaft_fixtures(at, depth, kinds)
+	var down: Array[Fixture] = shaft_fixtures(at, depth + 1, kinds)
+	var kinds_up: Array = up.map(func(f: Fixture) -> int: return f.kind)
+	var kinds_down: Array = down.map(func(f: Fixture) -> int: return f.kind)
+	var crate: int = ObjectKind.OBJECT.CRATE
+	if crate in kinds_up and crate in kinds_down: return BREACH_REFUSAL.SHAFTS_CANT_JOIN
+	var winch: int = ObjectKind.OBJECT.WINCH
+	for pair: Array in [[kinds_up, kinds_down], [kinds_down, kinds_up]]:
+		if winch in pair[0] and (ObjectKind.OBJECT.CHUTE in pair[1] or ObjectKind.OBJECT.LADDER in pair[1]):
+			return BREACH_REFUSAL.SHAFTS_CANT_JOIN
+	return BREACH_REFUSAL.NONE
+
+
+# Why `crate`, let go at `depth`, has nowhere to come to rest, or NONE.
+func _fall_problem(at: Vector2i, depth: int, crate: Fixture) -> FIXTURE_REFUSAL:
+	return _crate_landing_problem(at, drop_point(at, depth), crate)
+
+
+# Why `crate` can't come to rest at `depth` of the shaft at `at`, or
+# NONE: hanging in a winch's hole where no other crate hangs, or on the
+# foot, floor holding nothing, with nobody standing there.
+func _crate_landing_problem(at: Vector2i, depth: int, crate: Fixture = null) -> FIXTURE_REFUSAL:
+	var level: Level = level_at(depth)
+	if level == null: return FIXTURE_REFUSAL.LEVEL_NOT_EXISTS
+	if _fixture_of_kind(level, at, ObjectKind.OBJECT.WINCH) != null:
+		var other: Fixture = _fixture_of_kind(level, at, ObjectKind.OBJECT.CRATE)
+		if other != null and other != crate: return FIXTURE_REFUSAL.LANDING_BLOCKED
+		return FIXTURE_REFUSAL.NONE
+	var reason: FIXTURE_REFUSAL = Winch.landing_problem(level, at)
+	if reason != FIXTURE_REFUSAL.NONE: return reason
+	if blocks_actor(level, ObjectKind.OBJECT.CRATE, WorldPos.new(at.x, at.y, depth)):
+		return FIXTURE_REFUSAL.LANDING_BLOCKED
+	return FIXTURE_REFUSAL.NONE
 
 
 # Why a breach of `tile` with a tool of `tool_power` would be
@@ -954,17 +1091,39 @@ func breach_problem(tile: WorldPos, tool_power: float, actor: Actor = null) -> B
 		return BREACH_REFUSAL.TILE_NOT_EXISTS
 	if top != TileKind.TOP.OPEN or not _is_plain_floor(ground):
 		return BREACH_REFUSAL.NOT_PLAIN_FLOOR
-	if not level.level_fixtures.at(Vector2i(tile.x, tile.y)).is_empty():
-		return BREACH_REFUSAL.FIXTURE_ON_TILE
+	var at: Vector2i = Vector2i(tile.x, tile.y)
+	# A crate standing on the foot of its shaft falls through (D-236)
+	for fixture: Fixture in level.level_fixtures.at(at):
+		if fixture.kind != ObjectKind.OBJECT.CRATE: return BREACH_REFUSAL.FIXTURE_ON_TILE
 	if _actor_on(tile): return BREACH_REFUSAL.ACTOR_ON_TILE
 
 	var below: Level = level_at(tile.depth + 1)
 	if below == null: return BREACH_REFUSAL.NO_LEVEL_BELOW
 	var landing: int = below.level_tiles.get_ground(tile.x, tile.y)
-	if TileKind.is_sentinel(landing) or TileKind.is_sentinel(below.level_tiles.get_top(tile.x, tile.y)):
+	var landing_top: int = below.level_tiles.get_top(tile.x, tile.y)
+	if TileKind.is_sentinel(landing) or TileKind.is_sentinel(landing_top):
 		return BREACH_REFUSAL.LANDING_NOT_EXISTS
-	if not _is_plain_floor(landing) or not below.level_fixtures.at(Vector2i(tile.x, tile.y)).is_empty():
+	if landing == TileKind.GROUND.HOLE:
+		# Over a hole the shaft below grows up (D-236): one with nothing
+		# in it but a winch and its crate
+		if landing_top != TileKind.TOP.OPEN: return BREACH_REFUSAL.LANDING_BLOCKED
+		for fixture: Fixture in below.level_fixtures.at(at):
+			if fixture.kind not in [ObjectKind.OBJECT.WINCH, ObjectKind.OBJECT.CRATE]:
+				return BREACH_REFUSAL.LANDING_BLOCKED
+		var reason: BREACH_REFUSAL = _join_problem(at, tile.depth)
+		if reason != BREACH_REFUSAL.NONE: return reason
+	elif not _is_plain_floor(landing) or not below.level_fixtures.at(at).is_empty():
 		return BREACH_REFUSAL.LANDING_BLOCKED
+	# The fallen crate needs room where it comes to rest
+	# (on a plain landing, the floor the breach opens: nobody on it)
+	var crate: Fixture = _fixture_of_kind(level, at, ObjectKind.OBJECT.CRATE)
+	if crate != null:
+		var on: WorldPos = WorldPos.new(tile.x, tile.y, tile.depth + 1)
+		if landing == TileKind.GROUND.HOLE:
+			if _fall_problem(at, tile.depth + 1, crate) != FIXTURE_REFUSAL.NONE:
+				return BREACH_REFUSAL.LANDING_BLOCKED
+		elif blocks_actor(below, ObjectKind.OBJECT.CRATE, on):
+			return BREACH_REFUSAL.LANDING_BLOCKED
 
 	if not Digging.can_breach(tuning, Digging.floor_hardness(tuning, tile.depth), tool_power):
 		return BREACH_REFUSAL.TOOL_TOO_WEAK
@@ -999,6 +1158,10 @@ func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
 	if blocks_actor(level, kind, tile):
 		request_refused.emit(actor, FIXTURE_VERB.PLACE, tile, FIXTURE_REFUSAL.ACTOR_ON_TILE)
 		return
+	reason = shaft_problem(kind, tile)
+	if reason != FIXTURE_REFUSAL.NONE:
+		request_refused.emit(actor, FIXTURE_VERB.PLACE, tile, reason)
+		return
 	if kind == ObjectKind.OBJECT.WINCH:
 		reason = winch_landing_problem(tile)
 		if reason != FIXTURE_REFUSAL.NONE:
@@ -1017,41 +1180,27 @@ func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
 	if kind == ObjectKind.OBJECT.WINCH: _make_crate(actor, tile)
 
 
-# Why a winch over `tile`'s hole has no room for its crate at the foot
-# of the hole, or NONE: floor holding nothing, and nobody standing
-# there (D-224). Asked by the gatekeeper and build mode's preview.
+# Why a winch over `tile`'s hole has nowhere for its crate, or NONE
+# (D-224, D-235). A shaft that has a crate already shares it; one
+# without needs room at the end of the new winch's rope: floor holding
+# nothing at the foot, with nobody standing there. Asked by the
+# gatekeeper and build mode's preview.
 func winch_landing_problem(tile: WorldPos) -> FIXTURE_REFUSAL:
-	var below: Level = level_at(tile.depth + 1)
-	# A shaft (D-234): the foot is the hole of a winch below, where a
-	# crate hangs rather than stands, one at a time
-	if winch_below(tile) != null:
-		var at: Vector2i = Vector2i(tile.x, tile.y)
-		if _fixture_of_kind(below, at, ObjectKind.OBJECT.CRATE) != null:
-			return FIXTURE_REFUSAL.LANDING_BLOCKED
+	var at: Vector2i = Vector2i(tile.x, tile.y)
+	if level_at(tile.depth) != null and shaft_crate(at, tile.depth) != null:
 		return FIXTURE_REFUSAL.NONE
-	var reason: FIXTURE_REFUSAL = Winch.landing_problem(below, Vector2i(tile.x, tile.y))
-	if reason != FIXTURE_REFUSAL.NONE: return reason
-	if blocks_actor(below, ObjectKind.OBJECT.CRATE, WorldPos.new(tile.x, tile.y, tile.depth + 1)):
-		return FIXTURE_REFUSAL.LANDING_BLOCKED
-	return FIXTURE_REFUSAL.NONE
+	return _crate_landing_problem(at, rope_end(tile))
 
 
-# The winch whose hole is the foot of the hole at `tile`: the next
-# winch down a shaft (D-234), or null.
-func winch_below(tile: WorldPos) -> Fixture:
-	var below: Level = level_at(tile.depth + 1)
-	if below == null: return null
-	return _fixture_of_kind(below, Vector2i(tile.x, tile.y), ObjectKind.OBJECT.WINCH)
-
-
-# A new winch's crate, empty, at the foot of its hole (D-224). Over a
-# shaft the crate is the shaft's, so none is made (D-234).
+# A new winch's crate, empty, at the end of its rope (D-224). A shaft
+# has one crate, so where it has one already none is made (D-235).
 func _make_crate(actor: Actor, top: WorldPos) -> void:
-	if winch_below(top) != null: return
+	var at: Vector2i = Vector2i(top.x, top.y)
+	if shaft_crate(at, top.depth) != null: return
 	var crate: Fixture = Fixture.new(ObjectKind.OBJECT.CRATE,
-		WorldPos.new(top.x, top.y, top.depth + 1), fixture_ids.allocate())
+		WorldPos.new(top.x, top.y, rope_end(top)), fixture_ids.allocate())
 	crate.contents = Pack.new()
-	level_at(top.depth + 1).level_fixtures.add(crate)
+	level_at(crate.tile.depth).level_fixtures.add(crate)
 	fixture_placed.emit(actor, crate)
 
 
