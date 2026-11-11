@@ -7,9 +7,8 @@
 > lined up, and you walk home by them.
 
 *Proposed by Claude, 2026-11-10, after Derik accepted three larger slices (015 to 017, in
-[NEXT.md](./NEXT.md)). **Agent mode** (Derik, 2026-11-10). **Not started:** Derik walks the UAT
-docs for 012 to 014 first (`work/lesson/uat-*.md`, untracked). When he says to begin, Claude asks
-the forks below **one at a time**, records each as a `D-nnn` at once, then builds.*
+[NEXT.md](./NEXT.md)). **Agent mode** (Derik, 2026-11-10). **Started 2026-11-10:** forks decided
+(D-215 to D-228), building on `slice-015` from `main`.*
 
 ## Where we are
 
@@ -23,8 +22,7 @@ the forks below **one at a time**, records each as a `D-nnn` at once, then build
   ([pre-alpha-scope §1](../docs/pre-alpha-scope.md)). The scope says three levels below the
   Surface is the minimum for the pain to bite, and today there are two. Pre-alpha criterion 1, a
   chute built unprompted before the 5th expedition, can't be measured with no chute.
-- **PRs #9 to #12 are merged; 014b (the UAT fixes, D-211 to D-214) is on `slice-014b`.** 015
-  builds on 014b.
+- **PRs #9 to #13 are merged** (014b, the UAT fixes, D-211 to D-214, included).
 
 ## What should be true when you stop
 
@@ -33,8 +31,8 @@ By hand, unless marked:
 1. **−3 exists and is worth going to.** You reach −3 from −2 (how: fork 1), it's larger than −2,
    dark, with caves and iron ore in veins; part of it is behind rubble you can't clear, and
    trying to says why, not "nothing happens".
-2. **Iron is worth the climb:** a pack of iron ore is heavy enough that two or three trips up to
-   −1 feel like work (D-029's hauling time, against the new distance).
+2. ~~Iron is worth the climb~~ — moved to 016: iron needs bronze (D-217). In 015, a flint pick
+   on iron ore is refused and says why.
 3. **A chute:** build one over a hole; items dropped into it on one level land as drops on the
    level below. Spoil goes down without you.
 4. **A hand winch and a crate:** fill a crate at the bottom, go up, crank at the top, and the
@@ -55,45 +53,35 @@ By hand, unless marked:
 ## Mode
 
 **Agent** (Derik, 2026-11-10), for 015, 016 and 017. Claude builds on a `slice-015` branch from
-`fix-telemetry-identity` (or from `main` if #9 to #12 are merged by then), one commit per
-section; Derik merges.
+`main`, one commit per section; Derik merges.
 
 ## What you're deciding
 
-Asked one at a time when the slice starts, each with a recommendation. Draft recommendations
-in brackets.
+Decided 2026-11-10, one at a time, before the build
+([design-decisions](../docs/design-decisions.md)):
 
-1. **How you get to −3.** The flint pick can't breach −2's floor: power 16 against a gate of 18 ×
-   1.2 = 21.6 (`floor_hardness_by_depth`, `breach_tool_multiplier`). Options: a natural way down
-   placed on −2 (a ramp or open shaft, as the Surface has into −1, and as generation guarantee 2
-   expects a descent point, [world-and-generation §3](../docs/world-and-generation.md)), with
-   breaching −2's floor left for bronze in 016; lower −2's floor hardness so flint breaches it;
-   or swap 015 and 016 so bronze comes first. [A natural way down, placed by the seed, far
-   enough from −2's landing to make the haul.]
-2. **What −3 is in this slice.** Caves and iron by the seed, one `CRUSHED` region, and its look;
-   the three authored ruins are 017's (the blueprint lives in one). Whether flint digs iron ore
-   (slowly) or iron needs bronze. [Flint digs it, slowly; tool tiers in 016 make it fast. A
-   refusal with nothing to make the answer from would read as broken.]
-3. **The `CRUSHED` region's rule.** Rubble that refuses every tool with a reason, by region tag
-   (D-012's "regions are earned"), or rock too hard for any tool yet. [A region tag with its own
-   refusal message, since 017 and later need regions anyway.]
-4. **The chute.** What it costs (timber), whether it shares a hole with a ladder, whether chutes
-   stack through several levels, and how items go in: dropped on its tile, or a "put in" action.
-   [Timber; its own hole; stacks fall through every chute below; anything dropped on its tile
-   falls.]
-5. **Portable light.** The torch (cheap, burns about 4 minutes, droppable as a breadcrumb), the oil
-   lantern (refillable; fuel needs a source we don't have yet), or both; and how it's held (a
-   hotbar item lit while selected, or a slot of its own). [The torch now, from timber; the
-   lantern with its fuel in 016. Lit from its own slot so the pick stays in hand.]
-6. **The crate and the winch.** A crate is a placed fixture you fill, or a pack item you carry;
-   its capacity in kg; the winch's cost (rope means root fibre, a −1 resource not built yet, or
-   timber only for now); cranking: a hold with a rate, at the top only. [A fixture; capacity
-   about two packs; timber and stone for now, rope when −1's resources come; hold to crank at the
-   top.]
-7. **The map's scope.** Layer view, ghosted neighbors, anchors and the depth strip are in; player
-   markers, and whether the map pauses play. [Markers later; the map doesn't pause, for co-op.]
-8. **The pad button for the map.** ui-ux §3 puts the map on View; View is quick save today.
-   [Map on View; quick save moves to the pause menu we don't have yet, and keeps F5.]
+1. **Way down:** a ramp the seed places on −2, far from the landing; −2's floor stays for
+   bronze (D-215).
+2. **−3:** caves, iron veins, one `CRUSHED` region, a landing, its own palette; no ruins
+   (D-216). **Iron needs bronze;** flint is refused with a reason (D-217).
+3. **`CRUSHED`:** a region tag, filled with rubble that refuses every tool with its own
+   message (D-218).
+4. **Chute:** a fixture on its hole's level; one hole holds one of ladder, chute or winch;
+   stacks fall through (D-219). 2 timber; a drop made facing it goes down it; a blocked landing
+   spills to the nearest open tile (D-220).
+5. **Light:** the torch, about 4 minutes lit, in a light slot of its own, dropped lit as a
+   breadcrumb (D-221); made in a CRAFT tab of the inventory, 1 timber → 2 (D-222); L / D-pad up
+   (D-228). On-screen prompts show only the scheme in use (D-223).
+6. **Crate and winch:** the crate belongs to the winch, 120 kg, filled and emptied by facing it
+   (D-224). The winch: 12 timber and 20 stone; held at the top, a lift takes 15 s and a lowering
+   5 s; two cranking add their rates (D-225).
+7. **Map:** every player a dot; no pause; placed markers later (D-226).
+8. **Map keys:** View / M; levels on LB / RB, wheel, Page Up / Down; quick save leaves the pad
+   (D-227).
+
+**Changed by the forks:** outcome 2 ("iron is worth the climb") can't be walked until 016 makes
+bronze (D-217). In 015, iron is seen and refused, and the haul is copper and tin up from −2 and
+spoil down, over the longer climb from −3.
 
 ## Already settled
 
