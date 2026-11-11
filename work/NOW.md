@@ -8,7 +8,7 @@
 
 *Proposed by Claude, 2026-11-10, after Derik accepted three larger slices (015 to 017, in
 [NEXT.md](./NEXT.md)). **Agent mode** (Derik, 2026-11-10). **Started 2026-11-10:** forks decided
-(D-215 to D-228), building on `slice-015` from `main`.*
+(D-215 to D-229). **Built** on `slice-015`, 2026-11-10 ([log](./log/015-the-long-haul.md)); waiting on Derik's walk.*
 
 ## Where we are
 
