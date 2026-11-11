@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Recipe" format=3]
+
+[ext_resource type="Script" path="res://src/entity/crafting/recipe.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = &"torch"
+display_key = "Torch"
+description = "Burns about 4 min while lit. Goes in the light slot."
+inputs = Dictionary[StringName, int]({
+&"timber": 1
+})
+outputs = Dictionary[StringName, int]({
+&"torch": 2
+})
+station = &"hand"

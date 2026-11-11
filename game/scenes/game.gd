@@ -105,6 +105,10 @@ func set_user_control(actor: Actor) -> void:
 	input.support_overlay = support_overlay
 	input.hotbar_hud = hotbar_hud
 	hotbar_hud.slot_clicked.connect(input.select_slot)
+	# Keys on screen are the scheme in use's only (D-223)
+	inventory.set_gamepad(input.current_device_scheme == InputHandler.DEVICE_SCHEME.GAMEPAD)
+	input.device_scheme_changed.connect(func(scheme: InputHandler.DEVICE_SCHEME) -> void:
+		inventory.set_gamepad(scheme == InputHandler.DEVICE_SCHEME.GAMEPAD))
 	add_child(input)
 	_input_handlers.append(input)
 	

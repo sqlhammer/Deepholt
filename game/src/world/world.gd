@@ -51,6 +51,11 @@ signal items_uncrated(actor: Actor, crate: Fixture, id: StringName, count: int)
 # `actor` is whoever's cranking finished the move.
 signal crate_arrived(actor: Actor, winch: Fixture, crate: Fixture, at_top: bool)
 signal crank_refused(actor: Actor, reason: CRANK_REFUSAL)
+# Making something (D-222): asked by recipe id, answered with what was
+# made or why not.
+signal craft_requested(actor: Actor, recipe_id: StringName)
+signal crafted(actor: Actor, recipe: Recipe)
+signal craft_refused(actor: Actor, recipe_id: StringName, reason: CRAFT_REFUSAL)
 # Felling a tree (D-181): asked when the work is done, answered with
 # the tree gone and its timber given, or a refusal.
 signal chop_requested(actor: Actor, tile: WorldPos)
@@ -150,6 +155,15 @@ enum FIXTURE_REFUSAL {
 	LANDING_BLOCKED,
 }
 
+# Why making something was refused (D-222).
+enum CRAFT_REFUSAL {
+	NONE,
+	UNKNOWN_RECIPE,
+	CANNOT_AFFORD,
+	# Made at a station (a workbench, 016) the actor isn't at
+	NEEDS_STATION,
+}
+
 # Why cranking a winch, or filling its crate, did nothing (D-224,
 # D-225).
 enum CRANK_REFUSAL {
@@ -231,6 +245,7 @@ func _init(p_tuning: TuningProfile = null) -> void:
 	place_requested.connect(_on_place_requested)
 	remove_requested.connect(_on_remove_requested)
 	move_requested.connect(_on_move_requested)
+	craft_requested.connect(_on_craft_requested)
 
 
 # Takes a level in, and tells it which world it belongs to (D-126).
@@ -276,6 +291,7 @@ func _physics_process(delta: float) -> void:
 func advance_time(delta: float) -> void:
 	for level: Level in _levels_with_players():
 		if level.support != null: level.support.advance(delta)
+		_burn_torches(level, delta)
 
 
 func _levels_with_players() -> Array[Level]:
@@ -378,12 +394,37 @@ func _on_drop_requested(actor: Actor, id: StringName, count: int) -> void:
 		actor.pack.remove(id, n)
 		_send_down(actor, chute.tile, id, n)
 		return
+	# The light in hand, dropped while it burns, stays lit on the
+	# ground: a breadcrumb (D-221). The rest of a stack drops unlit.
+	if actor.hotbar.lit and id == actor.hotbar.light:
+		_drop_lit(actor, here)
+		n -= 1
+		if n <= 0: return
 	actor.pack.remove(id, n)
 	actor.current_level.level_drops.add(Vector2i(here.x, here.y), id, n)
 	var dropped: Array = _dropped_at.get_or_add(actor.get_instance_id(), [])
 	if not dropped.any(func(at: WorldPos) -> bool: return at.equals(here)):
 		dropped.append(here)
 	items_dropped.emit(actor, here, id, n)
+
+
+# A burning torch on the actor's tile, with the time its light had
+# left (D-221).
+func _drop_lit(actor: Actor, here: WorldPos) -> void:
+	var torch: Fixture = Fixture.new(ObjectKind.OBJECT.TORCH, here, fixture_ids.allocate())
+	torch.time_left = actor.hotbar.hand_over_light(tuning.torch_burn_seconds)
+	actor.current_level.level_fixtures.add(torch)
+	fixture_placed.emit(actor, torch)
+
+
+# Burns every dropped torch on `level` by `delta` seconds; one that
+# burns out is gone (D-221).
+func _burn_torches(level: Level, delta: float) -> void:
+	for torch: Fixture in level.level_fixtures.of_kind(ObjectKind.OBJECT.TORCH):
+		torch.time_left -= delta
+		if torch.time_left > 0.0: continue
+		level.level_fixtures.remove(torch.id)
+		fixture_removed.emit(null, torch)
 
 
 # --- chutes (D-219, D-220) ---
@@ -438,6 +479,35 @@ func _holds_drops(level: Level, tile: Vector2i) -> bool:
 	if not TileKind.is_passable(tiles.get_top(tile.x, tile.y), tiles.get_ground(tile.x, tile.y)):
 		return false
 	return level.level_fixtures.at(tile).is_empty()
+
+
+# --- making things (D-222) ---
+
+# Why `actor` can't make the recipe with this id now, or NONE. A read,
+# so the CRAFT tab shows what can be made before anyone asks.
+func craft_problem(actor: Actor, recipe_id: StringName) -> CRAFT_REFUSAL:
+	var recipe: Recipe = RecipeRegistry.find(recipe_id)
+	if recipe == null: return CRAFT_REFUSAL.UNKNOWN_RECIPE
+	if recipe.station != Recipe.HAND: return CRAFT_REFUSAL.NEEDS_STATION
+	for id: StringName in recipe.inputs:
+		if not actor.pack.has(id, recipe.inputs[id]): return CRAFT_REFUSAL.CANNOT_AFFORD
+	return CRAFT_REFUSAL.NONE
+
+
+# Takes the inputs from the actor's pack and puts the outputs in it,
+# whatever the load: what's made is in hand, as a take is.
+func _on_craft_requested(actor: Actor, recipe_id: StringName) -> void:
+	if actor == null or actor.current_level == null or actor.current_level.world != self: return
+	var reason: CRAFT_REFUSAL = craft_problem(actor, recipe_id)
+	if reason != CRAFT_REFUSAL.NONE:
+		craft_refused.emit(actor, recipe_id, reason)
+		return
+	var recipe: Recipe = RecipeRegistry.find(recipe_id)
+	for id: StringName in recipe.inputs:
+		actor.pack.remove(id, recipe.inputs[id])
+	for id: StringName in recipe.outputs:
+		actor.pack.add(id, recipe.outputs[id])
+	crafted.emit(actor, recipe)
 
 
 # --- the winch and its crate (D-224, D-225) ---

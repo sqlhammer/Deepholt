@@ -26,6 +26,9 @@ const OBJECT: Dictionary = {
 	# the level below, or hanging in the hole at the top. It holds
 	# items, and is never in a pack.
 	"CRATE": 8,
+	# A torch dropped lit (D-221): it burns on the ground, a light and a
+	# breadcrumb, until it burns out and is gone.
+	"TORCH": 9,
 }
 
 
@@ -40,6 +43,7 @@ const NAMES: Dictionary = {
 	OBJECT.CHUTE: "Chute",
 	OBJECT.WINCH: "Winch",
 	OBJECT.CRATE: "Crate",
+	OBJECT.TORCH: "Torch",
 }
 
 # The kinds that stand over a hole, on the hole's own level (D-219). A

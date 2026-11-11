@@ -101,3 +101,5 @@ winch_cost = Dictionary[StringName, int]({
 winch_lift_seconds = 15.0
 winch_lower_seconds = 5.0
 crate_capacity_kg = 120.0
+torch_burn_seconds = 240.0
+torch_light_radius = 5

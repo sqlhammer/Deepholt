@@ -10,7 +10,9 @@ extends Node
 #
 # The rule: Lit if the tile is lit, else Sensed if the followed actor
 # senses it, else Remembered if memory says so, else Unknown. The
-# Surface is lit throughout (D-144).
+# Surface is lit throughout (D-144). Lit counts the level's light
+# fixtures, kept between rebuilds, and the lights players carry
+# (D-221), flooded again each rebuild since they move with them.
 
 # Fixed values: they're the bytes the shader reads.
 enum STATE {
@@ -38,6 +40,9 @@ var _level: Level
 # The level's lit tiles, kept between rebuilds: light changes only
 # when the level or its fixtures do, not every step.
 var _lit: Array[Vector2i] = []
+# The hotbar of the followed actor, heard so lighting or putting out
+# its light redraws at once (D-221)
+var _followed_hotbar: Hotbar
 
 
 func watch(view: View) -> void:
@@ -72,7 +77,21 @@ func _on_shown_depth_changed(_old_depth: int, new_depth: int) -> void:
 	_show(new_depth)
 
 
-func _on_followed_moved(_actor: Actor) -> void:
+func _on_followed_moved(actor: Actor) -> void:
+	_hear_hotbar(actor)
+	rebuild()
+
+
+func _hear_hotbar(actor: Actor) -> void:
+	var hotbar: Hotbar = actor.hotbar if is_instance_valid(actor) else null
+	if hotbar == _followed_hotbar: return
+	if _followed_hotbar != null and _followed_hotbar.changed.is_connected(_on_hotbar_changed):
+		_followed_hotbar.changed.disconnect(_on_hotbar_changed)
+	_followed_hotbar = hotbar
+	if hotbar != null: hotbar.changed.connect(_on_hotbar_changed)
+
+
+func _on_hotbar_changed(_hotbar: Hotbar) -> void:
 	rebuild()
 
 
@@ -143,9 +162,15 @@ func rebuild() -> void:
 	if not is_instance_valid(_level):
 		state_bytes = []
 	else:
-		state_bytes = build(_level, _sensed(), _lit)
+		state_bytes = build(_level, _sensed(), _lit + _carried())
 	last_build_msec = (Time.get_ticks_usec() - started) / 1000.0
 	states_changed.emit()
+
+
+# What the lights players carry reach on the shown level (D-221).
+func _carried() -> Array[Vector2i]:
+	if not is_instance_valid(_world) or Light.is_daylit(_level): return []
+	return Light.carried_lit_tiles(_level, _world.players(), _world.tuning)
 
 
 # The followed actor's sensed tiles, if it stands on the shown level.

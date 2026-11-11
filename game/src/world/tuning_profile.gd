@@ -173,6 +173,12 @@ const DEFAULT_ID: String = "default"
 @export var winch_lower_seconds: float = 0.0
 @export var crate_capacity_kg: float = 0.0
 
+# The torch (D-221): how long one burns while lit, in seconds, and how
+# far its light reaches, in steps through open space, carried or
+# dropped.
+@export var torch_burn_seconds: float = 0.0
+@export var torch_light_radius: int = 0
+
 ## Presentation
 
 # How long a level change's fade through black lasts, out and back in

@@ -45,7 +45,8 @@ func _player(name: String, depth: int, tile: Vector2i, facing: Vector2i) -> Acto
 	return actor
 
 
-# A winch over the hole and its crate at the foot, as building one makes.
+# A winch over the hole and its crate at the foot, as building one
+# makes.
 func _build_winch() -> Fixture:
 	_world.place_requested.emit(null, ObjectKind.OBJECT.WINCH, WorldPos.new(HOLE.x, HOLE.y, 1))
 	return _world.level_at(1).level_fixtures.of_kind(ObjectKind.OBJECT.WINCH)[0]

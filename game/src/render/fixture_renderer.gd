@@ -22,6 +22,7 @@ const TEXTURES: Dictionary = {
 	ObjectKind.OBJECT.CHUTE: preload("res://src/render/chute.png"),
 	ObjectKind.OBJECT.WINCH: preload("res://src/render/winch.png"),
 	ObjectKind.OBJECT.CRATE: preload("res://src/render/crate.png"),
+	ObjectKind.OBJECT.TORCH: preload("res://src/render/torch_lit.png"),
 }
 
 # The bar over a winch while its crate is on the way (D-225): how far,

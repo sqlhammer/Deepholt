@@ -195,13 +195,15 @@ func test_the_focused_thing_is_described() -> void:
 
 func test_the_mouse_finds_cells_and_slots() -> void:
 	_inventory.set_open(true)
-	assert_eq(_inventory.place_at(Vector2(40, 24)), [InventoryOverlay.REGION.GRID, 1] as Array[int],
+	# A row into the grid, under the tab strip and the header (D-222)
+	var y: float = InventoryOverlay.HEADER + 8
+	assert_eq(_inventory.place_at(Vector2(40, y)), [InventoryOverlay.REGION.GRID, 1] as Array[int],
 		"the grid's second cell")
-	assert_eq(_inventory.place_at(Vector2(InventoryOverlay.BUILD_X + 2, 24)),
+	assert_eq(_inventory.place_at(Vector2(InventoryOverlay.BUILD_X + 2, y)),
 		[InventoryOverlay.REGION.BUILD, 0] as Array[int], "the first build slot")
 	assert_eq(_inventory.place_at(Vector2(2, InventoryOverlay.TOOLS_Y + 2)),
 		[InventoryOverlay.REGION.TOOLS, 0] as Array[int], "the first tool slot")
-	assert_eq(_inventory.place_at(Vector2(33, 24)), [-1, -1] as Array[int], "a gap")
+	assert_eq(_inventory.place_at(Vector2(33, y)), [-1, -1] as Array[int], "a gap")
 	assert_eq(_inventory.place_at(Vector2(2, InventoryOverlay.HEADER + 6 * InventoryOverlay.PITCH
 		- 2)), [-1, -1] as Array[int], "a seventh row isn't shown, so isn't hit")
 

@@ -172,6 +172,13 @@ func primary_action(p_action_intent: bool) -> void:
 		else: emit_signal("action_ended", tool().verb)
 
 
+# L or D-pad up (D-228): lights the light slot's light, or puts it out.
+# Returns whether it's lit now.
+func toggle_light() -> bool:
+	if current_level == null: return false
+	return hotbar.toggle_light(current_level.world.tuning.torch_burn_seconds)
+
+
 # Interact held or let go (D-225). The first tick held asks the world
 # whether a crank is possible here, so a refusal is heard once.
 func crank(p_crank_intent: bool) -> void:
@@ -251,6 +258,9 @@ func _physics_process(delta: float) -> void:
 	_primary_action(delta)
 	_breach(delta)
 	if crank_intent and current_level != null: current_level.world.crank(self, delta)
+	# A lit light burns down, only while lit (D-221)
+	if hotbar.lit and current_level != null:
+		hotbar.burn(delta, current_level.world.tuning.torch_burn_seconds)
 
 
 # The actor is handed the level it starts on rather than finding it

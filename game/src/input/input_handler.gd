@@ -26,6 +26,16 @@ var hotbar_hud: HotbarHud
 signal quick_save_requested
 signal load_requested
 signal save_and_quit_requested
+# The scheme in use changed (D-223): what's on screen names its keys
+# only.
+signal device_scheme_changed(scheme: DEVICE_SCHEME)
+
+# On the CRAFT tab, confirm held keeps making (D-222): after this long,
+# then once every REPEAT. Feel, not tuning.
+const MAKE_HOLD_SECONDS: float = 0.4
+const MAKE_REPEAT_SECONDS: float = 0.15
+
+var _make_held: float = 0.0
 
 # Inside this distance from the feet the mouse's direction is
 # mostly noise, so it counts as no aim and facing holds.
@@ -82,6 +92,12 @@ func _hotbar_input(event: InputEvent) -> void:
 		if event.is_action_pressed("hotbar_%d" % (i + 1)):
 			select_slot(i)
 			return
+	# LB and RB switch the open inventory's tab (D-222); the wheel
+	# scrolls its grid instead, on the board itself
+	if inventory != null and inventory.is_open and event is InputEventJoypadButton \
+			and (event.is_action_pressed("hotbar_prev") or event.is_action_pressed("hotbar_next")):
+		inventory.switch_tab()
+		return
 	if event.is_action_pressed("hotbar_prev"): step_slot(-1)
 	elif event.is_action_pressed("hotbar_next"): step_slot(1)
 
@@ -152,13 +168,30 @@ func _inventory_mode(move: Vector2) -> void:
 	if Input.is_action_just_pressed("ui_down"): inventory.move(Vector2i.DOWN)
 	if Input.is_action_just_pressed("ui_left"): inventory.move(Vector2i.LEFT)
 	if Input.is_action_just_pressed("ui_right"): inventory.move(Vector2i.RIGHT)
+	if Input.is_action_just_pressed("inventory_tab"): inventory.switch_tab()
 	# Pick up, put down, cancel, drop, sort (D-177, D-178). The mouse's
-	# clicks are the board's own.
+	# clicks are the board's own. On the CRAFT tab, confirm makes, and
+	# held keeps making.
 	if Input.is_action_just_pressed("inventory_pick"): inventory.pick_or_place()
+	_hold_to_make(get_physics_process_delta_time())
 	if Input.is_action_just_pressed("inventory_cancel"): inventory.cancel()
 	if Input.is_action_just_pressed("drop_one") and not capture_combo_held(): inventory.drop_one()
 	if Input.is_action_just_pressed("drop_stack"): inventory.drop_stack()
 	if Input.is_action_just_pressed("inventory_sort"): inventory.sort()
+
+
+# Confirm held on the CRAFT tab makes again after a moment, then at a
+# steady pace, while the inputs last (D-222).
+func _hold_to_make(delta: float) -> void:
+	if inventory.tab != InventoryOverlay.TAB.CRAFT or not Input.is_action_pressed("inventory_pick"):
+		_make_held = 0.0
+		return
+	var before: float = _make_held
+	_make_held += delta
+	if _make_held < MAKE_HOLD_SECONDS: return
+	var steps_before: int = floori(maxf(before - MAKE_HOLD_SECONDS, -1.0) / MAKE_REPEAT_SECONDS)
+	var steps_now: int = floori((_make_held - MAKE_HOLD_SECONDS) / MAKE_REPEAT_SECONDS)
+	if steps_now > steps_before: inventory.make()
 
 
 func _physics_process(delta: float) -> void:
@@ -183,6 +216,8 @@ func _physics_process(delta: float) -> void:
 	if build != null and Input.is_action_just_pressed("build_mode") and not capture_combo_held():
 		build.toggle()
 	if Input.is_action_just_pressed("quick_prop"): _quick_prop()
+	# L or D-pad up: the light in its slot, lit or put out (D-228)
+	if Input.is_action_just_pressed("toggle_light"): actor.toggle_light()
 	if build != null and build.active:
 		_build_mode(move, delta)
 	else:
@@ -257,6 +292,7 @@ func _update_device_scheme(event: InputEvent) -> void:
 	if current_device_scheme != was:
 		Log.event(Log.INPUT, &"device", {"actor": Log.actor_id(actor),
 			"scheme": DEVICE_SCHEME.find_key(current_device_scheme)})
+		device_scheme_changed.emit(current_device_scheme)
 
 
 

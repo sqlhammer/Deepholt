@@ -21,6 +21,9 @@ var id: int
 # one that holds nothing. It travels with the fixture when it moves
 # between levels, and is saved with it.
 var contents: Pack = null
+# Seconds left before a fixture that burns down is gone (a dropped
+# torch, D-221); below zero for one that doesn't. Saved with it.
+var time_left: float = -1.0
 
 var _tile: WorldPos
 

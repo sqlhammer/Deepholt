@@ -20,6 +20,8 @@ const EMPTY: Color = Color(0, 0, 0, 0.45)
 const FILLED: Color = Color(0, 0, 0, 0.7)
 const BORDER: Color = Color(0.6, 0.6, 0.55)
 const SELECTED: Color = Color(1.0, 0.9, 0.45)
+# The light slot's ring while it burns, and its burn bar (D-221)
+const LIT: Color = Color(1.0, 0.6, 0.18)
 
 # Short names for the slots, which are too narrow for a display name.
 # Anything not listed shows the last word of its name.
@@ -42,6 +44,7 @@ var _actor: Actor
 var _build_mode: bool = false
 var _row: HBoxContainer
 var _slots: Array[Control] = []
+var _light_slot: Control
 
 
 func _init() -> void:
@@ -63,6 +66,16 @@ func _init() -> void:
 		slot.draw.connect(_draw_slot.bind(i))
 		_row.add_child(slot)
 		_slots.append(slot)
+	# The light slot at the bar's end (D-228), a gap apart from the
+	# eight it doesn't share a number with
+	var spacer: Control = Control.new()
+	spacer.custom_minimum_size = Vector2(4, 0)
+	_row.add_child(spacer)
+	_light_slot = Control.new()
+	_light_slot.custom_minimum_size = SLOT_SIZE
+	_light_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_light_slot.draw.connect(_draw_light_slot)
+	_row.add_child(_light_slot)
 
 
 func watch(view: View) -> void:
@@ -81,9 +94,17 @@ func _on_followed_moved(actor: Actor) -> void:
 	if actor == _actor: return
 	if is_instance_valid(_actor) and _actor.hotbar.changed.is_connected(_on_hotbar_changed):
 		_actor.hotbar.changed.disconnect(_on_hotbar_changed)
+	if is_instance_valid(_actor) and _actor.pack.changed.is_connected(_on_pack_changed):
+		_actor.pack.changed.disconnect(_on_pack_changed)
 	_actor = actor
 	_actor.hotbar.changed.connect(_on_hotbar_changed)
+	# The light slot shows how many are carried
+	_actor.pack.changed.connect(_on_pack_changed)
 	_redraw()
+
+
+func _on_pack_changed(_pack: Pack) -> void:
+	if _light_slot != null: _light_slot.queue_redraw()
 
 
 func _on_build_mode_changed(active: bool) -> void:
@@ -152,6 +173,44 @@ func _input(event: InputEvent) -> void:
 
 func _redraw() -> void:
 	for slot: Control in _slots: slot.queue_redraw()
+	if _light_slot != null: _light_slot.queue_redraw()
+
+
+# A lit light burns down every frame, so its bar is redrawn while lit.
+func _process(_delta: float) -> void:
+	if is_instance_valid(_actor) and _actor.hotbar.lit and _light_slot != null:
+		_light_slot.queue_redraw()
+
+
+# The light slot's count and burn: "3 torches, 140 s left" in short,
+# "" when it's empty. For tests and the slot itself.
+func light_text() -> String:
+	if not is_instance_valid(_actor) or _actor.hotbar.light == &"": return ""
+	var count: int = _actor.pack.count_of(_actor.hotbar.light)
+	if not _actor.hotbar.lit: return str(count)
+	return "%d lit %ds" % [count, ceili(_actor.hotbar.light_left)]
+
+
+func _draw_light_slot() -> void:
+	var rect: Rect2 = Rect2(Vector2.ZERO, _light_slot.size)
+	var has_light: bool = is_instance_valid(_actor) and _actor.hotbar.light != &""
+	_light_slot.draw_rect(rect, FILLED if has_light else EMPTY)
+	if not has_light:
+		_light_slot.draw_rect(rect, BORDER, false, 1.0)
+		return
+	var hotbar: Hotbar = _actor.hotbar
+	var item: Item = ItemRegistry.find(hotbar.light)
+	var font: Font = ScaledHud.FONT
+	var font_size: int = ScaledHud.FONT_SIZE
+	if item != null and item.icon != null:
+		_light_slot.draw_texture(item.icon, Vector2((rect.size.x - 16) / 2, 3 + font_size))
+	_light_slot.draw_string(font, Vector2(0, rect.size.y - 1), str(_actor.pack.count_of(hotbar.light)),
+		HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - 2, font_size, Color.WHITE)
+	if hotbar.lit:
+		var burn_seconds: float = _actor.current_level.world.tuning.torch_burn_seconds
+		var share: float = clampf(hotbar.light_left / burn_seconds, 0.0, 1.0)
+		_light_slot.draw_rect(Rect2(Vector2(2, 2), Vector2((rect.size.x - 4) * share, 2)), LIT)
+	_light_slot.draw_rect(rect, LIT if hotbar.lit else BORDER, false, 2.0 if hotbar.lit else 1.0)
 
 
 func _draw_slot(i: int) -> void:

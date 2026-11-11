@@ -543,6 +543,8 @@ static func _serialize_fixtures(fixtures: LevelFixtures) -> Array:
 		}
 		# What it holds (a crate, D-224), as a pack is saved
 		if fixture.contents != null: entry["contents"] = fixture.contents.to_save()
+		# How long it has left to burn (a dropped torch, D-221)
+		if fixture.time_left >= 0.0: entry["time_left"] = fixture.time_left
 		data.append(entry)
 	return data
 
@@ -794,6 +796,8 @@ static func _deserialize_fixtures(p_depth: int, p_fixtures: Array) -> LevelFixtu
 		# A crate holds what it was saved with; one saved without, nothing
 		if entry.has("contents") or entry.kind == ObjectKind.OBJECT.CRATE:
 			fixture.contents = Pack.from_save(entry.get("contents", {}))
+		var time_left: Variant = entry.get("time_left")
+		if time_left is float or time_left is int: fixture.time_left = float(time_left)
 		fixtures.add(fixture)
 	return fixtures
 
