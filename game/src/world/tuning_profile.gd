@@ -104,8 +104,8 @@ const DEFAULT_ID: String = "default"
 # is its own tile and the eight around it.
 @export var pickup_reach: int = 0
 
-# What a new game's first player starts with, item id -> count
-# (D-156): the ten timber a ladder is built from.
+# What a new game's first player starts with, item id -> count: two
+# timber and no tools (D-244), for a flint axe and pick made by hand.
 @export var starting_items: Dictionary[StringName, int] = {}
 
 # How far a support holds a ceiling up, in tiles (Chebyshev), by depth
@@ -185,6 +185,46 @@ const DEFAULT_ID: String = "default"
 # dropped.
 @export var torch_burn_seconds: float = 0.0
 @export var torch_light_radius: int = 0
+
+# The deepest level whose floor can be breached (D-251): -3's can't,
+# in the pre-alpha, whatever the tool. Opening -4 later is this
+# number, not a rule.
+@export var deepest_breachable_floor: int = 0
+
+# Stations (D-237, D-250): how far from a station's tile, in tiles
+# (Chebyshev), an actor's CRAFT tab shows its recipes; and what each
+# costs, item id -> count. The smelter has two build entries, each
+# with its own cost (D-241).
+@export var station_reach: int = 0
+@export var workbench_cost: Dictionary[StringName, int] = {}
+@export var forge_cost: Dictionary[StringName, int] = {}
+@export var smelter_ore_cost: Dictionary[StringName, int] = {}
+@export var smelter_timber_cost: Dictionary[StringName, int] = {}
+
+# The smelter (D-238): seconds a batch takes on a lit tile, and the
+# multiplier on its speed when its tile is unlit (the crafting doc's
+# light rule).
+@export var smelt_seconds: float = 0.0
+@export var smelt_unlit_speed: float = 0.0
+
+# The bed (D-248) and the storage crate (D-249): their costs, and
+# what a storage crate holds, in kg.
+@export var bed_cost: Dictionary[StringName, int] = {}
+@export var storage_crate_cost: Dictionary[StringName, int] = {}
+@export var storage_capacity_kg: float = 0.0
+
+# The oil lantern (D-246): how far it lights, how long one oil burns
+# in it, in seconds, and how many oil its tank holds.
+@export var lantern_light_radius: int = 0
+@export var lantern_oil_seconds: float = 0.0
+@export var lantern_tank: int = 0
+
+# Cave fungus (D-245): how many clumps each cave on -1 grows, and how
+# much fungus a clump gives when taken.
+@export var fungus_per_cave_min: int = 0
+@export var fungus_per_cave_max: int = 0
+@export var fungus_yield_min: int = 0
+@export var fungus_yield_max: int = 0
 
 ## Presentation
 

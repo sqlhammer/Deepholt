@@ -632,7 +632,7 @@ static func _deserialize_actor(p_actor: Dictionary, p_actor_id: int, world: Worl
 	# (slice 011 trap 6); the load reports it
 	if _from_before_tools(p_actor):
 		for id: StringName in starting_tools(world.tuning):
-			actor.pack.add(id, world.tuning.starting_items[id])
+			actor.pack.add(id, 1)
 
 	return actor
 
@@ -642,14 +642,14 @@ static func _from_before_tools(p_actor: Dictionary) -> bool:
 	return not p_actor.has("hotbar") and p_actor.get("actor_kind") == ActorKind.ACTOR.PLAYER
 
 
-# The tools among a profile's starting items: what a player saved
-# before tools were items is given.
-static func starting_tools(tuning: TuningProfile) -> Array[StringName]:
-	var found: Array[StringName] = []
-	for id: StringName in tuning.starting_items:
-		var item: Item = ItemRegistry.find(id)
-		if item != null and item.is_tool(): found.append(id)
-	return found
+# What a player saved before tools were items is given: the flint set
+# a new game started with then (D-182). A new game starts with none
+# now (D-244), but such a save was played with tools in hand.
+const TOOLS_BEFORE_TOOLS: Array[StringName] = [&"flint_axe", &"flint_pickaxe", &"flint_shovel"]
+
+
+static func starting_tools(_tuning: TuningProfile) -> Array[StringName]:
+	return TOOLS_BEFORE_TOOLS.duplicate()
 
 
 # Builds each saved level and adds it to `world`. A level that can't

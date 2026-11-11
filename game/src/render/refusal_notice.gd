@@ -23,6 +23,7 @@ const BREACH_REASONS: Dictionary = {
 	World.BREACH_REFUSAL.TOOL_TOO_WEAK: "This floor is too hard for your tool.",
 	World.BREACH_REFUSAL.NEEDS_PICK: "Breaching needs a pick.",
 	World.BREACH_REFUSAL.SHAFTS_CANT_JOIN: "That would join two shafts that can't share.",
+	World.BREACH_REFUSAL.TOO_DEEP: "The rock below is packed too deep to break.",
 }
 
 # Said once per tile faced (D-217, D-218). Other dig refusals are no

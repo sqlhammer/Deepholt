@@ -120,6 +120,8 @@ enum BREACH_REFUSAL {
 	# The hole would join a winch's shaft to one with a ladder or chute,
 	# or two shafts that each have a crate (D-236)
 	SHAFTS_CANT_JOIN,
+	# Below the deepest breachable floor (D-251): -3's, in the pre-alpha
+	TOO_DEEP,
 }
 
 # Why a tree wasn't felled (D-181).
@@ -1084,6 +1086,7 @@ func breach_problem(tile: WorldPos, tool_power: float, actor: Actor = null) -> B
 	if actor != null and not Digging.breaches(actor.tool()): return BREACH_REFUSAL.NEEDS_PICK
 	var level: Level = level_at(tile.depth)
 	if level == null: return BREACH_REFUSAL.LEVEL_NOT_EXISTS
+	if tile.depth > tuning.deepest_breachable_floor: return BREACH_REFUSAL.TOO_DEEP
 	var tiles: LevelTiles = level.level_tiles
 	var top: int = tiles.get_top(tile.x, tile.y)
 	var ground: int = tiles.get_ground(tile.x, tile.y)

@@ -76,9 +76,17 @@ func test_a_click_on_a_tab_switches_to_it() -> void:
 
 # --- the CRAFT tab ---
 
+# Focuses the recipe with this id: the flint tools list before the
+# torch (D-244).
+func _focus(recipe_id: StringName) -> void:
+	var ids: Array = _inventory.recipes().map(func(r: Recipe) -> StringName: return r.id)
+	_inventory.craft_index = ids.find(recipe_id)
+	assert_true(_inventory.craft_index >= 0, "%s is listed" % recipe_id)
+
 func test_the_craft_tab_lists_the_torch_with_what_it_needs() -> void:
 	_actor.pack.add(&"timber", 3)
 	_inventory.switch_tab()
+	_focus(&"torch")
 	var text: String = _inventory.text()
 	assert_string_contains(text, "BY HAND")
 	assert_string_contains(text, "Torch  1 timber -> 2", "its row")
@@ -89,6 +97,7 @@ func test_the_craft_tab_lists_the_torch_with_what_it_needs() -> void:
 func test_confirm_on_the_craft_tab_makes_one() -> void:
 	_actor.pack.add(&"timber", 2)
 	_inventory.switch_tab()
+	_focus(&"torch")
 	_inventory.pick_or_place()
 	assert_eq(_actor.pack.count_of(&"torch"), 2, "made")
 	_inventory.pick_or_place()
@@ -101,6 +110,7 @@ func test_confirm_on_the_craft_tab_makes_one() -> void:
 func test_a_click_on_make_makes_one() -> void:
 	_actor.pack.add(&"timber", 1)
 	_inventory.switch_tab()
+	_focus(&"torch")
 	_inventory._click_craft(_inventory.make_rect().get_center())
 	assert_eq(_actor.pack.count_of(&"torch"), 2, "made")
 
@@ -143,6 +153,7 @@ func test_the_input_handler_announces_a_scheme_change() -> void:
 func test_holding_confirm_keeps_making() -> void:
 	_actor.pack.add(&"timber", 10)
 	_inventory.switch_tab()
+	_focus(&"torch")
 	var input: InputHandler = add_child_autofree(InputHandler.new())
 	input.setup(_actor, func() -> Vector2: return Vector2.ZERO)
 	input.inventory = _inventory

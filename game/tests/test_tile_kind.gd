@@ -69,8 +69,8 @@ func test_existing_kind_ids_never_change() -> void:
 		"NULL": 0, "OPEN": 1, "MINABLE_ROCK": 2, "MINABLE_DIRT": 3, "IMPENETRABLE_ROCK": 4,
 		"RUBBLE": 5, "CRUSHED": 6,
 	}, "top ids (CRUSHED: D-218)")
-	assert_eq(TileKind.ORE, {"NULL": 0, "NONE": 1, "COPPER": 2, "TIN": 3, "IRON": 4},
-		"ore ids (D-183, D-216)")
+	assert_eq(TileKind.ORE, {"NULL": 0, "NONE": 1, "COPPER": 2, "TIN": 3, "IRON": 4,
+		"COAL": 5}, "ore ids (D-183, D-216, D-239)")
 
 
 func test_no_two_kinds_on_a_layer_share_an_id() -> void:

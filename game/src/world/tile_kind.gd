@@ -73,6 +73,9 @@ const ORE: Dictionary = {
 	"TIN": 3,
 	# Iron (D-216), on -3; a bronze pick digs it (D-217). Never reused.
 	"IRON": 4,
+	# Coal (D-239), on -2 beside copper and tin: the smelter's fuel.
+	# Never reused.
+	"COAL": 5,
 }
 
 # The top kinds that can be dug: the one owner of "diggable". How hard

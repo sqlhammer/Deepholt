@@ -40,6 +40,7 @@ const ORE_CHARS: Dictionary = {
 	"c": TileKind.ORE.COPPER,
 	"t": TileKind.ORE.TIN,
 	"i": TileKind.ORE.IRON,
+	"k": TileKind.ORE.COAL,
 	"0": TileKind.ORE.NONE,
 }
 
