@@ -152,3 +152,21 @@ He reported four things, and all are fixed in one commit:
   before.
 
 All four were seen in a window afterward.
+
+## Winch tuning, items 1 and 3 (2026-11-11)
+
+Derik asked whether carrying beats the winch. It did: ladders were instant, so the tuning
+appendix's climb times had never been built. He chose two of my three levers:
+
+- **D-233, climb times.** A climb takes 5 s, 8 s above 80% load, and 10 s above 100%. It's the
+  same up and down, can't be stopped, and shows a bar over the climber. The
+  one-time-each-way, the no-cancel and the bar are my choices, named in the decision.
+  `Actor.interact` now starts the climb, and the move comes at its end. Tests that climbed
+  now wait out the climb.
+- **D-234, stacked winches.** A winch over another winch's hole makes no crate; the shaft's
+  one crate rides up through every winch in it. A shaft built top-down ends up with two
+  crates, and a hole holds one at a time: a move into a full hole is refused, saying the crate
+  is in the way.
+
+Lever 2, a bigger crate or a faster lift, was left for tuning against telemetry. The climb bar
+hasn't been seen in a window. 1251 tests.

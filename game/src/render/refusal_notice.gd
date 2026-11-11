@@ -46,7 +46,7 @@ const PLACE_REASONS: Dictionary = {
 
 const CRANK_REASONS: Dictionary = {
 	World.CRANK_REFUSAL.FROM_BELOW: "The winch is cranked from the top.",
-	World.CRANK_REFUSAL.LANDING_BLOCKED: "Something below is in the crate's way.",
+	World.CRANK_REFUSAL.LANDING_BLOCKED: "Something is in the crate's way.",
 	World.CRANK_REFUSAL.CRATE_FULL: "The crate is full.",
 }
 

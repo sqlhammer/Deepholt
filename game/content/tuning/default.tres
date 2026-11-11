@@ -81,6 +81,8 @@ ore_yield_max = 4
 load_speed_points = Array[Vector2]([Vector2(0.5, 1), Vector2(0.8, 0.84), Vector2(1, 0.72), Vector2(1.5, 0.44)])
 load_speed_beyond = 0.32
 ladder_load_limit = 1.5
+ladder_climb_seconds = 5.0
+climb_load_steps = Array[Vector2]([Vector2(0.8, 1.6), Vector2(1, 2)])
 ladder_cost = Dictionary[StringName, int]({
 &"timber": 4
 })

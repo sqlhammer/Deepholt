@@ -77,6 +77,8 @@ func test_at_150_percent_the_ladder_still_climbs() -> void:
 	var actor: Actor = _climber()
 	_load(actor, 30)
 	assert_true(actor.interact(), "exactly 150%")
+	# The climb's time (D-233), loaded: 10 s
+	actor._physics_process(20.0)
 	assert_eq(actor.depth, 1, "down the ladder")
 
 

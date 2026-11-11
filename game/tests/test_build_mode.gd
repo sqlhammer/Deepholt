@@ -153,8 +153,11 @@ func test_a_placed_ladder_climbs_both_ways() -> void:
 	_actor.move_to(WorldPos.new(HOLE.x - 1, 0, 1))
 	_actor.facing = Vector2i(1, 0)
 	assert_true(_actor.interact(), "down")
+	# Each climb takes its time (D-233)
+	_actor._physics_process(20.0)
 	assert_eq(_actor.depth, 2, "on -2")
 	assert_true(_actor.interact(), "and back up")
+	_actor._physics_process(20.0)
 	assert_eq(_actor.depth, 1, "on -1")
 
 

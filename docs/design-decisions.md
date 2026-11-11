@@ -4551,3 +4551,35 @@ of my items"). Reverses the cell layout of
 
 *Why:* nothing on the lower level said the tile is the crate's, or that the crate is coming back
 there.
+
+---
+
+### D-233 — Climbing a ladder takes the tuning appendix's time: 5 s, longer with a load
+**Decided** (by Derik, 2026-11-11, after 015's winch tuning question). Builds
+[tuning appendix §2](./tuning-appendix.md)'s climb times, which were never built: a ladder
+moved an actor at once.
+
+- **A climb takes 5 s,** ×1.6 above 80% load (8 s) and ×2.0 above 100% (10 s), up or down. Above
+  150% you still can't climb ([D-159](#d-159--the-cost-is-the-gatekeepers-the-hud-bar-sits-bottom-center-the-ladder-rule-checks-load)).
+  The numbers are the tuning profile's.
+- **Interact starts the climb, and it can't be stopped:** you stay on your tile, not moving or
+  digging, until it ends and you arrive. A bar over you shows how far you've got.
+- A save during a climb keeps you where you started.
+
+*Why:* with free climbs, carrying beat the winch by every measure, and a chute saved no time
+down. Claude's choices, named here: one time each way, no cancel, and a bar.
+
+---
+
+### D-234 — Winches stack: a crate lifted into the hole of a winch above is that winch's to lift
+**Decided** (by Derik, 2026-11-11, after 015's winch tuning question). Extends
+[D-224](#d-224--the-crate-belongs-to-its-winch-and-holds-120-kg).
+
+- **A winch may stand over a hole whose foot is another winch's hole:** a shaft. That winch makes
+  no crate of its own; the shaft's crate serves both.
+- **A crate hanging at the top of one winch is at the foot of the winch above,** so the upper
+  winch lifts it on without unloading. Lowered, it hangs again in the lower winch's hole.
+- A hole holds one crate. A crate can't be lifted or lowered into a hole where one already
+  hangs, and the refusal says why.
+
+*Why:* a haul from −3 to −1 would otherwise mean emptying and refilling the crate at every level.

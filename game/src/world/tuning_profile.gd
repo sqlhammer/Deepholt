@@ -87,6 +87,13 @@ const DEFAULT_ID: String = "default"
 # Past this load, no ladder can be climbed (D-030, D-159).
 @export var ladder_load_limit: float = 0.0
 
+# How long a climb takes, up or down (D-233, tuning appendix §2): the
+# seconds unloaded, and the multiplier on them past each load, as
+# (load, multiplier) points: past the first load the first multiplier,
+# and so on. A load under every point climbs at x1.
+@export var ladder_climb_seconds: float = 0.0
+@export var climb_load_steps: Array[Vector2] = []
+
 # What placing a ladder costs, item id -> count (D-156): four timber.
 @export var ladder_cost: Dictionary[StringName, int] = {}
 

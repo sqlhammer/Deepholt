@@ -37,6 +37,10 @@ const CRANK_BAR_Z: int = 20
 const LANDING_COLOR: Color = Color(0.55, 0.36, 0.18)
 const LANDING_CORNER: float = 4.0
 
+# Where a climb's bar sits from the climber's origin: over the head
+# of a 24 px actor, centered
+const CLIMB_BAR_OFFSET: Vector2 = Vector2(-8, -30)
+
 var _bars: Node2D
 
 # Kinds deliberately not drawn (D-091: the world spawn is invisible to
@@ -285,6 +289,21 @@ func _draw_bars() -> void:
 		var filled: float = (TileSpace.TILE_PIXELS - 2) * bars[winch]
 		_bars.draw_rect(Rect2(top, Vector2(TileSpace.TILE_PIXELS, 3)), CRANK_BAR_BACK)
 		_bars.draw_rect(Rect2(top + Vector2(1, 1), Vector2(filled, 1)), CRANK_BAR_COLOR)
+	# A climb's bar over the climber's head (D-233)
+	for climber: Actor in climbing():
+		var top: Vector2 = climber.position + CLIMB_BAR_OFFSET
+		var filled: float = (TileSpace.TILE_PIXELS - 2) * climber.climb_progress()
+		_bars.draw_rect(Rect2(top, Vector2(TileSpace.TILE_PIXELS, 3)), CRANK_BAR_BACK)
+		_bars.draw_rect(Rect2(top + Vector2(1, 1), Vector2(filled, 1)), CRANK_BAR_COLOR)
+
+
+# The actors on the shown level part way up or down a ladder.
+func climbing() -> Array[Actor]:
+	var found: Array[Actor] = []
+	if not is_instance_valid(_world): return found
+	for actor: Actor in _world.actors():
+		if actor.depth == _shown_depth and actor.is_climbing(): found.append(actor)
+	return found
 
 
 # --- where a lifted crate comes back down (D-232) ---

@@ -77,6 +77,8 @@ signal actor_moved_clear(actor: Actor, from: WorldPos, to: WorldPos)
 # An actor too heavy to climb the ladder it tried (D-159). `tile` is
 # where the ladder would have taken it.
 signal climb_refused(actor: Actor, tile: WorldPos)
+# A climb began (D-233): it ends `seconds` later at `tile`.
+signal climb_started(actor: Actor, tile: WorldPos, seconds: float)
 
 signal place_requested(actor: Actor, kind: int, tile: WorldPos)
 signal remove_requested(actor: Actor, fixture_id: int)
@@ -171,7 +173,8 @@ enum CRANK_REFUSAL {
 	# Facing the crate at the foot of its hole: the winch is worked
 	# from the top
 	FROM_BELOW,
-	# Lowering, and the foot of the hole has no room for the crate
+	# Where the crate is going has no room for it: the foot of the hole,
+	# or a hole where another crate hangs (D-234)
 	LANDING_BLOCKED,
 	# Not all of a drop fitted in the crate
 	CRATE_FULL,
@@ -627,6 +630,12 @@ func crank(actor: Actor, delta: float) -> void:
 	if progress < 1.0: return
 	var top: WorldPos = winch.tile
 	if lifting:
+		# Into a hole where no crate hangs already (D-234)
+		var level: Level = level_at(top.depth)
+		var other: Fixture = _fixture_of_kind(level, Vector2i(top.x, top.y), ObjectKind.OBJECT.CRATE)
+		if other != null and other != crate:
+			if was < 1.0: crank_refused.emit(actor, CRANK_REFUSAL.LANDING_BLOCKED)
+			return
 		_move_crate(actor, winch, crate, WorldPos.new(top.x, top.y, top.depth))
 		return
 	if winch_landing_problem(top) != FIXTURE_REFUSAL.NONE:
@@ -1013,6 +1022,13 @@ func _on_place_requested(actor: Actor, kind: int, tile: WorldPos) -> void:
 # there (D-224). Asked by the gatekeeper and build mode's preview.
 func winch_landing_problem(tile: WorldPos) -> FIXTURE_REFUSAL:
 	var below: Level = level_at(tile.depth + 1)
+	# A shaft (D-234): the foot is the hole of a winch below, where a
+	# crate hangs rather than stands, one at a time
+	if winch_below(tile) != null:
+		var at: Vector2i = Vector2i(tile.x, tile.y)
+		if _fixture_of_kind(below, at, ObjectKind.OBJECT.CRATE) != null:
+			return FIXTURE_REFUSAL.LANDING_BLOCKED
+		return FIXTURE_REFUSAL.NONE
 	var reason: FIXTURE_REFUSAL = Winch.landing_problem(below, Vector2i(tile.x, tile.y))
 	if reason != FIXTURE_REFUSAL.NONE: return reason
 	if blocks_actor(below, ObjectKind.OBJECT.CRATE, WorldPos.new(tile.x, tile.y, tile.depth + 1)):
@@ -1020,8 +1036,18 @@ func winch_landing_problem(tile: WorldPos) -> FIXTURE_REFUSAL:
 	return FIXTURE_REFUSAL.NONE
 
 
-# A new winch's crate, empty, at the foot of its hole (D-224).
+# The winch whose hole is the foot of the hole at `tile`: the next
+# winch down a shaft (D-234), or null.
+func winch_below(tile: WorldPos) -> Fixture:
+	var below: Level = level_at(tile.depth + 1)
+	if below == null: return null
+	return _fixture_of_kind(below, Vector2i(tile.x, tile.y), ObjectKind.OBJECT.WINCH)
+
+
+# A new winch's crate, empty, at the foot of its hole (D-224). Over a
+# shaft the crate is the shaft's, so none is made (D-234).
 func _make_crate(actor: Actor, top: WorldPos) -> void:
+	if winch_below(top) != null: return
 	var crate: Fixture = Fixture.new(ObjectKind.OBJECT.CRATE,
 		WorldPos.new(top.x, top.y, top.depth + 1), fixture_ids.allocate())
 	crate.contents = Pack.new()
