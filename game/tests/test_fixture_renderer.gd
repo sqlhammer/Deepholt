@@ -49,7 +49,7 @@ func test_a_fixture_on_the_shown_level_gets_a_sprite_rising_from_its_tile() -> v
 	var sprite: Sprite2D = renderer.sprite_for(7)
 	assert_not_null(sprite, "drawn")
 	if sprite:
-		assert_eq(sprite.position, Vector2(32, -56), "bottom on tile (2, -3)'s bottom: rises 8 px north")
+		assert_eq(FixtureRenderer.top_left_of(sprite), Vector2(32, -56), "bottom on tile (2, -3)'s bottom: rises 8 px north")
 		assert_eq(sprite.texture.get_size(), Vector2(16, 24), "16 x 24 (D-105)")
 
 
@@ -70,7 +70,7 @@ func test_a_fixture_moved_on_the_shown_level_moves_its_sprite() -> void:
 	_levels[1].level_fixtures.move(4, WorldPos.new(SPOT.x + 1, SPOT.y, 1))
 	var sprite: Sprite2D = renderer.sprite_for(4)
 	assert_not_null(sprite, "still drawn")
-	if sprite: assert_eq(sprite.position, Vector2(48, -56), "on tile (3, -3) now")
+	if sprite: assert_eq(FixtureRenderer.top_left_of(sprite), Vector2(48, -56), "on tile (3, -3) now")
 	assert_eq(renderer._sprites.size(), 1, "one sprite, not two")
 
 
@@ -126,14 +126,18 @@ func test_every_kind_has_art_or_is_invisible() -> void:
 			"%s has art or is invisible on purpose" % ObjectKind.OBJECT.find_key(kind))
 
 
-func test_the_game_draws_fixtures_below_actors() -> void:
+# D-214: one sort for fixtures and actors; on a tie the world, after
+# the fixtures, draws the actor over a ladder it stands on.
+func test_the_game_sorts_fixtures_with_actors() -> void:
 	var game: Node = load("res://scenes/game.tscn").instantiate()
 	# Keep its slot lookup out of the real saves folder
 	game.saves_root = "user://test_saves/fixture_renderer"
 	add_child_autofree(game)
-	var viewport: Node = game.get_node("GameViewport")
-	assert_lt(viewport.get_node("FixtureRenderer").get_index(), viewport.get_node("World").get_index(),
-		"fixtures draw before the world's actors, so actors stand over a ladder")
+	var standing: Node2D = game.get_node("GameViewport/Standing")
+	assert_true(standing.y_sort_enabled, "the shared parent sorts")
+	assert_true(standing.get_node("FixtureRenderer").y_sort_enabled, "and so do the fixtures")
+	assert_lt(standing.get_node("FixtureRenderer").get_index(), standing.get_node("World").get_index(),
+		"fixtures come first, so a tie draws the actor")
 
 
 func test_moving_to_another_level_clears_the_old_levels_sprites() -> void:
@@ -172,7 +176,7 @@ func test_a_hole_with_a_ladder_below_shows_its_top() -> void:
 	var top: Sprite2D = renderer.top_sprite_for(21)
 	assert_not_null(top, "a ladder top in the hole")
 	if top:
-		assert_eq(top.position, Vector2(32, -48), "on tile (2, -3), not rising")
+		assert_eq(FixtureRenderer.top_left_of(top), Vector2(32, -48), "on tile (2, -3), not rising")
 		assert_eq(top.texture.get_size(), Vector2(16, 16), "one tile")
 
 
@@ -201,7 +205,7 @@ func test_a_ladder_moved_below_moves_its_top() -> void:
 	_levels[1].level_fixtures.move(23, WorldPos.new(other.x, other.y, 1))
 	var top: Sprite2D = renderer.top_sprite_for(23)
 	assert_not_null(top, "the top follows the ladder")
-	if top: assert_eq(top.position, Vector2(48, -48), "into the other hole")
+	if top: assert_eq(FixtureRenderer.top_left_of(top), Vector2(48, -48), "into the other hole")
 
 
 func test_a_ladder_below_with_no_hole_over_it_shows_no_top() -> void:
@@ -235,7 +239,7 @@ func test_the_hand_made_hole_on_minus_one_shows_the_ladder_top() -> void:
 	var ladder: Fixture = _world.level_at(2).level_fixtures.of_kind(ObjectKind.OBJECT.LADDER)[0]
 	var top: Sprite2D = renderer.top_sprite_for(ladder.id)
 	assert_not_null(top, "from -1, the hole at (14, -2) shows its ladder")
-	if top: assert_eq(top.position, Vector2(14, -2) * 16.0, "in the hole")
+	if top: assert_eq(FixtureRenderer.top_left_of(top), Vector2(14, -2) * 16.0, "in the hole")
 
 
 # --- props and burial (D-165, D-166) ---
@@ -261,3 +265,41 @@ func test_a_fixture_under_rubble_is_hidden_and_comes_back() -> void:
 	assert_false(sprite.visible, "buried")
 	_levels[1].level_tiles.set_top(SPOT.x, SPOT.y, TileKind.TOP.OPEN)
 	assert_true(sprite.visible, "back once cleared")
+
+
+# --- sorted with the actors (D-214) ---
+
+func _tree_sprite(tile: Vector2i) -> Sprite2D:
+	_levels[0].level_fixtures.add(Fixture.new(ObjectKind.OBJECT.TREE,
+		WorldPos.new(tile.x, tile.y, 0), 11))
+	var renderer: FixtureRenderer = _renderer()
+	renderer.show_fixtures(_levels[0].level_fixtures)
+	return renderer.sprite_for(11)
+
+
+# The renderer's sort line stands for an actor's feet: the two must
+# agree, or a tree draws over an actor in front of it.
+func test_the_sort_line_is_an_actors_feet() -> void:
+	var actor: Actor = autofree(Global.actor_packed_scene.instantiate())
+	assert_eq(actor.feet_box.get_center().y, FixtureRenderer.SORT_ABOVE_TILE,
+		"the feet's center is as far below an actor's origin")
+
+
+func test_an_actor_north_of_a_tree_sorts_behind_it_and_one_south_in_front() -> void:
+	var tree: Sprite2D = _tree_sprite(SPOT)
+	var top_left: Vector2 = FixtureRenderer.top_left_of(tree)
+	assert_eq(top_left, Vector2(SPOT.x, SPOT.y - 1) * 16.0, "still drawn rising a tile north")
+	for row: int in [SPOT.y - 1, SPOT.y, SPOT.y + 1]:
+		var actor: Actor = Actor.create(Global.actor_packed_scene, "Row%d" % row,
+			WorldPos.new(SPOT.x, row, 0), _levels[0], ActorKind.ACTOR.PLAYER)
+		_world.add_actor(actor)
+		var behind: bool = actor.position.y < tree.position.y
+		assert_eq(behind, row < SPOT.y, "an actor on row %d sorts %s" % [row,
+			"behind" if row < SPOT.y else "in front"])
+
+
+func test_fixtures_and_actors_sort_as_one() -> void:
+	assert_true(_world.y_sort_enabled, "the world sorts")
+	assert_true(_world.get_node("Actors").y_sort_enabled, "its actors")
+	assert_true(_world.get_node("Actors/Players").y_sort_enabled, "players")
+	assert_true(_world.get_node("Actors/NPCs").y_sort_enabled, "and NPCs, down to each actor")

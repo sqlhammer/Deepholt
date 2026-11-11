@@ -425,6 +425,8 @@ static func setup(saves_root: String = SAVES_DIR) -> void:
 
 static func get_save_slots(saves_root: String = SAVES_DIR) -> PackedStringArray:
 	var slots: PackedStringArray = []
+	# No folder yet is a first launch, not a fault: no slots, no warning
+	if not DirAccess.dir_exists_absolute(saves_root): return slots
 	var save_dir = DirAccess.open(saves_root)
 	if save_dir:
 		var subdirs: PackedStringArray = save_dir.get_directories()

@@ -4190,3 +4190,87 @@ could carry a name to Derik in a tester's zip. A place in the code can't.
 
 *Considered:* scrubbing actors' names from the text (misses anything else personal a future
 message might hold); counts only (can't tell which warning a tester hit).
+
+---
+
+### D-210 — The next three slices: the long haul, something worth carrying, ore comes up without you
+**Decided** (by Derik, 2026-11-10, after asking for larger slices). Sketches in
+[NEXT.md](../work/NEXT.md); 015's brief in [NOW.md](../work/NOW.md).
+
+- **015, the long haul:** level −3 with iron and a `CRUSHED` region; the chute; the hand winch and
+  a crate; portable light; the layer-stack map and the depth strip.
+- **016, something worth carrying:** workbench, smelter, forge and recipes; tools in tiers, flint
+  to bronze to iron; the oil lantern; a bed and a home on −1; crates as storage.
+- **017, ore comes up without you:** windmill, driveshaft, line shaft, the powered hoist, brownout;
+  the rate machine; −3's authored ruins and the hoist's blueprint; a first-session pass.
+- **Left out on purpose:** the sun and exposure, hunger, comfort, creatures and combat, until the
+  first playtest answers the thesis.
+
+*Why:* the thesis ([pre-alpha-scope §1](./pre-alpha-scope.md)) needs three levels below the
+Surface, a reason to haul and the hoist's payoff before testers can judge it; each slice makes
+one of those true.
+
+*Considered:* crafting before depth (ore would have a use first, but the haul it feeds would
+still be one level).
+
+---
+
+### D-211 — The support radius drops by one at every depth
+**Decided** (by Derik, after walking 012's UAT, 2026-11-10). Amends
+[D-186](#d-186--the-support-radius-is-halved-rounding-up)'s R table.
+
+- **R by depth becomes −1: 3, −2: 3, −3: 2, −4: 2, −5: 1, −6: 1, −7: 1** (the Surface still
+  has none). Red starts at 9 wide on −1 and −2, 7 wide on −3 and −4, and 5 wide from −5. A
+  2-wide tunnel still never fails anywhere; from −5 a 3-wide one goes amber.
+
+*Why:* an 11-wide room on −1 collapsed as the rule said, but a room that big before anything
+fails felt too generous.
+
+*Considered:* −1 and −2 only (3, 3, 3, 3, 2, 2, 2), which left −1 to −4 alike; −1 only, which
+left −2 looser than −1.
+
+---
+
+### D-212 — What a player drops isn't picked back up until they're out of its reach
+**Decided** (by Derik, after walking 012's UAT, 2026-11-10). Amends
+[D-160](#d-160--slice-009-is-letting-go-drops-dropping-pickup-to-100-a-take-key-an-inventory-overlay)'s
+auto-pickup.
+
+- **A player's auto-pickup skips the tiles they dropped on** until they're farther from that
+  tile than the pickup reach (more than 1 tile, Chebyshev). Then it's an ordinary drop again,
+  and walking past it picks it up, up to 100%.
+- **Only the dropper skips it;** another player picks it up as usual. The take key ignores the
+  skip.
+- **Not saved:** after a load, a drop at your feet is an ordinary drop.
+
+*Why:* the old rule skipped a drop only while its dropper stood on its tile, but the reach
+covers the eight tiles around it, so the first step picked it back up.
+
+*Considered:* marking a put-down stack as placed, so no one auto-picks it up and only take does
+(saved with the drops); a grace of a few seconds (standing still picks it back up).
+
+---
+
+### D-213 — The Surface has no metal ore
+**Decided** (by Derik, after walking 012's UAT, 2026-11-10). Brings the Surface in line with the
+[strata table](./world-and-generation.md#2-strata), as
+[D-187](#d-187--ore-is-on-2-only-1-stays-free-of-metal-ore-as-the-strata-table-says) did for −1.
+
+- **The start room's four copper tiles are removed;** a test pins that the Surface holds no
+  metal ore.
+
+---
+
+### D-214 — Fixtures and actors are drawn in one sort, by the row they stand on
+**Decided** (by Derik, after walking 012's UAT, 2026-11-10: "the actor should be behind the
+tree").
+
+- **An actor north of a fixture is drawn behind it; one on its tile or south of it, in front.**
+  Trees, ladders, braziers, props and ladder tops all take part.
+- **How:** the fixture renderer and the world sit under one Y-sorted node in the game viewport,
+  and sorting reaches down to each actor. A fixture sprite sorts 4 px above its tile's top edge,
+  the distance from an actor's origin to its feet's center, so the line between "behind" and "in
+  front" is the tile edge an actor's feet cross; a test pins the two together.
+
+*Why:* the world was added after the fixture renderer, so every actor was drawn over every
+fixture, and a player behind a tree stood in front of its canopy.

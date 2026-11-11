@@ -74,7 +74,7 @@ ladder_cost = Dictionary[StringName, int]({
 })
 auto_fill_limit = 1.0
 pickup_reach = 1
-support_radius_by_depth = Array[int]([0, 4, 4, 3, 3, 2, 2, 2])
+support_radius_by_depth = Array[int]([0, 3, 3, 2, 2, 1, 1, 1])
 collapse_countdown_seconds = 45.0
 prop_cost = Dictionary[StringName, int]({
 &"timber": 2

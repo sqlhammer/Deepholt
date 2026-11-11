@@ -44,10 +44,11 @@ func test_texel_order_matches_array_index() -> void:
 
 func test_ore_lands_in_the_same_tile_as_its_rock() -> void:
 	var tiles: LevelTiles = _surface_with_start()
+	tiles.set_ore(-1, 0, TileKind.ORE.COPPER)
 	var layers: Dictionary = LevelRenderer.layer_bytes(tiles)
 	var index: int = tiles.get_index(-1, 0)
 	assert_eq(layers["ore"][index], TileKind.ORE.COPPER,
-		"the prefab puts copper in the pocket's left wall")
+		"copper set in the pocket's left wall")
 	assert_eq(layers["top"][index], TileKind.TOP.MINABLE_ROCK,
 		"and that tile's top is the rock the copper sits in")
 

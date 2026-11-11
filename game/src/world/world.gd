@@ -133,10 +133,10 @@ var world_seed: int
 # first time it's used, so a world's yields repeat. Not saved; a load
 # starts a fresh sequence.
 var _yield_rng: RandomNumberGenerator
-# Where each actor last dropped something, by instance id, so it isn't
-# picked straight back up: kept until the actor steps off that tile
-# (slice 009 trap 3).
-var _dropped_at: Dictionary[int, WorldPos] = {}
+# The tiles each actor dropped on, by instance id, so they aren't
+# picked straight back up: each kept until the actor is out of its
+# pickup reach (D-212). Not saved.
+var _dropped_at: Dictionary[int, Array] = {}
 # World-wide, so an id alone finds a fixture or an actor (D-104,
 # D-114). Each world numbers its own: generating or loading another
 # never resets these (D-118).
@@ -161,6 +161,9 @@ var _npcs_node: Node2D
 func _init(p_tuning: TuningProfile = null) -> void:
 	tuning = p_tuning if p_tuning != null else TuningProfile.default_profile()
 	name = "World"
+	# Its actors are sorted with the fixtures beside it (D-214): every
+	# node down to an actor sorts, so the actors join one sort.
+	y_sort_enabled = true
 	_levels_node = Node2D.new()
 	_levels_node.name = "Levels"
 	add_child(_levels_node)
@@ -170,9 +173,11 @@ func _init(p_tuning: TuningProfile = null) -> void:
 	add_child(actors_node)
 	_players_node = Node2D.new()
 	_players_node.name = "Players"
+	_players_node.y_sort_enabled = true
 	actors_node.add_child(_players_node)
 	_npcs_node = Node2D.new()
 	_npcs_node.name = "NPCs"
+	_npcs_node.y_sort_enabled = true
 	actors_node.add_child(_npcs_node)
 
 	dig_requested.connect(_on_dig_requested)
@@ -322,26 +327,42 @@ func _on_drop_requested(actor: Actor, id: StringName, count: int) -> void:
 	var here: WorldPos = actor.current_WorldPos
 	actor.pack.remove(id, n)
 	actor.current_level.level_drops.add(Vector2i(here.x, here.y), id, n)
-	_dropped_at[actor.get_instance_id()] = here
+	var dropped: Array = _dropped_at.get_or_add(actor.get_instance_id(), [])
+	if not dropped.any(func(at: WorldPos) -> bool: return at.equals(here)):
+		dropped.append(here)
 	items_dropped.emit(actor, here, id, n)
 
 
 # A player takes what lies within reach as it moves, up to the fill
-# limit. Never an NPC (D-160), and never what it just put down, until
-# it steps off that tile.
+# limit. Never an NPC (D-160), and never what it put down itself
+# until it has been out of that tile's reach (D-212).
 func _auto_pickup(actor: Actor) -> void:
 	if actor.actor_kind != ActorKind.ACTOR.PLAYER: return
-	var dropped: WorldPos = _dropped_at.get(actor.get_instance_id())
-	if dropped != null and not dropped.equals(actor.current_WorldPos):
-		_dropped_at.erase(actor.get_instance_id())
-		dropped = null
-	_pick_up(actor, tuning.auto_fill_limit, dropped)
+	_pick_up(actor, tuning.auto_fill_limit, _still_dropped(actor))
+
+
+# The tiles `actor` dropped on that are still in its reach; the rest
+# are forgotten, so walking back to them later picks them up.
+func _still_dropped(actor: Actor) -> Array[Vector2i]:
+	var kept: Array[Vector2i] = []
+	var id: int = actor.get_instance_id()
+	if not _dropped_at.has(id): return kept
+	var here: WorldPos = actor.current_WorldPos
+	var near: Array = _dropped_at[id].filter(func(at: WorldPos) -> bool:
+		return here != null and at.depth == here.depth 			and maxi(absi(at.x - here.x), absi(at.y - here.y)) <= tuning.pickup_reach)
+	if near.is_empty():
+		_dropped_at.erase(id)
+		return kept
+	_dropped_at[id] = near
+	for at: WorldPos in near:
+		kept.append(Vector2i(at.x, at.y))
+	return kept
 
 
 # The take key: everything within reach, whatever the load (D-160).
 func _on_take_requested(actor: Actor) -> void:
 	if actor == null or actor.current_level == null or actor.current_level.world != self: return
-	took.emit(actor, _pick_up(actor, INF, null))
+	took.emit(actor, _pick_up(actor, INF, []))
 
 
 # Everything lying within an actor's reach, item id -> count: what the
@@ -349,7 +370,7 @@ func _on_take_requested(actor: Actor) -> void:
 # (D-172). A read, sharing the take's tiles so the two can't disagree.
 func drops_in_reach(actor: Actor) -> Dictionary[StringName, int]:
 	var found: Dictionary[StringName, int] = {}
-	for tile: Vector2i in _reach_tiles(actor, null):
+	for tile: Vector2i in _reach_tiles(actor, []):
 		var lying: Dictionary = actor.current_level.level_drops.at(tile)
 		for id: StringName in lying:
 			found[id] = found.get(id, 0) + lying[id]
@@ -358,7 +379,7 @@ func drops_in_reach(actor: Actor) -> Dictionary[StringName, int]:
 
 # The tiles an actor picks up from: its own and those around it, out
 # to the profile's reach, open and so not buried (D-166), less `skip`.
-func _reach_tiles(actor: Actor, skip: WorldPos) -> Array[Vector2i]:
+func _reach_tiles(actor: Actor, skip: Array[Vector2i]) -> Array[Vector2i]:
 	var tiles: Array[Vector2i] = []
 	var level: Level = actor.current_level
 	var here: WorldPos = actor.current_WorldPos
@@ -367,7 +388,7 @@ func _reach_tiles(actor: Actor, skip: WorldPos) -> Array[Vector2i]:
 	for dy in range(-reach, reach + 1):
 		for dx in range(-reach, reach + 1):
 			var tile: Vector2i = Vector2i(here.x + dx, here.y + dy)
-			if skip != null and tile == Vector2i(skip.x, skip.y): continue
+			if skip.has(tile): continue
 			if level.level_tiles.get_top(tile.x, tile.y) != TileKind.TOP.OPEN: continue
 			tiles.append(tile)
 	return tiles
@@ -375,7 +396,7 @@ func _reach_tiles(actor: Actor, skip: WorldPos) -> Array[Vector2i]:
 
 # Moves what fits under `limit` from the tiles in reach into the
 # pack. Returns what it took, item id -> count.
-func _pick_up(actor: Actor, limit: float, skip: WorldPos) -> Dictionary[StringName, int]:
+func _pick_up(actor: Actor, limit: float, skip: Array[Vector2i]) -> Dictionary[StringName, int]:
 	var taken: Dictionary[StringName, int] = {}
 	var level: Level = actor.current_level
 	for tile: Vector2i in _reach_tiles(actor, skip):

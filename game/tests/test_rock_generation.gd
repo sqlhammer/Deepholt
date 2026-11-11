@@ -113,6 +113,14 @@ func _ringed_by_rock(level: Level, rect: Rect2i) -> bool:
 
 # --- ore (D-183, D-187) ---
 
+# The start room's prefab once held copper (D-213).
+func test_the_surface_has_no_metal_ore() -> void:
+	for world_seed: int in [0, 1, 2]:
+		var level: Level = _level(0, world_seed)
+		for kind: int in [TileKind.ORE.COPPER, TileKind.ORE.TIN]:
+			assert_eq(_count_ore(level, kind), 0, "no ore %d, seed %d" % [kind, world_seed])
+
+
 func test_minus_one_has_no_metal_ore() -> void:
 	for world_seed: int in [0, 1, 2]:
 		var level: Level = _level(1, world_seed)

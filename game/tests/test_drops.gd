@@ -110,16 +110,51 @@ func test_an_npc_never_picks_up() -> void:
 	assert_true(npc.pack.is_empty(), "it walks over it")
 
 
-# Trap 3: what you drop stays down until you step off and back.
+# D-212: what you drop stays down until you've been out of its reach
+# and come back.
 func test_what_you_drop_isnt_picked_straight_back_up() -> void:
 	var actor: Actor = _actor()
 	actor.pack.add(&"stone", 3)
 	_world.drop_requested.emit(actor, &"stone", 3)
 	_step(actor, 0)
 	assert_eq(actor.pack.count_of(&"stone"), 0, "still on the ground")
-	_step(actor, 3)
+	_step(actor, 1)
+	assert_eq(actor.pack.count_of(&"stone"), 0, "one step away it's in reach, and skipped")
+	_step(actor, 2)
 	_step(actor, 1)
 	assert_eq(actor.pack.count_of(&"stone"), 3, "picked up once it came back")
+
+
+func test_every_tile_you_dropped_on_is_skipped() -> void:
+	var actor: Actor = _actor()
+	actor.pack.add(&"stone", 4)
+	_world.drop_requested.emit(actor, &"stone", 2)
+	_step(actor, 1)
+	_world.drop_requested.emit(actor, &"stone", 2)
+	_step(actor, 0)
+	_step(actor, 1)
+	assert_eq(actor.pack.count_of(&"stone"), 0, "both stay down")
+	assert_eq(_drops().at(Vector2i(0, 0)), {&"stone": 2}, "the first")
+	assert_eq(_drops().at(Vector2i(1, 0)), {&"stone": 2}, "and the second")
+
+
+func test_another_player_picks_up_what_you_dropped() -> void:
+	var actor: Actor = _actor()
+	actor.pack.add(&"stone", 2)
+	_world.drop_requested.emit(actor, &"stone", 2)
+	var other: Actor = _actor(3)
+	_step(other, 1)
+	assert_eq(other.pack.count_of(&"stone"), 2, "only the dropper skips it")
+
+
+func test_leaving_the_level_forgets_the_skip() -> void:
+	var actor: Actor = _actor()
+	actor.pack.add(&"stone", 2)
+	_world.drop_requested.emit(actor, &"stone", 2)
+	_world.level_at(0).level_tiles.set_top(0, 0, TileKind.TOP.OPEN)
+	actor.move_to(WorldPos.new(0, 0, 0))
+	actor.move_to(WorldPos.new(0, 0, 1))
+	assert_eq(actor.pack.count_of(&"stone"), 2, "back on its tile, it's an ordinary drop")
 
 
 # --- the take key (D-160) ---

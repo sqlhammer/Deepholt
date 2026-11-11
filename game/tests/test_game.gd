@@ -568,7 +568,7 @@ func test_a_save_with_no_player_is_still_shown() -> void:
 	tiles.upload_changed_layers()
 	level.level_tiles.set_top(1, 1, TileKind.TOP.MINABLE_DIRT)
 	assert_true(tiles._dirty_layers.has("top"), "the level renderer hears the new world")
-	var fixtures: FixtureRenderer = _game.get_node("GameViewport/FixtureRenderer")
+	var fixtures: FixtureRenderer = _game.get_node("GameViewport/Standing/FixtureRenderer")
 	level.level_fixtures.add(Fixture.new(ObjectKind.OBJECT.LADDER, spawn, 9003))
 	assert_not_null(fixtures.sprite_for(9003), "and so does the fixture renderer")
 	assert_eq(_game.get_node("DebugOverlay").world, _game.world, "F3 reads it")
@@ -701,7 +701,8 @@ func test_ready_spawns_each_starting_depth_once() -> void:
 # actor's transforms stay the identity (D-128, trap 5).
 func test_the_world_sits_at_the_origin_inside_the_game_viewport() -> void:
 	var world: World = _game.world
-	assert_eq(world.get_parent(), _game.get_node("GameViewport"), "in the game viewport")
+	assert_eq(world.get_parent(), _game.get_node("GameViewport/Standing"),
+		"in the game viewport, sorted with the fixtures")
 	assert_eq(world.position, Vector2.ZERO, "at the origin")
 	assert_eq(_actors()[0].get_parent().get_parent().get_parent(), world,
 		"and the player is the world's own")
@@ -887,7 +888,7 @@ func test_a_load_onto_the_shown_depth_redraws_its_fixtures() -> void:
 	assert_true(_game.save_game(), "saved")
 	assert_eq(_game.load_game(), _game.REFUSAL_REASON.NONE, "loaded")
 	assert_eq(_game.view.shown_depth, depth, "onto the same depth")
-	var renderer: FixtureRenderer = _game.get_node("GameViewport/FixtureRenderer")
+	var renderer: FixtureRenderer = _game.get_node("GameViewport/Standing/FixtureRenderer")
 	var level: Level = _game.world.level_at(depth)
 	assert_eq(renderer._fixtures, level.level_fixtures, "drawing the loaded level's fixtures")
 	assert_eq(renderer._shown_tiles, level.level_tiles, "and its tiles for the ladder tops")
@@ -1142,7 +1143,7 @@ func test_after_a_load_everything_that_draws_follows_the_new_world_only() -> voi
 	level.level_tiles.set_top(1, 1, TileKind.TOP.MINABLE_DIRT)
 	assert_true(tiles._dirty_layers.has("top"), "it hears the new one")
 
-	var fixtures: FixtureRenderer = _game.get_node("GameViewport/FixtureRenderer")
+	var fixtures: FixtureRenderer = _game.get_node("GameViewport/Standing/FixtureRenderer")
 	var spot: WorldPos = _game.active_actor.current_WorldPos
 	old_fixtures.add(Fixture.new(ObjectKind.OBJECT.LADDER, spot, 9001))
 	assert_null(fixtures.sprite_for(9001), "the fixture renderer doesn't hear the old world")
@@ -1209,5 +1210,6 @@ func test_a_new_game_comes_in_through_the_swap() -> void:
 	_game._swap_world(LevelGenerator.generate_world(1))
 	assert_false(is_instance_valid(world), "the old world is freed")
 	assert_eq(_game.world.world_seed, 1, "the new one is in")
-	assert_eq(_game.world.get_parent(), _game.get_node("GameViewport"), "in the game viewport")
+	assert_eq(_game.world.get_parent(), _game.get_node("GameViewport/Standing"),
+		"in the game viewport, sorted with the fixtures")
 	assert_eq(_handler_count(), 0, "with no input until a player is given control")

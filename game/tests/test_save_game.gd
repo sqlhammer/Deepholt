@@ -805,6 +805,14 @@ func test_slots_are_listed_in_name_order() -> void:
 	assert_eq(names, ["slot-001", "slot-003", "slot-009", "slot-010"], "sorted by name")
 
 
+# A first launch has no saves folder yet: no slots, and nothing to
+# warn about.
+func test_a_missing_saves_folder_is_no_slots_and_no_warning() -> void:
+	var missing: String = TEST_ROOT.path_join("never-made")
+	assert_eq(Array(SaveGame.get_save_slots(missing)), [], "no slots")
+	assert_push_warning_count(0, "and no warning")
+
+
 # --- Global.is_regex_match ---
 
 func test_a_regex_matches_anywhere_unless_anchored() -> void:
