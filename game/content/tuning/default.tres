@@ -40,9 +40,7 @@ breach_tool_multiplier = 1.2
 build_cursor_radius = 5
 carry_capacity_kg = 60.0
 starting_items = Dictionary[StringName, int]({
-&"flint_axe": 1,
-&"flint_pickaxe": 1,
-&"flint_shovel": 1
+&"timber": 2
 })
 tree_work = 48.0
 tree_timber = 4
@@ -60,7 +58,8 @@ cave_spacing = 12
 ore_shares = Dictionary[int, Array]({
 2: [0.0, 0.0, 0.03],
 3: [0.0, 0.0, 0.02],
-4: [0.0, 0.0, 0.0, 0.03]
+4: [0.0, 0.0, 0.0, 0.03],
+5: [0.0, 0.0, 0.03]
 })
 vein_size_min = 3
 vein_size_max = 8
@@ -105,3 +104,37 @@ winch_lower_seconds = 5.0
 crate_capacity_kg = 120.0
 torch_burn_seconds = 240.0
 torch_light_radius = 5
+deepest_breachable_floor = 2
+station_reach = 2
+workbench_cost = Dictionary[StringName, int]({
+&"timber": 6,
+&"stone": 4
+})
+forge_cost = Dictionary[StringName, int]({
+&"stone": 20,
+&"bronze_ingot": 4
+})
+smelter_ore_cost = Dictionary[StringName, int]({
+&"stone": 8,
+&"copper_ore": 12
+})
+smelter_timber_cost = Dictionary[StringName, int]({
+&"stone": 16,
+&"timber": 8
+})
+smelt_seconds = 10.0
+smelter_capacity_kg = 120.0
+bed_cost = Dictionary[StringName, int]({
+&"timber": 6
+})
+storage_crate_cost = Dictionary[StringName, int]({
+&"timber": 6
+})
+storage_capacity_kg = 200.0
+lantern_light_radius = 7
+lantern_oil_seconds = 90.0
+lantern_tank = 10
+fungus_per_cave_min = 2
+fungus_per_cave_max = 4
+fungus_yield_min = 2
+fungus_yield_max = 3

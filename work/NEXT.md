@@ -1,7 +1,7 @@
 # Next
 
-Sketches, not commitments. Slices 012 to 014b are closed and merged. **015, the long haul, is
-closed and merged** (2026-11-11, [log](./log/015-the-long-haul.md)). 016 is next.
+Sketches, not commitments. Slices 012 to 016 are closed and merged (016 on 2026-11-11,
+[log](./log/016-something-worth-carrying.md)). **017 is next.**
 
 **015 to 017 were accepted together** (Derik, 2026-11-10, D-210), larger than earlier slices,
 **all in Agent mode.** Together they take the game to the first session in
@@ -35,6 +35,12 @@ hoist, proportional brownout (a second hoist slows both); the rate machine, so a
 while you're on another level and across save and load; −3's three authored ruins, one holding
 the hoist's blueprint; and a first-session pass so an unguided tester's first hour roughly
 follows pre-alpha-scope §5's ten steps, at least an elder who points down.
+
+*From 016:* the rate machine exists: the smelter is one, against a saved world clock
+(`world_time`, D-238). The hoist extends it with power, rather than starting it. The winch's
+cost (12 timber + 20 stone, D-225) never took the tuning appendix's ingots; with ingots now
+real, 017 could reprice it. Stations can't be removed (no hammer), so one built in a one-wide
+tunnel seals it.
 
 *Why:* step 10 is the moment the experiment tests; criterion 3 asks whether testers name it a
 highlight. The rate machine is an M0 and M5 exit, and support countdowns already pause on
@@ -125,3 +131,17 @@ Found during 005, not recorded anywhere else. None of it is decided.
 - **From 015:** the chute, winch, crate and torch art are placeholders drawn by script.
 - **Coverage at the end of slice 015: 91.4%** (012 closed at 95.0%). The gap is the CRAFT tab's
   and the map's drawing, which only a windowed run reaches.
+- **Coverage at the end of slice 016: 90.6%** (90.2% at the build, before the walk's fixes).
+  The gap is the BUILD tab's and the sectioned CRAFT list's drawing, and the refusal notice's
+  texts.
+- **From 016's walk, open: the build-slot flow.** The BUILD tab can't choose the slot, a new game
+  fills all eight so none is ever empty, assigning several means going in and out, and the row's
+  "[n]" marker goes unnoticed. Derik wants three or more options to choose from.
+- **From 016's walk, not walked:** fungus and oil (C3, C4), the lantern's fuel (E3 to E5), bronze
+  breaching and iron (F), the known gaps (G), old saves (H) and telemetry (I).
+- **From 016:** rock is hardness 6 on every level, so tool tiers are faster everywhere but not
+  by stratum (tuning §4's ~0.6 s per stratum doesn't hold).
+- **From 016:** the bed has nothing to do until death (M6), past a stuck player on load.
+- **From 016:** a flint tool item weighs 2.5 kg; tuning §3 says 3.0. New tools are 3.0.
+- **From 016:** the smelter, storage and fungus art is placeholder drawn by script; storage and
+  fungus haven't been seen underground.

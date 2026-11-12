@@ -49,7 +49,8 @@ That is the game's actual progression curve, and every tier's headline unlock is
 | Loom | T2 | Cloaks, rope, belts |
 | Machine shop | T3 | Bearings, gears, pump and lift components |
 
-All stations require a minimum tile light level for full speed, and all are slowed by
+All stations but the smelter require a minimum tile light level for full speed (the smelter
+works at one rate, [D-253](../design-decisions.md)), and all are slowed by
 Marrow-Ache when operated by hand — but **never when operated by a worker** later
 ([D-007](../design-decisions.md)).
 

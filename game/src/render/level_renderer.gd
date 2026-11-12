@@ -31,6 +31,7 @@ enum AtlasCell {
 	TIN,
 	CRUSHED,
 	IRON,
+	COAL,
 }
 
 # Each depth's own look (D-216): a tint over the shared art, so a
@@ -211,6 +212,7 @@ func _ore_cells() -> PackedInt32Array:
 	cells[TileKind.ORE.COPPER] = AtlasCell.COPPER
 	cells[TileKind.ORE.TIN] = AtlasCell.TIN
 	cells[TileKind.ORE.IRON] = AtlasCell.IRON
+	cells[TileKind.ORE.COAL] = AtlasCell.COAL
 	cells[TileKind.SENTINEL_OUT_OF_BOUNDS] = AtlasCell.EMPTY
 	return cells
 

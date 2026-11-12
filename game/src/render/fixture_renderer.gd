@@ -23,12 +23,20 @@ const TEXTURES: Dictionary = {
 	ObjectKind.OBJECT.WINCH: preload("res://src/render/winch.png"),
 	ObjectKind.OBJECT.CRATE: preload("res://src/render/crate.png"),
 	ObjectKind.OBJECT.TORCH: preload("res://src/render/torch_lit.png"),
+	ObjectKind.OBJECT.WORKBENCH: preload("res://src/render/workbench.png"),
+	ObjectKind.OBJECT.SMELTER: preload("res://src/render/smelter.png"),
+	ObjectKind.OBJECT.FORGE: preload("res://src/render/forge.png"),
+	ObjectKind.OBJECT.BED: preload("res://src/render/bed.png"),
+	ObjectKind.OBJECT.STORAGE_CRATE: preload("res://src/render/storage_crate.png"),
+	ObjectKind.OBJECT.FUNGUS: preload("res://src/render/fungus.png"),
 }
 
 # The bar over a winch while its crate is on the way (D-225): how far,
 # in the colors of a cursor's valid placement.
 const CRANK_BAR_COLOR: Color = Color(0.45, 0.95, 0.5)
 const CRANK_BAR_BACK: Color = Color(0.0, 0.0, 0.0, 0.6)
+# A smelter's batch, in the furnace's amber (D-238)
+const SMELT_BAR_COLOR: Color = Color(1.0, 0.62, 0.22)
 # Drawn over the actors: under them, the cranking player's own head
 # hid it (Derik, walking 015)
 const CRANK_BAR_Z: int = 20
@@ -289,12 +297,34 @@ func _draw_bars() -> void:
 		var filled: float = (TileSpace.TILE_PIXELS - 2) * bars[winch]
 		_bars.draw_rect(Rect2(top, Vector2(TileSpace.TILE_PIXELS, 3)), CRANK_BAR_BACK)
 		_bars.draw_rect(Rect2(top + Vector2(1, 1), Vector2(filled, 1)), CRANK_BAR_COLOR)
+	# A working smelter's batch, over its chimney (D-238)
+	var smelters: Dictionary[Fixture, float] = smelting()
+	for smelter: Fixture in smelters:
+		var corner: Vector2 = Vector2(smelter.tile.x, smelter.tile.y) * TileSpace.TILE_PIXELS
+		var top: Vector2 = corner - Vector2(0, 12)
+		var filled: float = (TileSpace.TILE_PIXELS - 2) * smelters[smelter]
+		_bars.draw_rect(Rect2(top, Vector2(TileSpace.TILE_PIXELS, 3)), CRANK_BAR_BACK)
+		_bars.draw_rect(Rect2(top + Vector2(1, 1), Vector2(filled, 1)), SMELT_BAR_COLOR)
 	# A climb's bar over the climber's head (D-233)
 	for climber: Actor in climbing():
 		var top: Vector2 = climber.position + CLIMB_BAR_OFFSET
 		var filled: float = (TileSpace.TILE_PIXELS - 2) * climber.climb_progress()
 		_bars.draw_rect(Rect2(top, Vector2(TileSpace.TILE_PIXELS, 3)), CRANK_BAR_BACK)
 		_bars.draw_rect(Rect2(top + Vector2(1, 1), Vector2(filled, 1)), CRANK_BAR_COLOR)
+
+
+# The smelters on the shown level at work, each with how far into its
+# batch (D-238): an amber bar over each. Only those the player can see.
+func smelting() -> Dictionary[Fixture, float]:
+	var found: Dictionary[Fixture, float] = {}
+	if _fixtures == null or not is_instance_valid(_world): return found
+	for smelter: Fixture in _fixtures.of_kind(ObjectKind.OBJECT.SMELTER):
+		if smelter.machine == null or not smelter.machine.is_working(): continue
+		if _visibility != null and _visibility.state_at(smelter.tile.x, smelter.tile.y) \
+				== Visibility.STATE.UNKNOWN:
+			continue
+		found[smelter] = _world.smelt_progress(smelter)
+	return found
 
 
 # The actors on the shown level part way up or down a ladder.

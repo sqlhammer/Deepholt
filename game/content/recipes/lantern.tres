@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Recipe" format=3]
+
+[ext_resource type="Script" path="res://src/entity/crafting/recipe.gd" id="1_recipe"]
+
+[resource]
+script = ExtResource("1_recipe")
+id = &"lantern"
+display_key = "Oil lantern"
+description = "Lights farther than a torch. Burns lamp oil from its tank."
+inputs = Dictionary[StringName, int]({
+&"copper_ingot": 2,
+&"timber": 1
+})
+outputs = Dictionary[StringName, int]({
+&"lantern": 1
+})
+station = &"workbench"

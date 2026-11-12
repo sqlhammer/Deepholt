@@ -17,11 +17,12 @@ static func find(id: StringName) -> Recipe:
 
 
 # The recipes made at `station`, in id order so the list is stable.
+# Sorted as text: a StringName's own order isn't alphabetical.
 static func at_station(station: StringName) -> Array[Recipe]:
 	_load()
 	var ids: Array[StringName] = []
 	ids.assign(_recipes.keys())
-	ids.sort()
+	ids.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
 	var found: Array[Recipe] = []
 	for id: StringName in ids:
 		if _recipes[id].station == station: found.append(_recipes[id])

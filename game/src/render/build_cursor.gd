@@ -165,7 +165,9 @@ func problem(kind: int = -1) -> PROBLEM:
 	if TileKind.is_sentinel(tiles.get_ground(tile.x, tile.y)): return PROBLEM.OUTSIDE_LEVEL
 	if visibility != null and visibility.state_at(tile.x, tile.y) < Visibility.STATE.SENSED:
 		return PROBLEM.TOO_DARK
-	if kind == ObjectKind.OBJECT.TIMBER_PROP: return _prop_problem(level)
+	# `kind` is a build entry (Building): its fixture kind sets the rules,
+	# the entry its cost (D-241)
+	if Building.kind_of(kind) in FLOOR_KINDS: return _floor_problem(level, kind)
 	if ObjectKind.is_over_hole(kind): return _over_hole_problem(level, kind)
 	var below: Level = level.world.level_at(level.depth + 1)
 	if below == null: return PROBLEM.NO_LEVEL_BELOW
@@ -188,21 +190,28 @@ func problem(kind: int = -1) -> PROBLEM:
 	return PROBLEM.LANDING_NOT_PASSABLE
 
 
-# The gatekeeper's own rules for a prop on the cursor's tile of the
-# player's level: open floor, nothing there, nobody standing on it, and
-# the cost (D-159, D-165).
-func _prop_problem(level: Level) -> PROBLEM:
-	var rule: World.FIXTURE_REFUSAL = FixturePlacement.problem(ObjectKind.OBJECT.TIMBER_PROP, tile,
+# The kinds that stand on the cursor's own floor, on the player's
+# level: the prop (D-165), the stations, the bed and storage (016).
+const FLOOR_KINDS: Array[int] = [ObjectKind.OBJECT.TIMBER_PROP, ObjectKind.OBJECT.WORKBENCH,
+	ObjectKind.OBJECT.SMELTER, ObjectKind.OBJECT.FORGE, ObjectKind.OBJECT.BED,
+	ObjectKind.OBJECT.STORAGE_CRATE]
+
+
+# The gatekeeper's own rules for something standing on the cursor's
+# tile of the player's level: open floor, nothing there, nobody
+# standing on it, and the entry's cost (D-159, D-165).
+func _floor_problem(level: Level, entry: int) -> PROBLEM:
+	var kind: int = Building.kind_of(entry)
+	var rule: World.FIXTURE_REFUSAL = FixturePlacement.problem(kind, tile,
 		level.level_tiles, level.level_fixtures, null)
 	match rule:
 		World.FIXTURE_REFUSAL.NONE: pass
 		World.FIXTURE_REFUSAL.TILE_OCCUPIED: return PROBLEM.TILE_OCCUPIED
 		World.FIXTURE_REFUSAL.TILE_NOT_EXISTS: return PROBLEM.OUTSIDE_LEVEL
 		_: return PROBLEM.NOT_OPEN_FLOOR
-	if level.world.blocks_actor(level, ObjectKind.OBJECT.TIMBER_PROP,
-			WorldPos.new(tile.x, tile.y, level.depth)):
+	if level.world.blocks_actor(level, kind, WorldPos.new(tile.x, tile.y, level.depth)):
 		return PROBLEM.ACTOR_IN_WAY
-	if not Building.can_afford(level.world.tuning, actor, ObjectKind.OBJECT.TIMBER_PROP):
+	if not Building.can_afford(level.world.tuning, actor, entry):
 		return PROBLEM.CANNOT_AFFORD
 	return PROBLEM.NONE
 
@@ -257,7 +266,7 @@ func place(kind: int = -1) -> bool:
 # "Timber prop · 2 timber". "" with nothing selected.
 func label_text(kind: int = -1) -> String:
 	if kind == -1: kind = item
-	var name: String = ObjectKind.display_name(kind)
+	var name: String = Building.entry_name(kind)
 	if name == "" or actor == null: return ""
 	var cost: String = Building.cost_text(actor.current_level.world.tuning, kind)
 	return name if cost == "" else "%s · %s" % [name, cost]
@@ -268,7 +277,7 @@ func label_text(kind: int = -1) -> String:
 # seen down the hole (D-107).
 static func ghost_texture(kind: int) -> Texture2D:
 	if kind == ObjectKind.OBJECT.LADDER: return FixtureRenderer.LADDER_TOP
-	return FixtureRenderer.TEXTURES.get(kind)
+	return FixtureRenderer.TEXTURES.get(Building.kind_of(kind))
 
 
 # --- drawing: valid or not by shape and icon too (ui-ux §7) ---

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://src/entity/items/item.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://content/items/icons/lantern.png" id="9_icon"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"lantern"
+display_key = "Oil lantern"
+weight_kg = 2.0
+stack_max = 999
+trade_value = 12.0
+tags = Array[StringName]([&"light"])
+icon = ExtResource("9_icon")

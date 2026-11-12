@@ -22,6 +22,8 @@ const BORDER: Color = Color(0.6, 0.6, 0.55)
 const SELECTED: Color = Color(1.0, 0.9, 0.45)
 # The light slot's ring while it burns, and its burn bar (D-221)
 const LIT: Color = Color(1.0, 0.6, 0.18)
+# The lantern's fuel bar: lamp oil's amber
+const FUEL: Color = Color(0.85, 0.62, 0.2)
 
 # Short names for the slots, which are too narrow for a display name.
 # Anything not listed shows the last word of its name.
@@ -144,7 +146,7 @@ func slot_text(slot: int) -> String:
 # an empty slot or a thing with none.
 func slot_icon(slot: int) -> Texture2D:
 	if _actor == null: return null
-	if showing_builds: return FixtureRenderer.TEXTURES.get(_actor.hotbar.builds[slot])
+	if showing_builds: return FixtureRenderer.TEXTURES.get(Building.kind_of(_actor.hotbar.builds[slot]))
 	var item: Item = ItemRegistry.find(_actor.hotbar.tools[slot])
 	return item.icon if item != null else null
 
@@ -187,6 +189,10 @@ func _process(_delta: float) -> void:
 func light_text() -> String:
 	if not is_instance_valid(_actor) or _actor.hotbar.light == &"": return ""
 	var count: int = _actor.pack.count_of(_actor.hotbar.light)
+	# The lantern's fuel, always: its tank is what matters (D-246)
+	if _actor.hotbar.light == Hotbar.LANTERN:
+		var fuel: int = roundi(_actor.hotbar.lantern_fuel(_actor.current_level.world.tuning) * 100.0)
+		return "%d %s fuel %d%%" % [count, "lit" if _actor.hotbar.lit else "out", fuel]
 	if not _actor.hotbar.lit: return str(count)
 	return "%d lit %ds" % [count, ceili(_actor.hotbar.light_left)]
 
@@ -206,9 +212,15 @@ func _draw_light_slot() -> void:
 		_light_slot.draw_texture(item.icon, Vector2((rect.size.x - 16) / 2, 3 + font_size))
 	_light_slot.draw_string(font, Vector2(0, rect.size.y - 1), str(_actor.pack.count_of(hotbar.light)),
 		HORIZONTAL_ALIGNMENT_RIGHT, rect.size.x - 2, font_size, Color.WHITE)
-	if hotbar.lit:
-		var burn_seconds: float = _actor.current_level.world.tuning.torch_burn_seconds
-		var share: float = clampf(hotbar.light_left / burn_seconds, 0.0, 1.0)
+	var tuning: TuningProfile = _actor.current_level.world.tuning
+	if hotbar.light == Hotbar.LANTERN:
+		# The lantern's fuel bar, lit or not (ui-ux: fuel on the lantern
+		# icon, D-246)
+		var fuel: float = hotbar.lantern_fuel(tuning)
+		_light_slot.draw_rect(Rect2(Vector2(2, 2), Vector2(rect.size.x - 4, 2)), Color(0, 0, 0, 0.6))
+		_light_slot.draw_rect(Rect2(Vector2(2, 2), Vector2((rect.size.x - 4) * fuel, 2)), FUEL)
+	elif hotbar.lit:
+		var share: float = clampf(hotbar.light_left / tuning.torch_burn_seconds, 0.0, 1.0)
 		_light_slot.draw_rect(Rect2(Vector2(2, 2), Vector2((rect.size.x - 4) * share, 2)), LIT)
 	_light_slot.draw_rect(rect, LIT if hotbar.lit else BORDER, false, 2.0 if hotbar.lit else 1.0)
 

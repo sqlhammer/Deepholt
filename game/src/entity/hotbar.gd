@@ -14,6 +14,9 @@ extends RefCounted
 # same tool take two slots. An empty selected slot is bare hands.
 
 signal changed(hotbar: Hotbar)
+# The lantern was lit, or burned, with no oil in its tank or the pack
+# (D-246): it's dark, and the player is told why.
+signal light_dry(hotbar: Hotbar)
 
 const SLOTS: int = 8
 const BARE_HANDS: ToolData = preload("res://src/entity/tools/bare_hands.tres")
@@ -21,11 +24,15 @@ const BARE_HANDS: ToolData = preload("res://src/entity/tools/bare_hands.tres")
 # The build slots a new hotbar starts with (D-174): ladder, then prop.
 const STARTING_BUILDS: Array[int] = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.TIMBER_PROP]
 
-# What build mode can place: the kinds a build slot may hold. Each has
-# a slot: one a hotbar lacks takes its first empty build slot, so a
-# kind added later reaches a saved game's bar too.
+# What build mode can place: the build entries a build slot may hold
+# (Building), in the order empty slots take them (D-252). There are
+# more than slots: the first eight fill a new bar, the BUILD tab
+# reaches the rest, and an entry added later takes a saved bar's first
+# empty slot.
 const BUILDABLE: Array[int] = [ObjectKind.OBJECT.LADDER, ObjectKind.OBJECT.TIMBER_PROP,
-	ObjectKind.OBJECT.CHUTE, ObjectKind.OBJECT.WINCH]
+	ObjectKind.OBJECT.CHUTE, ObjectKind.OBJECT.WINCH, ObjectKind.OBJECT.WORKBENCH,
+	ObjectKind.OBJECT.SMELTER, ObjectKind.OBJECT.STORAGE_CRATE, ObjectKind.OBJECT.BED,
+	Building.SMELTER_FROM_TIMBER, ObjectKind.OBJECT.FORGE]
 
 var tools: Array[StringName] = []
 var builds: Array[int] = []
@@ -38,8 +45,15 @@ var selected_build: int = 0
 var light: StringName = &""
 var lit: bool = false
 var light_left: float = 0.0
+# The oil lantern's tank (D-246): the oil in it, and the seconds left
+# of the oil burning now. Kept apart from a torch's burn, so changing
+# lights never gives either a fresh one.
+var tank: int = 0
+var oil_left: float = 0.0
 
 const LIGHT_TAG: StringName = &"light"
+const LANTERN: StringName = &"lantern"
+const OIL: StringName = &"lamp_oil"
 
 var _pack: Pack
 # What the pack held at the last look, tool id -> count: a rise is a
@@ -238,9 +252,13 @@ func _reconcile_light() -> bool:
 	var was: StringName = light
 	var was_lit: bool = lit
 	if light != &"" and _held(light) <= 0:
+		var lost: StringName = light
 		light = &""
 		lit = false
 		light_left = 0.0
+		# The last lantern gone, what was in its tank goes back in the
+		# pack; the oil that was burning is spent
+		if lost == LANTERN: _empty_tank()
 	if light == &"" and _pack != null:
 		for key: String in _pack.to_save():
 			var item: Item = ItemRegistry.find(StringName(key))
@@ -250,26 +268,75 @@ func _reconcile_light() -> bool:
 	return light != was or lit != was_lit
 
 
-# --- the light (D-221) ---
+# --- the light (D-221, D-246) ---
 
-# Lights the slot's light, or puts it out. Lighting a fresh one starts
-# its full burn; one put out and lit again goes on where it stopped.
-# Returns whether it's lit now. Nothing to light, nothing changes.
-func toggle_light(burn_seconds: float) -> bool:
+# Puts a light the pack holds in the light slot (D-247), put out if
+# another was burning. Returns whether anything changed.
+func assign_light(id: StringName) -> bool:
+	var item: Item = ItemRegistry.find(id)
+	if item == null or LIGHT_TAG not in item.tags or _held(id) <= 0 or light == id: return false
+	light = id
+	lit = false
+	changed.emit(self)
+	return true
+
+
+# Lights the slot's light, or puts it out. Lighting a fresh torch
+# starts its full burn; one put out and lit again goes on where it
+# stopped. A lantern burns from its tank, filled from the pack's oil
+# when it's empty; with no oil it stays dark and says so. Returns
+# whether it's lit now. Nothing to light, nothing changes.
+func toggle_light(tuning: TuningProfile) -> bool:
 	if lit:
 		lit = false
+	elif light == LANTERN and _held(light) > 0:
+		if oil_left <= 0.0 and not _next_oil(tuning):
+			light_dry.emit(self)
+			return false
+		lit = true
 	elif light != &"" and _held(light) > 0:
 		lit = true
-		if light_left <= 0.0: light_left = burn_seconds
+		if light_left <= 0.0: light_left = tuning.torch_burn_seconds
 	changed.emit(self)
 	return lit
 
 
-# Burns the lit light for `delta` seconds. When one burns out it is
-# used up, and the next lights from the pack with a full burn, or the
-# slot goes dark. Returns whether one burned out.
-func burn(delta: float, burn_seconds: float) -> bool:
+# The next oil from the tank into the flame, the tank filled from the
+# pack first when it's empty. Returns whether there was any.
+func _next_oil(tuning: TuningProfile) -> bool:
+	if tank <= 0 and _pack != null:
+		var poured: int = mini(tuning.lantern_tank, _pack.count_of(OIL))
+		if poured > 0:
+			tank = poured
+			_pack.remove(OIL, poured)
+	if tank <= 0: return false
+	tank -= 1
+	oil_left += tuning.lantern_oil_seconds
+	return true
+
+
+func _empty_tank() -> void:
+	var left: int = tank
+	tank = 0
+	oil_left = 0.0
+	if left > 0 and _pack != null: _pack.add(OIL, left)
+
+
+# How full the lantern is, 0 to 1: its tank and the oil burning.
+func lantern_fuel(tuning: TuningProfile) -> float:
+	var full: float = tuning.lantern_tank * tuning.lantern_oil_seconds
+	if full <= 0.0: return 0.0
+	return clampf((tank * tuning.lantern_oil_seconds + oil_left) / full, 0.0, 1.0)
+
+
+# Burns the lit light for `delta` seconds. When a torch burns out it
+# is used up, and the next lights from the pack with a full burn, or
+# the slot goes dark; a lantern goes on to its next oil. Returns
+# whether one burned out.
+func burn(delta: float, tuning: TuningProfile) -> bool:
 	if not lit: return false
+	if light == LANTERN: return _burn_oil(delta, tuning)
+	var burn_seconds: float = tuning.torch_burn_seconds
 	light_left -= delta
 	if light_left > 0.0: return false
 	var used: StringName = light
@@ -278,6 +345,19 @@ func burn(delta: float, burn_seconds: float) -> bool:
 	_pack.remove(used, 1)
 	if lit and light == used: light_left = maxf(burn_seconds + carried_over, 0.0)
 	changed.emit(self)
+	return true
+
+
+# The lantern's flame burns its oil; at the end of one, the next, or
+# dark when there's none left in the tank or the pack.
+func _burn_oil(delta: float, tuning: TuningProfile) -> bool:
+	oil_left -= delta
+	if oil_left > 0.0: return false
+	if _next_oil(tuning) and oil_left > 0.0: return false
+	oil_left = 0.0
+	lit = false
+	changed.emit(self)
+	light_dry.emit(self)
 	return true
 
 
@@ -330,6 +410,8 @@ func to_save() -> Dictionary:
 		"light": String(light),
 		"lit": lit,
 		"light_left": light_left,
+		"tank": tank,
+		"oil_left": oil_left,
 	}
 
 
@@ -365,6 +447,10 @@ static func from_save(data: Variant) -> Hotbar:
 	if data.get("lit") is bool: hotbar.lit = data.lit
 	var left: Variant = data.get("light_left")
 	if left is float or left is int: hotbar.light_left = maxf(float(left), 0.0)
+	var saved_tank: Variant = data.get("tank")
+	if saved_tank is float or saved_tank is int: hotbar.tank = maxi(int(saved_tank), 0)
+	var saved_oil: Variant = data.get("oil_left")
+	if saved_oil is float or saved_oil is int: hotbar.oil_left = maxf(float(saved_oil), 0.0)
 	return hotbar
 
 

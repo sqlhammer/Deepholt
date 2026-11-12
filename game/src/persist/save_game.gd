@@ -331,6 +331,8 @@ static func _number_or(data: Dictionary, key: String, default: float) -> float:
 # out an id already in use. A save with no counters (slice 003) gets
 # them from the ids alone (D-130, slice 004 trap 6).
 static func _restore_counters(world: World, file_data: Dictionary) -> void:
+	var saved_time: Variant = file_data.get("world_time")
+	if saved_time is float or saved_time is int: world.world_time = maxf(float(saved_time), 0.0)
 	world.fixture_ids.restore(_header_int(file_data, "next_fixture_id", IdAllocator.FIRST_ID))
 	world.fixture_ids.claim(highest_fixture_id(world.levels()))
 	world.actor_ids.restore(_header_int(file_data, "next_actor_id", IdAllocator.FIRST_ID))
@@ -469,6 +471,8 @@ static func _serialize_all(world: World, session: SaveSession) -> Dictionary:
 		game_data["local_actor_id"] = session.local_actor_id
 	# The world's counters (D-130), restored last on load
 	game_data["next_fixture_id"] = world.fixture_ids.peek()
+	# The clock rate machines are worked out against (D-238)
+	game_data["world_time"] = world.world_time
 	game_data["next_actor_id"] = world.actor_ids.peek()
 
 	# Stats
@@ -545,6 +549,9 @@ static func _serialize_fixtures(fixtures: LevelFixtures) -> Array:
 		if fixture.contents != null: entry["contents"] = fixture.contents.to_save()
 		# How long it has left to burn (a dropped torch, D-221)
 		if fixture.time_left >= 0.0: entry["time_left"] = fixture.time_left
+		# A smelter's work (D-238) and a bed's owner (D-248)
+		if fixture.machine != null: entry["smelter"] = fixture.machine.to_save()
+		if fixture.owner_id >= 0: entry["owner"] = fixture.owner_id
 		data.append(entry)
 	return data
 
@@ -632,7 +639,7 @@ static func _deserialize_actor(p_actor: Dictionary, p_actor_id: int, world: Worl
 	# (slice 011 trap 6); the load reports it
 	if _from_before_tools(p_actor):
 		for id: StringName in starting_tools(world.tuning):
-			actor.pack.add(id, world.tuning.starting_items[id])
+			actor.pack.add(id, 1)
 
 	return actor
 
@@ -642,14 +649,14 @@ static func _from_before_tools(p_actor: Dictionary) -> bool:
 	return not p_actor.has("hotbar") and p_actor.get("actor_kind") == ActorKind.ACTOR.PLAYER
 
 
-# The tools among a profile's starting items: what a player saved
-# before tools were items is given.
-static func starting_tools(tuning: TuningProfile) -> Array[StringName]:
-	var found: Array[StringName] = []
-	for id: StringName in tuning.starting_items:
-		var item: Item = ItemRegistry.find(id)
-		if item != null and item.is_tool(): found.append(id)
-	return found
+# What a player saved before tools were items is given: the flint set
+# a new game started with then (D-182). A new game starts with none
+# now (D-244), but such a save was played with tools in hand.
+const TOOLS_BEFORE_TOOLS: Array[StringName] = [&"flint_axe", &"flint_pickaxe", &"flint_shovel"]
+
+
+static func starting_tools(_tuning: TuningProfile) -> Array[StringName]:
+	return TOOLS_BEFORE_TOOLS.duplicate()
 
 
 # Builds each saved level and adds it to `world`. A level that can't
@@ -793,11 +800,16 @@ static func _deserialize_fixtures(p_depth: int, p_fixtures: Array) -> LevelFixtu
 				entry.id, p_depth])
 			continue
 		var fixture: Fixture = Fixture.new(entry.kind, WorldPos.new(entry.x, entry.y, p_depth), entry.id)
-		# A crate holds what it was saved with; one saved without, nothing
-		if entry.has("contents") or entry.kind == ObjectKind.OBJECT.CRATE:
+		# What holds items holds what it was saved with; one saved
+		# without, nothing
+		if entry.has("contents") or ObjectKind.holds_items(entry.kind):
 			fixture.contents = Pack.from_save(entry.get("contents", {}))
 		var time_left: Variant = entry.get("time_left")
 		if time_left is float or time_left is int: fixture.time_left = float(time_left)
+		if entry.kind == ObjectKind.OBJECT.SMELTER:
+			fixture.machine = Smelter.from_save(entry.get("smelter"))
+		var owner: Variant = entry.get("owner")
+		if owner is int or owner is float: fixture.owner_id = int(owner)
 		fixtures.add(fixture)
 	return fixtures
 

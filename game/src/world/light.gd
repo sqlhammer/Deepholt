@@ -53,8 +53,17 @@ static func carried_lit_tiles(level: Level, actors: Array[Actor],
 		var here: WorldPos = actor.current_WorldPos
 		if here == null: continue
 		for tile: Vector2i in Senses.flood(level.level_tiles, Vector2i(here.x, here.y),
-				tuning.torch_light_radius):
+				carried_radius(actor, tuning)):
 			lit[tile] = true
 	var found: Array[Vector2i] = []
 	found.assign(lit.keys())
 	return found
+
+
+# How far the light `actor` carries reaches: the lantern's (D-246) or
+# the torch's (D-221).
+static func carried_radius(actor: Actor, tuning: TuningProfile) -> int:
+	if actor.hotbar.light == Hotbar.LANTERN: return tuning.lantern_light_radius
+	return tuning.torch_light_radius
+
+

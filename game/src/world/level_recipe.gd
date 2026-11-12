@@ -28,6 +28,9 @@ class_name LevelRecipe
 @export var arrival_prefab: StringName = &""
 # How many CRUSHED regions the seed places (D-218).
 @export var crushed_regions: int = 0
+# Whether this level's caves grow clumps of cave fungus (D-245): -1's,
+# by the strata table.
+@export var cave_fungus: bool = false
 
 
 func _init(p_bound: LevelBound = null) -> void:

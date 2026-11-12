@@ -176,17 +176,15 @@ func _game() -> Node:
 	return game
 
 
-# D-182: an axe, a pick and a shovel, and no timber: the first job is
-# chopping it.
-func test_a_new_games_player_starts_with_three_tools_and_no_timber() -> void:
+# D-244: two timber and no tools; the first job is making a flint
+# axe and pick by hand.
+func test_a_new_games_player_starts_with_two_timber_and_no_tools() -> void:
 	var game: Node = _game()
-	assert_eq(game.active_actor.pack.count_of(&"timber"), 0, "no timber")
-	assert_eq(game.active_actor.pack.count_of(&"flint_axe"), 1, "an axe")
-	assert_eq(game.active_actor.pack.count_of(&"flint_pickaxe"), 1, "a pick (D-169)")
-	assert_eq(game.active_actor.pack.count_of(&"flint_shovel"), 1, "and a shovel")
-	assert_eq(game.active_actor.pack.total_weight, 8.0, "2.5 + 3 + 2.5 kg")
-	assert_eq(game.active_actor.hotbar.tools.slice(0, 3),
-		[&"flint_axe", &"flint_pickaxe", &"flint_shovel"], "axe in 1, pick in 2, shovel in 3")
+	assert_eq(game.active_actor.pack.count_of(&"timber"), 2, "two timber")
+	assert_eq(game.active_actor.pack.count_of(&"flint_axe"), 0, "no axe")
+	assert_eq(game.active_actor.pack.count_of(&"flint_pickaxe"), 0, "no pick")
+	assert_eq(game.active_actor.pack.total_weight, 4.0, "2 x 2 kg")
+	assert_eq(game.active_actor.tool(), Hotbar.BARE_HANDS, "bare hands")
 
 
 func test_a_second_player_starts_empty() -> void:
@@ -201,8 +199,7 @@ func test_a_load_restores_the_pack_and_adds_nothing() -> void:
 	game.active_actor.pack.add(&"timber", 6)
 	assert_true(game.save_game(), "saved")
 	assert_eq(game.load_game(), game.REFUSAL_REASON.NONE, "loaded")
-	assert_eq(game.active_actor.pack.count_of(&"timber"), 6, "what was saved, nothing more")
-	assert_eq(game.active_actor.pack.count_of(&"flint_axe"), 1, "one axe, not a second")
+	assert_eq(game.active_actor.pack.count_of(&"timber"), 8, "what was saved, nothing more")
 
 
 # --- the HUD (D-159) ---
@@ -210,9 +207,9 @@ func test_a_load_restores_the_pack_and_adds_nothing() -> void:
 func test_the_hud_shows_the_followed_actors_load() -> void:
 	var game: Node = _game()
 	var hud: CarryHud = game.get_node("CarryHud")
-	assert_eq(hud.text, "8 / 60 kg", "a new game")
+	assert_eq(hud.text, "4 / 60 kg", "a new game")
 	game.active_actor.pack.add(&"stone", 5)
-	assert_eq(hud.text, "23 / 60 kg", "follows the pack")
+	assert_eq(hud.text, "19 / 60 kg", "follows the pack")
 	await get_tree().process_frame
 
 

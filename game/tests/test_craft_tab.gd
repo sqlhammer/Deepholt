@@ -65,20 +65,45 @@ func test_the_tab_switches_and_opens_on_the_last_one_used() -> void:
 	_inventory.set_open(false)
 	_inventory.set_open(true)
 	assert_eq(_inventory.tab, InventoryOverlay.TAB.CRAFT, "reopened on CRAFT")
-	_inventory.switch_tab()
+	_inventory.switch_tab(-1)
 	assert_eq(_inventory.tab, InventoryOverlay.TAB.PACK, "and back")
+	_inventory.switch_tab(-1)
+	assert_eq(_inventory.tab, InventoryOverlay.TAB.BUILD, "and round to BUILD (D-252)")
 
 
 func test_a_click_on_a_tab_switches_to_it() -> void:
 	assert_eq(_inventory.tab_at(_inventory._tab_rect(InventoryOverlay.TAB.CRAFT).get_center()),
 		InventoryOverlay.TAB.CRAFT, "the CRAFT tab is where it's drawn")
+	# Straight to the one clicked, not one step along (016's walk)
+	_click_tab(InventoryOverlay.TAB.BUILD)
+	assert_eq(_inventory.tab, InventoryOverlay.TAB.BUILD, "PACK to BUILD in one click")
+	_click_tab(InventoryOverlay.TAB.PACK)
+	assert_eq(_inventory.tab, InventoryOverlay.TAB.PACK, "and BUILD to PACK")
+	_click_tab(InventoryOverlay.TAB.PACK)
+	assert_eq(_inventory.tab, InventoryOverlay.TAB.PACK, "the open tab clicked stays")
+
+
+func _click_tab(which: InventoryOverlay.TAB) -> void:
+	var click: InputEventMouseButton = InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	click.position = _inventory._tab_rect(which).get_center()
+	_inventory._on_board_input(click)
 
 
 # --- the CRAFT tab ---
 
+# Focuses the recipe with this id: the flint tools list before the
+# torch (D-244).
+func _focus(recipe_id: StringName) -> void:
+	var ids: Array = _inventory.recipes().map(func(r: Recipe) -> StringName: return r.id)
+	_inventory.craft_index = ids.find(recipe_id)
+	assert_true(_inventory.craft_index >= 0, "%s is listed" % recipe_id)
+
 func test_the_craft_tab_lists_the_torch_with_what_it_needs() -> void:
 	_actor.pack.add(&"timber", 3)
 	_inventory.switch_tab()
+	_focus(&"torch")
 	var text: String = _inventory.text()
 	assert_string_contains(text, "BY HAND")
 	assert_string_contains(text, "Torch  1 timber -> 2", "its row")
@@ -89,6 +114,7 @@ func test_the_craft_tab_lists_the_torch_with_what_it_needs() -> void:
 func test_confirm_on_the_craft_tab_makes_one() -> void:
 	_actor.pack.add(&"timber", 2)
 	_inventory.switch_tab()
+	_focus(&"torch")
 	_inventory.pick_or_place()
 	assert_eq(_actor.pack.count_of(&"torch"), 2, "made")
 	_inventory.pick_or_place()
@@ -101,6 +127,7 @@ func test_confirm_on_the_craft_tab_makes_one() -> void:
 func test_a_click_on_make_makes_one() -> void:
 	_actor.pack.add(&"timber", 1)
 	_inventory.switch_tab()
+	_focus(&"torch")
 	_inventory._click_craft(_inventory.make_rect().get_center())
 	assert_eq(_actor.pack.count_of(&"torch"), 2, "made")
 
@@ -143,6 +170,7 @@ func test_the_input_handler_announces_a_scheme_change() -> void:
 func test_holding_confirm_keeps_making() -> void:
 	_actor.pack.add(&"timber", 10)
 	_inventory.switch_tab()
+	_focus(&"torch")
 	var input: InputHandler = add_child_autofree(InputHandler.new())
 	input.setup(_actor, func() -> Vector2: return Vector2.ZERO)
 	input.inventory = _inventory

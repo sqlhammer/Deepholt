@@ -157,7 +157,9 @@ func test_a_tool_the_pack_lacks_cant_be_assigned() -> void:
 
 func test_build_slots_are_rearranged_by_swapping() -> void:
 	var hotbar: Hotbar = _hotbar_with({})
-	var empty: int = Hotbar.BUILDABLE.size()
+	# More buildables than slots (D-252): the last slot, emptied
+	var empty: int = Hotbar.SLOTS - 1
+	hotbar.builds[empty] = ObjectKind.OBJECT.NULL
 	assert_true(hotbar.assign_build(ObjectKind.OBJECT.LADDER, empty), "the ladder to the empty slot")
 	assert_eq(hotbar.builds[empty], ObjectKind.OBJECT.LADDER, "it's there")
 	assert_eq(hotbar.builds[0], ObjectKind.OBJECT.NULL, "1 empties")

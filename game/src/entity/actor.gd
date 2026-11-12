@@ -182,7 +182,7 @@ func primary_action(p_action_intent: bool) -> void:
 # Returns whether it's lit now.
 func toggle_light() -> bool:
 	if current_level == null: return false
-	return hotbar.toggle_light(current_level.world.tuning.torch_burn_seconds)
+	return hotbar.toggle_light(current_level.world.tuning)
 
 
 # Interact held or let go (D-225). The first tick held asks the world
@@ -208,6 +208,7 @@ func has_interaction() -> bool:
 	if current_level == null or current_WorldPos == null: return false
 	if is_climbing(): return true
 	if current_level.world.winch_faced(self) != null: return true
+	if current_level.world.bed_faced(self) != null: return true
 	return Ladder.target_for(current_level, current_WorldPos, facing) != null
 
 
@@ -217,6 +218,11 @@ func has_interaction() -> bool:
 # climb began.
 func interact() -> bool:
 	if is_climbing(): return false
+	# A bed faced is claimed: it's this player's now (D-248)
+	var bed: Fixture = current_level.world.bed_faced(self)
+	if bed != null:
+		if actor_kind == ActorKind.ACTOR.PLAYER: current_level.world.claim_bed(self, bed)
+		return bed.owner_id == actor_id
 	var target: WorldPos = Ladder.target_for(current_level, current_WorldPos, facing)
 	if target == null: return false
 	# Too heavy to climb (D-030, D-159): refused, and announced on this
@@ -291,7 +297,7 @@ func _physics_process(delta: float) -> void:
 	if Log.enabled: _watch_for_jumps()
 	# A lit light burns down, only while lit (D-221)
 	if hotbar.lit and current_level != null:
-		hotbar.burn(delta, current_level.world.tuning.torch_burn_seconds)
+		hotbar.burn(delta, current_level.world.tuning)
 	# On a ladder nothing else happens until the climb ends (D-233)
 	if is_climbing():
 		_climb(delta)

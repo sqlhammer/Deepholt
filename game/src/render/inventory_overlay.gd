@@ -18,12 +18,14 @@ extends ScaledHud
 # An overlay: the game keeps running. Presentation, for the local
 # player (D-045).
 #
-# Two tabs (D-222): PACK, all of the above, and CRAFT, the things the
-# player can make by hand, a list on the left and the focused one's
-# detail on the right: what it needs against what's carried, what it
-# makes, and the key to make it. Q, or LB and RB, switch tabs; it opens
-# on the last one used. Every key named on screen is the current
-# scheme's only (D-223).
+# Three tabs (D-222, D-252): PACK, all of the above; CRAFT, the things
+# the player can make by hand and at the stations in reach (D-237), a
+# list on the left and the focused one's detail on the right: what it
+# needs against what's carried, what it makes, and the key to make it;
+# and BUILD, every buildable, laid out the same, the assign key putting
+# the focused one in the selected build slot. Q and RB step forward
+# through the tabs, LB back; it opens on the last one used. Every key
+# named on screen is the current scheme's only (D-223).
 
 # Opened or closed: the hotbar on screen hides while this shows its
 # own bars.
@@ -33,12 +35,21 @@ enum REGION {
 	GRID,
 	BUILD,
 	TOOLS,
+	# The light slot (D-247): a light is put down on it
+	LIGHT,
 }
 
 enum TAB {
 	PACK,
 	CRAFT,
+	BUILD,
 }
+
+const TAB_NAMES: Dictionary = {TAB.PACK: "PACK", TAB.CRAFT: "CRAFT", TAB.BUILD: "BUILD"}
+# The CRAFT tab's sections, by station, in the order they show; a
+# station's only while one is in reach (D-237)
+const SECTION_TITLES: Dictionary = {&"hand": "BY HAND", &"workbench": "AT A WORKBENCH",
+	&"forge": "AT A FORGE"}
 
 # Cells big enough for the pixel font's count over the icon and the
 # weight under it; six grid rows show, the rest scroll (D-190)
@@ -77,7 +88,10 @@ const LACK_COLOR: Color = Color(1.0, 0.5, 0.42)
 const LIST_WIDTH: float = 200.0
 const DETAIL_X: float = LIST_WIDTH + 12.0
 const ROW: float = 22.0
+const TITLE_ROW: float = 13.0
 const LIST_TOP: float = TABS + 6.0
+# The lists end above the load at the board's foot
+const LIST_BOTTOM: float = TEXT_TOP + 4.0
 
 var is_open: bool = false
 var actor: Actor
@@ -85,6 +99,11 @@ var actor: Actor
 var tab: TAB = TAB.PACK
 # The focused recipe on the CRAFT tab, an index into recipes()
 var craft_index: int = 0
+# The focused buildable on the BUILD tab, an index into Hotbar.BUILDABLE
+var build_index: int = 0
+# The first line of the CRAFT or BUILD list shown: it scrolls to keep
+# the focused row in sight
+var list_scroll: int = 0
 # Whether the keys named on screen are a pad's (D-223). Set from the
 # local player's input handler as its scheme changes.
 var gamepad: bool = true
@@ -144,13 +163,19 @@ func set_open(value: bool) -> void:
 	_refresh()
 
 
-# Q, LB or RB: the other tab. What's held is put back.
-func switch_tab() -> void:
+# Q or RB: the next tab; LB, the one before. What's held is put back.
+func switch_tab(step: int = 1) -> void:
 	if not is_open: return
 	holding = false
 	message = ""
-	tab = TAB.CRAFT if tab == TAB.PACK else TAB.PACK
+	tab = posmod(tab + step, TAB.size()) as TAB
+	list_scroll = 0
 	_refresh()
+
+
+func show_tab(which: TAB) -> void:
+	if not is_open or which == tab: return
+	switch_tab(which - tab)
 
 
 # The scheme whose keys are named on screen (D-223).
@@ -161,9 +186,26 @@ func set_gamepad(value: bool) -> void:
 
 # --- the CRAFT tab (D-222) ---
 
-# What can be made by hand, in a stable order.
+# What can be made here, section by section: by hand, then at each
+# station in reach (D-237), each section in a stable order.
 func recipes() -> Array[Recipe]:
-	return RecipeRegistry.at_station(Recipe.HAND)
+	var list: Array[Recipe] = []
+	for section: Dictionary in craft_sections(): list.append_array(section.recipes)
+	return list
+
+
+# The CRAFT tab's sections: {"station", "title", "recipes"}, the hand's
+# always and each station's while one is in reach.
+func craft_sections() -> Array[Dictionary]:
+	var sections: Array[Dictionary] = []
+	var near: Array[StringName] = []
+	if actor != null and actor.current_level != null:
+		near = actor.current_level.world.stations_near(actor)
+	for station: StringName in SECTION_TITLES:
+		if station != Recipe.HAND and station not in near: continue
+		sections.append({"station": station, "title": SECTION_TITLES[station],
+			"recipes": RecipeRegistry.at_station(station)})
+	return sections
 
 
 func focused_recipe() -> Recipe:
@@ -193,7 +235,7 @@ func make() -> void:
 static func recipe_short(recipe: Recipe) -> String:
 	var parts: PackedStringArray = []
 	for id: StringName in recipe.inputs:
-		parts.append("%d %s" % [recipe.inputs[id], _item_name(id).to_lower()])
+		parts.append("%d %s" % [recipe.inputs[id], short_name(id)])
 	var made: int = 0
 	for id: StringName in recipe.outputs: made += recipe.outputs[id]
 	return "%s -> %d" % [", ".join(parts), made]
@@ -218,6 +260,22 @@ static func makes_text(recipe: Recipe) -> String:
 		var item: Item = ItemRegistry.find(id)
 		kg += (item.weight_kg if item != null else 0.0) * recipe.outputs[id]
 	return "%s, %s kg" % [", ".join(parts), CarryHud._kg(kg)]
+
+
+# An item's name for a list row, where room is short: lower case, and
+# "ingot" left off, since a row's costs are what they're made of. The
+# detail pane names it in full.
+static func short_name(id: StringName) -> String:
+	return _item_name(id).to_lower().trim_suffix(" ingot")
+
+
+# A buildable's cost for its list row, in short names.
+static func cost_short(tuning: TuningProfile, entry: int) -> String:
+	var cost: Dictionary[StringName, int] = Building.cost_of(tuning, entry)
+	var parts: PackedStringArray = []
+	for id: StringName in cost:
+		parts.append("%d %s" % [cost[id], short_name(id)])
+	return ", ".join(parts)
 
 
 static func _item_name(id: StringName) -> String:
@@ -248,6 +306,7 @@ func id_at(region: REGION, index: int) -> StringName:
 	match region:
 		REGION.GRID: return actor.grid.cells[index] if index < actor.grid.cells.size() else &""
 		REGION.TOOLS: return actor.hotbar.tools[index]
+		REGION.LIGHT: return actor.hotbar.light
 	return &""
 
 
@@ -257,6 +316,9 @@ func kind_at(slot: int) -> int:
 
 func _is_empty(region: REGION, index: int) -> bool:
 	if region == REGION.BUILD: return kind_at(index) == ObjectKind.OBJECT.NULL
+	# The light slot is put down on, never picked up from: its light
+	# stays in the pack's grid too
+	if region == REGION.LIGHT: return true
 	return id_at(region, index) == &""
 
 
@@ -268,6 +330,10 @@ func move(direction: Vector2i) -> void:
 	if not is_open or direction == Vector2i.ZERO: return
 	if tab == TAB.CRAFT:
 		craft_index = clampi(craft_index + direction.y, 0, maxi(recipes().size() - 1, 0))
+		_refresh()
+		return
+	if tab == TAB.BUILD:
+		build_index = clampi(build_index + direction.y, 0, Hotbar.BUILDABLE.size() - 1)
 		_refresh()
 		return
 	var rows_total: int = actor.grid.cells.size() / PackGrid.COLUMNS
@@ -292,8 +358,13 @@ func move(direction: Vector2i) -> void:
 				_focus(REGION.GRID, (scroll + focus_index) * PackGrid.COLUMNS + PackGrid.COLUMNS - 1)
 			elif direction.y > 0 and focus_index == Hotbar.SLOTS - 1:
 				_focus(REGION.TOOLS, Hotbar.SLOTS - 1)
+			elif direction.x > 0 and focus_index == Hotbar.SLOTS - 1:
+				# The light slot sits right of the column's foot (D-247)
+				_focus(REGION.LIGHT, 0)
 			else:
 				_focus(REGION.BUILD, clampi(focus_index + direction.y, 0, Hotbar.SLOTS - 1))
+		REGION.LIGHT:
+			if direction.x < 0 or direction.y < 0: _focus(REGION.BUILD, Hotbar.SLOTS - 1)
 		REGION.TOOLS:
 			if direction.y < 0:
 				_focus(REGION.GRID, (scroll + VISIBLE_ROWS - 1) * PackGrid.COLUMNS + focus_index)
@@ -321,6 +392,9 @@ func pick_or_place() -> void:
 	if tab == TAB.CRAFT:
 		make()
 		return
+	if tab == TAB.BUILD:
+		assign_build_focused()
+		return
 	if holding: _place()
 	elif not _is_empty(focus_region, focus_index):
 		holding = true
@@ -343,7 +417,12 @@ func _place() -> void:
 	var from: REGION = held_region
 	var to: REGION = focus_region
 	var hotbar: Hotbar = actor.hotbar
-	if from == REGION.BUILD or to == REGION.BUILD:
+	if to == REGION.LIGHT:
+		var light: StringName = id_at(from, held_index)
+		if not _is_light(light): message = "Only a torch or a lantern goes in the light slot."
+		elif hotbar.assign_light(light):
+			message = "The light slot holds the %s." % _item_name(light).to_lower()
+	elif from == REGION.BUILD or to == REGION.BUILD:
 		if from == to: hotbar.move_build(held_index, focus_index)
 		else: message = "Build slots hold only what you can build."
 	elif from == REGION.GRID and to == REGION.GRID:
@@ -366,6 +445,7 @@ func _place() -> void:
 func assign_to(slot: int) -> bool:
 	if not is_open: return false
 	holding = false
+	if tab == TAB.BUILD: return _assign_build(slot)
 	var done: bool = false
 	match focus_region:
 		REGION.GRID:
@@ -395,6 +475,51 @@ static func _is_tool(id: StringName) -> bool:
 	return item != null and item.is_tool()
 
 
+static func _is_light(id: StringName) -> bool:
+	var item: Item = ItemRegistry.find(id)
+	return item != null and Hotbar.LIGHT_TAG in item.tags
+
+
+# --- the BUILD tab (D-252) ---
+
+func focused_entry() -> int:
+	return Hotbar.BUILDABLE[clampi(build_index, 0, Hotbar.BUILDABLE.size() - 1)]
+
+
+# Confirm or the assign key: the focused buildable into the selected
+# build slot, which build mode places from.
+func assign_build_focused() -> bool:
+	if not is_open or tab != TAB.BUILD: return false
+	return _assign_build(actor.hotbar.selected_build)
+
+
+func _assign_build(slot: int) -> bool:
+	var entry: int = focused_entry()
+	var done: bool = actor.hotbar.assign_build(entry, slot)
+	if done or actor.hotbar.builds[slot] == entry:
+		message = "%s is in build slot %d." % [Building.entry_name(entry), slot + 1]
+	_refresh()
+	return done
+
+
+# Each cost of `entry` as "Stone  have 3 / need 8", with whether there's
+# enough.
+func cost_lines(entry: int) -> Array[Dictionary]:
+	var lines: Array[Dictionary] = []
+	var cost: Dictionary[StringName, int] = Building.cost_of(actor.current_level.world.tuning, entry)
+	for id: StringName in cost:
+		var have: int = actor.pack.count_of(id)
+		lines.append({"text": "%s  have %d / need %d" % [_item_name(id), have, cost[id]],
+			"enough": have >= cost[id]})
+	return lines
+
+
+# The assign prompt, in the current scheme's keys only (D-223).
+func assign_text() -> String:
+	var slot: int = actor.hotbar.selected_build + 1 if actor != null else 1
+	return "%s Put in slot %d" % ["[A]" if gamepad else "[Enter]", slot]
+
+
 # --- dropping: the focused cell, or the focused tool ---
 
 func drop_one() -> void:
@@ -406,7 +531,11 @@ func drop_stack() -> void:
 
 
 func _drop(whole_stack: bool) -> void:
-	if not is_open or tab != TAB.PACK or focus_region == REGION.BUILD: return
+	# On the BUILD tab the pad's Y (drop one) is the assign key (D-252)
+	if is_open and tab == TAB.BUILD and not whole_stack:
+		assign_build_focused()
+		return
+	if not is_open or tab != TAB.PACK or focus_region in [REGION.BUILD, REGION.LIGHT]: return
 	var id: StringName = id_at(focus_region, focus_index)
 	if id == &"": return
 	holding = false
@@ -420,6 +549,7 @@ func _drop(whole_stack: bool) -> void:
 
 # The region and index under a point on the board, or [-1, -1].
 func place_at(point: Vector2) -> Array[int]:
+	if light_rect().has_point(point): return [REGION.LIGHT, 0]
 	for slot in range(Hotbar.SLOTS):
 		if _slot_rect(REGION.BUILD, slot).has_point(point): return [REGION.BUILD, slot]
 		if _slot_rect(REGION.TOOLS, slot).has_point(point): return [REGION.TOOLS, slot]
@@ -436,12 +566,15 @@ func _on_board_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		var tab_hit: int = tab_at(event.position)
 		if tab_hit != -1:
-			if tab_hit != tab: switch_tab()
+			show_tab(tab_hit as TAB)
 			return
 		if tab == TAB.CRAFT:
 			_click_craft(event.position)
 			return
-	if tab == TAB.CRAFT: return
+		if tab == TAB.BUILD:
+			_click_build(event.position)
+			return
+	if tab != TAB.PACK: return
 	if event is InputEventMouseMotion:
 		var at: Array[int] = place_at(event.position)
 		if at[0] != -1 and (at[0] != focus_region or at[1] != focus_index): _focus(at[0], at[1])
@@ -459,7 +592,7 @@ func _on_board_input(event: InputEvent) -> void:
 
 # The tab under a point on the board, or -1.
 func tab_at(point: Vector2) -> int:
-	for t: int in [TAB.PACK, TAB.CRAFT]:
+	for t: int in TAB.values():
 		if _tab_rect(t).has_point(point): return t
 	return -1
 
@@ -480,12 +613,77 @@ func _click_craft(point: Vector2) -> void:
 			return
 
 
+# A click on the BUILD tab: a row focuses its buildable, the button
+# puts it in the selected build slot.
+func _click_build(point: Vector2) -> void:
+	if make_rect().has_point(point):
+		assign_build_focused()
+		return
+	for i in range(Hotbar.BUILDABLE.size()):
+		if _row_rect(i).has_point(point):
+			build_index = i
+			_refresh()
+			return
+
+
+# The list's lines, top to bottom: a section's title ({"title"}) or a
+# row ({"row": index into the list}). CRAFT has a title per section;
+# BUILD one for the whole list.
+func _list_lines() -> Array[Dictionary]:
+	var lines: Array[Dictionary] = []
+	if tab == TAB.BUILD:
+		lines.append({"title": "EVERYTHING YOU CAN BUILD"})
+		for i in range(Hotbar.BUILDABLE.size()): lines.append({"row": i})
+		return lines
+	var index: int = 0
+	for section: Dictionary in craft_sections():
+		lines.append({"title": section.title})
+		for _recipe: Recipe in section.recipes:
+			lines.append({"row": index})
+			index += 1
+	return lines
+
+
+func _line_height(line: Dictionary) -> float:
+	return ROW if line.has("row") else TITLE_ROW
+
+
+# Where the list's rows are drawn: each line in turn from the first
+# shown, until the list's foot. A row scrolled out of sight has no
+# rect (an empty one).
 func _row_rect(index: int) -> Rect2:
-	return Rect2(Vector2(0, LIST_TOP + 12 + index * ROW), Vector2(LIST_WIDTH, ROW - 2))
+	var y: float = LIST_TOP
+	var lines: Array[Dictionary] = _list_lines()
+	for i in range(list_scroll, lines.size()):
+		var height: float = _line_height(lines[i])
+		if y + height > LIST_BOTTOM: break
+		if lines[i].get("row", -1) == index:
+			return Rect2(Vector2(0, y), Vector2(LIST_WIDTH, ROW - 2))
+		y += height
+	return Rect2()
 
 
+# Scrolls the list so the focused row is in sight, its section's title
+# with it when it's the first.
+func _scroll_to_focus() -> void:
+	if tab == TAB.PACK or not is_open: return
+	var focused: int = craft_index if tab == TAB.CRAFT else build_index
+	var lines: Array[Dictionary] = _list_lines()
+	var at: int = -1
+	for i in range(lines.size()):
+		if lines[i].get("row", -1) == focused: at = i
+	if at == -1: return
+	if at <= list_scroll: list_scroll = maxi(at - 1, 0)
+	while list_scroll < at and _row_rect(focused) == Rect2(): list_scroll += 1
+
+
+# The button under the detail: CRAFT's make, BUILD's put in a slot.
+# As wide as its words, so none run past it (016's walk).
 func make_rect() -> Rect2:
-	return Rect2(Vector2(DETAIL_X, TEXT_TOP - 26), Vector2(110, 16))
+	var words: String = assign_text() if tab == TAB.BUILD else make_text()
+	var width: float = ScaledHud.FONT.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		ScaledHud.FONT_SIZE).x + 8.0
+	return Rect2(Vector2(DETAIL_X, TEXT_TOP - 26), Vector2(width, 16))
 
 
 # --- words: the preview, the focused thing, the keys ---
@@ -514,8 +712,12 @@ func details_text() -> String:
 	if focus_region == REGION.BUILD:
 		var kind: int = kind_at(focus_index)
 		if kind == ObjectKind.OBJECT.NULL: return "Build slot %d: empty" % (focus_index + 1)
-		return "Build slot %d: %s, %s" % [focus_index + 1, ObjectKind.display_name(kind),
+		return "Build slot %d: %s, %s" % [focus_index + 1, Building.entry_name(kind),
 			Building.cost_text(actor.current_level.world.tuning, kind)]
+	if focus_region == REGION.LIGHT:
+		var light: StringName = actor.hotbar.light
+		if light == &"": return "Light slot: empty. Put a torch or a lantern here."
+		return "Light slot: %s, %d carried" % [_item_name(light), actor.pack.count_of(light)]
 	var id: StringName = id_at(focus_region, focus_index)
 	var where: String = "Tool slot %d" % (focus_index + 1) if focus_region == REGION.TOOLS else ""
 	if id == &"": return "%s: empty" % where if where != "" else ""
@@ -534,16 +736,28 @@ func help_text() -> String:
 	if tab == TAB.CRAFT:
 		return "A: make  hold A: keep making" if gamepad \
 			else "Enter/click: make  hold: keep making"
+	if tab == TAB.BUILD:
+		return "A or Y: put in the selected build slot" if gamepad \
+			else "Enter/click: put in the selected build slot  1-8: in that slot"
 	if holding:
 		return "A: put down  B: cancel" if gamepad else "Enter/click: put down  right-click: cancel"
 	if gamepad: return "A: pick up  Y: drop 1  X: drop all  R3: sort"
 	return "Enter/click: pick up  X: drop 1  Z: drop all  O: sort"
 
 
+# A line from the world while the board is open, where the notice
+# would be hidden under it: a refusal, what went in (016's walk). It
+# stands in for the keys until the next thing done here.
+func show_message(text: String) -> void:
+	message = text
+	_refresh()
+
+
 # Everything shown, as text: for tests.
 func text() -> String:
 	if not is_open: return ""
 	if tab == TAB.CRAFT: return craft_text()
+	if tab == TAB.BUILD: return build_text()
 	var lines: PackedStringArray = [_header_text()]
 	for id: StringName in actor.grid.cells:
 		if id == &"": continue
@@ -558,15 +772,32 @@ func text() -> String:
 
 # The CRAFT tab, as text: for tests.
 func craft_text() -> String:
-	var lines: PackedStringArray = ["BY HAND"]
-	for recipe: Recipe in recipes():
-		lines.append("%s  %s" % [recipe.display_key, recipe_short(recipe)])
+	var lines: PackedStringArray = []
+	for section: Dictionary in craft_sections():
+		lines.append(section.title)
+		for recipe: Recipe in section.recipes:
+			lines.append("%s  %s" % [recipe.display_key, recipe_short(recipe)])
 	var recipe: Recipe = focused_recipe()
 	if recipe != null:
 		lines.append(recipe.display_key)
 		for need: Dictionary in needs_lines(recipe): lines.append(need.text)
 		lines.append(makes_text(recipe))
 		lines.append(make_text())
+	lines.append(help_text())
+	return "\n".join(lines)
+
+
+# The BUILD tab, as text: for tests.
+func build_text() -> String:
+	var tuning: TuningProfile = actor.current_level.world.tuning
+	var lines: PackedStringArray = ["EVERYTHING YOU CAN BUILD"]
+	for entry: int in Hotbar.BUILDABLE:
+		lines.append("%s  %s" % [Building.entry_name(entry), Building.cost_text(tuning, entry)])
+	var entry: int = focused_entry()
+	lines.append(Building.entry_name(entry))
+	lines.append(Building.description(entry))
+	for line: Dictionary in cost_lines(entry): lines.append(line.text)
+	lines.append(assign_text())
 	lines.append(help_text())
 	return "\n".join(lines)
 
@@ -590,6 +821,7 @@ func _process(_delta: float) -> void:
 
 
 func _refresh() -> void:
+	_scroll_to_focus()
 	_board.queue_redraw()
 
 
@@ -614,6 +846,9 @@ func _draw_board() -> void:
 	_draw_tabs()
 	if tab == TAB.CRAFT:
 		_draw_craft()
+		return
+	if tab == TAB.BUILD:
+		_draw_build()
 		return
 	# The header: the load, and its bar (D-159's colors)
 	var header: String = _header_text()
@@ -662,49 +897,124 @@ func _draw_tabs() -> void:
 	var left: String = "LB" if gamepad else "Q"
 	_board.draw_string(font, Vector2(0, font_size), left, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
 		DIM_TEXT)
-	for t: int in [TAB.PACK, TAB.CRAFT]:
+	for t: int in TAB.values():
 		var rect: Rect2 = _tab_rect(t)
 		var shown: bool = t == tab
-		_board.draw_string(font, rect.position + Vector2(4, font_size), "PACK" if t == TAB.PACK else "CRAFT",
+		_board.draw_string(font, rect.position + Vector2(4, font_size), TAB_NAMES[t],
 			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, FOCUS_COLOR if shown else DIM_TEXT)
 		if shown:
 			_board.draw_line(Vector2(rect.position.x, rect.end.y), rect.end, FOCUS_COLOR, 2.0)
 	if gamepad:
-		_board.draw_string(font, Vector2(28 + 2 * 60, font_size), "RB", HORIZONTAL_ALIGNMENT_LEFT, -1,
-			font_size, DIM_TEXT)
-
-
-# The CRAFT tab (D-222): the hand recipes, the focused one's detail,
-# Make, and the load at the foot.
-func _draw_craft() -> void:
-	var font: Font = ScaledHud.FONT
-	var font_size: int = ScaledHud.FONT_SIZE
-	_board.draw_string(font, Vector2(0, LIST_TOP + font_size), "BY HAND", HORIZONTAL_ALIGNMENT_LEFT,
-		-1, font_size, DIM_TEXT)
-	var list: Array[Recipe] = recipes()
-	for i in range(list.size()):
-		var rect: Rect2 = _row_rect(i)
-		_board.draw_rect(rect, CELL_COLOR)
-		var icon: Texture2D = _output_icon(list[i])
-		if icon != null: _board.draw_texture(icon, rect.position + Vector2(2, 2))
-		_board.draw_string(font, rect.position + Vector2(22, font_size + 1), list[i].display_key,
-			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
-		_board.draw_string(font, rect.position + Vector2(22, 2 * font_size + 3), recipe_short(list[i]),
+		_board.draw_string(font, Vector2(28 + TAB.size() * 60, font_size), "RB",
 			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
-		_board.draw_rect(rect, FOCUS_COLOR if i == craft_index else BORDER, false,
-			2.0 if i == craft_index else 1.0)
-	var bench_top: float = LIST_TOP + 12 + maxi(list.size(), 1) * ROW + 10
-	_board.draw_string(font, Vector2(0, bench_top + font_size), "AT A WORKBENCH",
-		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
-	_board.draw_string(font, Vector2(0, bench_top + 2 * font_size + 4), "Made at a bench.",
-		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+
+
+# The CRAFT tab (D-222, D-237): the recipes by section, the focused
+# one's detail, Make, and the load at the foot. A station's section
+# shows only while one is in reach, so a hint below the list says
+# where the rest are made.
+func _draw_craft() -> void:
+	var list: Array[Recipe] = recipes()
+	_draw_list(func(i: int, rect: Rect2) -> void:
+		_draw_row(rect, _output_icon(list[i]), list[i].display_key, recipe_short(list[i]),
+			i == craft_index))
+	if craft_sections().size() == 1:
+		_board.draw_string(ScaledHud.FONT, Vector2(0, LIST_BOTTOM - 4),
+			"More is made at a workbench or forge.", HORIZONTAL_ALIGNMENT_LEFT, -1,
+			ScaledHud.FONT_SIZE, DIM_TEXT)
 	var recipe: Recipe = focused_recipe()
 	if recipe != null: _draw_detail(recipe)
-	# The load, and the keys or the last word, at the foot
+	_draw_foot()
+
+
+# The BUILD tab (D-252): every buildable, the focused one's detail, and
+# the button that puts it in the selected build slot.
+func _draw_build() -> void:
+	var tuning: TuningProfile = actor.current_level.world.tuning
+	_draw_list(func(i: int, rect: Rect2) -> void:
+		var entry: int = Hotbar.BUILDABLE[i]
+		var slot: int = actor.hotbar.slot_of_build(entry)
+		var name: String = Building.entry_name(entry)
+		if slot != -1: name = "%s  [%d]" % [name, slot + 1]
+		_draw_row(rect, BuildCursor.ghost_texture(entry), name, cost_short(tuning, entry),
+			i == build_index))
+	var font: Font = ScaledHud.FONT
+	var font_size: int = ScaledHud.FONT_SIZE
+	var entry: int = focused_entry()
+	var x: float = DETAIL_X
+	var y: float = LIST_TOP + font_size
+	var art: Texture2D = BuildCursor.ghost_texture(entry)
+	if art != null:
+		var height: float = 32.0
+		var width: float = art.get_width() * height / art.get_height()
+		_board.draw_texture_rect(art, Rect2(Vector2(x, y - font_size), Vector2(width, height)), false)
+	_board.draw_string(font, Vector2(x + 38, y + 4), Building.entry_name(entry),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
+	y += 36
+	for line: String in wrap_to(Building.description(entry), BOARD_SIZE.x - x):
+		_board.draw_string(font, Vector2(x, y), line, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+		y += LINE
+	y += 6
+	_board.draw_string(font, Vector2(x, y), "COSTS", HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+	y += LINE
+	for line: Dictionary in cost_lines(entry):
+		_board.draw_string(font, Vector2(x, y), line.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size,
+			HAVE_COLOR if line.enough else LACK_COLOR)
+		y += LINE
+	var button: Rect2 = make_rect()
+	_board.draw_rect(button, FOCUS_COLOR)
+	_board.draw_string(font, button.position + Vector2(4, font_size + 3), assign_text(),
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, BACK)
+	_draw_foot()
+
+
+# The list's lines from the first shown: section titles, and each row
+# drawn by `draw_row(index, rect)`.
+func _draw_list(draw_row: Callable) -> void:
+	var font: Font = ScaledHud.FONT
+	var font_size: int = ScaledHud.FONT_SIZE
+	var y: float = LIST_TOP
+	var lines: Array[Dictionary] = _list_lines()
+	for i in range(list_scroll, lines.size()):
+		var height: float = _line_height(lines[i])
+		if y + height > LIST_BOTTOM: break
+		if lines[i].has("title"):
+			_board.draw_string(font, Vector2(0, y + font_size + 1), lines[i].title,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+		else:
+			draw_row.call(lines[i].row, Rect2(Vector2(0, y), Vector2(LIST_WIDTH, ROW - 2)))
+		y += height
+	if list_scroll > 0:
+		_board.draw_colored_polygon(PackedVector2Array([Vector2(LIST_WIDTH - 8, LIST_TOP + 3),
+			Vector2(LIST_WIDTH - 2, LIST_TOP + 3), Vector2(LIST_WIDTH - 5, LIST_TOP)]), DIM_TEXT)
+
+
+func _draw_row(rect: Rect2, icon: Texture2D, title: String, line: String, focused: bool) -> void:
+	var font: Font = ScaledHud.FONT
+	var font_size: int = ScaledHud.FONT_SIZE
+	_board.draw_rect(rect, CELL_COLOR)
+	if icon != null:
+		var height: float = minf(icon.get_height(), 16.0)
+		var width: float = icon.get_width() * height / icon.get_height()
+		_board.draw_texture_rect(icon, Rect2(rect.position + Vector2(2, 2), Vector2(width, height)), false)
+	_board.draw_string(font, rect.position + Vector2(22, font_size + 1), title,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
+	_board.draw_string(font, rect.position + Vector2(22, 2 * font_size + 3), line,
+		HORIZONTAL_ALIGNMENT_LEFT, LIST_WIDTH - 24, font_size, DIM_TEXT)
+	_board.draw_rect(rect, FOCUS_COLOR if focused else BORDER, false, 2.0 if focused else 1.0)
+
+
+# The load, and the keys or the last word, at the board's foot.
+func _draw_foot() -> void:
+	var font: Font = ScaledHud.FONT
+	var font_size: int = ScaledHud.FONT_SIZE
 	_board.draw_string(font, Vector2(0, TEXT_TOP + LINE + font_size), _header_text(),
 		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, TEXT_COLOR)
-	_board.draw_string(font, Vector2(0, TEXT_TOP + 2 * LINE + font_size), help_text(),
-		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
+	# The keys, or a message, wrapped to the board: two lines at most
+	var lines: PackedStringArray = wrap_to(help_text(), BOARD_SIZE.x)
+	for i in range(mini(lines.size(), 2)):
+		_board.draw_string(font, Vector2(0, TEXT_TOP + (2 + i) * LINE + font_size), lines[i],
+			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, DIM_TEXT)
 
 
 func _draw_detail(recipe: Recipe) -> void:
@@ -827,7 +1137,7 @@ func _draw_item_cell(region: REGION, index: int, id: StringName, count: int) -> 
 func _draw_build_cell(slot: int) -> void:
 	var rect: Rect2 = _slot_rect(REGION.BUILD, slot)
 	_board.draw_rect(rect, SLOT_COLOR)
-	var texture: Texture2D = FixtureRenderer.TEXTURES.get(kind_at(slot))
+	var texture: Texture2D = FixtureRenderer.TEXTURES.get(Building.kind_of(kind_at(slot)))
 	if texture != null:
 		# Under the slot number, fitted to the room left
 		var height: float = minf(texture.get_height(), CELL - 10)
@@ -855,6 +1165,10 @@ func _draw_light_cell() -> void:
 		"L" if not gamepad else "^", HORIZONTAL_ALIGNMENT_LEFT, -1, ScaledHud.FONT_SIZE, BORDER)
 	_board.draw_rect(rect, HotbarHud.LIT if actor.hotbar.lit else BORDER, false,
 		2.0 if actor.hotbar.lit else 1.0)
+	if holding and focus_region == REGION.LIGHT:
+		_board.draw_rect(rect.grow(1), HELD_COLOR, false, 2.0)
+	elif focus_region == REGION.LIGHT:
+		_board.draw_rect(rect.grow(1), FOCUS_COLOR, false, 2.0)
 
 
 func light_rect() -> Rect2:

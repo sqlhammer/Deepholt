@@ -53,6 +53,7 @@ const ORE_ITEMS: Dictionary = {
 	TileKind.ORE.COPPER: &"copper_ore",
 	TileKind.ORE.TIN: &"tin_ore",
 	TileKind.ORE.IRON: &"iron_ore",
+	TileKind.ORE.COAL: &"coal",
 }
 
 
