@@ -1,7 +1,8 @@
 # 016 — Something worth carrying
 
 *Written by Claude, 2026-11-11. Agent mode (D-210), on `slice-016` (from `main` at 0c32def).
-Not yet walked by hand.*
+Walked by Derik in part the same day; fixes and two decisions after the walk are at the end.
+Closed by Derik, 2026-11-11, with the build-slot flow left open.*
 
 **Result:** 1348 tests, green, ~50 s (015 closed at 1261, ~50 s). Everything in the brief is
 built. Some of it I saw in a real window through a throwaway screenshot test (below), and I
@@ -144,3 +145,35 @@ All of NOW.md's outcomes 1 to 9. In particular:
 - whether 10 s a batch (20 s unlit) feels right;
 - the lantern's fuel;
 - whether the BUILD tab is easy to use on a pad.
+
+## After the walk
+
+Derik walked A to E (not C3, C4, E3 to E5, F, G, H or I) and wrote notes in the walkthrough.
+What came of them, in a9d4341:
+
+- **A click on a tab stepped one tab along** instead of going to it: 015's two-tab code,
+  `switch_tab()` where `show_tab(clicked)` was meant. With three tabs it showed.
+- **The pad's left stick walked the character while moving the BUILD list's focus.** D-162 let
+  you walk with the inventory open. Derik ruled it a conflict: **D-254**, with the inventory open
+  its player stands still, on pad and keyboard; nothing pauses.
+- **A smelter's refusal was hidden behind the inventory,** which hides the HUD while open, and
+  you load a smelter with it open. Notices now go to the inventory's footer while it's open.
+- **The smelter's light rule:** Derik asked what "lit" meant, and said he'd never set it. It came
+  from the crafting doc's line in his first spec ("all stations require a minimum tile light
+  level for full speed"), which D-238 applied. **D-253:** the smelter works at one rate, lit or
+  not. `Light.is_lit_at` and `smelt_unlit_speed` are gone.
+- **Text past its box:** the BUILD tab's button and the footer. The button is now as wide as its
+  words, and the footer wraps to two lines.
+- **C3 had no directions to a cave.** The walkthrough now lists the fungus in his world, read
+  from his save by a throwaway probe.
+- **Mine:** changing `_inventory_mode`'s arguments broke `test_drops.gd`, which then failed to
+  parse, and GUT skipped it without failing: the first run said 1328 green. I caught the count
+  (20 short) and fixed it before committing. "No 'Ignoring script' warnings" has to be checked on
+  every run, not just at the close.
+
+**Left open, to talk through:** the build-slot flow. You can't choose the slot from the BUILD
+tab, a new game fills all eight slots so there's never an empty one, assigning several means
+going in and out, and the "[n]" marker on a row goes unnoticed. Derik wants a few options to
+choose from.
+
+**Closed at:** 1349 tests green (~50 s), coverage 90.6%.

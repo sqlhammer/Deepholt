@@ -1,8 +1,7 @@
 # Next
 
-Sketches, not commitments. Slices 012 to 015 are closed and merged. **016, something worth
-carrying, is built** on `slice-016` (2026-11-11, [log](./log/016-something-worth-carrying.md)),
-not yet walked. 017 is next.
+Sketches, not commitments. Slices 012 to 016 are closed and merged (016 on 2026-11-11,
+[log](./log/016-something-worth-carrying.md)). **017 is next.**
 
 **015 to 017 were accepted together** (Derik, 2026-11-10, D-210), larger than earlier slices,
 **all in Agent mode.** Together they take the game to the first session in
@@ -132,8 +131,14 @@ Found during 005, not recorded anywhere else. None of it is decided.
 - **From 015:** the chute, winch, crate and torch art are placeholders drawn by script.
 - **Coverage at the end of slice 015: 91.4%** (012 closed at 95.0%). The gap is the CRAFT tab's
   and the map's drawing, which only a windowed run reaches.
-- **Coverage at the end of slice 016: 90.2%.** The gap is the BUILD tab's and the sectioned
-  CRAFT list's drawing, and the refusal notice's texts.
+- **Coverage at the end of slice 016: 90.6%** (90.2% at the build, before the walk's fixes).
+  The gap is the BUILD tab's and the sectioned CRAFT list's drawing, and the refusal notice's
+  texts.
+- **From 016's walk, open: the build-slot flow.** The BUILD tab can't choose the slot, a new game
+  fills all eight so none is ever empty, assigning several means going in and out, and the row's
+  "[n]" marker goes unnoticed. Derik wants three or more options to choose from.
+- **From 016's walk, not walked:** fungus and oil (C3, C4), the lantern's fuel (E3 to E5), bronze
+  breaching and iron (F), the known gaps (G), old saves (H) and telemetry (I).
 - **From 016:** rock is hardness 6 on every level, so tool tiers are faster everywhere but not
   by stratum (tuning §4's ~0.6 s per stratum doesn't hold).
 - **From 016:** the bed has nothing to do until death (M6), past a stuck player on load.

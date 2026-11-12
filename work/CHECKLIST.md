@@ -39,4 +39,7 @@ Slice 015's checklist is in git history.
 - [x] `python scripts/coverage.py` run: 90.2%.
 - [x] Seen in a window, in part (Claude, by screenshot): stations, the lantern, the CRAFT, BUILD
   and PACK tabs, on the Surface.
-- [ ] By hand: outcomes 1 to 9 (Derik).
+- [x] By hand, in part (Derik, 2026-11-11): A to E but C3, C4, E3 to E5. F to I not walked.
+- [x] Walk fixes (a9d4341): tab clicks, standing still in the inventory (D-254), refusals on the
+  open inventory, the smelter's one rate (D-253), text fitting. 1349 tests, coverage 90.6%.
+- [ ] Left open: the build-slot flow (Derik wants options).

@@ -9,7 +9,8 @@
 *Proposed by Claude, 2026-11-11. Accepted with 015 and 017 (D-210). **Agent mode** (D-210).
 **Started 2026-11-11:** forks decided (D-237 to D-251). **Built** on `slice-016`, 2026-11-11
 ([log](./log/016-something-worth-carrying.md)), with D-252 from the build. Not walked by hand;
-Derik merges.*
+Derik merges.* **Closed 2026-11-11** after a partial walk, with D-253 and D-254 from it; the
+build-slot flow is left open (see the log).
 
 ## Where we are
 
